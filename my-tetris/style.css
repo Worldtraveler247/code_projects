@@ -30,6 +30,42 @@ body {
     font-size: 0.9em;
 }
 
+.controls {
+    margin-top: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    user-select: none;
+}
+
+.control-row {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+}
+
+.control-btn {
+    background: rgba(255, 255, 255, 0.1);
+    border: 2px solid #fff;
+    color: #fff;
+    padding: 15px 25px;
+    font-size: 1.2em;
+    border-radius: 10px;
+    cursor: pointer;
+    touch-action: manipulation;
+    min-width: 60px;
+}
+
+.control-btn:active {
+    background: #4a90e2;
+    transform: scale(0.95);
+}
+
+#rotate-btn {
+    width: 150px;
+    background: rgba(74, 144, 226, 0.2);
+}
+
 .credit {
     margin-top: 20px;
     font-size: 0.8em;

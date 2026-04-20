@@ -253,6 +253,12 @@ document.addEventListener('keydown', event => {
     }
 });
 
+// Touch Controls
+document.getElementById('left-btn').addEventListener('click', () => playerMove(-1));
+document.getElementById('right-btn').addEventListener('click', () => playerMove(1));
+document.getElementById('down-btn').addEventListener('click', () => playerDrop());
+document.getElementById('rotate-btn').addEventListener('click', () => playerRotate(1));
+
 playerReset();
 updateScore();
 update();
