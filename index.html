@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Eddie Camacho's Apps</title>
+    <style>
+        body {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: #fff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 40px 20px;
+        }
+        h1 {
+            color: #4a90e2;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 0 0 10px rgba(74, 144, 226, 0.5);
+        }
+        p.subtitle {
+            color: #888;
+            margin-bottom: 40px;
+        }
+        .project-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            width: 100%;
+            max-width: 900px;
+        }
+        .project-card {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 25px;
+            text-align: center;
+            transition: transform 0.3s ease, background 0.3s ease;
+            text-decoration: none;
+            color: inherit;
+        }
+        .project-card:hover {
+            transform: translateY(-5px);
+            background: rgba(255, 255, 255, 0.1);
+            border-color: #4a90e2;
+        }
+        .project-card h2 {
+            margin: 0 0 10px 0;
+            color: #4a90e2;
+        }
+        .project-card p {
+            font-size: 0.9em;
+            color: #ccc;
+        }
+        footer {
+            margin-top: auto;
+            padding: 20px;
+            color: #555;
+            font-size: 0.8em;
+        }
+    </style>
+</head>
+<body>
+    <h1>Eddie's App Hub</h1>
+    <p class="subtitle">Select a project to launch</p>
+
+    <div class="project-grid">
+        <a href="my-tetris/index.html" class="project-card">
+            <h2>🕹️ Tetris</h2>
+            <p>The classic block-stacking game. Built with pure JavaScript.</p>
+        </a>
+        <a href="my-dashboard/index.html" class="project-card">
+            <h2>📊 Dashboard</h2>
+            <p>My personal utility dashboard project.</p>
+        </a>
+        <a href="my-3d-demo/index.html" class="project-card">
+            <h2>🧊 3D Demo</h2>
+            <p>An experimental 3D rendering demonstration.</p>
+        </a>
+    </div>
+
+    <footer>Created by Eddie Camacho • 2026</footer>
+</body>
+</html>
