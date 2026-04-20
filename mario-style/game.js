@@ -31,6 +31,15 @@ const player = {
     score: 0
 };
 
+// End Goal Flag Pole
+const goal = {
+    x: 2500,
+    y: 80,
+    width: 10,
+    height: 200,
+    reached: false
+};
+
 // Platforms (A much longer world)
 const platforms = [
     { x: 0, y: 280, width: 600, height: 20 },      // Starting floor
@@ -95,6 +104,8 @@ document.getElementById('jump-btn').addEventListener('mousedown', () => {
 });
 
 function update() {
+    if (goal.reached) return;
+
     // Movement
     if (keys['ArrowUp'] || keys['Space']) {
         if (!player.jumping && player.grounded) {
@@ -160,6 +171,14 @@ function update() {
     player.x += player.velX;
     player.y += player.velY;
 
+    // Collision with Goal
+    if (player.x < goal.x + goal.width &&
+        player.x + player.width > goal.x &&
+        player.y < goal.y + goal.height &&
+        player.y + player.height > goal.y) {
+        goal.reached = true;
+    }
+
     // SCROLLING LOGIC: Keep player in the middle of the screen
     camera.x = player.x - canvas.width / 2;
     if (camera.x < 0) camera.x = 0; // Don't scroll past start
@@ -206,6 +225,12 @@ function draw() {
         ctx.fillStyle = '#8B4513';
     });
 
+    // Draw Goal Flag Pole
+    ctx.fillStyle = '#ddd'; // Pole color
+    ctx.fillRect(goal.x + 4, goal.y, 2, goal.height);
+    ctx.fillStyle = '#ff0000'; // Flag color
+    ctx.fillRect(goal.x - 10, goal.y + 10, 15, 10);
+
     // Draw coins
     ctx.fillStyle = '#FFD700';
     coins.forEach(coin => {
@@ -227,6 +252,28 @@ function draw() {
     ctx.fillRect(player.x + 14, player.y + 5, 2, 2);
 
     ctx.restore();
+
+    if (goal.reached) {
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = 'white';
+        ctx.font = '30px Courier New';
+        ctx.textAlign = 'center';
+        ctx.fillText('COURSE CLEAR!', canvas.width / 2, canvas.height / 2);
+        ctx.font = '15px Courier New';
+        ctx.fillText('Tap to play again', canvas.width / 2, canvas.height / 2 + 40);
+        
+        canvas.onclick = () => {
+            player.x = 50;
+            player.y = 200;
+            player.score = 0;
+            scoreElement.innerText = `Coins: ${player.score}`;
+            goal.reached = false;
+            coins.forEach(c => c.collected = false);
+            canvas.onclick = null;
+            update();
+        };
+    }
 }
 
 update();
