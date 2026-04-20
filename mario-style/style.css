@@ -1,0 +1,76 @@
+body {
+    margin: 0;
+    padding: 0;
+    background: #5c94fc; /* Mario Sky Blue */
+    font-family: 'Courier New', Courier, monospace;
+    overflow: hidden;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+}
+
+#game-container {
+    position: relative;
+    text-align: center;
+}
+
+#ui {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    color: white;
+    font-size: 1.5em;
+    text-shadow: 2px 2px #000;
+}
+
+canvas {
+    background: #5c94fc;
+    display: block;
+    border: 4px solid #fff;
+    box-shadow: 0 0 20px rgba(0,0,0,0.3);
+}
+
+.controls {
+    display: flex;
+    justify-content: space-between;
+    padding: 20px;
+    width: 100%;
+    max-width: 400px;
+    margin: 0 auto;
+    user-select: none;
+}
+
+.d-pad, .action-pad {
+    display: flex;
+    gap: 10px;
+}
+
+.control-btn {
+    width: 70px;
+    height: 70px;
+    background: rgba(255, 255, 255, 0.3);
+    border: 3px solid #fff;
+    border-radius: 50%;
+    color: white;
+    font-size: 1.5em;
+    font-weight: bold;
+    touch-action: manipulation;
+}
+
+.jump-btn {
+    width: 100px;
+    border-radius: 20px;
+    background: rgba(255, 0, 0, 0.4);
+}
+
+.control-btn:active {
+    background: rgba(255, 255, 255, 0.6);
+}
+
+.credit {
+    margin-top: 10px;
+    color: #fff;
+    font-size: 0.8em;
+    text-shadow: 1px 1px #000;
+}

@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Eddie's Mario Style</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="game-container">
+        <div id="ui">
+            <span id="score">Coins: 0</span>
+        </div>
+        <canvas id="gameCanvas"></canvas>
+        
+        <div class="controls">
+            <div class="d-pad">
+                <button id="left-btn" class="control-btn">←</button>
+                <button id="right-btn" class="control-btn">→</button>
+            </div>
+            <div class="action-pad">
+                <button id="jump-btn" class="control-btn jump-btn">JUMP</button>
+            </div>
+        </div>
+        <footer class="credit">Created by Eddie Camacho</footer>
+    </div>
+    <script src="game.js"></script>
+</body>
+</html>
