@@ -1,0 +1,109 @@
+body {
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    background-color: #050510;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    color: white;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+}
+
+#game-container {
+    position: relative;
+    box-shadow: 0 0 50px rgba(0, 100, 255, 0.3);
+    border: 2px solid #1a1a4a;
+}
+
+canvas {
+    display: block;
+    background: radial-gradient(circle at center, #0a0a2a 0%, #050510 100%);
+}
+
+#ui-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+}
+
+#hud {
+    padding: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    text-transform: uppercase;
+    font-weight: bold;
+    letter-spacing: 2px;
+    background: linear-gradient(to bottom, rgba(0, 0, 0, 0.7), transparent);
+}
+
+#health-bar-container {
+    width: 200px;
+    height: 15px;
+    background-color: rgba(255, 255, 255, 0.1);
+    border: 1px solid #00f2ff;
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+#health-bar {
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, #ff0055, #00f2ff);
+    transition: width 0.3s ease-out;
+}
+
+#start-screen, #game-over {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    background: rgba(10, 10, 40, 0.9);
+    padding: 40px;
+    border: 2px solid #00f2ff;
+    border-radius: 15px;
+    pointer-events: auto;
+    z-index: 10;
+}
+
+.hidden {
+    display: none !important;
+}
+
+h1 {
+    font-size: 3rem;
+    margin-bottom: 10px;
+    color: #00f2ff;
+    text-shadow: 0 0 15px rgba(0, 242, 255, 0.7);
+}
+
+p {
+    margin-bottom: 25px;
+    line-height: 1.6;
+    color: #ccc;
+}
+
+button {
+    background: transparent;
+    border: 2px solid #00f2ff;
+    color: #00f2ff;
+    padding: 12px 30px;
+    font-size: 1.2rem;
+    font-weight: bold;
+    cursor: pointer;
+    text-transform: uppercase;
+    transition: all 0.3s;
+    border-radius: 5px;
+}
+
+button:hover {
+    background: #00f2ff;
+    color: #050510;
+    box-shadow: 0 0 20px rgba(0, 242, 255, 0.5);
+}
