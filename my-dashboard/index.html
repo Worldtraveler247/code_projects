@@ -10,8 +10,19 @@
     <div class="container">
         <h1 id="greeting">Hello!</h1>
         <div id="clock">00:00:00</div>
-        <p>Welcome to your first web application.</p>
-        <button onclick="changeColor()">Change Background</button>
+        
+        <div id="weather-container">
+            <p id="weather-loading">Loading weather...</p>
+            <div id="weather-info" class="hidden">
+                <div class="weather-temp"><span id="temp">--</span>°C</div>
+                <div id="weather-desc">--</div>
+                <div class="weather-location">Current Location</div>
+            </div>
+        </div>
+
+        <div class="controls">
+            <button onclick="changeColor()">Change Style</button>
+        </div>
     </div>
     <script src="script.js"></script>
 </body>
