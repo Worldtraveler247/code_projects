@@ -127,7 +127,10 @@ class Player {
         // Engine particles
         this.enginePulse += 0.2;
         if (Math.random() > 0.3) {
-            particles.push(new Particle(this.x, this.y + this.height / 2, '#ffaa00', 0.5));
+            // Hot blue core particles
+            particles.push(new Particle(this.x, this.y + this.height / 2, '#00ffff', 0.4));
+            // Orange heat trail
+            particles.push(new Particle(this.x - 5, this.y + this.height / 2, '#ffaa00', 0.6));
         }
     }
 
@@ -147,38 +150,55 @@ class Player {
         ctx.shadowBlur = 15;
         ctx.shadowColor = this.color;
         
-        // Ship Body (Vector Style)
+        // Sleek Aerodynamic Body
         ctx.fillStyle = '#111';
         ctx.strokeStyle = this.color;
         ctx.lineWidth = 2;
         
         ctx.beginPath();
-        ctx.moveTo(this.x, this.y + 10);
-        ctx.lineTo(this.x + 20, this.y + 10);
-        ctx.lineTo(this.x + 30, this.y);
-        ctx.lineTo(this.x + 60, this.y + 20); // Tip
-        ctx.lineTo(this.x + 30, this.y + 40);
-        ctx.lineTo(this.x + 20, this.y + 30);
-        ctx.lineTo(this.x, this.y + 30);
+        // Nose/Fuselage
+        ctx.moveTo(this.x + this.width, this.y + this.height / 2);
+        ctx.quadraticCurveTo(this.x + 40, this.y, this.x + 10, this.y + 10);
+        // Back
+        ctx.lineTo(this.x, this.y + 15);
+        ctx.lineTo(this.x, this.y + 25);
+        ctx.lineTo(this.x + 10, this.y + 30);
+        // Lower fuselage
+        ctx.quadraticCurveTo(this.x + 40, this.y + this.height, this.x + this.width, this.y + this.height / 2);
         ctx.closePath();
         ctx.fill();
         ctx.stroke();
 
-        // Cockpit
-        ctx.fillStyle = 'rgba(0, 242, 255, 0.3)';
+        // Swept Back Wings
         ctx.beginPath();
-        ctx.moveTo(this.x + 25, this.y + 15);
-        ctx.lineTo(this.x + 45, this.y + 20);
-        ctx.lineTo(this.x + 25, this.y + 25);
+        ctx.moveTo(this.x + 20, this.y + 10);
+        ctx.lineTo(this.x + 5, this.y - 5);
+        ctx.lineTo(this.x + 25, this.y + 10);
         ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(this.x + 20, this.y + 30);
+        ctx.lineTo(this.x + 5, this.y + this.height + 5);
+        ctx.lineTo(this.x + 25, this.y + 30);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+
+        // Cockpit (Organic Curve)
+        ctx.fillStyle = 'rgba(0, 242, 255, 0.4)';
+        ctx.beginPath();
+        ctx.moveTo(this.x + 35, this.y + 12);
+        ctx.quadraticCurveTo(this.x + 55, this.y + 20, this.x + 35, this.y + 28);
         ctx.fill();
         ctx.stroke();
 
         if (this.powerUpType === 'SHIELD') {
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
             ctx.setLineDash([5, 5]);
             ctx.beginPath();
-            ctx.arc(this.x + 30, this.y + 20, 45, 0, Math.PI * 2);
+            ctx.ellipse(this.x + 30, this.y + 20, 50, 40, 0, 0, Math.PI * 2);
             ctx.stroke();
             ctx.setLineDash([]);
         }
@@ -206,7 +226,7 @@ class Projectile {
         this.y = y;
         this.vx = vx;
         this.vy = vy;
-        this.width = 15;
+        this.width = 18;
         this.height = 4;
         this.color = color;
     }
@@ -217,11 +237,15 @@ class Projectile {
     }
 
     draw() {
+        ctx.save();
         ctx.fillStyle = this.color;
-        ctx.shadowBlur = 10;
+        ctx.shadowBlur = 12;
         ctx.shadowColor = this.color;
-        ctx.fillRect(this.x, this.y - this.height / 2, this.width, this.height);
-        ctx.shadowBlur = 0;
+        // Rounded projectile
+        ctx.beginPath();
+        ctx.roundRect(this.x, this.y - this.height / 2, this.width, this.height, 2);
+        ctx.fill();
+        ctx.restore();
     }
 }
 
@@ -229,7 +253,7 @@ class Enemy {
     constructor(x, y, speed, health, type = 'BASIC') {
         this.x = x;
         this.y = y;
-        this.width = 45;
+        this.width = 50;
         this.height = 35;
         this.speed = speed;
         this.health = health;
@@ -248,45 +272,63 @@ class Enemy {
         ctx.save();
         ctx.shadowBlur = 10;
         ctx.shadowColor = this.color;
-        ctx.fillStyle = '#222';
+        ctx.fillStyle = '#1a1a1a';
         ctx.strokeStyle = this.color;
         ctx.lineWidth = 2;
 
-        ctx.beginPath();
-        ctx.moveTo(this.x + this.width, this.y + this.height / 2);
-        ctx.lineTo(this.x + this.width - 15, this.y);
-        ctx.lineTo(this.x, this.y + 5);
-        ctx.lineTo(this.x + 10, this.y + this.height / 2);
-        ctx.lineTo(this.x, this.y + this.height - 5);
-        ctx.lineTo(this.x + this.width - 15, this.y + this.height);
-        ctx.closePath();
+        if (this.type === 'BASIC') {
+            // Interceptor Style
+            ctx.beginPath();
+            ctx.moveTo(this.x, this.y + this.height / 2); // Tip pointing left
+            ctx.lineTo(this.x + 20, this.y);
+            ctx.lineTo(this.x + 50, this.y + 5);
+            ctx.lineTo(this.x + 40, this.y + this.height / 2);
+            ctx.lineTo(this.x + 50, this.y + this.height - 5);
+            ctx.lineTo(this.x + 20, this.y + this.height);
+            ctx.closePath();
+        } else {
+            // Scout Style (SINE)
+            ctx.beginPath();
+            ctx.ellipse(this.x + 25, this.y + 17, 25, 15, 0, 0, Math.PI * 2);
+        }
         ctx.fill();
         ctx.stroke();
+
+        // Glowing Core/Visor
+        ctx.fillStyle = this.color;
+        ctx.globalAlpha = 0.6;
+        if (this.type === 'BASIC') {
+            ctx.fillRect(this.x + 15, this.y + 14, 15, 7);
+        } else {
+            ctx.beginPath();
+            ctx.arc(this.x + 25, this.y + 17, 6, 0, Math.PI * 2);
+            ctx.fill();
+        }
         ctx.restore();
     }
 }
 
 class Boss {
     constructor() {
-        this.width = 150;
-        this.height = 250;
+        this.width = 180;
+        this.height = 280;
         this.x = CANVAS_WIDTH + 100;
         this.y = CANVAS_HEIGHT / 2 - this.height / 2;
-        this.speed = 1.5;
-        this.health = 800;
-        this.maxHealth = 800;
+        this.speed = 1.2;
+        this.health = 1000;
+        this.maxHealth = 1000;
         this.color = '#ff00ff';
         this.lastShot = 0;
-        this.shotDelay = 800;
+        this.shotDelay = 750;
         this.direction = 1;
     }
 
     update() {
-        if (this.x > CANVAS_WIDTH - 200) {
+        if (this.x > CANVAS_WIDTH - 250) {
             this.x -= this.speed;
         } else {
             this.y += this.speed * this.direction;
-            if (this.y <= 50 || this.y >= CANVAS_HEIGHT - this.height - 50) this.direction *= -1;
+            if (this.y <= 40 || this.y >= CANVAS_HEIGHT - this.height - 40) this.direction *= -1;
 
             if (Date.now() - this.lastShot > this.shotDelay) {
                 this.shoot();
@@ -297,36 +339,57 @@ class Boss {
 
     shoot() {
         for (let i = -3; i <= 3; i++) {
-            projectiles.push(new Projectile(this.x, this.y + this.height / 2, -6, i * 1.5, this.color));
+            projectiles.push(new Projectile(this.x, this.y + this.height / 2, -7, i * 1.8, this.color));
         }
     }
 
     draw() {
         ctx.save();
-        ctx.shadowBlur = 20;
+        ctx.shadowBlur = 25;
         ctx.shadowColor = this.color;
-        ctx.fillStyle = '#111';
+        
+        // Dreadnought Hull
+        const grad = ctx.createLinearGradient(this.x, this.y, this.x + this.width, this.y);
+        grad.addColorStop(0, '#222');
+        grad.addColorStop(0.5, '#111');
+        grad.addColorStop(1, '#222');
+        ctx.fillStyle = grad;
         ctx.strokeStyle = this.color;
         ctx.lineWidth = 3;
 
         ctx.beginPath();
-        ctx.moveTo(this.x + this.width, this.y + 20);
-        ctx.lineTo(this.x + 30, this.y);
-        ctx.lineTo(this.x, this.y + 50);
-        ctx.lineTo(this.x + 40, this.y + this.height / 2);
-        ctx.lineTo(this.x, this.y + this.height - 50);
-        ctx.lineTo(this.x + 30, this.y + this.height);
-        ctx.lineTo(this.x + this.width, this.y + this.height - 20);
+        // Forward bow
+        ctx.moveTo(this.x, this.y + 100);
+        ctx.quadraticCurveTo(this.x - 30, this.y + 140, this.x, this.y + 180);
+        // Body
+        ctx.lineTo(this.x + 100, this.y + 280);
+        ctx.lineTo(this.x + 180, this.y + 250);
+        ctx.lineTo(this.x + 150, this.y + 140); // Stabilizer notch
+        ctx.lineTo(this.x + 180, this.y + 30);
+        ctx.lineTo(this.x + 100, this.y);
         ctx.closePath();
         ctx.fill();
         ctx.stroke();
 
-        // Health Bar
-        ctx.fillStyle = 'rgba(255, 0, 0, 0.3)';
-        ctx.fillRect(this.x, this.y - 30, this.width, 10);
-        ctx.fillStyle = '#ff0000';
-        ctx.fillRect(this.x, this.y - 30, this.width * (this.health / this.maxHealth), 10);
+        // Glowing Power Core
+        ctx.shadowBlur = 40;
+        ctx.fillStyle = this.color;
+        ctx.beginPath();
+        ctx.arc(this.x + 80, this.y + 140, 25, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Bridge
+        ctx.fillStyle = '#333';
+        ctx.fillRect(this.x + 110, this.y + 120, 30, 40);
+        ctx.strokeStyle = this.color;
+        ctx.strokeRect(this.x + 110, this.y + 120, 30, 40);
+
+        // Boss health bar UI
         ctx.restore();
+        ctx.fillStyle = 'rgba(255, 0, 255, 0.2)';
+        ctx.fillRect(this.x, this.y - 40, this.width, 12);
+        ctx.fillStyle = '#ff00ff';
+        ctx.fillRect(this.x, this.y - 40, this.width * (this.health / this.maxHealth), 12);
     }
 }
 
