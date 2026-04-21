@@ -28,6 +28,15 @@ body {
     text-shadow: 0 0 10px rgba(74, 144, 226, 0.5);
 }
 
+.section-title {
+    font-size: 1rem;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: #4a90e2;
+    margin-bottom: 1rem;
+    opacity: 0.8;
+}
+
 #weather-container {
     background: rgba(0, 0, 0, 0.2);
     padding: 1.5rem;
