@@ -31,6 +31,72 @@ const healthBar = document.getElementById('health-bar');
 const startBtn = document.getElementById('start-btn');
 const restartBtn = document.getElementById('restart-btn');
 
+// Mobile Controls Elements
+const mobileControls = document.getElementById('mobile-controls');
+const joystickContainer = document.getElementById('joystick-container');
+const joystickKnob = document.getElementById('joystick-knob');
+const fireButton = document.getElementById('fire-button');
+
+// Joystick State
+let joystickActive = false;
+let joystickVector = { x: 0, y: 0 };
+let joystickBaseRect = null;
+
+function initMobileControls() {
+    const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+    if (isTouchDevice) {
+        mobileControls.classList.remove('hidden');
+        
+        joystickContainer.addEventListener('touchstart', (e) => {
+            joystickActive = true;
+            joystickBaseRect = joystickContainer.getBoundingClientRect();
+            updateJoystick(e.touches[0]);
+        });
+
+        window.addEventListener('touchmove', (e) => {
+            if (joystickActive) {
+                updateJoystick(e.touches[0]);
+            }
+        }, { passive: false });
+
+        window.addEventListener('touchend', () => {
+            joystickActive = false;
+            joystickVector = { x: 0, y: 0 };
+            joystickKnob.style.left = '50%';
+            joystickKnob.style.top = '50%';
+        });
+
+        fireButton.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            if (gameState === 'PLAYING' && player) {
+                player.shoot();
+            }
+        });
+    }
+}
+
+function updateJoystick(touch) {
+    const centerX = joystickBaseRect.left + joystickBaseRect.width / 2;
+    const centerY = joystickBaseRect.top + joystickBaseRect.height / 2;
+    
+    let dx = touch.clientX - centerX;
+    let dy = touch.clientY - centerY;
+    
+    const distance = Math.hypot(dx, dy);
+    const maxDistance = joystickBaseRect.width / 2;
+    
+    if (distance > maxDistance) {
+        dx = (dx / distance) * maxDistance;
+        dy = (dy / distance) * maxDistance;
+    }
+    
+    joystickVector.x = dx / maxDistance;
+    joystickVector.y = dy / maxDistance;
+    
+    joystickKnob.style.left = `calc(50% + ${dx}px)`;
+    joystickKnob.style.top = `calc(50% + ${dy}px)`;
+}
+
 // Visual Classes
 class Star {
     constructor(speedMult) {
@@ -106,10 +172,15 @@ class Player {
     }
 
     update(deltaTime) {
+        // Keyboard movement
         if (KEYS['ArrowUp'] || KEYS['KeyW']) this.y -= this.speed;
         if (KEYS['ArrowDown'] || KEYS['KeyS']) this.y += this.speed;
         if (KEYS['ArrowLeft'] || KEYS['KeyA']) this.x -= this.speed;
         if (KEYS['ArrowRight'] || KEYS['KeyD']) this.x += this.speed;
+
+        // Joystick movement
+        this.x += joystickVector.x * this.speed;
+        this.y += joystickVector.y * this.speed;
 
         this.x = Math.max(0, Math.min(CANVAS_WIDTH - this.width, this.x));
         this.y = Math.max(0, Math.min(CANVAS_HEIGHT - this.height, this.y));
@@ -127,9 +198,7 @@ class Player {
         // Engine particles
         this.enginePulse += 0.2;
         if (Math.random() > 0.3) {
-            // Hot blue core particles
             particles.push(new Particle(this.x, this.y + this.height / 2, '#00ffff', 0.4));
-            // Orange heat trail
             particles.push(new Particle(this.x - 5, this.y + this.height / 2, '#ffaa00', 0.6));
         }
     }
@@ -150,26 +219,21 @@ class Player {
         ctx.shadowBlur = 15;
         ctx.shadowColor = this.color;
         
-        // Sleek Aerodynamic Body
         ctx.fillStyle = '#111';
         ctx.strokeStyle = this.color;
         ctx.lineWidth = 2;
         
         ctx.beginPath();
-        // Nose/Fuselage
         ctx.moveTo(this.x + this.width, this.y + this.height / 2);
         ctx.quadraticCurveTo(this.x + 40, this.y, this.x + 10, this.y + 10);
-        // Back
         ctx.lineTo(this.x, this.y + 15);
         ctx.lineTo(this.x, this.y + 25);
         ctx.lineTo(this.x + 10, this.y + 30);
-        // Lower fuselage
         ctx.quadraticCurveTo(this.x + 40, this.y + this.height, this.x + this.width, this.y + this.height / 2);
         ctx.closePath();
         ctx.fill();
         ctx.stroke();
 
-        // Swept Back Wings
         ctx.beginPath();
         ctx.moveTo(this.x + 20, this.y + 10);
         ctx.lineTo(this.x + 5, this.y - 5);
@@ -186,7 +250,6 @@ class Player {
         ctx.fill();
         ctx.stroke();
 
-        // Cockpit (Organic Curve)
         ctx.fillStyle = 'rgba(0, 242, 255, 0.4)';
         ctx.beginPath();
         ctx.moveTo(this.x + 35, this.y + 12);
@@ -241,7 +304,6 @@ class Projectile {
         ctx.fillStyle = this.color;
         ctx.shadowBlur = 12;
         ctx.shadowColor = this.color;
-        // Rounded projectile
         ctx.beginPath();
         ctx.roundRect(this.x, this.y - this.height / 2, this.width, this.height, 2);
         ctx.fill();
@@ -277,9 +339,8 @@ class Enemy {
         ctx.lineWidth = 2;
 
         if (this.type === 'BASIC') {
-            // Interceptor Style
             ctx.beginPath();
-            ctx.moveTo(this.x, this.y + this.height / 2); // Tip pointing left
+            ctx.moveTo(this.x, this.y + this.height / 2);
             ctx.lineTo(this.x + 20, this.y);
             ctx.lineTo(this.x + 50, this.y + 5);
             ctx.lineTo(this.x + 40, this.y + this.height / 2);
@@ -287,14 +348,12 @@ class Enemy {
             ctx.lineTo(this.x + 20, this.y + this.height);
             ctx.closePath();
         } else {
-            // Scout Style (SINE)
             ctx.beginPath();
             ctx.ellipse(this.x + 25, this.y + 17, 25, 15, 0, 0, Math.PI * 2);
         }
         ctx.fill();
         ctx.stroke();
 
-        // Glowing Core/Visor
         ctx.fillStyle = this.color;
         ctx.globalAlpha = 0.6;
         if (this.type === 'BASIC') {
@@ -348,7 +407,6 @@ class Boss {
         ctx.shadowBlur = 25;
         ctx.shadowColor = this.color;
         
-        // Dreadnought Hull
         const grad = ctx.createLinearGradient(this.x, this.y, this.x + this.width, this.y);
         grad.addColorStop(0, '#222');
         grad.addColorStop(0.5, '#111');
@@ -358,33 +416,28 @@ class Boss {
         ctx.lineWidth = 3;
 
         ctx.beginPath();
-        // Forward bow
         ctx.moveTo(this.x, this.y + 100);
         ctx.quadraticCurveTo(this.x - 30, this.y + 140, this.x, this.y + 180);
-        // Body
         ctx.lineTo(this.x + 100, this.y + 280);
         ctx.lineTo(this.x + 180, this.y + 250);
-        ctx.lineTo(this.x + 150, this.y + 140); // Stabilizer notch
+        ctx.lineTo(this.x + 150, this.y + 140);
         ctx.lineTo(this.x + 180, this.y + 30);
         ctx.lineTo(this.x + 100, this.y);
         ctx.closePath();
         ctx.fill();
         ctx.stroke();
 
-        // Glowing Power Core
         ctx.shadowBlur = 40;
         ctx.fillStyle = this.color;
         ctx.beginPath();
         ctx.arc(this.x + 80, this.y + 140, 25, 0, Math.PI * 2);
         ctx.fill();
         
-        // Bridge
         ctx.fillStyle = '#333';
         ctx.fillRect(this.x + 110, this.y + 120, 30, 40);
         ctx.strokeStyle = this.color;
         ctx.strokeRect(this.x + 110, this.y + 120, 30, 40);
 
-        // Boss health bar UI
         ctx.restore();
         ctx.fillStyle = 'rgba(255, 0, 255, 0.2)';
         ctx.fillRect(this.x, this.y - 40, this.width, 12);
@@ -613,6 +666,7 @@ function startGame() {
     gameState = 'PLAYING';
     startScreen.classList.add('hidden');
     gameOverScreen.classList.add('hidden');
+    initMobileControls();
 }
 
 function endGame() {
