@@ -2,43 +2,45 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Galactic Guardian - Space Shooter</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div id="game-container">
-        <canvas id="gameCanvas"></canvas>
-        <div id="ui-overlay">
-            <div id="hud">
-                <div id="score">Score: 0</div>
-                <div id="health-bar-container">
-                    <div id="health-bar"></div>
+        <div id="canvas-wrapper">
+            <canvas id="gameCanvas"></canvas>
+            <div id="ui-overlay">
+                <div id="hud">
+                    <div id="score">Score: 0</div>
+                    <div id="health-bar-container">
+                        <div id="health-bar"></div>
+                    </div>
+                    <div id="level">Level: 1</div>
                 </div>
-                <div id="level">Level: 1</div>
-            </div>
-            <div id="game-over" class="hidden">
-                <h1>GAME OVER</h1>
-                <p>Final Score: <span id="final-score">0</span></p>
-                <button id="restart-btn">Restart Mission</button>
-            </div>
-            <div id="start-screen">
-                <h1>GALACTIC GUARDIAN</h1>
-                <div id="desktop-instr">
-                    <p>Use Arrow Keys or WASD to Move<br>Spacebar to Shoot</p>
+                <div id="game-over" class="hidden">
+                    <h1>GAME OVER</h1>
+                    <p>Final Score: <span id="final-score">0</span></p>
+                    <button id="restart-btn">Restart Mission</button>
                 </div>
-                <div id="mobile-instr" class="hidden">
-                    <p>Use the Virtual Joystick to Move<br>Tap the FIRE button to Shoot</p>
+                <div id="start-screen">
+                    <h1>GALACTIC GUARDIAN</h1>
+                    <div id="desktop-instr">
+                        <p>Use Arrow Keys or WASD to Move<br>Spacebar to Shoot</p>
+                    </div>
+                    <div id="mobile-instr" class="hidden">
+                        <p>Use the Virtual Joystick to Move<br>Tap the FIRE button to Shoot</p>
+                    </div>
+                    <button id="start-btn">Launch Ship</button>
                 </div>
-                <button id="start-btn">Launch Ship</button>
             </div>
-            <div id="mobile-controls" class="hidden">
-                <div id="joystick-container">
-                    <div id="joystick-base"></div>
-                    <div id="joystick-knob"></div>
-                </div>
-                <div id="fire-button">FIRE</div>
+        </div>
+        <div id="mobile-controls" class="hidden">
+            <div id="joystick-container">
+                <div id="joystick-base"></div>
+                <div id="joystick-knob"></div>
             </div>
+            <div id="fire-button">FIRE</div>
         </div>
     </div>
     <script src="game.js"></script>

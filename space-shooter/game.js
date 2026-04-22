@@ -45,31 +45,30 @@ let joystickVector = { x: 0, y: 0 };
 let joystickBaseRect = null;
 
 function initMobileControls() {
-    // Detect mobile by touch capability OR small screen
     const isMobile = ('ontouchstart' in window) || 
                      (navigator.maxTouchPoints > 0) || 
                      (window.innerWidth < 1000);
 
     if (isMobile) {
         mobileControls.classList.remove('hidden');
-        mobileInstr.classList.remove('hidden');
+        if (mobileInstr) mobileInstr.classList.remove('hidden');
         if (desktopInstr) desktopInstr.classList.add('hidden');
         
-        joystickContainer.addEventListener('touchstart', (e) => {
+        const handleStart = (e) => {
             e.preventDefault();
             joystickActive = true;
             joystickBaseRect = joystickContainer.getBoundingClientRect();
             updateJoystick(e.touches[0]);
-        }, { passive: false });
+        };
 
-        window.addEventListener('touchmove', (e) => {
+        const handleMove = (e) => {
             if (joystickActive) {
                 e.preventDefault();
                 updateJoystick(e.touches[0]);
             }
-        }, { passive: false });
+        };
 
-        window.addEventListener('touchend', (e) => {
+        const handleEnd = (e) => {
             if (joystickActive) {
                 e.preventDefault();
                 joystickActive = false;
@@ -77,7 +76,11 @@ function initMobileControls() {
                 joystickKnob.style.left = '50%';
                 joystickKnob.style.top = '50%';
             }
-        }, { passive: false });
+        };
+
+        joystickContainer.addEventListener('touchstart', handleStart, { passive: false });
+        window.addEventListener('touchmove', handleMove, { passive: false });
+        window.addEventListener('touchend', handleEnd, { passive: false });
 
         fireButton.addEventListener('touchstart', (e) => {
             e.preventDefault();
@@ -187,13 +190,11 @@ class Player {
     }
 
     update(deltaTime) {
-        // Keyboard movement
         if (KEYS['ArrowUp'] || KEYS['KeyW']) this.y -= this.speed;
         if (KEYS['ArrowDown'] || KEYS['KeyS']) this.y += this.speed;
         if (KEYS['ArrowLeft'] || KEYS['KeyA']) this.x -= this.speed;
         if (KEYS['ArrowRight'] || KEYS['KeyD']) this.x += this.speed;
 
-        // Joystick movement
         this.x += joystickVector.x * this.speed;
         this.y += joystickVector.y * this.speed;
 
@@ -210,7 +211,6 @@ class Player {
             if (this.powerUpTimer <= 0) this.powerUpType = null;
         }
 
-        // Engine particles
         this.enginePulse += 0.2;
         if (Math.random() > 0.3) {
             particles.push(new Particle(this.x, this.y + this.height / 2, '#00ffff', 0.4));
