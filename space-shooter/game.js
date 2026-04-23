@@ -41,6 +41,7 @@ const desktopInstr = document.getElementById('desktop-instr');
 
 // Joystick State
 let joystickActive = false;
+let joystickTouchId = null;
 let joystickVector = { x: 0, y: 0 };
 let joystickBaseRect = null;
 
@@ -56,31 +57,45 @@ function initMobileControls() {
         
         const handleStart = (e) => {
             e.preventDefault();
-            joystickActive = true;
-            joystickBaseRect = joystickContainer.getBoundingClientRect();
-            updateJoystick(e.touches[0]);
+            if (!joystickActive) {
+                const touch = e.changedTouches[0];
+                joystickActive = true;
+                joystickTouchId = touch.identifier;
+                joystickBaseRect = joystickContainer.getBoundingClientRect();
+                updateJoystick(touch);
+            }
         };
 
         const handleMove = (e) => {
             if (joystickActive) {
-                e.preventDefault();
-                updateJoystick(e.touches[0]);
+                for (let i = 0; i < e.touches.length; i++) {
+                    if (e.touches[i].identifier === joystickTouchId) {
+                        e.preventDefault();
+                        updateJoystick(e.touches[i]);
+                        break;
+                    }
+                }
             }
         };
 
         const handleEnd = (e) => {
-            if (joystickActive) {
-                e.preventDefault();
-                joystickActive = false;
-                joystickVector = { x: 0, y: 0 };
-                joystickKnob.style.left = '50%';
-                joystickKnob.style.top = '50%';
+            for (let i = 0; i < e.changedTouches.length; i++) {
+                if (e.changedTouches[i].identifier === joystickTouchId) {
+                    e.preventDefault();
+                    joystickActive = false;
+                    joystickTouchId = null;
+                    joystickVector = { x: 0, y: 0 };
+                    joystickKnob.style.left = '50%';
+                    joystickKnob.style.top = '50%';
+                    break;
+                }
             }
         };
 
         joystickContainer.addEventListener('touchstart', handleStart, { passive: false });
         window.addEventListener('touchmove', handleMove, { passive: false });
         window.addEventListener('touchend', handleEnd, { passive: false });
+        window.addEventListener('touchcancel', handleEnd, { passive: false });
 
         fireButton.addEventListener('touchstart', (e) => {
             e.preventDefault();
