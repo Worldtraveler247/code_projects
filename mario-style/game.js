@@ -5,6 +5,24 @@ const scoreEl = document.getElementById('score');
 canvas.width  = 480;
 canvas.height = 310;
 
+function fitCanvas() {
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    // Space taken by HUD + controls + footer + padding (measured conservatively)
+    const uiH = vw <= 480 ? 172 : 198;
+    const pad = vw <= 480 ? 8 : 16;
+    const availW = Math.min(vw - pad, 750);
+    const availH = vh - uiH;
+    const ar = 480 / 310;
+    let w = availW;
+    let h = w / ar;
+    if (h > availH) { h = availH; w = h * ar; }
+    canvas.style.width  = Math.floor(w) + 'px';
+    canvas.style.height = Math.floor(h) + 'px';
+}
+fitCanvas();
+window.addEventListener('resize', fitCanvas);
+
 const GRAVITY = 0.55;
 const FRICTION = 0.82;
 const WORLD_W = 2700;
