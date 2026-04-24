@@ -3,76 +3,196 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self' https://formsubmit.co; style-src 'self'; script-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src https://formsubmit.co;">
-    <title>App Hub</title>
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' https://formsubmit.co; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src https://formsubmit.co;">
+    <title>Eddie's App Hub</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <header class="header">
-        <h1>Eddie's App Hub</h1>
-        <p class="subtitle">A showcase of projects and creative experiments</p>
+
+    <canvas id="bg-canvas"></canvas>
+
+    <!-- Hero -->
+    <header class="hero">
+        <div class="hero-inner">
+            <span class="hero-eyebrow">🔐 Cybersecurity Professional</span>
+            <h1>Eddie's <span class="grad">App Hub</span></h1>
+            <p class="hero-sub">Security-first development &middot; Cloud engineering &middot; Vibe coding</p>
+            <div class="hero-tags">
+                <span class="tag">⚡ Active Secret Clearance</span>
+                <span class="tag">☁️ AWS</span>
+                <span class="tag">🐧 RHCSA</span>
+                <span class="tag">🔒 Security+</span>
+            </div>
+        </div>
     </header>
 
-    <div class="project-grid">
-        <a href="https://worldtraveler247.github.io/resume/" class="project-card">
-            <h2>📄 Resume</h2>
-            <p>Professional Cybersecurity Portfolio and digital work history.</p>
-        </a>
-        <a href="my-tetris/index.html" class="project-card">
-            <h2>🕹️ Tetris</h2>
-            <p>The classic block-stacking game. Built with pure JavaScript.</p>
-        </a>
-        <a href="my-dashboard/index.html" class="project-card">
-            <h2>📊 Dashboard</h2>
-            <p>Personalized utility dashboard with real-time weather integration.</p>
-        </a>
-        <a href="mario-style/index.html" class="project-card">
-            <h2>🍄 Mario Style</h2>
-            <p>A platformer prototype featuring gravity and physics-based jumping.</p>
-        </a>
-        <a href="space-shooter/index.html" class="project-card">
-            <h2>🚀 Space Shooter</h2>
-            <p>Galactic Guardian: A high-octane combat game with mobile controls.</p>
-        </a>
-    </div>
+    <main>
 
-    <section class="contact-section">
-        <h2>Leave a Message</h2>
-        <!-- SECURITY: Use your FormSubmit hash key, NOT your raw email. Get it at formsubmit.co/dashboard -->
-        <form action="https://formsubmit.co/YOUR_FORMSUBMIT_HASH_HERE" method="POST">
-            <!-- Honeypot trap to detect and block automated spam bots -->
-            <div class="hidden-field">
-                <input type="text" name="_honey">
+        <!-- Projects -->
+        <section class="section">
+            <h2 class="section-label">Projects</h2>
+            <div class="grid">
+
+                <!-- Resume — featured wide card -->
+                <a href="https://worldtraveler247.github.io/resume/" class="card featured" target="_blank">
+                    <div class="card-visual" style="--a:#0d1b6e;--b:#1a3a8f;--c:#4a90e2">
+                        <div class="orb orb1"></div>
+                        <div class="orb orb2"></div>
+                        <div class="card-icon">📄</div>
+                    </div>
+                    <div class="card-body">
+                        <div class="card-tag">Portfolio</div>
+                        <h3>Digital Resume</h3>
+                        <p>20 years of operational security experience, cloud engineering projects, and cybersecurity certifications — all in one place.</p>
+                        <span class="card-cta">View Portfolio →</span>
+                    </div>
+                </a>
+
+                <!-- Space Shooter -->
+                <a href="space-shooter/index.html" class="card">
+                    <div class="card-visual" style="--a:#003d4a;--b:#006478;--c:#00e5ff">
+                        <div class="orb orb1"></div>
+                        <div class="card-icon">🚀</div>
+                    </div>
+                    <div class="card-body">
+                        <div class="card-tag">Game</div>
+                        <h3>Galactic Guardian</h3>
+                        <p>Neon space shooter with mobile controls and particle effects.</p>
+                        <span class="card-cta">Play Now →</span>
+                    </div>
+                </a>
+
+                <!-- Galactic Runner -->
+                <a href="mario-style/index.html" class="card">
+                    <div class="card-visual" style="--a:#2d0057;--b:#4a0080;--c:#bf80ff">
+                        <div class="orb orb1"></div>
+                        <div class="orb orb2"></div>
+                        <div class="card-icon">🌌</div>
+                    </div>
+                    <div class="card-body">
+                        <div class="card-tag">Game</div>
+                        <h3>Galactic Runner</h3>
+                        <p>Twilight platformer with parallax mountains and neon platforms.</p>
+                        <span class="card-cta">Play Now →</span>
+                    </div>
+                </a>
+
+                <!-- Dashboard -->
+                <a href="my-dashboard/index.html" class="card">
+                    <div class="card-visual" style="--a:#5c2000;--b:#8b3a00;--c:#ffab40">
+                        <div class="orb orb1"></div>
+                        <div class="card-icon">📊</div>
+                    </div>
+                    <div class="card-body">
+                        <div class="card-tag">Tool</div>
+                        <h3>Dashboard</h3>
+                        <p>Live weather and productivity tools via Open-Meteo API.</p>
+                        <span class="card-cta">Open →</span>
+                    </div>
+                </a>
+
+                <!-- Tetris -->
+                <a href="my-tetris/index.html" class="card">
+                    <div class="card-visual" style="--a:#0a3d14;--b:#155a22;--c:#69f0ae">
+                        <div class="orb orb1"></div>
+                        <div class="card-icon">🕹️</div>
+                    </div>
+                    <div class="card-body">
+                        <div class="card-tag">Game</div>
+                        <h3>Tetris</h3>
+                        <p>Classic block-stacking built with pure JavaScript.</p>
+                        <span class="card-cta">Play Now →</span>
+                    </div>
+                </a>
+
             </div>
-            <!-- Disable Captcha for smoother user experience -->
-            <input type="hidden" name="_captcha" value="false">
-            <!-- Ensure subject line is clear in your inbox -->
-            <input type="hidden" name="_subject" value="New Hub Message!">
-            <!-- Redirect back to the hub after submission -->
-            <input type="hidden" name="_next" value="https://worldtraveler247.github.io/code_projects/">
-            
-            <div class="form-group">
-                <label for="name">Name</label>
-                <input type="text" id="name" name="name" placeholder="Name" required>
+        </section>
+
+        <!-- Contact -->
+        <section class="section contact-wrap">
+            <h2 class="section-label">Get In Touch</h2>
+            <div class="contact-card reveal">
+                <p class="contact-intro">Open to opportunities, collaborations, and cybersecurity conversations.</p>
+                <!-- SECURITY: Replace YOUR_FORMSUBMIT_HASH_HERE with your hash from formsubmit.co/dashboard -->
+                <form action="https://formsubmit.co/YOUR_FORMSUBMIT_HASH_HERE" method="POST">
+                    <div class="hidden-field"><input type="text" name="_honey"></div>
+                    <input type="hidden" name="_captcha" value="false">
+                    <input type="hidden" name="_subject" value="New Hub Message!">
+                    <input type="hidden" name="_next" value="https://worldtraveler247.github.io/code_projects/">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="name">Name</label>
+                            <input type="text" id="name" name="name" placeholder="Your name" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="email">Email</label>
+                            <input type="email" id="email" name="email" placeholder="your@email.com" required>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="message">Message</label>
+                        <textarea id="message" name="message" rows="4" placeholder="What's on your mind?" required></textarea>
+                    </div>
+                    <button type="submit">Send Message ✦</button>
+                </form>
             </div>
-            <div class="form-group">
-                <label for="email">Email Address</label>
-                <input type="email" id="email" name="email" placeholder="Email" required>
-            </div>
-            <div class="form-group">
-                <label for="message">Message</label>
-                <textarea id="message" name="message" rows="4" placeholder="How can I improve these apps?" required></textarea>
-            </div>
-            <button type="submit">Secure Send</button>
-        </form>
-    </section>
+        </section>
+
+    </main>
 
     <footer>
-        <p class="footer-desc">
-            These apps are a product of vibe coding and are being updated every day to display my professional portfolio. 
-            Connect with me via the secure message form above for inquiries or collaborative ideas.
-        </p>
-        <p class="copyright">Created by Eddie Camacho &bull; 2026</p>
+        <p class="copyright">Crafted by Eddie Camacho &bull; 2026</p>
     </footer>
+
+    <script>
+    // Particle background
+    const bg = document.getElementById('bg-canvas');
+    const bx = bg.getContext('2d');
+    let W, H, pts;
+    function initBg() {
+        W = bg.width  = window.innerWidth;
+        H = bg.height = window.innerHeight;
+        pts = Array.from({length: 90}, () => ({
+            x: Math.random() * W, y: Math.random() * H,
+            r: Math.random() * 1.3 + 0.2,
+            vx: (Math.random() - 0.5) * 0.22,
+            vy: (Math.random() - 0.5) * 0.22,
+            a: Math.random() * 0.7 + 0.1
+        }));
+    }
+    function animBg() {
+        bx.clearRect(0, 0, W, H);
+        pts.forEach(p => {
+            p.x += p.vx; p.y += p.vy;
+            if (p.x < 0) p.x = W; if (p.x > W) p.x = 0;
+            if (p.y < 0) p.y = H; if (p.y > H) p.y = 0;
+            bx.beginPath();
+            bx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+            bx.fillStyle = `rgba(74,247,255,${p.a * 0.5})`;
+            bx.fill();
+        });
+        requestAnimationFrame(animBg);
+    }
+    initBg(); animBg();
+    window.addEventListener('resize', initBg);
+
+    // Scroll-reveal
+    const io = new IntersectionObserver(entries => {
+        entries.forEach((e, i) => {
+            if (e.isIntersecting) {
+                setTimeout(() => e.target.classList.add('visible'), e.target.dataset.delay || 0);
+                io.unobserve(e.target);
+            }
+        });
+    }, { threshold: 0.12 });
+    document.querySelectorAll('.card, .reveal').forEach((el, i) => {
+        el.dataset.delay = i * 80;
+        io.observe(el);
+    });
+    </script>
+
 </body>
 </html>
