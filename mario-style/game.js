@@ -2,13 +2,8 @@ const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 const scoreEl = document.getElementById('score');
 
-function resizeCanvas() {
-    const maxW = Math.min(window.innerWidth - 16, 750);
-    canvas.width = maxW;
-    canvas.height = Math.round(maxW * (9 / 16));
-}
-resizeCanvas();
-window.addEventListener('resize', resizeCanvas);
+canvas.width  = 480;
+canvas.height = 310;
 
 const GRAVITY = 0.55;
 const FRICTION = 0.82;
