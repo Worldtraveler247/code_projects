@@ -1,76 +1,145 @@
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&display=swap');
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
 body {
-    margin: 0;
-    padding: 0;
-    background: #5c94fc; /* Mario Sky Blue */
-    font-family: 'Courier New', Courier, monospace;
-    overflow: hidden;
+    background: #06001a;
+    font-family: 'Orbitron', system-ui, sans-serif;
     display: flex;
-    justify-content: center;
+    flex-direction: column;
     align-items: center;
-    height: 100vh;
+    justify-content: flex-start;
+    min-height: 100vh;
+    overflow: hidden;
+    padding: 12px 8px 0;
 }
 
 #game-container {
-    position: relative;
-    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    max-width: 750px;
 }
 
+/* HUD */
 #ui {
-    position: absolute;
-    top: 10px;
-    left: 10px;
-    color: white;
-    font-size: 1.5em;
-    text-shadow: 2px 2px #000;
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 14px;
+    margin-bottom: 8px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(74,247,255,0.2);
+    border-radius: 10px;
+    backdrop-filter: blur(6px);
 }
 
+#score {
+    color: #ffd700;
+    font-size: 1.1rem;
+    letter-spacing: 2px;
+    text-shadow: 0 0 10px rgba(255,215,0,0.6);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.gem { color: #ffd700; }
+
+.hud-title {
+    font-size: 0.7rem;
+    color: rgba(74,247,255,0.6);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+}
+
+/* Canvas */
 canvas {
-    background: #5c94fc;
     display: block;
-    border: 4px solid #fff;
-    box-shadow: 0 0 20px rgba(0,0,0,0.3);
+    width: 100%;
+    border-radius: 10px;
+    border: 1px solid rgba(74,247,255,0.25);
+    box-shadow:
+        0 0 30px rgba(74,247,255,0.12),
+        0 0 80px rgba(74,247,255,0.06),
+        inset 0 0 20px rgba(0,0,0,0.4);
+    cursor: default;
 }
 
+/* Controls */
 .controls {
     display: flex;
     justify-content: space-between;
-    padding: 20px;
+    align-items: center;
     width: 100%;
-    max-width: 400px;
-    margin: 0 auto;
+    padding: 14px 10px 6px;
     user-select: none;
 }
 
-.d-pad, .action-pad {
+.d-pad {
     display: flex;
     gap: 10px;
 }
 
 .control-btn {
-    width: 70px;
-    height: 70px;
-    background: rgba(255, 255, 255, 0.3);
-    border: 3px solid #fff;
+    width: 68px;
+    height: 68px;
     border-radius: 50%;
-    color: white;
-    font-size: 1.5em;
-    font-weight: bold;
+    border: 2px solid rgba(74,247,255,0.4);
+    background: rgba(74,247,255,0.07);
+    color: rgba(74,247,255,0.9);
+    font-size: 1.4rem;
+    font-family: inherit;
+    font-weight: 800;
+    cursor: pointer;
     touch-action: manipulation;
+    transition: background 0.1s, box-shadow 0.1s, transform 0.1s;
+    box-shadow: 0 0 12px rgba(74,247,255,0.15), inset 0 1px 0 rgba(255,255,255,0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.control-btn:active,
+.control-btn.pressed {
+    background: rgba(74,247,255,0.22);
+    box-shadow: 0 0 24px rgba(74,247,255,0.45), inset 0 1px 0 rgba(255,255,255,0.15);
+    transform: scale(0.92);
 }
 
 .jump-btn {
-    width: 100px;
-    border-radius: 20px;
-    background: rgba(255, 0, 0, 0.4);
+    width: 90px;
+    height: 68px;
+    border-radius: 34px;
+    border-color: rgba(255,107,107,0.5);
+    background: rgba(255,85,85,0.1);
+    color: rgba(255,130,130,0.95);
+    font-size: 0.72rem;
+    letter-spacing: 1px;
+    box-shadow: 0 0 14px rgba(255,85,85,0.2), inset 0 1px 0 rgba(255,255,255,0.1);
 }
 
-.control-btn:active {
-    background: rgba(255, 255, 255, 0.6);
+.jump-btn:active {
+    background: rgba(255,85,85,0.28);
+    box-shadow: 0 0 28px rgba(255,85,85,0.5);
 }
 
+/* Footer */
 .credit {
     margin-top: 10px;
-    color: #fff;
-    font-size: 0.8em;
-    text-shadow: 1px 1px #000;
+    font-size: 0.58rem;
+    letter-spacing: 2px;
+    color: rgba(74,247,255,0.25);
+    text-transform: uppercase;
+    padding-bottom: 8px;
+}
+
+/* Mobile */
+@media (max-width: 480px) {
+    body { padding: 6px 4px 0; }
+    .control-btn { width: 58px; height: 58px; font-size: 1.2rem; }
+    .jump-btn { width: 76px; }
+    #score { font-size: 0.9rem; }
 }
