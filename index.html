@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' https://formsubmit.co; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src https://formsubmit.co;">
     <title>Eddie Camacho's App Hub</title>
     <style>
         :root {
@@ -177,6 +178,12 @@
             font-size: 0.85rem;
         }
 
+        /* Anti-Bot Honeypot Styling */
+        .hidden-field {
+            display: none !important;
+            visibility: hidden !important;
+        }
+
         @media (max-width: 600px) {
             h1 { font-size: 2.2rem; }
             .project-grid { grid-template-columns: 1fr; }
@@ -201,7 +208,7 @@
         </a>
         <a href="https://worldtraveler247.github.io/resume/" class="project-card">
             <h2>📄 Resume</h2>
-            <p>Professional Cybersecurity Resume and digital work history.</p>
+            <p>Professional Cybersecurity Portfolio and digital work history.</p>
         </a>
         <a href="mario-style/index.html" class="project-card">
             <h2>🍄 Mario Style</h2>
@@ -215,34 +222,39 @@
 
     <section class="contact-section">
         <h2>Leave a Message</h2>
+        <!-- To hide your email from bots, replace the email below with your FormSubmit Random String Key -->
         <form action="https://formsubmit.co/eddie_h_camacho@proton.me" method="POST">
-            <!-- Honeypot to prevent spam -->
-            <input type="text" name="_honey" style="display:none">
-            <!-- Disable Captcha for smoother experience -->
+            <!-- Honeypot trap to detect and block automated spam bots -->
+            <div class="hidden-field">
+                <input type="text" name="_honey">
+            </div>
+            <!-- Disable Captcha for smoother user experience -->
             <input type="hidden" name="_captcha" value="false">
+            <!-- Ensure subject line is clear in your inbox -->
+            <input type="hidden" name="_subject" value="New Hub Message!">
             <!-- Redirect back to the hub after submission -->
             <input type="hidden" name="_next" value="https://worldtraveler247.github.io/code_projects/">
             
             <div class="form-group">
-                <label for="name">Your Name</label>
-                <input type="text" id="name" name="name" placeholder="Enter your name" required>
+                <label for="name">Name</label>
+                <input type="text" id="name" name="name" placeholder="Name" required>
             </div>
             <div class="form-group">
-                <label for="email">Your Email</label>
-                <input type="email" id="email" name="email" placeholder="Enter your email" required>
+                <label for="email">Email Address</label>
+                <input type="email" id="email" name="email" placeholder="Email" required>
             </div>
             <div class="form-group">
-                <label for="message">Message / Ideas</label>
+                <label for="message">Message</label>
                 <textarea id="message" name="message" rows="4" placeholder="How can I improve these apps?" required></textarea>
             </div>
-            <button type="submit">Send Message</button>
+            <button type="submit">Secure Send</button>
         </form>
     </section>
 
     <footer>
         <p class="footer-desc">
-            These apps are a product of vibe coding and are being updated every day to display my portfolio to the world. 
-            Leave a comment in the comment box if you have some ideas that will help improve the functionality of the apps.
+            These apps are a product of vibe coding and are being updated every day to display my professional portfolio. 
+            Connect with me via the secure message form above for inquiries or collaborative ideas.
         </p>
         <p class="copyright">Created by Eddie Camacho &bull; 2026</p>
     </footer>
