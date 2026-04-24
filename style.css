@@ -196,14 +196,14 @@ main { position: relative; z-index: 1; }
 }
 
 .card-icon {
-    font-size: 3.4rem;
+    font-size: 2.4rem;
     position: relative;
     z-index: 1;
     filter: drop-shadow(0 4px 18px rgba(0,0,0,0.45));
     transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 .card:hover .card-icon { transform: scale(1.18) rotate(-4deg); }
-.card.featured .card-icon { font-size: 4.2rem; }
+.card.featured .card-icon { font-size: 3rem; }
 
 /* ── Card body ── */
 .card-body {
@@ -358,7 +358,7 @@ footer {
     .grid { grid-template-columns: 1fr; }
     .card.featured { grid-column: span 1; flex-direction: column; }
     .card.featured .card-visual { width: 100%; height: 140px; }
-    .card.featured .card-icon { font-size: 3.4rem; }
+    .card.featured .card-icon { font-size: 2.4rem; }
     .form-row { grid-template-columns: 1fr; }
     .contact-card { padding: 24px 18px; }
     .hero { padding: 60px 18px 48px; }
