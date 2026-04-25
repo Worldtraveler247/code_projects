@@ -49,11 +49,20 @@ body {
 
 .gem { color: #ffd700; }
 
-.hud-title {
-    font-size: 0.7rem;
-    color: rgba(74,247,255,0.6);
+#lives-display {
+    font-size: 0.9rem;
+    color: #ff4d6d;
     letter-spacing: 3px;
+    text-shadow: 0 0 10px rgba(255,77,109,0.7);
+    min-width: 54px;
+}
+
+.hud-title {
+    font-size: 0.62rem;
+    color: rgba(74,247,255,0.6);
+    letter-spacing: 2px;
     text-transform: uppercase;
+    text-align: center;
 }
 
 /* Canvas */

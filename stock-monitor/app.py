@@ -1,6 +1,6 @@
 """
 Stock Monitor — Streamlit dashboard
-Watchlist : VOO · SPY · QQQ · MSFT · LLY · NVDA · AAPL
+Watchlist : VOO · SPY · QQQ · MSFT · LLY · NVDA · AAPL · BTC-USD
 Buy alert : price >5 % below 20-day SMA  OR  RSI(14) < 30
 """
 
@@ -53,16 +53,17 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ── Constants ──────────────────────────────────────────────────────────────────
-TICKERS = ("VOO", "SPY", "QQQ", "MSFT", "LLY", "NVDA", "AAPL")
+TICKERS = ("VOO", "SPY", "QQQ", "MSFT", "LLY", "NVDA", "AAPL", "BTC-USD")
 
 COMPANY = {
-    "VOO":  "Vanguard S&P 500 ETF",
-    "SPY":  "SPDR S&P 500 ETF",
-    "QQQ":  "Invesco Nasdaq-100 ETF",
-    "MSFT": "Microsoft Corp",
-    "LLY":  "Eli Lilly & Co",
-    "NVDA": "NVIDIA Corp",
-    "AAPL": "Apple Inc",
+    "VOO":     "Vanguard S&P 500 ETF",
+    "SPY":     "SPDR S&P 500 ETF",
+    "QQQ":     "Invesco Nasdaq-100 ETF",
+    "MSFT":    "Microsoft Corp",
+    "LLY":     "Eli Lilly & Co",
+    "NVDA":    "NVIDIA Corp",
+    "AAPL":    "Apple Inc",
+    "BTC-USD": "Bitcoin / USD",
 }
 
 SMA_WIN = 20
@@ -242,8 +243,9 @@ def make_styled_table(rows: list[dict]) -> "pd.io.formats.style.Styler":
 
 # ── Fetch & annotate ───────────────────────────────────────────────────────────
 st.markdown("# 📈 Stock Monitor")
+ticker_display = ' · '.join(t if t != "BTC-USD" else "₿ BTC" for t in TICKERS)
 st.caption(
-    f"Watchlist: **{' · '.join(TICKERS)}**  "
+    f"Watchlist: **{ticker_display}**  "
     f"|  Buy alert: price **>{sma_drop:.0f}%** below SMA-{SMA_WIN}  "
     f"or  RSI(14) < **{rsi_level}**"
 )
