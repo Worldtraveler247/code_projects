@@ -18,8 +18,32 @@
             <button onclick="nudgeFriend('email')">📧 Nudge via Email</button>
             <button onclick="nudgeFriend('text')">📱 Nudge via Text</button>
         </div>
+        <div class="game-controls">
+            <button onclick="resetGame()">🔄 Reset Match</button>
+        </div>
+        <div id="debug" style="font-size: 10px; margin-top: 10px; color: #888;">Select a piece to see moves.</div>
     </div>
     <div id="canvas-container"></div>
+    
+    <!-- 
+    FIREBASE SETUP: 
+    1. Create a Firebase project at console.firebase.google.com
+    2. Add a Realtime Database
+    3. Paste your config below and uncomment the script in app.js
+    -->
+    <script>
+      const firebaseConfig = {
+        apiKey: "YOUR_API_KEY",
+        authDomain: "YOUR_PROJECT.firebaseapp.com",
+        databaseURL: "https://YOUR_PROJECT-default-rtdb.firebaseio.com",
+        projectId: "YOUR_PROJECT",
+        storageBucket: "YOUR_PROJECT.appspot.com",
+        messagingSenderId: "YOUR_SENDER_ID",
+        appId: "YOUR_APP_ID"
+      };
+      // firebase.initializeApp(firebaseConfig);
+    </script>
+    
     <script src="app.js"></script>
 </body>
 </html>
