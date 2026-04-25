@@ -3,28 +3,102 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Simple Tetris</title>
+    <title>Tetris — Eddie's Hub</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
+
     <div id="game-container">
-        <div id="score">Score: 0</div>
-        <canvas id="tetris" width="240" height="400"></canvas>
+
+        <!-- HUD -->
+        <div id="ui">
+            <a href="../index.html" class="back-btn">← HUB</a>
+            <div class="hud-title">TETRIS</div>
+            <div class="hud-score"><span class="gem">◆</span> <span id="score-val">0</span></div>
+        </div>
+
+        <!-- Board + side panel -->
+        <div id="play-area">
+            <canvas id="tetris" width="260" height="520"></canvas>
+
+            <div id="side-panel">
+                <div class="panel-label">NEXT</div>
+                <canvas id="next-canvas" width="100" height="100"></canvas>
+
+                <div class="stat-block">
+                    <div class="stat-label">LEVEL</div>
+                    <div class="stat-val" id="level-val">1</div>
+                </div>
+                <div class="stat-block">
+                    <div class="stat-label">LINES</div>
+                    <div class="stat-val" id="lines-val">0</div>
+                </div>
+                <div class="stat-block hint">
+                    <div class="stat-label">TAP</div>
+                    <div class="hint-text">board = rotate</div>
+                </div>
+                <div class="stat-block hint">
+                    <div class="stat-label">R KEY</div>
+                    <div class="hint-text">restart</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Touch controls -->
         <div class="controls">
-            <div class="control-row">
-                <button id="rotate-btn" class="control-btn">Rotate</button>
+            <div class="d-pad">
+                <button id="left-btn"   class="control-btn">◀</button>
+                <button id="down-btn"   class="control-btn">▼</button>
+                <button id="right-btn"  class="control-btn">▶</button>
             </div>
-            <div class="control-row">
-                <button id="left-btn" class="control-btn">←</button>
-                <button id="down-btn" class="control-btn">↓</button>
-                <button id="right-btn" class="control-btn">→</button>
+            <div class="action-btns">
+                <button id="rotate-btn"    class="control-btn">↺</button>
+                <button id="hard-drop-btn" class="control-btn drop-btn">DROP</button>
             </div>
         </div>
-        <div class="instructions">
-            <p>Use Arrow Keys or Buttons to Play</p>
-        </div>
-        <footer class="credit">Created by Eddie Camacho</footer>
+
+        <footer class="credit">EDDIE CAMACHO</footer>
+
     </div>
+
     <script src="tetris.js"></script>
+    <script>
+    function fitCanvas() {
+        const vw  = window.innerWidth;
+        const isMobile = vw <= 480;
+        const hPad  = isMobile ? 12 : 20;
+        const sideW = isMobile ? 76 : 108;
+        const gap   = 10;
+
+        const uiH     = (document.getElementById('ui')             || {offsetHeight: 50}).offsetHeight;
+        const ctrlH   = (document.querySelector('.controls')        || {offsetHeight: 80}).offsetHeight;
+        const creditH = (document.querySelector('.credit')          || {offsetHeight: 26}).offsetHeight;
+        const vPad = 26; // gaps between sections
+
+        const availH = window.innerHeight - uiH - ctrlH - creditH - vPad;
+        const maxW   = Math.min(vw - hPad * 2, 520);
+        const availW = maxW - sideW - gap;
+
+        let cw = Math.min(availW, 260);
+        let ch = cw * 2; // 1:2 aspect ratio (260:520)
+        if (ch > availH) { ch = availH; cw = ch / 2; }
+        cw = Math.floor(cw); ch = Math.floor(ch);
+
+        const t = document.getElementById('tetris');
+        t.style.width  = cw + 'px';
+        t.style.height = ch + 'px';
+
+        const nc     = document.getElementById('next-canvas');
+        const ncSize = Math.min(sideW - 8, 92);
+        nc.style.width  = ncSize + 'px';
+        nc.style.height = ncSize + 'px';
+    }
+    fitCanvas();
+    window.addEventListener('resize', fitCanvas);
+    </script>
+
 </body>
 </html>
