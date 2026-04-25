@@ -145,26 +145,67 @@ window.addEventListener('keyup', e => { keys[e.code] = false; });
 
 let touchLeft = false, touchRight = false;
 
-function wire(id, onTrue) {
-    const el = document.getElementById(id);
-    el.addEventListener('touchstart', e => { e.preventDefault(); onTrue(true); }, { passive: false });
-    el.addEventListener('touchend',   () => onTrue(false));
-    el.addEventListener('mousedown',  () => onTrue(true));
-    el.addEventListener('mouseup',    () => onTrue(false));
-    el.addEventListener('mouseleave', () => onTrue(false));
-}
-wire('left-btn',  v => touchLeft  = v);
-wire('right-btn', v => touchRight = v);
+// ── Virtual joystick — pointer-captured so it never conflicts with jump ──
+const joystickZone = document.getElementById('joystick-zone');
+const joystickKnob = document.getElementById('joystick-knob');
+const KNOB_RANGE   = 28;   // max px knob travels from center
+const DEAD_ZONE    = 7;    // px from center before direction registers
 
+let joyActive    = false;
+let joyPointerId = null;
+let joyOriginX   = 0;
+
+function setKnob(dx) {
+    joystickKnob.style.transform = `translate(calc(-50% + ${dx}px), -50%)`;
+}
+function joyDown(e) {
+    e.preventDefault();
+    if (joyActive) return;
+    joystickZone.setPointerCapture(e.pointerId);
+    joyPointerId = e.pointerId;
+    joyActive    = true;
+    joyOriginX   = e.clientX;
+    setKnob(0);
+}
+function joyMove(e) {
+    if (!joyActive || e.pointerId !== joyPointerId) return;
+    const dx = Math.max(-KNOB_RANGE, Math.min(KNOB_RANGE, e.clientX - joyOriginX));
+    setKnob(dx);
+    touchLeft  = dx < -DEAD_ZONE;
+    touchRight = dx >  DEAD_ZONE;
+}
+function joyUp(e) {
+    if (e.pointerId !== joyPointerId) return;
+    joyActive    = false;
+    joyPointerId = null;
+    touchLeft    = false;
+    touchRight   = false;
+    setKnob(0);
+}
+
+joystickZone.addEventListener('pointerdown',   joyDown);
+joystickZone.addEventListener('pointermove',   joyMove);
+joystickZone.addEventListener('pointerup',     joyUp);
+joystickZone.addEventListener('pointercancel', joyUp);
+
+// ── Jump button — has its own captured pointer, fully independent of joystick ──
 function jump() {
     if (!player.jumping && player.grounded) {
-        player.jumping = true;
+        player.jumping  = true;
         player.grounded = false;
         player.vy = -player.speed * 2.9;
     }
 }
-document.getElementById('jump-btn').addEventListener('touchstart', e => { e.preventDefault(); jump(); }, { passive: false });
-document.getElementById('jump-btn').addEventListener('mousedown', jump);
+
+const jumpBtn = document.getElementById('jump-btn');
+jumpBtn.addEventListener('pointerdown', e => {
+    e.preventDefault();
+    jumpBtn.setPointerCapture(e.pointerId);
+    jump();
+    jumpBtn.classList.add('pressed');
+});
+jumpBtn.addEventListener('pointerup',     () => jumpBtn.classList.remove('pressed'));
+jumpBtn.addEventListener('pointercancel', () => jumpBtn.classList.remove('pressed'));
 
 // --- State ---
 let t = 0;

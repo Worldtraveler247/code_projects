@@ -78,9 +78,41 @@ canvas {
     user-select: none;
 }
 
-.d-pad {
+/* Virtual joystick */
+.joystick-zone {
+    width: 120px;
+    height: 68px;
     display: flex;
-    gap: 10px;
+    align-items: center;
+    justify-content: center;
+    touch-action: none;
+    user-select: none;
+    cursor: pointer;
+}
+
+.joystick-base {
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    border: 2px solid rgba(74,247,255,0.28);
+    background: rgba(74,247,255,0.04);
+    box-shadow: 0 0 20px rgba(74,247,255,0.1), inset 0 0 12px rgba(74,247,255,0.03);
+    position: relative;
+    pointer-events: none;
+}
+
+.joystick-knob {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 35%, rgba(74,247,255,0.75), rgba(74,247,255,0.22));
+    border: 1.5px solid rgba(74,247,255,0.85);
+    box-shadow: 0 0 14px rgba(74,247,255,0.55);
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
 }
 
 .control-btn {
@@ -94,7 +126,7 @@ canvas {
     font-family: inherit;
     font-weight: 800;
     cursor: pointer;
-    touch-action: manipulation;
+    touch-action: none;
     transition: background 0.1s, box-shadow 0.1s, transform 0.1s;
     box-shadow: 0 0 12px rgba(74,247,255,0.15), inset 0 1px 0 rgba(255,255,255,0.1);
     display: flex;
