@@ -124,6 +124,23 @@ main { position: relative; z-index: 1; }
     background: var(--border);
 }
 
+.section-hint {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin: -20px 0 30px;
+    color: var(--muted);
+    font-size: 0.78rem;
+    letter-spacing: 0.3px;
+}
+.section-hint svg {
+    color: var(--cyan);
+    vertical-align: middle;
+    margin-right: 2px;
+}
+.hint-sep { color: rgba(74, 247, 255, 0.3); }
+
 /* ── Grid ── */
 .grid {
     display: grid;
@@ -159,7 +176,47 @@ main { position: relative; z-index: 1; }
 /* Resume — featured, spans 2 cols */
 .card.featured {
     grid-column: span 2;
-    flex-direction: row;
+}
+
+/* ── Card link (clickable play area) ── */
+.card-link {
+    display: flex;
+    flex-direction: column;
+    text-decoration: none;
+    color: inherit;
+    flex: 1;
+}
+.card.featured .card-link { flex-direction: row; }
+
+/* ── Card actions (source links) ── */
+.card-actions {
+    display: flex;
+    gap: 6px;
+    padding: 10px 14px;
+    border-top: 1px solid var(--border);
+    background: rgba(255, 255, 255, 0.015);
+}
+.action-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    border-radius: 7px;
+    font-size: 0.7rem;
+    font-weight: 500;
+    letter-spacing: 0.5px;
+    color: var(--muted);
+    text-decoration: none;
+    transition: color 0.2s, background 0.2s;
+}
+.action-btn svg { display: block; }
+.action-btn:hover {
+    color: var(--cyan);
+    background: rgba(74, 247, 255, 0.07);
+}
+.action-btn:focus-visible {
+    outline: 2px solid var(--cyan);
+    outline-offset: 2px;
 }
 
 /* ── Card visual area ── */
@@ -356,7 +413,8 @@ footer {
 
 @media (max-width: 540px) {
     .grid { grid-template-columns: 1fr; }
-    .card.featured { grid-column: span 1; flex-direction: column; }
+    .card.featured { grid-column: span 1; }
+    .card.featured .card-link { flex-direction: column; }
     .card.featured .card-visual { width: 100%; height: 140px; }
     .card.featured .card-icon { font-size: 2.4rem; }
     .form-row { grid-template-columns: 1fr; }
