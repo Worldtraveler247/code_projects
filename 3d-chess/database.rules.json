@@ -1,0 +1,19 @@
+{
+    "rules": {
+        ".read": false,
+        ".write": false,
+        "current_match": {
+            ".read": "auth != null",
+            ".write": "auth != null && newData.hasChildren(['fen', 'timestamp'])",
+            "fen": {
+                ".validate": "newData.isString() && newData.val().length <= 100"
+            },
+            "timestamp": {
+                ".validate": "newData.isNumber() && newData.val() <= now + 60000 && newData.val() >= 0"
+            },
+            "$other": {
+                ".validate": false
+            }
+        }
+    }
+}

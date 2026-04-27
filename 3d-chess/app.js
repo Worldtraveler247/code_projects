@@ -242,16 +242,37 @@ function nudgeFriend(method) {
 }
 
 // --- 6. Firebase Sync ---
-function saveToFirebase() {
-    // If you uncomment firebase.initializeApp in index.html, this will work.
-    if (typeof firebase !== 'undefined' && firebase.apps.length > 0) {
-        const fen = game.fen();
-        firebase.database().ref('current_match').set({ fen: fen, timestamp: Date.now() });
+// Database rules in ./database.rules.json require auth != null, so we sign in anonymously
+// before any read/write. All Firebase calls are guarded — they no-op until init + auth complete.
+function firebaseReady() {
+    return typeof firebase !== 'undefined'
+        && firebase.apps.length > 0
+        && typeof firebase.auth === 'function'
+        && firebase.auth().currentUser !== null;
+}
+
+function initFirebaseAuth() {
+    if (typeof firebase === 'undefined' || firebase.apps.length === 0) return;
+    if (typeof firebase.auth !== 'function') {
+        console.warn('firebase-auth library not loaded — sync disabled (rules require auth).');
+        return;
     }
+    firebase.auth().signInAnonymously().catch(err => {
+        console.warn('Firebase anonymous sign-in failed:', err.message);
+    });
+}
+
+function saveToFirebase() {
+    if (!firebaseReady()) return;
+    const fen = game.fen();
+    firebase.database().ref('current_match').set({ fen: fen, timestamp: Date.now() });
 }
 
 function loadFromFirebase() {
-    if (typeof firebase !== 'undefined' && firebase.apps.length > 0) {
+    if (typeof firebase === 'undefined' || firebase.apps.length === 0) return;
+    if (typeof firebase.auth !== 'function') return;
+    firebase.auth().onAuthStateChanged(user => {
+        if (!user) return;
         firebase.database().ref('current_match').on('value', (snapshot) => {
             const data = snapshot.val();
             if (data && data.fen && data.fen !== game.fen()) {
@@ -259,7 +280,7 @@ function loadFromFirebase() {
                 sync3DWithEngine();
             }
         });
-    }
+    });
 }
 
 // --- 7. Animation Loop ---
@@ -278,6 +299,7 @@ window.addEventListener('resize', () => {
 
 createBoard();
 sync3DWithEngine();
+initFirebaseAuth();
 loadFromFirebase();
 animate();
 

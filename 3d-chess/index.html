@@ -8,6 +8,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
 </head>
 <body>
@@ -25,25 +26,25 @@
     </div>
     <div id="canvas-container"></div>
     
-    <!-- 
-    FIREBASE SETUP: 
-    1. Create a Firebase project at console.firebase.google.com
-    2. Add a Realtime Database
-    3. Paste your config below and uncomment the script in app.js
+    <!--
+        FIREBASE SETUP (currently disabled — app runs fully client-side until you wire this up)
+
+        BEFORE going live with a real Firebase project:
+          1. Create a Firebase project at console.firebase.google.com → add a Realtime Database.
+          2. In Authentication, enable the "Anonymous" sign-in provider.
+          3. In Realtime Database → Rules, paste the contents of ./database.rules.json (deny-by-default + auth required + shape validation).
+          4. Paste your config into the block below and uncomment firebase.initializeApp(...).
+          5. Confirm in the Firebase console that test reads/writes from an unauthenticated client are rejected.
+
+        Threat model for this demo: a single shared global match. Anonymous auth raises the bar (must be a Firebase client) but is NOT a substitute for per-user/per-game scoping if you ever store private data here.
     -->
     <script>
-      const firebaseConfig = {
-        apiKey: "YOUR_API_KEY",
-        authDomain: "YOUR_PROJECT.firebaseapp.com",
-        databaseURL: "https://YOUR_PROJECT-default-rtdb.firebaseio.com",
-        projectId: "YOUR_PROJECT",
-        storageBucket: "YOUR_PROJECT.appspot.com",
-        messagingSenderId: "YOUR_SENDER_ID",
-        appId: "YOUR_APP_ID"
-      };
-      // firebase.initializeApp(firebaseConfig);
+        // Placeholder only — fill in real values from your Firebase project console, then uncomment initializeApp.
+        // Note: apiKey is safe to be public; security comes from database rules + auth, not the key.
+        // const firebaseConfig = { apiKey: "...", authDomain: "...", databaseURL: "...", projectId: "...", storageBucket: "...", messagingSenderId: "...", appId: "..." };
+        // firebase.initializeApp(firebaseConfig);
     </script>
-    
+
     <script src="app.js"></script>
 </body>
 </html>
