@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Real Estate Crash Indicator | Eddie's App Hub</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <canvas id="bg-canvas"></canvas>
+
+    <header class="topbar">
+        <a href="../index.html" class="back-link">← App Hub</a>
+        <span class="last-updated" id="last-updated">Loading…</span>
+    </header>
+
+    <main>
+        <section class="hero">
+            <p class="eyebrow">Housing Market Risk Dashboard</p>
+            <h1>Real Estate <span class="grad">Crash Indicator</span></h1>
+            <p class="hero-sub">A composite risk gauge built from 14 historically meaningful housing &amp; macro indicators (FRED, since 1980). Each indicator is z-scored against the rolling 20-year window so the model recalibrates as the economy evolves.</p>
+
+            <div class="gauge-wrap">
+                <canvas id="gauge" width="320" height="200" aria-label="Composite risk gauge"></canvas>
+                <div class="gauge-label">
+                    <span class="gauge-value" id="gauge-value">--</span>
+                    <span class="gauge-status" id="gauge-status">Loading…</span>
+                </div>
+            </div>
+        </section>
+
+        <section class="section">
+            <h2 class="section-label">Indicator Categories</h2>
+            <div id="categories" class="categories-grid">
+                <div class="loading">Loading indicators…</div>
+            </div>
+        </section>
+
+        <section class="section methodology">
+            <h2 class="section-label">Methodology &amp; Caveats</h2>
+            <div class="method-card">
+                <p>Each indicator is scored on a 0-100 scale based on its <strong>z-score against the previous 20 years</strong>. A score of 50 represents the historical average; values above 65 enter "high risk" territory; above 80 = "critical." The composite is the unweighted mean of all available indicators. Direction is set per indicator — for some, higher = riskier (Case-Shiller, delinquencies), for others, lower = riskier (yield curve, sentiment).</p>
+                <p><strong>This is not investment advice and not a prediction.</strong> Real estate crashes are rare, multi-causal, and notoriously hard to predict in real time. This dashboard surfaces statistical anomalies in indicators that have historically preceded major housing corrections (1989 S&amp;L crisis, 2008 GFC). Use it as one input among many.</p>
+                <p class="method-source">Data: <a href="https://fred.stlouisfed.org/" target="_blank" rel="noopener">Federal Reserve Economic Data (FRED)</a> · St. Louis Fed · refreshed daily via GitHub Actions</p>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <p>Built by Eddie Camacho · <a href="https://github.com/Worldtraveler247/code_projects/tree/main/real-estate-risk" target="_blank" rel="noopener">View source on GitHub</a></p>
+    </footer>
+
+    <script src="app.js"></script>
+</body>
+</html>
