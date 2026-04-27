@@ -33,7 +33,74 @@
         </section>
 
         <section class="section">
+            <h2 class="section-label">Key Rates</h2>
+            <div id="key-rates" class="key-rates">
+                <div class="loading">Loading…</div>
+            </div>
+        </section>
+
+        <section class="section">
+            <h2 class="section-label">Reading the Risk Score</h2>
+            <div class="score-guide">
+                <div class="score-scale">
+                    <div class="scale-band" style="background:#34d399"><span class="scale-num">0–25</span><span class="scale-label">Minimal</span></div>
+                    <div class="scale-band" style="background:#a3e635"><span class="scale-num">25–45</span><span class="scale-label">Low</span></div>
+                    <div class="scale-band" style="background:#facc15"><span class="scale-num">45–65</span><span class="scale-label">Moderate</span></div>
+                    <div class="scale-band" style="background:#fb923c"><span class="scale-num">65–80</span><span class="scale-label">High</span></div>
+                    <div class="scale-band" style="background:#ef4444"><span class="scale-num">80–100</span><span class="scale-label">Critical</span></div>
+                </div>
+
+                <div class="score-explainers">
+                    <div class="score-explainer">
+                        <h3>What does a score of 55 mean?</h3>
+                        <p>A composite score of <strong>55 is "Moderate"</strong> — indicators are on average about 0.25 standard deviations above their 20-year norm. The market is running a touch hot but is not in obvious bubble territory. Normal late-cycle behavior; not a buy signal, not a sell signal. Watch the trajectory: a score that\'s been climbing 5+ points per quarter is more concerning than a steady 55.</p>
+                    </div>
+
+                    <div class="score-explainer">
+                        <h3>When to consider buying — by asset class</h3>
+                        <p class="disclaimer-inline"><strong>Heuristic guidance only — not investment advice.</strong> Real estate buying decisions depend on local conditions, your timeline, financing, and personal circumstances no national index can capture.</p>
+                        <table class="score-table">
+                            <thead>
+                                <tr><th>Asset Class</th><th>Best entries historically</th><th>Why</th></tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><strong>Single-Family Homes</strong></td>
+                                    <td>Score <strong>75+</strong> AND <strong>falling</strong> for 2+ quarters</td>
+                                    <td>Residential bottoms appear 12–18 months after the peak in distress signals. 2009–2012 and (locally) 2022–2024 fit this pattern.</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Commercial Real Estate</strong></td>
+                                    <td>Score <strong>70+</strong>, with <strong>delinquency &gt;5%</strong> and <strong>rates falling</strong></td>
+                                    <td>CRE bottoms <em>after</em> residential by 6–12 months. The 2010–2013 CRE bottom lagged residential by ~18 months. Wait for distressed sales to appear.</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Hotels &amp; Hospitality</strong></td>
+                                    <td>Score <strong>80+</strong>, with <strong>unemployment peaking</strong> and <strong>travel demand troughed</strong></td>
+                                    <td>The most cyclical real estate. Hotels trade at fire-sale prices when occupancy collapses (2009, 2020). Recovery lags broader economy by 12–24 months but the upside is the largest of the three.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <p class="score-footnote">Score-based timing alone is a blunt tool. The professional approach combines this risk score with: <strong>cap rates vs. Treasury yields</strong> (CRE), <strong>price-to-rent</strong> (residential), and <strong>RevPAR trends</strong> (hotels). The score tells you <em>when the macro is favorable</em>; specific deals still require local underwriting.</p>
+                    </div>
+
+                    <div class="score-explainer">
+                        <h3>What each level signals</h3>
+                        <ul class="level-list">
+                            <li><span class="level-dot" style="background:#34d399"></span><strong>0–25 Minimal:</strong> Indicators below their long-run averages. Healthy expansion territory; rare.</li>
+                            <li><span class="level-dot" style="background:#a3e635"></span><strong>25–45 Low:</strong> Below average risk. Reasonable late-recovery / mid-cycle reading.</li>
+                            <li><span class="level-dot" style="background:#facc15"></span><strong>45–65 Moderate:</strong> Around long-run average. Elevated only if trajectory is rising.</li>
+                            <li><span class="level-dot" style="background:#fb923c"></span><strong>65–80 High:</strong> Multiple indicators in their top quintile. Watch closely; bubble or late-cycle.</li>
+                            <li><span class="level-dot" style="background:#ef4444"></span><strong>80–100 Critical:</strong> Multiple indicators in their top decile or showing 2σ extremes. Either a crash is underway or one is forming. 2007 reached this level; 2008–2010 sat there.</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="section">
             <h2 class="section-label">Indicator Categories</h2>
+            <p class="section-hint">Click any indicator card for detailed history, mechanism, and interpretation.</p>
             <div id="categories" class="categories-grid">
                 <div class="loading">Loading indicators…</div>
             </div>
@@ -53,6 +120,16 @@
         <p>Built by Eddie Camacho · <a href="https://github.com/Worldtraveler247/code_projects/tree/main/real-estate-risk" target="_blank" rel="noopener">View source on GitHub</a></p>
     </footer>
 
+    <!-- Modal for indicator deep-dive -->
+    <div id="modal" class="modal" hidden>
+        <div class="modal-backdrop" data-close-modal></div>
+        <div class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+            <button class="modal-close" data-close-modal aria-label="Close">×</button>
+            <div id="modal-content"></div>
+        </div>
+    </div>
+
+    <script src="indicators-content.js"></script>
     <script src="app.js"></script>
 </body>
 </html>
