@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; script-src 'self'; img-src 'self' data:;">
+  <title>EC2 Hands-On Tutorial — AWS in Practice</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../css/aws-hub.css">
+  <style>
+    /* Tutorial-only additions */
+    .toc {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1.25rem 1.5rem;
+      margin: 2rem 0;
+    }
+    .toc h2 { margin: 0 0 0.75rem; font-size: 1rem; color: var(--aws-orange); }
+    .toc ol { margin: 0; padding-left: 1.5rem; }
+    .toc li { margin: 0.3rem 0; font-size: 0.92rem; }
+    .toc a { color: var(--text); text-decoration: none; }
+    .toc a:hover { color: var(--aws-orange); }
+    .track-pill {
+      display: inline-block;
+      font-family: 'Orbitron', sans-serif;
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.18em;
+      padding: 0.25rem 0.75rem;
+      border-radius: 999px;
+      margin-right: 0.5rem;
+    }
+    .track-console  { background: rgba(74, 247, 255, 0.12); color: var(--cyan); border: 1px solid rgba(74, 247, 255, 0.3); }
+    .track-cli      { background: rgba(255, 153, 0, 0.12); color: var(--aws-orange); border: 1px solid var(--aws-border); }
+    .track-tf       { background: rgba(123, 47, 255, 0.15); color: #b18bff; border: 1px solid rgba(123, 47, 255, 0.35); }
+    .step-list { counter-reset: stepnum; padding: 0; list-style: none; }
+    .step-list > li {
+      counter-increment: stepnum;
+      position: relative;
+      padding-left: 3rem;
+      margin: 1.25rem 0;
+    }
+    .step-list > li::before {
+      content: counter(stepnum);
+      position: absolute;
+      left: 0;
+      top: -2px;
+      width: 2rem;
+      height: 2rem;
+      border-radius: 50%;
+      background: var(--aws-orange-dim);
+      color: var(--aws-orange);
+      border: 1px solid var(--aws-border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Orbitron', sans-serif;
+      font-weight: 600;
+      font-size: 0.9rem;
+    }
+    kbd {
+      display: inline-block;
+      padding: 0.15em 0.45em;
+      font-family: 'Menlo', monospace;
+      font-size: 0.85em;
+      color: var(--text);
+      background: rgba(74, 247, 255, 0.1);
+      border: 1px solid rgba(74, 247, 255, 0.25);
+      border-bottom-width: 2px;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body data-svc="ec2">
+
+<!-- Shared top nav -->
+<nav class="aws-nav">
+  <div class="aws-nav-inner">
+    <a href="../index.html" class="aws-nav-brand">
+      <span class="brand-dot"></span>AWS in Practice
+    </a>
+    <div class="aws-nav-links">
+      <a href="../ec2/index.html"          class="aws-nav-link" data-svc="ec2">EC2</a>
+      <a href="../vpc/index.html"          class="aws-nav-link coming-soon" data-svc="vpc">VPC</a>
+      <a href="../dynamodb/index.html"     class="aws-nav-link coming-soon" data-svc="dynamodb">DynamoDB</a>
+      <a href="../api-gateway/index.html"  class="aws-nav-link coming-soon" data-svc="api-gateway">API Gateway</a>
+      <a href="../s3/index.html"           class="aws-nav-link coming-soon" data-svc="s3">S3</a>
+      <a href="../iam/index.html"          class="aws-nav-link coming-soon" data-svc="iam">IAM</a>
+      <a href="../kms/index.html"          class="aws-nav-link coming-soon" data-svc="kms">KMS</a>
+      <a href="../cloudfront/index.html"   class="aws-nav-link coming-soon" data-svc="cloudfront">CloudFront</a>
+      <a href="../cloudtrail/index.html"   class="aws-nav-link coming-soon" data-svc="cloudtrail">CloudTrail</a>
+      <a href="../basic-audit/index.html"  class="aws-nav-link coming-soon" data-svc="basic-audit">Audit</a>
+    </div>
+  </div>
+</nav>
+
+<header class="hero">
+  <span class="hero-tag">Hands-on Tutorial · Free-tier eligible</span>
+  <h1>EC2: Launch, Connect, Destroy</h1>
+  <p class="hero-sub">
+    Three tracks, same lab. Pick the one that matches how you'd actually do this at work —
+    or do all three to feel the difference.
+  </p>
+</header>
+
+<main>
+
+  <!-- Table of contents -->
+  <nav class="toc reveal">
+    <h2>What's in this tutorial</h2>
+    <ol>
+      <li><a href="#prereqs">Prerequisites &amp; safety net</a></li>
+      <li><a href="#whatwell">What we'll build</a></li>
+      <li><a href="#console">Track A — Console (click-by-click)</a></li>
+      <li><a href="#cli">Track B — AWS CLI v2</a></li>
+      <li><a href="#terraform">Track C — Terraform</a></li>
+      <li><a href="#connect">Connect to your instance (Session Manager)</a></li>
+      <li><a href="#cleanup">Cleanup — read this <em>first</em></a></li>
+      <li><a href="#takeaways">Senior-engineer takeaways</a></li>
+    </ol>
+  </nav>
+
+  <!-- ============================================================
+       PREREQS
+       ============================================================ -->
+  <section class="section reveal" id="prereqs">
+    <h2><span class="section-num">01</span> Prerequisites &amp; safety net</h2>
+
+    <h3>You'll need</h3>
+    <ul>
+      <li>An AWS account (free-tier eligible — t3.micro is free for 750 hrs/month for 12 months).</li>
+      <li>An IAM user with programmatic access <em>or</em> AWS SSO/Identity Center configured. <strong>Don't use the root account.</strong></li>
+      <li><a href="https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html" target="_blank" rel="noopener">AWS CLI v2</a> installed (<code>aws --version</code> should print 2.x).</li>
+      <li><a href="https://developer.hashicorp.com/terraform/downloads" target="_blank" rel="noopener">Terraform 1.7+</a> for Track C.</li>
+      <li><a href="https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-working-with-install-plugin.html" target="_blank" rel="noopener">Session Manager plugin</a> for the AWS CLI (we'll use this to connect — no SSH keys).</li>
+    </ul>
+
+    <h3>Configure a named CLI profile (one-time setup)</h3>
+    <p>Don't dump credentials into env vars; use named profiles in <code>~/.aws/credentials</code>. Replace <code>eddie-lab</code> with whatever you want to call this profile.</p>
+
+    <div class="code-block"><pre>aws configure --profile eddie-lab
+# AWS Access Key ID [None]: AKIA...
+# AWS Secret Access Key [None]: ...
+# Default region name [None]: us-east-1
+# Default output format [None]: json
+
+# Verify
+aws sts get-caller-identity --profile eddie-lab</pre></div>
+
+    <p>Every CLI command in this tutorial uses <code>--profile eddie-lab --region us-east-1</code>. Adjust to your profile/region.</p>
+
+    <div class="callout warning">
+      <span class="callout-title">⚠️ Set a billing alarm BEFORE you launch anything</span>
+      <p>
+        First-time learners regularly forget a t3.micro running, or accidentally launch a t3.large.
+        A $50 alarm sends you an email before the bill spirals. Run this <em>before</em> you launch the instance:
+      </p>
+    </div>
+
+    <p>First, create an SNS topic and subscribe your email:</p>
+    <div class="code-block"><pre># Create the SNS topic that the alarm will publish to
+aws sns create-topic \
+  --name billing-alerts \
+  --region us-east-1 \
+  --profile eddie-lab
+
+# Subscribe your email (you'll get a confirmation email — click the link)
+aws sns subscribe \
+  --topic-arn arn:aws:sns:us-east-1:&lt;ACCOUNT_ID&gt;:billing-alerts \
+  --protocol email \
+  --notification-endpoint you@example.com \
+  --region us-east-1 \
+  --profile eddie-lab</pre></div>
+
+    <p>Then create the alarm. Note: billing metrics only live in <code>us-east-1</code>, even if your workloads are elsewhere — that's an AWS quirk, not a typo.</p>
+    <div class="code-block"><pre>aws cloudwatch put-metric-alarm \
+  --alarm-name aws-monthly-billing-50 \
+  --alarm-description "Alert when monthly estimated charges exceed \$50" \
+  --metric-name EstimatedCharges \
+  --namespace AWS/Billing \
+  --statistic Maximum \
+  --period 21600 \
+  --evaluation-periods 1 \
+  --threshold 50 \
+  --comparison-operator GreaterThanThreshold \
+  --dimensions Name=Currency,Value=USD \
+  --alarm-actions arn:aws:sns:us-east-1:&lt;ACCOUNT_ID&gt;:billing-alerts \
+  --region us-east-1 \
+  --profile eddie-lab</pre></div>
+
+    <p style="font-size: 0.88rem; color: var(--muted);">
+      You also need to enable "Receive Billing Alerts" in <a href="https://console.aws.amazon.com/billing/home#/preferences" target="_blank" rel="noopener">Billing Preferences</a> — one-time toggle.
+    </p>
+  </section>
+
+  <!-- ============================================================
+       WHAT WE'LL BUILD
+       ============================================================ -->
+  <section class="section reveal" id="whatwell">
+    <h2><span class="section-num">02</span> What we'll build</h2>
+    <p>
+      One <code>t3.micro</code> EC2 instance running Amazon Linux 2023, in the default VPC,
+      with <strong>no SSH key</strong> and <strong>no inbound security group rules</strong>.
+      We connect via AWS Systems Manager Session Manager — IAM-authenticated, fully audited,
+      no port 22 open to the internet.
+    </p>
+
+    <div class="callout security">
+      <span class="callout-title">Why no SSH</span>
+      <p>
+        SSH on <code>0.0.0.0/0</code> is the #1 source of EC2 compromise. Session Manager
+        gives you a shell over IAM-signed AWS API calls — no inbound port at all.
+        Every session is logged in CloudTrail. This is the modern, audit-friendly way and
+        what you'll see on the AWS Security Specialty exam.
+      </p>
+    </div>
+
+    <figure class="diagram">
+      <div class="placeholder">
+        📐 Architecture diagram placeholder<br>
+        <small>
+          You → AWS API (SSM) → EC2 instance with SSM agent + IAM role.<br>
+          No inbound from the internet. All traffic is IAM-authenticated.<br>
+          Save reference diagram from
+          <a href="https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager.html" target="_blank" rel="noopener">docs.aws.amazon.com → Session Manager</a>
+        </small>
+      </div>
+    </figure>
+  </section>
+
+  <!-- ============================================================
+       TRACK A — CONSOLE
+       ============================================================ -->
+  <section class="section reveal" id="console">
+    <h2><span class="track-pill track-console">Track A</span> Console — click-by-click</h2>
+    <p>Best for the first time, when you want to see the abstractions visually.</p>
+
+    <ol class="step-list">
+      <li>
+        <strong>Sign in</strong> at <a href="https://console.aws.amazon.com" target="_blank" rel="noopener">console.aws.amazon.com</a> as your IAM user (not root). Pick region <kbd>US East (N. Virginia) us-east-1</kbd> top right.
+      </li>
+      <li>
+        <strong>Create the IAM role for SSM.</strong> Go to <strong>IAM → Roles → Create role</strong>.
+        <ul>
+          <li>Trusted entity: <em>AWS service</em> → use case <em>EC2</em>.</li>
+          <li>Permissions: search for and attach <code>AmazonSSMManagedInstanceCore</code>.</li>
+          <li>Name: <code>ec2-tutorial-ssm-role</code>.</li>
+          <li>Create role.</li>
+        </ul>
+      </li>
+      <li>
+        <strong>Launch the instance.</strong> Go to <strong>EC2 → Instances → Launch instances</strong>.
+        <ul>
+          <li>Name: <code>aws-series-tutorial</code>.</li>
+          <li>AMI: <em>Amazon Linux 2023 (HVM), SSD Volume Type</em> — free-tier eligible.</li>
+          <li>Instance type: <code>t3.micro</code>.</li>
+          <li>Key pair: <strong>Proceed without a key pair</strong>. Yes, we mean it.</li>
+          <li>Network settings → Edit → Auto-assign public IP: <em>Disable</em> (we don't need it for SSM).</li>
+          <li>Firewall (security groups): <em>Create new</em>, name <code>aws-series-tutorial-sg</code>, <strong>delete the default SSH inbound rule</strong>. Leave inbound rules empty. Outbound default (allow all) is fine.</li>
+          <li>Advanced details → IAM instance profile: <code>ec2-tutorial-ssm-role</code>.</li>
+          <li>Advanced details → Metadata version: <em>V2 only (token required)</em> — that's IMDSv2.</li>
+          <li>Tags: <code>Project = aws-series-tutorial</code>.</li>
+          <li>Launch.</li>
+        </ul>
+      </li>
+      <li>
+        Wait until <strong>Status check: 2/2 checks passed</strong> (1–2 min). Note the <strong>Instance ID</strong> (<code>i-0abc...</code>).
+      </li>
+    </ol>
+
+    <p>Skip ahead to <a href="#connect">Connect</a> to open a shell.</p>
+  </section>
+
+  <!-- ============================================================
+       TRACK B — CLI
+       ============================================================ -->
+  <section class="section reveal" id="cli">
+    <h2><span class="track-pill track-cli">Track B</span> AWS CLI v2</h2>
+    <p>Same lab, all from your terminal. Worth doing once — you'll learn what the Console buttons actually call.</p>
+
+    <h3>1. Find the latest Amazon Linux 2023 AMI ID</h3>
+    <p>AMI IDs are region-specific and change with each AL2023 release. Don't hardcode — query.</p>
+    <div class="code-block"><pre>AMI_ID=$(aws ec2 describe-images \
+  --owners amazon \
+  --filters \
+    "Name=name,Values=al2023-ami-*-x86_64" \
+    "Name=state,Values=available" \
+  --query 'sort_by(Images, &amp;CreationDate)[-1].ImageId' \
+  --output text \
+  --region us-east-1 \
+  --profile eddie-lab)
+
+echo "Latest AL2023 AMI: $AMI_ID"</pre></div>
+
+    <h3>2. Create the IAM role + instance profile for SSM</h3>
+    <div class="code-block"><pre># Trust policy (lets EC2 assume the role)
+cat &gt; /tmp/ec2-trust.json &lt;&lt;'EOF'
+{
+  "Version": "2012-10-17",
+  "Statement": [{
+    "Effect": "Allow",
+    "Principal": { "Service": "ec2.amazonaws.com" },
+    "Action": "sts:AssumeRole"
+  }]
+}
+EOF
+
+aws iam create-role \
+  --role-name ec2-tutorial-ssm-role \
+  --assume-role-policy-document file:///tmp/ec2-trust.json \
+  --profile eddie-lab
+
+aws iam attach-role-policy \
+  --role-name ec2-tutorial-ssm-role \
+  --policy-arn arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore \
+  --profile eddie-lab
+
+aws iam create-instance-profile \
+  --instance-profile-name ec2-tutorial-ssm-profile \
+  --profile eddie-lab
+
+aws iam add-role-to-instance-profile \
+  --instance-profile-name ec2-tutorial-ssm-profile \
+  --role-name ec2-tutorial-ssm-role \
+  --profile eddie-lab</pre></div>
+
+    <h3>3. Create the security group (no inbound rules)</h3>
+    <div class="code-block"><pre>VPC_ID=$(aws ec2 describe-vpcs \
+  --filters "Name=is-default,Values=true" \
+  --query 'Vpcs[0].VpcId' \
+  --output text \
+  --region us-east-1 \
+  --profile eddie-lab)
+
+SG_ID=$(aws ec2 create-security-group \
+  --group-name aws-series-tutorial-sg \
+  --description "EC2 tutorial — no inbound, SSM only" \
+  --vpc-id "$VPC_ID" \
+  --query 'GroupId' \
+  --output text \
+  --region us-east-1 \
+  --profile eddie-lab)
+
+echo "SG: $SG_ID"</pre></div>
+
+    <h3>4. Launch the instance</h3>
+    <div class="code-block"><pre>INSTANCE_ID=$(aws ec2 run-instances \
+  --image-id "$AMI_ID" \
+  --instance-type t3.micro \
+  --security-group-ids "$SG_ID" \
+  --iam-instance-profile Name=ec2-tutorial-ssm-profile \
+  --metadata-options "HttpTokens=required,HttpEndpoint=enabled" \
+  --tag-specifications \
+    'ResourceType=instance,Tags=[{Key=Name,Value=aws-series-tutorial},{Key=Project,Value=aws-series-tutorial}]' \
+  --query 'Instances[0].InstanceId' \
+  --output text \
+  --region us-east-1 \
+  --profile eddie-lab)
+
+echo "Instance: $INSTANCE_ID"
+
+# Wait for it to be running and pass status checks
+aws ec2 wait instance-status-ok \
+  --instance-ids "$INSTANCE_ID" \
+  --region us-east-1 \
+  --profile eddie-lab</pre></div>
+
+    <p>Now skip to <a href="#connect">Connect</a>.</p>
+  </section>
+
+  <!-- ============================================================
+       TRACK C — TERRAFORM
+       ============================================================ -->
+  <section class="section reveal" id="terraform">
+    <h2><span class="track-pill track-tf">Track C</span> Terraform</h2>
+    <p>The production track. Idempotent, code-reviewable, destroy-safe.</p>
+
+    <h3>1. Create a working directory and <code>main.tf</code></h3>
+    <div class="code-block"><pre>mkdir -p ~/labs/ec2-tutorial &amp;&amp; cd ~/labs/ec2-tutorial</pre></div>
+
+    <p>Save this as <code>main.tf</code>:</p>
+    <div class="code-block"><pre>terraform {
+  required_version = "&gt;= 1.7"
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~&gt; 5.0"
+    }
+  }
+}
+
+provider "aws" {
+  region  = "us-east-1"
+  profile = "eddie-lab"
+
+  default_tags {
+    tags = {
+      Project   = "aws-series-tutorial"
+      ManagedBy = "terraform"
+    }
+  }
+}
+
+# Always grab the latest Amazon Linux 2023 AMI for x86_64
+data "aws_ami" "al2023" {
+  most_recent = true
+  owners      = ["amazon"]
+
+  filter {
+    name   = "name"
+    values = ["al2023-ami-*-x86_64"]
+  }
+  filter {
+    name   = "state"
+    values = ["available"]
+  }
+}
+
+# IAM role that EC2 can assume + the SSM managed policy
+resource "aws_iam_role" "ssm" {
+  name = "ec2-tutorial-ssm-role"
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "ec2.amazonaws.com" }
+      Action    = "sts:AssumeRole"
+    }]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "ssm_core" {
+  role       = aws_iam_role.ssm.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+}
+
+resource "aws_iam_instance_profile" "ssm" {
+  name = "ec2-tutorial-ssm-profile"
+  role = aws_iam_role.ssm.name
+}
+
+# No inbound rules. Outbound default (allow all) is fine — needed for SSM agent to reach the SSM API.
+resource "aws_security_group" "tutorial" {
+  name        = "aws-series-tutorial-sg"
+  description = "EC2 tutorial — no inbound, SSM only"
+  # Default VPC; for a real workload you'd reference a vpc_id here
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
+resource "aws_instance" "tutorial" {
+  ami                    = data.aws_ami.al2023.id
+  instance_type          = "t3.micro"
+  vpc_security_group_ids = [aws_security_group.tutorial.id]
+  iam_instance_profile   = aws_iam_instance_profile.ssm.name
+
+  metadata_options {
+    http_tokens   = "required" # IMDSv2 only — defends against SSRF
+    http_endpoint = "enabled"
+  }
+
+  tags = {
+    Name = "aws-series-tutorial"
+  }
+}
+
+output "instance_id" {
+  value       = aws_instance.tutorial.id
+  description = "Use this with: aws ssm start-session --target &lt;instance_id&gt;"
+}</pre></div>
+
+    <h3>2. Init, plan, apply</h3>
+    <div class="code-block"><pre>terraform init
+terraform plan      # READ THIS. Always read the plan before applying.
+terraform apply     # type 'yes' to confirm</pre></div>
+
+    <p>Output prints the instance ID. Now go to <a href="#connect">Connect</a>.</p>
+
+    <div class="callout">
+      <span class="callout-title">Why this is the production track</span>
+      <p>
+        Idempotent (apply twice = same result), code-reviewable (your teammate sees the diff),
+        and reversible in one command (<code>terraform destroy</code>). The CLI track is great
+        for learning what's underneath; Terraform is what you'd actually use at work.
+      </p>
+    </div>
+  </section>
+
+  <!-- ============================================================
+       CONNECT
+       ============================================================ -->
+  <section class="section reveal" id="connect">
+    <h2><span class="section-num">06</span> Connect to your instance (Session Manager)</h2>
+    <p>One command, all three tracks. Replace <code>i-0abc...</code> with your actual instance ID.</p>
+
+    <div class="code-block"><pre>aws ssm start-session \
+  --target i-0abc123def456 \
+  --region us-east-1 \
+  --profile eddie-lab</pre></div>
+
+    <p>You're now in a shell on the instance, as user <code>ssm-user</code>. Try:</p>
+    <div class="code-block"><pre>whoami
+cat /etc/os-release
+sudo dnf check-update
+exit       # ends the session</pre></div>
+
+    <div class="callout security">
+      <span class="callout-title">What just happened, security-wise</span>
+      <p>
+        Your local AWS credentials signed an API call. AWS verified your IAM permissions, opened
+        a websocket through the SSM agent on the instance, and gave you a shell. There was
+        <em>no inbound port</em> on the EC2 instance. The whole thing is logged in
+        CloudTrail (<code>StartSession</code> event) and SSM Session Manager (<code>session-id</code>).
+        You can prove who connected, when, and what they ran. Try doing that with raw SSH.
+      </p>
+    </div>
+
+    <h3>Troubleshooting</h3>
+    <ul>
+      <li><strong>"TargetNotConnected"</strong> — the SSM agent on the instance isn't reaching the SSM API. Check the IAM role has <code>AmazonSSMManagedInstanceCore</code>. Wait 60 seconds and retry.</li>
+      <li><strong>"plugin not found"</strong> — install the <a href="https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-working-with-install-plugin.html" target="_blank" rel="noopener">Session Manager CLI plugin</a>.</li>
+      <li><strong>The agent times out connecting to the SSM API</strong> — the security group's egress rules block it. The default "allow all egress" works; if you tightened egress you need 443 to <code>ssm.&lt;region&gt;.amazonaws.com</code>, <code>ssmmessages</code>, and <code>ec2messages</code>.</li>
+    </ul>
+  </section>
+
+  <!-- ============================================================
+       CLEANUP
+       ============================================================ -->
+  <section class="section reveal" id="cleanup">
+    <h2><span class="section-num">07</span> Cleanup — read this <em>first</em></h2>
+
+    <div class="callout warning">
+      <span class="callout-title">Why this matters</span>
+      <p>
+        A forgotten <code>t3.micro</code> outside free-tier costs ~$7.60/month. A forgotten
+        NAT Gateway costs ~$32/month. A forgotten <code>p3.2xlarge</code> GPU costs
+        $3/hour — $2,200/month. <strong>Always destroy before you walk away from the keyboard.</strong>
+      </p>
+    </div>
+
+    <h3>Track C (Terraform) — easiest</h3>
+    <div class="code-block"><pre>cd ~/labs/ec2-tutorial
+terraform destroy   # type 'yes' — wipes everything we created</pre></div>
+
+    <h3>Track B (CLI) — manual</h3>
+    <div class="code-block"><pre># Terminate the instance (replace with your IDs)
+aws ec2 terminate-instances \
+  --instance-ids "$INSTANCE_ID" \
+  --region us-east-1 \
+  --profile eddie-lab
+
+aws ec2 wait instance-terminated \
+  --instance-ids "$INSTANCE_ID" \
+  --region us-east-1 \
+  --profile eddie-lab
+
+# Delete the SG (must wait for instance to terminate first)
+aws ec2 delete-security-group \
+  --group-id "$SG_ID" \
+  --region us-east-1 \
+  --profile eddie-lab
+
+# Detach + delete the IAM resources
+aws iam remove-role-from-instance-profile \
+  --instance-profile-name ec2-tutorial-ssm-profile \
+  --role-name ec2-tutorial-ssm-role \
+  --profile eddie-lab
+
+aws iam delete-instance-profile \
+  --instance-profile-name ec2-tutorial-ssm-profile \
+  --profile eddie-lab
+
+aws iam detach-role-policy \
+  --role-name ec2-tutorial-ssm-role \
+  --policy-arn arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore \
+  --profile eddie-lab
+
+aws iam delete-role \
+  --role-name ec2-tutorial-ssm-role \
+  --profile eddie-lab</pre></div>
+
+    <h3>Track A (Console)</h3>
+    <ol>
+      <li><strong>EC2 → Instances → select your instance → Instance state → Terminate (delete) instance</strong>.</li>
+      <li>Wait for it to show as terminated. Then <strong>EC2 → Security Groups → delete <code>aws-series-tutorial-sg</code></strong>.</li>
+      <li><strong>IAM → Roles → delete <code>ec2-tutorial-ssm-role</code></strong>. The Console deletes the linked instance profile for you.</li>
+    </ol>
+
+    <h3>Verify nothing is left</h3>
+    <div class="code-block"><pre>aws ec2 describe-instances \
+  --filters "Name=tag:Project,Values=aws-series-tutorial" \
+  --query "Reservations[].Instances[?State.Name!='terminated'].InstanceId" \
+  --output text \
+  --region us-east-1 \
+  --profile eddie-lab
+# (empty output = nothing running)</pre></div>
+  </section>
+
+  <!-- ============================================================
+       TAKEAWAYS
+       ============================================================ -->
+  <section class="section reveal" id="takeaways">
+    <h2><span class="section-num">08</span> Senior-engineer takeaways</h2>
+
+    <h3>What this exercise drilled into you</h3>
+    <ul>
+      <li><strong>Idempotency</strong> — Terraform <code>apply</code> twice = same result. CLI commands aren't idempotent by default; you have to check before creating, or accept duplicates.</li>
+      <li><strong>Blast radius</strong> — every resource was tagged <code>Project=aws-series-tutorial</code> so cleanup is grep-able. Tag religiously; future-you will thank you when the bill arrives.</li>
+      <li><strong>Least privilege</strong> — <code>AmazonSSMManagedInstanceCore</code> is a managed policy. In production you'd write a custom policy with only the SSM actions you need, and scope it to specific resources.</li>
+      <li><strong>Defense in depth</strong> — IMDSv2 + no inbound SG + IAM-authenticated SSM = three independent layers. Removing any one of them is bad. Removing all three is Capital One.</li>
+      <li><strong>Reproducibility</strong> — the Terraform code in this tutorial works on your laptop, in CI, and on a fresh AWS account. The Console clicks don't.</li>
+    </ul>
+
+    <h3>Where to take it next</h3>
+    <ul>
+      <li>Wrap the Terraform in a <strong>module</strong>. Parameterize <code>instance_type</code>, <code>vpc_id</code>, <code>tags</code>. That's how real codebases organize.</li>
+      <li>Add a <strong>user data script</strong> so the instance bootstraps itself (install Docker, run a service, etc.).</li>
+      <li>Move from default VPC to a <strong>custom VPC</strong> with private subnets — that's the next service in this series.</li>
+      <li>Replace the SSM managed policy with a <strong>custom least-privilege policy</strong> — great AWS Security Specialty exam practice.</li>
+    </ul>
+
+    <h3>Costs at a glance</h3>
+    <ul>
+      <li>t3.micro: <strong>free</strong> for 750 hrs/month for 12 months on new accounts. After that ~$7.60/month if running 24/7.</li>
+      <li>EBS: 8 GiB gp3 root volume ~$0.64/month.</li>
+      <li>Data transfer: minimal for SSM. First 100 GB/month egress is free.</li>
+      <li>SSM Session Manager: <strong>free</strong>.</li>
+    </ul>
+    <p style="font-size: 0.85rem; color: var(--muted);">
+      Pricing reference: <a href="https://aws.amazon.com/ec2/pricing/on-demand/" target="_blank" rel="noopener">AWS EC2 on-demand pricing</a>. Verify before assuming.
+    </p>
+  </section>
+
+  <!-- ============================================================
+       CTA
+       ============================================================ -->
+  <section class="section reveal" style="text-align: center;">
+    <h2 style="justify-content: center;">Done?</h2>
+    <p style="max-width: 580px; margin: 0 auto;">
+      Once you've launched, connected, and destroyed — you've done the EC2 lifecycle.
+      The next service builds the network these instances live in.
+    </p>
+    <p>
+      <a href="index.html" class="cta-btn secondary">← EC2 Overview</a>
+      <a href="../vpc/index.html" class="cta-btn">Next: VPC →</a>
+    </p>
+  </section>
+
+</main>
+
+<footer class="aws-footer">
+  <p>
+    EC2 Tutorial · <a href="../index.html">Series index</a> ·
+    <a href="../../index.html">App Hub</a> · Last reviewed 2026-04
+  </p>
+</footer>
+
+<script src="../js/nav.js"></script>
+</body>
+</html>

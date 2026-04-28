@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; script-src 'self'; img-src 'self' data:;">
+  <title>Amazon EC2 — AWS in Practice</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../css/aws-hub.css">
+</head>
+<body data-svc="ec2">
+
+<!-- Shared top nav -->
+<nav class="aws-nav">
+  <div class="aws-nav-inner">
+    <a href="../index.html" class="aws-nav-brand">
+      <span class="brand-dot"></span>AWS in Practice
+    </a>
+    <div class="aws-nav-links">
+      <a href="../ec2/index.html"          class="aws-nav-link" data-svc="ec2">EC2</a>
+      <a href="../vpc/index.html"          class="aws-nav-link coming-soon" data-svc="vpc">VPC</a>
+      <a href="../dynamodb/index.html"     class="aws-nav-link coming-soon" data-svc="dynamodb">DynamoDB</a>
+      <a href="../api-gateway/index.html"  class="aws-nav-link coming-soon" data-svc="api-gateway">API Gateway</a>
+      <a href="../s3/index.html"           class="aws-nav-link coming-soon" data-svc="s3">S3</a>
+      <a href="../iam/index.html"          class="aws-nav-link coming-soon" data-svc="iam">IAM</a>
+      <a href="../kms/index.html"          class="aws-nav-link coming-soon" data-svc="kms">KMS</a>
+      <a href="../cloudfront/index.html"   class="aws-nav-link coming-soon" data-svc="cloudfront">CloudFront</a>
+      <a href="../cloudtrail/index.html"   class="aws-nav-link coming-soon" data-svc="cloudtrail">CloudTrail</a>
+      <a href="../basic-audit/index.html"  class="aws-nav-link coming-soon" data-svc="basic-audit">Audit</a>
+    </div>
+  </div>
+</nav>
+
+<header class="hero">
+  <span class="hero-tag">Service 1 of 10 · Compute</span>
+  <h1>Amazon EC2</h1>
+  <p class="hero-sub">
+    Elastic Compute Cloud — virtual servers in the sky, billed by the second.
+    The original AWS service (launched 2006) and still the workhorse the entire ecosystem rests on.
+  </p>
+
+  <!-- Inline SVG hero art: stylized server/cloud -->
+  <div class="hero-art">
+    <svg viewBox="0 0 320 180" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="ec2-grad" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%"  stop-color="#ff9900" />
+          <stop offset="100%" stop-color="#ffb84d" />
+        </linearGradient>
+      </defs>
+      <!-- cloud shape -->
+      <path d="M70 90 Q40 90 40 65 Q40 40 65 40 Q75 20 100 25 Q120 10 140 30 Q170 20 180 50 Q210 50 210 75 Q210 95 185 95 Z"
+            fill="none" stroke="url(#ec2-grad)" stroke-width="2.5" opacity="0.6"/>
+      <!-- server stack -->
+      <g transform="translate(120,75)">
+        <rect x="0" y="0" width="80" height="14" rx="2" fill="none" stroke="url(#ec2-grad)" stroke-width="1.5"/>
+        <circle cx="6" cy="7" r="1.8" fill="#ff9900"/>
+        <rect x="0" y="20" width="80" height="14" rx="2" fill="none" stroke="url(#ec2-grad)" stroke-width="1.5"/>
+        <circle cx="6" cy="27" r="1.8" fill="#ffd700"/>
+        <rect x="0" y="40" width="80" height="14" rx="2" fill="none" stroke="url(#ec2-grad)" stroke-width="1.5"/>
+        <circle cx="6" cy="47" r="1.8" fill="#ff9900"/>
+        <rect x="0" y="60" width="80" height="14" rx="2" fill="none" stroke="url(#ec2-grad)" stroke-width="1.5"/>
+        <circle cx="6" cy="67" r="1.8" fill="#4af7ff"/>
+      </g>
+      <!-- floating data dots -->
+      <circle cx="50" cy="130" r="2"  fill="#4af7ff" opacity="0.7"/>
+      <circle cx="80" cy="150" r="2.5" fill="#ff9900" opacity="0.8"/>
+      <circle cx="240" cy="120" r="2" fill="#ffd700" opacity="0.7"/>
+      <circle cx="270" cy="145" r="3" fill="#ff9900" opacity="0.6"/>
+      <circle cx="30"  cy="160" r="1.5" fill="#7b2fff" opacity="0.7"/>
+    </svg>
+  </div>
+</header>
+
+<main>
+
+  <!-- ============================================================
+       SECTION 1 — What is EC2?
+       ============================================================ -->
+  <section class="section reveal">
+    <h2><span class="section-num">01</span> What is EC2?</h2>
+    <p class="lead">
+      EC2 lets you rent a Linux or Windows server, on demand, anywhere from
+      <strong>30 seconds</strong> to <strong>years</strong>, in any of 30+ AWS regions globally —
+      and pay only for what you use, by the second.
+    </p>
+    <p>
+      Under the hood, every EC2 "instance" is a virtual machine running on top of
+      AWS's <strong>Nitro hypervisor</strong> on physical hardware in an AWS data center. You
+      pick a size (CPU, memory, network, GPU), an OS image (Amazon Machine Image,
+      or AMI), a network (which VPC and subnet), and a security group (firewall rules) —
+      and a few seconds later you have SSH or RDP into a fresh box.
+    </p>
+
+    <h3>The objective: turn capital expense into operating expense</h3>
+    <p>
+      Before EC2 (2006), if your startup needed servers you bought servers — racked
+      them, cooled them, paid for the bandwidth, paid an admin to babysit them. If
+      traffic doubled overnight, you were stuck. If traffic dropped, you'd already
+      bought the hardware.
+    </p>
+    <p>
+      EC2 turned compute into a utility — like electricity. Need 200 servers for
+      6 hours during a marketing campaign? Spin them up, run the campaign, terminate
+      them. The bill is for 6 hours of 200 servers, not 200 servers forever.
+    </p>
+
+    <div class="callout">
+      <span class="callout-title">In one sentence</span>
+      <p>EC2 is renting a computer in the cloud — except the cloud bills you per second, terminates the rental when you tell it to, and lets you make 1,000 copies in parallel.</p>
+    </div>
+  </section>
+
+  <!-- ============================================================
+       SECTION 2 — A vibrant example
+       ============================================================ -->
+  <section class="section reveal">
+    <h2><span class="section-num">02</span> A vibrant example: Netflix on Friday night</h2>
+    <p>
+      It's Friday, 8 p.m. Pacific. Half of North America just got home and queued up the new
+      Stranger Things season. Netflix's traffic graph spikes vertically.
+    </p>
+    <p>
+      Netflix doesn't own a single server. They run on EC2.
+      Hundreds of thousands of EC2 instances across multiple regions — encoding video,
+      running recommendation models, serving the API that responds to your "play" tap.
+      As traffic spikes, an
+      <a href="https://docs.aws.amazon.com/autoscaling/ec2/userguide/what-is-amazon-ec2-auto-scaling.html" target="_blank" rel="noopener">Auto Scaling group</a>
+      provisions hundreds more EC2 instances in minutes. At 3 a.m. when traffic
+      drops, those instances terminate themselves and the bill stops.
+    </p>
+    <p>
+      Same hardware, same software, same engineers. The only thing that changed is
+      <em>capacity, in minutes, on demand.</em> That is the EC2 thesis.
+    </p>
+
+    <figure class="diagram">
+      <div class="placeholder">
+        📐 Architecture diagram placeholder<br>
+        <small>Save the AWS Auto Scaling reference architecture here:<br>
+        <code>aws-series/ec2/images/auto-scaling-arch.png</code><br>
+        Source: <a href="https://docs.aws.amazon.com/autoscaling/ec2/userguide/auto-scaling-benefits.html" target="_blank" rel="noopener">docs.aws.amazon.com → Auto Scaling Benefits</a>
+        </small>
+      </div>
+      <figcaption>Auto Scaling group reacts to demand — instances appear and disappear automatically.</figcaption>
+    </figure>
+  </section>
+
+  <!-- ============================================================
+       SECTION 3 — Who uses EC2 and why
+       ============================================================ -->
+  <section class="section reveal">
+    <h2><span class="section-num">03</span> Who uses EC2 — and why</h2>
+    <p>
+      Almost everyone. EC2 is one of the most widely used cloud services on Earth.
+      Concrete examples (publicly documented):
+    </p>
+
+    <div class="use-grid">
+      <div class="use-card">
+        <h4>🎬 Netflix</h4>
+        <p>Streaming, encoding, recommendation ML, A/B testing — all on EC2 across multiple regions. <a href="https://netflixtechblog.com/" target="_blank" rel="noopener">Netflix Tech Blog →</a></p>
+      </div>
+      <div class="use-card">
+        <h4>🚀 NASA / JPL</h4>
+        <p>The Mars Curiosity rover landing in 2012 used EC2 to process and stream images to mission control and to the public.</p>
+      </div>
+      <div class="use-card">
+        <h4>🏠 Airbnb</h4>
+        <p>Migrated from a single server to EC2 in their early years; runs the matching, search, and payment APIs on EC2 + RDS.</p>
+      </div>
+      <div class="use-card">
+        <h4>📰 Reddit</h4>
+        <p>Was on EC2 for over a decade — the comment-tree workload is famously hard to cache, EC2 + ElastiCache made it work.</p>
+      </div>
+      <div class="use-card">
+        <h4>🏛️ U.S. Government</h4>
+        <p>AWS GovCloud regions run EC2 for DoD and intel workloads. Same service, FedRAMP High-authorized, isolated network.</p>
+      </div>
+      <div class="use-card">
+        <h4>🧪 Pharma / Genomics</h4>
+        <p>Pfizer, Moderna, Illumina — burst genome alignment jobs across thousands of GPU/CPU instances, then terminate. The math works only because EC2 is per-second.</p>
+      </div>
+    </div>
+
+    <h3>Common reasons to reach for EC2</h3>
+    <ul>
+      <li><strong>Lift-and-shift:</strong> existing on-prem application, doesn't want to be rewritten serverless. EC2 looks like a server it already knows how to run on.</li>
+      <li><strong>Custom kernels / GPUs / FPGAs:</strong> you need control AWS doesn't expose in higher-level services.</li>
+      <li><strong>Long-running, stateful workloads:</strong> databases, message brokers, game servers — anything that doesn't suit Lambda's 15-minute limit.</li>
+      <li><strong>Burst compute:</strong> ML training, video transcoding, scientific simulation — pay for what you burn, not what you reserve.</li>
+      <li><strong>Compliance:</strong> you need a specific OS image, hardened to a specific benchmark (CIS, STIG), and no PaaS will give you that.</li>
+    </ul>
+  </section>
+
+  <!-- ============================================================
+       SECTION 4 — Competitors and market share
+       ============================================================ -->
+  <section class="section reveal">
+    <h2><span class="section-num">04</span> Competitors & market share</h2>
+    <p>
+      EC2 has direct rivals in every other major public cloud. Honest framing — AWS is the
+      <em>market leader</em>, but "best" depends on what you're optimizing for.
+    </p>
+
+    <table class="compare-table">
+      <thead>
+        <tr>
+          <th>Provider</th>
+          <th>Compute Service</th>
+          <th>Cloud Market Share</th>
+          <th>Where it wins</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="lead-row">
+          <td><strong>AWS</strong></td>
+          <td>EC2</td>
+          <td>~30%</td>
+          <td>Most instance types, biggest region footprint, most mature ecosystem, deepest IAM/security primitives.</td>
+        </tr>
+        <tr>
+          <td>Microsoft Azure</td>
+          <td>Azure Virtual Machines</td>
+          <td>~21%</td>
+          <td>Enterprise + Microsoft licensing, Active Directory integration, hybrid (Azure Arc), Windows-heavy shops.</td>
+        </tr>
+        <tr>
+          <td>Google Cloud</td>
+          <td>Compute Engine (GCE)</td>
+          <td>~12%</td>
+          <td>Per-second billing was first here, live migration is excellent, networking and Kubernetes (they invented it).</td>
+        </tr>
+        <tr>
+          <td>Alibaba Cloud</td>
+          <td>Elastic Compute Service (ECS)</td>
+          <td>~4%</td>
+          <td>Dominant in China; the only realistic option there.</td>
+        </tr>
+        <tr>
+          <td>Oracle, IBM, others</td>
+          <td>various</td>
+          <td>combined ~33%</td>
+          <td>Specialized: Oracle for Oracle DB workloads, IBM for mainframe-adjacent.</td>
+        </tr>
+      </tbody>
+    </table>
+    <p style="font-size: 0.85rem; color: var(--muted); margin-top: -0.5rem;">
+      Market share figures: <a href="https://www.srgresearch.com/" target="_blank" rel="noopener">Synergy Research Group, Q4 2024</a>. These shift quarterly — verify before quoting.
+    </p>
+
+    <div class="callout">
+      <span class="callout-title">The honest "why AWS"</span>
+      <p>
+        AWS isn't universally better — it's the <em>most likely default</em>. Reasons:
+        biggest catalog of instance types and adjacent services, the deepest set of
+        compliance certifications, the most engineers in the wild who already know it,
+        and the largest pool of pre-existing infrastructure-as-code modules. For most
+        teams that translates to lower friction and a shallower learning curve <em>per
+        engineer hired.</em> That's the real moat — not raw technical superiority.
+      </p>
+    </div>
+
+    <h3>Where AWS doesn't always win</h3>
+    <ul>
+      <li><strong>Kubernetes-first workloads:</strong> GKE on Google Cloud is generally considered the best-in-class managed Kubernetes.</li>
+      <li><strong>Microsoft-shop enterprises:</strong> Azure's licensing bundle (Office 365 + AD + VMs) makes it cheaper than AWS for them.</li>
+      <li><strong>Egress costs:</strong> AWS data-egress pricing is famously expensive. CDNs and competitors with cheaper egress (e.g., Cloudflare R2) can dramatically beat AWS on bandwidth-heavy workloads.</li>
+      <li><strong>China:</strong> AWS exists in China but Alibaba is dominant due to regulation and latency.</li>
+    </ul>
+  </section>
+
+  <!-- ============================================================
+       SECTION 5 — Who manages it
+       ============================================================ -->
+  <section class="section reveal">
+    <h2><span class="section-num">05</span> Who actually runs it for you?</h2>
+    <p>
+      EC2's "shared responsibility" line: <strong>AWS runs the hardware, hypervisor, and physical
+      data center. You run the OS, the patches, the application, the network rules, and the
+      data.</strong> But who, on your side, does that?
+    </p>
+
+    <div class="use-grid">
+      <div class="use-card">
+        <h4>👤 Self-managed (startup / solo)</h4>
+        <p>You launch instances, SSH in, install software, patch the OS, read CloudWatch dashboards yourself. Minimum cost, maximum 2 a.m. pages. Most learning happens here.</p>
+      </div>
+      <div class="use-card">
+        <h4>🏢 Self-managed (small team)</h4>
+        <p>A platform / DevOps engineer wraps EC2 in Terraform + Ansible + CI/CD. Developers don't touch the Console; they merge a PR and infrastructure changes.</p>
+      </div>
+      <div class="use-card">
+        <h4>🛠️ AWS Professional Services</h4>
+        <p>AWS-paid solutions architects help large customers <em>design and migrate</em> — usually a paid engagement, weeks to months. They don't run your day-to-day ops.</p>
+      </div>
+      <div class="use-card">
+        <h4>📡 AWS Managed Services (AMS)</h4>
+        <p>A paid AWS service for enterprise customers — AWS handles patching, monitoring, change management. You give up some flexibility for hands-off ops.</p>
+      </div>
+      <div class="use-card">
+        <h4>🤝 Third-party MSP</h4>
+        <p>Companies like Mission, Cloudreach, Rackspace specialize in running AWS for you. Common for mid-market companies without a platform team.</p>
+      </div>
+      <div class="use-card">
+        <h4>🤖 Higher-level abstractions</h4>
+        <p>Many teams sidestep EC2 entirely — ECS Fargate, Lambda, App Runner manage instances <em>for</em> you. EC2 is the foundation; you may never touch it directly.</p>
+      </div>
+    </div>
+
+    <div class="callout warning">
+      <span class="callout-title">⚠️ Startup gotcha</span>
+      <p>
+        First-time EC2 users frequently leave instances running by accident — "I'll terminate it later"
+        becomes a $300 surprise bill the next month. <strong>Set a billing alarm before your first launch.</strong>
+        We'll wire one up in the tutorial.
+      </p>
+    </div>
+  </section>
+
+  <!-- ============================================================
+       SECTION 6 — Security mindset
+       ============================================================ -->
+  <section class="section reveal">
+    <h2><span class="section-num">06</span> Security mindset</h2>
+    <p>
+      Most "AWS breaches" you read about aren't AWS being broken — they're EC2/S3/IAM
+      being misconfigured by the customer. The 2019 Capital One breach (100M records)
+      was an SSRF + over-privileged EC2 instance role. Read it twice; it's the most
+      instructive case study in cloud security history.
+      <a href="https://www.capitalone.com/digital/facts2019/" target="_blank" rel="noopener">Capital One disclosure →</a>
+    </p>
+
+    <h3>Five things to internalize before your first production EC2</h3>
+    <ul>
+      <li><strong>Use IAM roles, not access keys.</strong> An EC2 instance attached to a role gets short-lived credentials automatically. Long-lived keys end up in git.</li>
+      <li><strong>Use Session Manager, not SSH.</strong> AWS Systems Manager Session Manager gives you a shell over IAM with full audit logs — no port 22 open to the world, no SSH keys to lose.</li>
+      <li><strong>Security Groups are stateful firewalls.</strong> Open ports to <em>specific source SGs or CIDRs</em>, not <code>0.0.0.0/0</code>. "Allow from anywhere" is the leading cause of EC2 compromise.</li>
+      <li><strong>Patch with SSM Patch Manager.</strong> Automated, scheduled, auditable. Beats "I'll dnf update sometime."</li>
+      <li><strong>Enable IMDSv2.</strong> Defense against the SSRF class of attacks that took down Capital One. As of 2024 new instances default to IMDSv2; older AMIs may not.</li>
+    </ul>
+
+    <div class="callout security">
+      <span class="callout-title">For your career</span>
+      <p>
+        If you're targeting cloud security roles, EC2 is where you'll spend a huge chunk
+        of time auditing. Get fluent with Security Groups, IAM roles, IMDSv2, and SSM —
+        these come up in every AWS Security Specialty exam question and every real
+        incident response.
+      </p>
+    </div>
+  </section>
+
+  <!-- ============================================================
+       SECTION 7 — Sources
+       ============================================================ -->
+  <section class="section reveal">
+    <h2><span class="section-num">07</span> Sources & further reading</h2>
+    <ul class="sources">
+      <li>
+        <strong>AWS official EC2 documentation</strong> — canonical reference, updated continuously.
+        <a href="https://docs.aws.amazon.com/ec2/" target="_blank" rel="noopener">docs.aws.amazon.com/ec2/</a>
+        <span class="source-meta">Primary source for everything in this page.</span>
+      </li>
+      <li>
+        <strong>Amazon EC2 product page</strong> — pricing, instance type catalog, regional availability.
+        <a href="https://aws.amazon.com/ec2/" target="_blank" rel="noopener">aws.amazon.com/ec2/</a>
+      </li>
+      <li>
+        <strong>Synergy Research Group, Q4 2024 Cloud Market Report</strong> — quarterly cloud-infrastructure market share figures.
+        <a href="https://www.srgresearch.com/" target="_blank" rel="noopener">srgresearch.com</a>
+        <span class="source-meta">Use for market-share quotes; figures change every quarter.</span>
+      </li>
+      <li>
+        <strong>Gartner Magic Quadrant for Strategic Cloud Platform Services</strong> — analyst evaluation of AWS / Azure / GCP positioning.
+        <a href="https://www.gartner.com/en/documents/" target="_blank" rel="noopener">gartner.com</a>
+        <span class="source-meta">Often paywalled; AWS reposts excerpts on aws.amazon.com/resources/analyst-reports/ when AWS is named a leader.</span>
+      </li>
+      <li>
+        <strong>AWS Compute Blog</strong> — engineering deep-dives on EC2 internals, Nitro, instance families.
+        <a href="https://aws.amazon.com/blogs/compute/" target="_blank" rel="noopener">aws.amazon.com/blogs/compute</a>
+      </li>
+      <li>
+        <strong>Capital One 2019 breach disclosure</strong> — the canonical EC2 / IAM misconfiguration case study.
+        <a href="https://www.capitalone.com/digital/facts2019/" target="_blank" rel="noopener">capitalone.com/digital/facts2019/</a>
+      </li>
+      <li>
+        <strong><em>AWS Certified Solutions Architect Study Guide</em></strong> (Sybex) and <strong><em>AWS in Action</em></strong> (Manning) — solid book-length treatments.
+        <span class="source-meta">Recommended reading if you're studying for SAA-C03.</span>
+      </li>
+      <li>
+        <strong>Netflix Tech Blog</strong> — first-party engineering accounts of running massive EC2 fleets.
+        <a href="https://netflixtechblog.com/" target="_blank" rel="noopener">netflixtechblog.com</a>
+      </li>
+    </ul>
+    <p style="font-size: 0.85rem; color: var(--muted); font-style: italic;">
+      Note: peer-reviewed academic papers on EC2 specifically are rare — most authoritative material lives in AWS documentation,
+      industry analyst reports, and engineering blogs. All quoted statistics should be re-verified against the source's
+      most recent publication before quoting in a professional context.
+    </p>
+  </section>
+
+  <!-- ============================================================
+       Tutorial CTA
+       ============================================================ -->
+  <section class="section reveal" style="text-align: center;">
+    <h2 style="justify-content: center;">Ready to launch one?</h2>
+    <p style="max-width: 580px; margin: 0 auto;">
+      The tutorial walks you through launching, connecting to, and (importantly) terminating
+      an EC2 instance — Console, AWS CLI, and Terraform side by side. Free-tier eligible.
+    </p>
+    <p>
+      <a href="tutorial.html" class="cta-btn">Open Hands-on Tutorial →</a>
+      <a href="../index.html" class="cta-btn secondary">← Back to series</a>
+    </p>
+  </section>
+
+</main>
+
+<footer class="aws-footer">
+  <p>
+    Service 1 of 10 · <a href="../index.html">AWS in Practice index</a> ·
+    <a href="../../index.html">App Hub</a> · Last reviewed 2026-04
+  </p>
+</footer>
+
+<script src="../js/nav.js"></script>
+</body>
+</html>

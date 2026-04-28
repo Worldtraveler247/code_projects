@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; script-src 'self'; img-src 'self' data:;">
+  <title>AWS in Practice — Eddie's Hub</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/aws-hub.css">
+</head>
+<body data-svc="hub">
+
+<!-- Top nav (shared across all aws-series pages) -->
+<nav class="aws-nav">
+  <div class="aws-nav-inner">
+    <a href="index.html" class="aws-nav-brand">
+      <span class="brand-dot"></span>AWS in Practice
+    </a>
+    <div class="aws-nav-links">
+      <a href="ec2/index.html"          class="aws-nav-link" data-svc="ec2">EC2</a>
+      <a href="vpc/index.html"          class="aws-nav-link coming-soon" data-svc="vpc">VPC</a>
+      <a href="dynamodb/index.html"     class="aws-nav-link coming-soon" data-svc="dynamodb">DynamoDB</a>
+      <a href="api-gateway/index.html"  class="aws-nav-link coming-soon" data-svc="api-gateway">API Gateway</a>
+      <a href="s3/index.html"           class="aws-nav-link coming-soon" data-svc="s3">S3</a>
+      <a href="iam/index.html"          class="aws-nav-link coming-soon" data-svc="iam">IAM</a>
+      <a href="kms/index.html"          class="aws-nav-link coming-soon" data-svc="kms">KMS</a>
+      <a href="cloudfront/index.html"   class="aws-nav-link coming-soon" data-svc="cloudfront">CloudFront</a>
+      <a href="cloudtrail/index.html"   class="aws-nav-link coming-soon" data-svc="cloudtrail">CloudTrail</a>
+      <a href="basic-audit/index.html"  class="aws-nav-link coming-soon" data-svc="basic-audit">Audit</a>
+    </div>
+  </div>
+</nav>
+
+<header class="hero">
+  <span class="hero-tag">10-part series · Educational</span>
+  <h1>AWS in Practice</h1>
+  <p class="hero-sub">
+    A working tour of the AWS services that show up on your bill, in your interviews,
+    and on the architecture diagrams you'll have to defend in front of a security review.
+    Honest, vibrant, runnable — Console, CLI, and Terraform for everything.
+  </p>
+</header>
+
+<main>
+
+  <section class="section">
+    <h2>The 10 services</h2>
+    <p>
+      Pick a service. Each page follows the same pattern: <strong>what it is</strong>,
+      <strong>who actually uses it</strong>, <strong>how it stacks up against rivals</strong>
+      (with honest tradeoffs, not marketing), and a <strong>start-to-finish tutorial</strong>
+      with click-by-click Console, AWS CLI v2, and Terraform on the same lab.
+    </p>
+
+    <div class="svc-grid">
+
+      <a href="ec2/index.html" class="svc-card reveal">
+        <div class="svc-icon">🖥️</div>
+        <h3>EC2</h3>
+        <p>Elastic Compute Cloud — virtual servers you rent by the second. The original AWS service and still the workhorse.</p>
+        <div class="svc-tags">
+          <span class="svc-tag compute">Compute</span>
+          <span class="svc-tag">Foundational</span>
+        </div>
+      </a>
+
+      <a href="vpc/index.html" class="svc-card coming-soon reveal">
+        <div class="svc-icon">🌐</div>
+        <h3>VPC</h3>
+        <p>Virtual Private Cloud — your own private network in AWS. Subnets, route tables, security groups, NACLs.</p>
+        <div class="svc-tags">
+          <span class="svc-tag network">Network</span>
+          <span class="svc-tag security">Security</span>
+        </div>
+      </a>
+
+      <a href="dynamodb/index.html" class="svc-card coming-soon reveal">
+        <div class="svc-icon">⚡</div>
+        <h3>DynamoDB</h3>
+        <p>Serverless NoSQL key-value + document database. Single-digit-millisecond reads at any scale.</p>
+        <div class="svc-tags">
+          <span class="svc-tag storage">Database</span>
+          <span class="svc-tag">Serverless</span>
+        </div>
+      </a>
+
+      <a href="api-gateway/index.html" class="svc-card coming-soon reveal">
+        <div class="svc-icon">🚪</div>
+        <h3>API Gateway</h3>
+        <p>Front door for HTTP/REST/WebSocket APIs. Throttling, auth, request validation, transformation — all managed.</p>
+        <div class="svc-tags">
+          <span class="svc-tag network">API</span>
+          <span class="svc-tag">Serverless</span>
+        </div>
+      </a>
+
+      <a href="s3/index.html" class="svc-card coming-soon reveal">
+        <div class="svc-icon">🪣</div>
+        <h3>S3</h3>
+        <p>Simple Storage Service — durable object storage. The most-misconfigured service in cloud history.</p>
+        <div class="svc-tags">
+          <span class="svc-tag storage">Storage</span>
+          <span class="svc-tag security">Security</span>
+        </div>
+      </a>
+
+      <a href="iam/index.html" class="svc-card coming-soon reveal">
+        <div class="svc-icon">🔐</div>
+        <h3>IAM</h3>
+        <p>Identity & Access Management. The blast-radius control plane for your entire AWS account.</p>
+        <div class="svc-tags">
+          <span class="svc-tag security">Security</span>
+          <span class="svc-tag">Foundational</span>
+        </div>
+      </a>
+
+      <a href="kms/index.html" class="svc-card coming-soon reveal">
+        <div class="svc-icon">🔑</div>
+        <h3>KMS</h3>
+        <p>Key Management Service — managed envelope encryption. Where your data-at-rest keys live (and audit themselves).</p>
+        <div class="svc-tags">
+          <span class="svc-tag security">Security</span>
+          <span class="svc-tag">Crypto</span>
+        </div>
+      </a>
+
+      <a href="cloudfront/index.html" class="svc-card coming-soon reveal">
+        <div class="svc-icon">🌍</div>
+        <h3>CloudFront</h3>
+        <p>Global content delivery network. 600+ edge locations cache your static assets close to users.</p>
+        <div class="svc-tags">
+          <span class="svc-tag network">CDN</span>
+          <span class="svc-tag">Edge</span>
+        </div>
+      </a>
+
+      <a href="cloudtrail/index.html" class="svc-card coming-soon reveal">
+        <div class="svc-icon">👣</div>
+        <h3>CloudTrail</h3>
+        <p>Every AWS API call, recorded. The first log every security engineer reaches for during an investigation.</p>
+        <div class="svc-tags">
+          <span class="svc-tag security">Security</span>
+          <span class="svc-tag">Audit</span>
+        </div>
+      </a>
+
+      <a href="basic-audit/index.html" class="svc-card coming-soon reveal">
+        <div class="svc-icon">📋</div>
+        <h3>Basic AWS Audit</h3>
+        <p>Capstone: combine CloudTrail + IAM Access Analyzer + Trusted Advisor + S3 logging into a 30-minute account audit.</p>
+        <div class="svc-tags">
+          <span class="svc-tag security">Capstone</span>
+          <span class="svc-tag">Workflow</span>
+        </div>
+      </a>
+
+    </div>
+  </section>
+
+  <section class="section">
+    <h2>How to use this series</h2>
+    <p>
+      Every service page has two parts: an <strong>overview</strong> (what / who / why)
+      and a <strong>tutorial</strong> (how to actually run it). The tutorials are written
+      in three tracks side-by-side:
+    </p>
+    <div class="use-grid">
+      <div class="use-card">
+        <h4>🖱️ Console</h4>
+        <p>Click-by-click in the AWS Console. Best for first time and for visualizing what the abstractions look like.</p>
+      </div>
+      <div class="use-card">
+        <h4>⌨️ AWS CLI v2</h4>
+        <p>Same operation as a CLI command. Best for scripting, repetition, and learning the underlying API.</p>
+      </div>
+      <div class="use-card">
+        <h4>🏗️ Terraform</h4>
+        <p>Same operation as infrastructure-as-code. Best for production, code review, and reproducing across environments.</p>
+      </div>
+    </div>
+    <div class="callout security">
+      <span class="callout-title">Security Mindset</span>
+      <p>
+        Every tutorial uses <strong>named AWS profiles</strong>, <strong>IAM roles over long-lived keys</strong>,
+        and <strong>least-privilege policies</strong>. We'll call out blast radius and cleanup steps every time —
+        so you don't end up with a rogue NAT Gateway costing you $32/month for a lab you forgot.
+      </p>
+    </div>
+  </section>
+
+  <section class="section">
+    <h2>Prerequisites</h2>
+    <ul>
+      <li>An AWS account (free tier covers most of these labs).</li>
+      <li><a href="https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html" target="_blank" rel="noopener">AWS CLI v2</a> installed and configured with a named profile.</li>
+      <li><a href="https://developer.hashicorp.com/terraform/downloads" target="_blank" rel="noopener">Terraform</a> 1.7+ for the IaC track.</li>
+      <li>Comfort with a terminal (bash/zsh) — RHCSA-level Linux is more than enough.</li>
+    </ul>
+  </section>
+
+</main>
+
+<footer class="aws-footer">
+  <p>
+    Educational content · <a href="../index.html">← back to App Hub</a> ·
+    Sources cited per page · Updated 2026-04
+  </p>
+</footer>
+
+<script src="js/nav.js"></script>
+</body>
+</html>
