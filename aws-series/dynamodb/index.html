@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; script-src 'self'; img-src 'self' data:;">
+  <title>Amazon DynamoDB — AWS in Practice</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../css/aws-hub.css">
+</head>
+<body data-svc="dynamodb">
+
+<!-- Shared top nav -->
+<nav class="aws-nav">
+  <div class="aws-nav-inner">
+    <a href="../index.html" class="aws-nav-brand">
+      <span class="brand-dot"></span>AWS in Practice
+    </a>
+    <div class="aws-nav-links">
+      <a href="../ec2/index.html"          class="aws-nav-link" data-svc="ec2">EC2</a>
+      <a href="../vpc/index.html"          class="aws-nav-link" data-svc="vpc">VPC</a>
+      <a href="../dynamodb/index.html"     class="aws-nav-link" data-svc="dynamodb">DynamoDB</a>
+      <a href="../api-gateway/index.html"  class="aws-nav-link coming-soon" data-svc="api-gateway">API Gateway</a>
+      <a href="../s3/index.html"           class="aws-nav-link coming-soon" data-svc="s3">S3</a>
+      <a href="../iam/index.html"          class="aws-nav-link coming-soon" data-svc="iam">IAM</a>
+      <a href="../kms/index.html"          class="aws-nav-link coming-soon" data-svc="kms">KMS</a>
+      <a href="../cloudfront/index.html"   class="aws-nav-link coming-soon" data-svc="cloudfront">CloudFront</a>
+      <a href="../cloudtrail/index.html"   class="aws-nav-link coming-soon" data-svc="cloudtrail">CloudTrail</a>
+      <a href="../basic-audit/index.html"  class="aws-nav-link coming-soon" data-svc="basic-audit">Audit</a>
+    </div>
+  </div>
+</nav>
+
+<header class="hero">
+  <span class="hero-tag">Service 3 of 10 · Database · Serverless</span>
+  <h1>Amazon DynamoDB</h1>
+  <p class="hero-sub">
+    Serverless NoSQL key-value &amp; document database. Single-digit-millisecond reads
+    and writes at any scale — from your first table to Amazon.com on Prime Day.
+    No servers, no version upgrades, no capacity-planning meetings.
+  </p>
+
+  <!-- Inline SVG hero art: stylized DynamoDB table with PK column + lightning -->
+  <div class="hero-art">
+    <svg viewBox="0 0 320 200" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="ddb-grad" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%"  stop-color="#ff9900" />
+          <stop offset="100%" stop-color="#7b2fff" />
+        </linearGradient>
+      </defs>
+      <!-- Table card -->
+      <rect x="40" y="35" width="200" height="130" rx="8" fill="rgba(123,47,255,0.05)"
+            stroke="url(#ddb-grad)" stroke-width="1.8"/>
+      <!-- Header row -->
+      <rect x="40" y="35" width="200" height="22" rx="8" fill="rgba(255,153,0,0.12)"/>
+      <text x="56" y="50" font-family="monospace" font-size="9" fill="#ff9900">PK</text>
+      <text x="98" y="50" font-family="monospace" font-size="9" fill="#b18bff">SK</text>
+      <text x="148" y="50" font-family="monospace" font-size="9" fill="#dde0f0">attributes</text>
+      <line x1="86" y1="35" x2="86" y2="165" stroke="#ff9900" stroke-width="1" opacity="0.3"/>
+      <line x1="135" y1="35" x2="135" y2="165" stroke="#7b2fff" stroke-width="1" opacity="0.3"/>
+      <!-- Rows -->
+      <g font-family="monospace" font-size="8" fill="#9aa0bd">
+        <text x="48" y="73">USER#42</text>
+        <text x="92" y="73">ORDER#1</text>
+        <text x="140" y="73">{ items: [...] }</text>
+        <text x="48" y="89">USER#42</text>
+        <text x="92" y="89">ORDER#2</text>
+        <text x="140" y="89">{ total: 89.99 }</text>
+        <text x="48" y="105">USER#42</text>
+        <text x="92" y="105">PROFILE</text>
+        <text x="140" y="105">{ name, email }</text>
+        <text x="48" y="121">USER#88</text>
+        <text x="92" y="121">CART</text>
+        <text x="140" y="121">{ items: [...] }</text>
+        <text x="48" y="137">USER#88</text>
+        <text x="92" y="137">PROFILE</text>
+        <text x="140" y="137">{ tier: gold }</text>
+        <text x="48" y="153">USER#103</text>
+        <text x="92" y="153">SESSION</text>
+        <text x="140" y="153">ttl: 3600</text>
+      </g>
+      <!-- Lightning bolt -->
+      <g transform="translate(260,75)">
+        <path d="M10 0 L0 24 L8 24 L4 48 L20 18 L11 18 L16 0 Z"
+              fill="#ffd700" opacity="0.9"
+              stroke="#ff9900" stroke-width="0.8"/>
+      </g>
+      <text x="252" y="140" font-family="'Orbitron', monospace" font-size="9" fill="#ffd700">&lt;10ms</text>
+      <!-- Floating dots -->
+      <circle cx="30" cy="180" r="2" fill="#ff9900" opacity="0.7"/>
+      <circle cx="290" cy="185" r="2.5" fill="#7b2fff" opacity="0.7"/>
+    </svg>
+  </div>
+</header>
+
+<main>
+
+  <!-- ============================================================
+       SECTION 1 — What is DynamoDB?
+       ============================================================ -->
+  <section class="section reveal">
+    <h2><span class="section-num">01</span> What is DynamoDB?</h2>
+    <p class="lead">
+      DynamoDB is a fully managed, serverless NoSQL database. You define a table
+      with a partition key (required) and an optional sort key, and AWS handles
+      the rest — sharding, replication, failover, scaling, patching, backups.
+      Reads and writes return in milliseconds whether your table holds a thousand
+      items or a hundred billion.
+    </p>
+    <p>
+      It's not a relational database. There are no joins, no foreign keys, no SQL
+      (well — there's <a href="https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/ql-reference.html" target="_blank" rel="noopener">PartiQL</a>, but you'll rarely use it for hot paths).
+      Instead you design your table around the access patterns you'll need —
+      sometimes called <strong>single-table design</strong> — and DynamoDB rewards
+      you with predictable performance forever.
+    </p>
+
+    <h3>The objective: predictable performance at any scale</h3>
+    <p>
+      Traditional databases get slower as they grow. Indexes bloat, query planners
+      pick worse plans, the buffer cache stops fitting in RAM. The 100-row query
+      that ran in 2 ms at launch takes 200 ms with 100 million rows.
+    </p>
+    <p>
+      DynamoDB doesn't slow down with scale. Same 5 ms read at 10 GB or at 10 TB.
+      That's the entire point. You give up SQL flexibility; you get a database that
+      stops being the bottleneck.
+    </p>
+
+    <h3>Two billing modes you have to understand</h3>
+    <ul>
+      <li>
+        <strong>On-demand</strong> — pay per request ($1.25 per million writes, $0.25 per million reads as of 2024).
+        No capacity planning. Scales instantly. Best for new apps and unpredictable workloads.
+      </li>
+      <li>
+        <strong>Provisioned</strong> — pay for reserved RCU/WCU per second.
+        Cheaper at sustained predictable load. Eligible for free tier
+        (25 RCU + 25 WCU + 25 GB) and 1-year/3-year reserved capacity discounts.
+      </li>
+    </ul>
+
+    <div class="callout">
+      <span class="callout-title">In one sentence</span>
+      <p>
+        DynamoDB is a NoSQL database that scales horizontally forever — and bills
+        you per request — so the only thing you need to think about is how your
+        app reads and writes data.
+      </p>
+    </div>
+  </section>
+
+  <!-- ============================================================
+       SECTION 2 — Vibrant example
+       ============================================================ -->
+  <section class="section reveal">
+    <h2><span class="section-num">02</span> A vibrant example: Amazon.com on Prime Day</h2>
+    <p>
+      Amazon.com itself runs on DynamoDB. The shopping cart, the customer profile,
+      the order history, the recommendation tags — all of it. They built DynamoDB
+      because their relational databases couldn't keep up with holiday traffic, and
+      then they sold it to the rest of us.
+    </p>
+    <p>
+      During Amazon Prime Day 2023, DynamoDB peaked at <strong>126 million requests
+      per second</strong> across Amazon's retail systems. No infrastructure scaling
+      drama, no SREs paged at 3 a.m. for capacity. The graph of the load test went
+      vertical and the database absorbed it.
+      <a href="https://aws.amazon.com/blogs/aws/prime-day-2023-powered-by-aws-all-the-numbers/" target="_blank" rel="noopener">AWS Prime Day 2023 metrics →</a>
+    </p>
+    <p>
+      Now imagine your startup gets featured on Hacker News at 9 a.m. and traffic
+      spikes 200x. With Postgres on a single instance, you'd be debugging connection
+      pool exhaustion and full-table scans by 9:15. With DynamoDB on-demand, the bill
+      goes up and the latency doesn't move. <strong>That's why companies use it for
+      anything that has to "just work" under load.</strong>
+    </p>
+
+    <figure class="diagram">
+      <div class="placeholder">
+        🪣 Architecture diagram placeholder<br>
+        <small>
+          Single-table design example:<br>
+          <code>aws-series/dynamodb/images/single-table-design.png</code><br>
+          Source: <a href="https://aws.amazon.com/blogs/database/single-table-vs-multi-table-design-in-amazon-dynamodb/" target="_blank" rel="noopener">aws.amazon.com → Single-table vs multi-table design</a>
+        </small>
+      </div>
+      <figcaption>One DynamoDB table with composite keys can replace many SQL tables — fewer joins, fewer round trips.</figcaption>
+    </figure>
+  </section>
+
+  <!-- ============================================================
+       SECTION 3 — Who uses DynamoDB and why
+       ============================================================ -->
+  <section class="section reveal">
+    <h2><span class="section-num">03</span> Who uses DynamoDB — and why</h2>
+    <p>
+      Pretty much anyone running a high-scale or unpredictably-bursty workload on
+      AWS. Concrete examples (publicly documented):
+    </p>
+
+    <div class="use-grid">
+      <div class="use-card">
+        <h4>🛒 Amazon.com</h4>
+        <p>Shopping cart, order history, customer profile. DynamoDB was built for Amazon's own retail platform before it became a public service.</p>
+      </div>
+      <div class="use-card">
+        <h4>🎬 Disney+</h4>
+        <p>Launched on DynamoDB in 2019 — onboarded 10M subscribers in the first 24 hours and 50M in the first three months without a database scaling pause.</p>
+      </div>
+      <div class="use-card">
+        <h4>🚗 Lyft</h4>
+        <p>Ride state, driver location heartbeats, surge pricing data. Latency-sensitive — DynamoDB's predictable single-digit-ms reads are the design constraint.</p>
+      </div>
+      <div class="use-card">
+        <h4>🎮 Riot Games</h4>
+        <p>League of Legends player profiles, match state, leaderboards. Geographic distribution via DynamoDB Global Tables across regions.</p>
+      </div>
+      <div class="use-card">
+        <h4>📸 Snap (Snapchat)</h4>
+        <p>Maps, friend graph, story state. DynamoDB's TTL feature auto-expires ephemeral content — built for exactly this use case.</p>
+      </div>
+      <div class="use-card">
+        <h4>🌐 Serverless apps</h4>
+        <p>Almost every Lambda + API Gateway app uses DynamoDB. No connection pool, no idle DB cost, scales to zero. The default serverless data store.</p>
+      </div>
+    </div>
+
+    <h3>Common reasons to reach for DynamoDB</h3>
+    <ul>
+      <li><strong>Predictable latency at scale.</strong> Same 5 ms at 1 GB or 1 PB.</li>
+      <li><strong>Serverless apps.</strong> Lambda hates connection pools; DynamoDB doesn't have any.</li>
+      <li><strong>Bursty / unpredictable traffic.</strong> On-demand mode makes a 100x spike a billing question, not an outage.</li>
+      <li><strong>Auto-expiry data.</strong> Sessions, OTPs, ephemeral state — TTL deletes items for free.</li>
+      <li><strong>Multi-region apps.</strong> Global Tables replicate across regions in seconds with single-digit-ms local reads.</li>
+      <li><strong>Operational simplicity.</strong> No version upgrades. No "the DB ran out of disk." No nightly backup script. Genuinely zero ops.</li>
+    </ul>
+
+    <h3>When NOT to use DynamoDB</h3>
+    <ul>
+      <li>You need joins or complex aggregations across many entities → use RDS / Aurora / Postgres.</li>
+      <li>You need ad-hoc analytics queries → use Redshift, Athena, or ClickHouse.</li>
+      <li>Your access patterns are unknown or change weekly → DynamoDB rewards upfront design.</li>
+      <li>You need full-text search → use OpenSearch.</li>
+      <li>You don't trust the math on cost — at very high sustained volumes, self-hosted Cassandra or Postgres can be cheaper if you have the ops talent.</li>
+    </ul>
+  </section>
+
+  <!-- ============================================================
+       SECTION 4 — Competitors
+       ============================================================ -->
+  <section class="section reveal">
+    <h2><span class="section-num">04</span> Competitors &amp; positioning</h2>
+    <p>
+      Honest framing: there's no clean "managed NoSQL market share" number. AWS doesn't
+      publish DynamoDB revenue separately, and MongoDB (the most-deployed NoSQL) is
+      mostly self-hosted. What we can say:
+    </p>
+
+    <table class="compare-table">
+      <thead>
+        <tr>
+          <th>Service</th>
+          <th>Type</th>
+          <th>Where it wins</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="lead-row">
+          <td><strong>AWS DynamoDB</strong></td>
+          <td>Managed NoSQL (key-value + document)</td>
+          <td>Serverless, predictable latency at scale, free tier, deepest AWS integration. <em>Loses on:</em> data-modeling learning curve.</td>
+        </tr>
+        <tr>
+          <td>MongoDB Atlas</td>
+          <td>Managed document DB</td>
+          <td>Multi-cloud (AWS / Azure / GCP), richer query language, full-text search built in. <em>Loses on:</em> multi-region complexity, can hit scaling cliffs.</td>
+        </tr>
+        <tr>
+          <td>Google Firestore</td>
+          <td>Managed document DB</td>
+          <td>Real-time listeners, mobile/web SDK with offline sync. Best for client-direct apps.</td>
+        </tr>
+        <tr>
+          <td>Google Cloud Bigtable</td>
+          <td>Wide-column / sparse</td>
+          <td>Massive analytics ingestion (HBase-compatible). Different shape than DynamoDB; closer to Cassandra.</td>
+        </tr>
+        <tr>
+          <td>Azure Cosmos DB</td>
+          <td>Multi-model, multi-API</td>
+          <td>5 consistency levels, multi-API (SQL / Mongo / Cassandra / Gremlin / Table). <em>Loses on:</em> price at scale.</td>
+        </tr>
+        <tr>
+          <td>Apache Cassandra / ScyllaDB</td>
+          <td>Self-hosted wide-column</td>
+          <td>No vendor lock-in, can run anywhere, ScyllaDB is faster than vanilla Cassandra. <em>Loses on:</em> you operate it.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <p style="font-size: 0.85rem; color: var(--muted); margin-top: -0.5rem;">
+      Popularity scores:
+      <a href="https://db-engines.com/en/ranking" target="_blank" rel="noopener">DB-Engines Ranking</a>
+      tracks "popularity" via mentions, jobs, and traffic — not revenue. DynamoDB is consistently #1 in their <em>Cloud-only DBMS</em> category. MongoDB tops the broader Document Stores ranking.
+    </p>
+
+    <div class="callout">
+      <span class="callout-title">The honest "why DynamoDB"</span>
+      <p>
+        If you're already on AWS and you need a key-value or document store,
+        DynamoDB is almost always the lowest-friction choice — IAM auth, VPC endpoints,
+        free tier, no database to keep running. The cost is upfront data-modeling work.
+        If you're multi-cloud or your access patterns are still in flux,
+        MongoDB Atlas is the safer bet.
+      </p>
+    </div>
+  </section>
+
+  <!-- ============================================================
+       SECTION 5 — Who manages it
+       ============================================================ -->
+  <section class="section reveal">
+    <h2><span class="section-num">05</span> Who actually runs it for you?</h2>
+    <p>
+      DynamoDB is unusual: there's almost nothing to "operate." The interesting work
+      shifts <em>upstream</em> — to data modeling and capacity planning — and
+      <em>downstream</em> — to monitoring and cost.
+    </p>
+
+    <div class="use-grid">
+      <div class="use-card">
+        <h4>👤 Self-managed (solo / startup)</h4>
+        <p>You design the table, write the access patterns, watch the CloudWatch metrics. There is no server to patch, no failover to test. Easiest learning curve of any AWS database.</p>
+      </div>
+      <div class="use-card">
+        <h4>🛠️ App / platform team</h4>
+        <p>Platform team typically owns Terraform modules for tables (PITR enabled, KMS, alarms baked in). App teams declare a table via PR rather than ClickOps in the Console.</p>
+      </div>
+      <div class="use-card">
+        <h4>📊 Data modeling specialist</h4>
+        <p>At scale, the bottleneck becomes table design. Companies hire or contract DynamoDB data-modeling experts (Alex DeBrie, Rick Houlihan and AWS Solutions Architects do this kind of work). Watch their re:Invent talks.</p>
+      </div>
+      <div class="use-card">
+        <h4>🛡️ Security / compliance</h4>
+        <p>Encryption at rest with customer-managed KMS keys, fine-grained IAM (item / attribute level), CloudTrail data events on writes, PITR for forensic restore. Your security team owns these knobs.</p>
+      </div>
+      <div class="use-card">
+        <h4>💰 FinOps</h4>
+        <p>DynamoDB cost is straightforward but has gotchas: GSIs double the write cost, on-demand is 5–7x more per request than provisioned at sustained load. FinOps reviews sustained tables for mode switches.</p>
+      </div>
+      <div class="use-card">
+        <h4>🤖 No "AWS Pro Services" angle</h4>
+        <p>Unlike EC2, there's no real "let AWS run it" tier — DynamoDB is already that tier. AWS Solutions Architects help with data modeling and migrations, but day-to-day is fully self-service.</p>
+      </div>
+    </div>
+
+    <div class="callout warning">
+      <span class="callout-title">⚠️ Cost gotchas</span>
+      <p>
+        <strong>Scans are expensive.</strong> A full-table <code>Scan</code> reads every
+        item and bills you for every one. Scans on a 10 GB table cost real money;
+        on a 10 TB table they're a budget event.
+        <strong>GSIs (Global Secondary Indexes) double your write cost</strong> per
+        index — that's the price of the alternate query path. Plan accordingly.
+      </p>
+    </div>
+  </section>
+
+  <!-- ============================================================
+       SECTION 6 — Security mindset
+       ============================================================ -->
+  <section class="section reveal">
+    <h2><span class="section-num">06</span> Security mindset</h2>
+    <p>
+      DynamoDB has fewer foot-guns than EC2 or S3, but it has its own subtle ones.
+      The misconfigurations show up at the <strong>IAM</strong> layer and the
+      <strong>access pattern</strong> layer — not at the database itself.
+    </p>
+
+    <h3>Five things to internalize</h3>
+    <ul>
+      <li>
+        <strong>Use fine-grained IAM, not <code>dynamodb:*</code>.</strong>
+        DynamoDB supports
+        <a href="https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/specifying-conditions.html" target="_blank" rel="noopener">condition keys</a>
+        that scope an IAM policy down to <em>specific items</em> based on the
+        partition key — e.g. a Lambda can only read items where <code>userId = ${aws:userid}</code>.
+        This is a superpower most teams don't use.
+      </li>
+      <li>
+        <strong>Encryption at rest is on by default — but pick your key.</strong>
+        AWS-owned key is free but invisible in your account. AWS-managed key
+        appears in KMS. Customer-managed key (CMK) gives you key rotation, key
+        deletion, and CloudTrail visibility on every cryptographic operation.
+        Use CMK for anything regulated.
+      </li>
+      <li>
+        <strong>Enable Point-in-Time Recovery (PITR).</strong> 35-day continuous
+        backup, restore to any second. The "I just <code>DELETE</code>'d the prod
+        table" recovery story. ~20% extra storage cost and worth it.
+      </li>
+      <li>
+        <strong>Use VPC Endpoints (Gateway type) for private access.</strong>
+        Free, eliminates NAT cost for DynamoDB traffic from private subnets,
+        and lets you write a resource policy that only allows access from your
+        VPC.
+      </li>
+      <li>
+        <strong>CloudTrail data events log every <code>PutItem</code> / <code>GetItem</code>.</strong>
+        Off by default (volume reasons). Turn them on for sensitive tables —
+        forensic gold during incident response.
+      </li>
+    </ul>
+
+    <div class="callout security">
+      <span class="callout-title">For your career</span>
+      <p>
+        DynamoDB is on the AWS Solutions Architect and Developer exams.
+        Security Specialty asks about CMK encryption, IAM condition keys
+        (item-level access), and VPC endpoints for DynamoDB. The real-world skill
+        underneath those questions is "design a secure access pattern for a
+        multi-tenant table." Practice that mental model.
+      </p>
+    </div>
+  </section>
+
+  <!-- ============================================================
+       SECTION 7 — Sources
+       ============================================================ -->
+  <section class="section reveal">
+    <h2><span class="section-num">07</span> Sources &amp; further reading</h2>
+    <ul class="sources">
+      <li>
+        <strong>Amazon DynamoDB Developer Guide</strong> — canonical reference, updated continuously.
+        <a href="https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/" target="_blank" rel="noopener">docs.aws.amazon.com/amazondynamodb/</a>
+        <span class="source-meta">Primary source for everything in this page.</span>
+      </li>
+      <li>
+        <strong>Amazon DynamoDB product page</strong> — pricing, feature list.
+        <a href="https://aws.amazon.com/dynamodb/" target="_blank" rel="noopener">aws.amazon.com/dynamodb/</a>
+      </li>
+      <li>
+        <strong>"Dynamo: Amazon's Highly Available Key-value Store" — DeCandia et al., SOSP 2007</strong>
+        — the academic paper from Werner Vogels and team that started it all. This <em>is</em> peer-reviewed CS literature on DynamoDB's lineage. Cited 1,000+ times.
+        <a href="https://www.allthingsdistributed.com/files/amazon-dynamo-sosp2007.pdf" target="_blank" rel="noopener">allthingsdistributed.com/files/amazon-dynamo-sosp2007.pdf</a>
+        <span class="source-meta">Read this once; you'll understand the design choices forever.</span>
+      </li>
+      <li>
+        <strong><em>The DynamoDB Book</em> by Alex DeBrie</strong> — the definitive practitioner book on data modeling.
+        <a href="https://www.dynamodbbook.com/" target="_blank" rel="noopener">dynamodbbook.com</a>
+        <span class="source-meta">If you only buy one DynamoDB book, this is it.</span>
+      </li>
+      <li>
+        <strong>Rick Houlihan re:Invent talks (DAT401, DAT404, etc.)</strong> — the legendary AWS DynamoDB modeling talks. Required watching.
+        <a href="https://www.youtube.com/results?search_query=rick+houlihan+dynamodb" target="_blank" rel="noopener">youtube.com — Rick Houlihan DynamoDB</a>
+      </li>
+      <li>
+        <strong>AWS Database Blog</strong> — engineering deep-dives on DynamoDB internals, single-table design, migrations.
+        <a href="https://aws.amazon.com/blogs/database/" target="_blank" rel="noopener">aws.amazon.com/blogs/database/</a>
+      </li>
+      <li>
+        <strong>DB-Engines Ranking</strong> — popularity scores by category.
+        <a href="https://db-engines.com/en/ranking" target="_blank" rel="noopener">db-engines.com/en/ranking</a>
+        <span class="source-meta">Popularity, not revenue. Useful but not market share.</span>
+      </li>
+      <li>
+        <strong>AWS Prime Day 2023 metrics post</strong> — the 126M req/sec figure quoted in this page.
+        <a href="https://aws.amazon.com/blogs/aws/prime-day-2023-powered-by-aws-all-the-numbers/" target="_blank" rel="noopener">aws.amazon.com/blogs/aws/prime-day-2023-powered-by-aws-all-the-numbers/</a>
+      </li>
+      <li>
+        <strong>DynamoDB pricing</strong> — verify before quoting.
+        <a href="https://aws.amazon.com/dynamodb/pricing/" target="_blank" rel="noopener">aws.amazon.com/dynamodb/pricing/</a>
+      </li>
+    </ul>
+  </section>
+
+  <!-- ============================================================
+       Tutorial CTA
+       ============================================================ -->
+  <section class="section reveal" style="text-align: center;">
+    <h2 style="justify-content: center;">Ready to build one?</h2>
+    <p style="max-width: 580px; margin: 0 auto;">
+      The tutorial walks you through creating a table, writing items, querying
+      with a partition key, adding a Global Secondary Index, and tearing it down —
+      Console, AWS CLI, and Terraform side by side. Free-tier eligible.
+    </p>
+    <p>
+      <a href="tutorial.html" class="cta-btn">Open Hands-on Tutorial →</a>
+      <a href="../index.html" class="cta-btn secondary">← Back to series</a>
+    </p>
+  </section>
+
+</main>
+
+<footer class="aws-footer">
+  <p>
+    Service 3 of 10 · <a href="../index.html">AWS in Practice index</a> ·
+    <a href="../../index.html">App Hub</a> · Last reviewed 2026-04
+  </p>
+</footer>
+
+<script src="../js/nav.js"></script>
+</body>
+</html>
