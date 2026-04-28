@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; script-src 'self'; img-src 'self' data:;">
+  <title>Amazon VPC — AWS in Practice</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../css/aws-hub.css">
+</head>
+<body data-svc="vpc">
+
+<!-- Shared top nav -->
+<nav class="aws-nav">
+  <div class="aws-nav-inner">
+    <a href="../index.html" class="aws-nav-brand">
+      <span class="brand-dot"></span>AWS in Practice
+    </a>
+    <div class="aws-nav-links">
+      <a href="../ec2/index.html"          class="aws-nav-link" data-svc="ec2">EC2</a>
+      <a href="../vpc/index.html"          class="aws-nav-link" data-svc="vpc">VPC</a>
+      <a href="../dynamodb/index.html"     class="aws-nav-link coming-soon" data-svc="dynamodb">DynamoDB</a>
+      <a href="../api-gateway/index.html"  class="aws-nav-link coming-soon" data-svc="api-gateway">API Gateway</a>
+      <a href="../s3/index.html"           class="aws-nav-link coming-soon" data-svc="s3">S3</a>
+      <a href="../iam/index.html"          class="aws-nav-link coming-soon" data-svc="iam">IAM</a>
+      <a href="../kms/index.html"          class="aws-nav-link coming-soon" data-svc="kms">KMS</a>
+      <a href="../cloudfront/index.html"   class="aws-nav-link coming-soon" data-svc="cloudfront">CloudFront</a>
+      <a href="../cloudtrail/index.html"   class="aws-nav-link coming-soon" data-svc="cloudtrail">CloudTrail</a>
+      <a href="../basic-audit/index.html"  class="aws-nav-link coming-soon" data-svc="basic-audit">Audit</a>
+    </div>
+  </div>
+</nav>
+
+<header class="hero">
+  <span class="hero-tag">Service 2 of 10 · Network · Security</span>
+  <h1>Amazon VPC</h1>
+  <p class="hero-sub">
+    Virtual Private Cloud — your own software-defined network inside AWS.
+    Every EC2 instance, every Lambda function, every database lives in a VPC.
+    It's the most important AWS service nobody talks about.
+  </p>
+
+  <!-- Inline SVG hero art: VPC topology with public + private subnets -->
+  <div class="hero-art">
+    <svg viewBox="0 0 320 200" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="vpc-grad" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%"  stop-color="#ff9900" />
+          <stop offset="100%" stop-color="#4af7ff" />
+        </linearGradient>
+      </defs>
+      <!-- VPC outer boundary (dashed) -->
+      <rect x="20" y="30" width="280" height="150" rx="8" fill="none"
+            stroke="#ff9900" stroke-width="2" stroke-dasharray="6 4" opacity="0.7"/>
+      <text x="30" y="48" font-family="monospace" font-size="9" fill="#ff9900">VPC 10.0.0.0/16</text>
+
+      <!-- Public subnet -->
+      <rect x="40" y="60" width="100" height="100" rx="6" fill="rgba(74,247,255,0.06)"
+            stroke="#4af7ff" stroke-width="1.5" opacity="0.85"/>
+      <text x="48" y="76" font-family="monospace" font-size="8" fill="#4af7ff">Public 10.0.1.0/24</text>
+      <circle cx="65" cy="105" r="10" fill="none" stroke="#4af7ff" stroke-width="1.5"/>
+      <text x="60" y="109" font-family="monospace" font-size="9" fill="#4af7ff">LB</text>
+      <circle cx="115" cy="105" r="10" fill="none" stroke="#4af7ff" stroke-width="1.5"/>
+      <text x="109" y="109" font-family="monospace" font-size="9" fill="#4af7ff">NAT</text>
+
+      <!-- Private subnet -->
+      <rect x="180" y="60" width="100" height="100" rx="6" fill="rgba(123,47,255,0.06)"
+            stroke="#7b2fff" stroke-width="1.5" opacity="0.85"/>
+      <text x="188" y="76" font-family="monospace" font-size="8" fill="#b18bff">Private 10.0.2.0/24</text>
+      <rect x="195" y="92" width="22" height="14" rx="2" fill="none" stroke="#b18bff" stroke-width="1.5"/>
+      <rect x="225" y="92" width="22" height="14" rx="2" fill="none" stroke="#b18bff" stroke-width="1.5"/>
+      <rect x="195" y="115" width="22" height="14" rx="2" fill="none" stroke="#b18bff" stroke-width="1.5"/>
+      <rect x="225" y="115" width="22" height="14" rx="2" fill="none" stroke="#b18bff" stroke-width="1.5"/>
+      <text x="252" y="105" font-family="monospace" font-size="8" fill="#b18bff">EC2</text>
+      <text x="252" y="125" font-family="monospace" font-size="8" fill="#b18bff">RDS</text>
+
+      <!-- IGW (above VPC) -->
+      <rect x="140" y="10" width="40" height="14" rx="2" fill="none" stroke="#ffd700" stroke-width="1.5"/>
+      <text x="148" y="20" font-family="monospace" font-size="8" fill="#ffd700">IGW</text>
+      <line x1="160" y1="24" x2="160" y2="60" stroke="#ffd700" stroke-width="1" stroke-dasharray="3 2"/>
+
+      <!-- Connection between subnets via NAT -->
+      <line x1="125" y1="105" x2="180" y2="105" stroke="url(#vpc-grad)" stroke-width="1.5" opacity="0.7"/>
+
+      <!-- Floating dots -->
+      <circle cx="40" cy="190" r="2" fill="#ff9900" opacity="0.7"/>
+      <circle cx="280" cy="190" r="2" fill="#4af7ff" opacity="0.7"/>
+    </svg>
+  </div>
+</header>
+
+<main>
+
+  <!-- ============================================================
+       SECTION 1 — What is VPC?
+       ============================================================ -->
+  <section class="section reveal">
+    <h2><span class="section-num">01</span> What is VPC?</h2>
+    <p class="lead">
+      A VPC is a logically isolated, software-defined network inside an AWS region.
+      You define the IP address range (CIDR block), carve it into subnets across
+      Availability Zones, control routing, and decide what reaches the internet —
+      and what doesn't.
+    </p>
+    <p>
+      Before VPC (it became the default in 2013), AWS resources lived on a flat shared
+      network ("EC2-Classic"). Today every region in your account starts with a
+      <strong>default VPC</strong>, and you can create more for isolation, blast-radius
+      control, or compliance separation. The default VPC is fine for labs; production
+      almost never uses it.
+    </p>
+
+    <h3>The components you actually need to know</h3>
+    <ul>
+      <li><strong>CIDR block</strong> — the IP range, e.g. <code>10.0.0.0/16</code> (65,536 addresses). Pick this carefully — it's hard to change later, and it must not overlap with networks you'll peer to.</li>
+      <li><strong>Subnets</strong> — slices of the CIDR, each pinned to one Availability Zone. <em>Public</em> subnets have a route to the internet via an Internet Gateway. <em>Private</em> subnets don't.</li>
+      <li><strong>Route tables</strong> — per-subnet rules saying "traffic for X goes to Y." This is where most "I can't reach the internet" debugging ends up.</li>
+      <li><strong>Internet Gateway (IGW)</strong> — one per VPC, attaches the VPC to the public internet. Public subnets route through it.</li>
+      <li><strong>NAT Gateway</strong> — lets private subnets reach the internet for updates/APIs without being reachable from the internet. <strong>~$32/month idle plus data transfer.</strong> Famous bill-shocker.</li>
+      <li><strong>Security Groups</strong> — stateful firewalls attached to ENIs (network interfaces). Allow-only; default deny.</li>
+      <li><strong>Network ACLs (NACLs)</strong> — stateless firewalls at the subnet boundary. Useful for explicit denies.</li>
+      <li><strong>VPC Endpoints</strong> — private connections to AWS services (S3, DynamoDB, SSM, etc.) without going to the internet. Critical for security and for cutting NAT costs.</li>
+      <li><strong>VPC Flow Logs</strong> — packet metadata for every flow. The audit log of your network.</li>
+    </ul>
+
+    <div class="callout">
+      <span class="callout-title">In one sentence</span>
+      <p>
+        VPC is your data center, redrawn as code. You get the network primitives
+        (subnets, routes, firewalls, gateways) without the cabling — and you
+        version-control the whole topology in Terraform.
+      </p>
+    </div>
+  </section>
+
+  <!-- ============================================================
+       SECTION 2 — Vibrant example
+       ============================================================ -->
+  <section class="section reveal">
+    <h2><span class="section-num">02</span> A vibrant example: a fintech that handles credit cards</h2>
+    <p>
+      Imagine a small fintech startup. They take credit card payments, which means
+      they're in scope for <strong>PCI DSS</strong> — the cardholder-data compliance
+      standard. PCI auditors are strict about <em>segmentation</em>: cardholder data
+      systems must be isolated from everything else.
+    </p>
+    <p>
+      Without VPC, that's a hardware problem — separate VLANs, separate firewalls,
+      cabling diagrams. With VPC, it's a Terraform pull request:
+    </p>
+    <ul>
+      <li>Three subnets across two AZs: <code>web-public</code>, <code>app-private</code>, <code>db-isolated</code>.</li>
+      <li><code>web-public</code> has a route to the IGW. The Application Load Balancer lives there. Inbound: 443 from the internet only.</li>
+      <li><code>app-private</code> has a route to the NAT Gateway (so it can pull updates) but no inbound from the internet. EC2 / Fargate tasks live here. Inbound: 8080 from the LB security group only.</li>
+      <li><code>db-isolated</code> has <em>no</em> internet route at all. PostgreSQL on RDS. Inbound: 5432 from the app security group only. Outbound: nothing.</li>
+      <li>VPC Endpoints for S3, KMS, and Secrets Manager so the app can reach those services without ever touching the public internet.</li>
+      <li>VPC Flow Logs to CloudWatch — every packet metadata is logged, queryable for incident response.</li>
+    </ul>
+    <p>
+      Auditor walks in. "Show me your segmentation." Engineer opens
+      <code>vpc.tf</code>. Audit done in twenty minutes instead of twenty days.
+      <strong>That's the VPC value proposition.</strong>
+    </p>
+
+    <figure class="diagram">
+      <div class="placeholder">
+        📐 Architecture diagram placeholder<br>
+        <small>Three-tier VPC: public LB → private app → isolated DB.<br>
+        Save reference: <code>aws-series/vpc/images/three-tier-vpc.png</code><br>
+        Source: <a href="https://docs.aws.amazon.com/vpc/latest/userguide/vpc-example-private-subnets-nat.html" target="_blank" rel="noopener">docs.aws.amazon.com → VPC with public and private subnets</a>
+        </small>
+      </div>
+      <figcaption>Public / private / isolated subnets enforce blast-radius boundaries that auditors can read in code.</figcaption>
+    </figure>
+  </section>
+
+  <!-- ============================================================
+       SECTION 3 — Who uses VPC and why
+       ============================================================ -->
+  <section class="section reveal">
+    <h2><span class="section-num">03</span> Who uses VPC — and why</h2>
+    <p>
+      <strong>Everyone with AWS resources, whether they know it or not.</strong>
+      Every EC2, RDS, ElastiCache, Lambda-with-VPC, EKS pod, ECS task — they all
+      live inside a VPC. The question isn't "do I use VPC" but "did I take the
+      defaults or design my own."
+    </p>
+
+    <div class="use-grid">
+      <div class="use-card">
+        <h4>🏦 Regulated industries</h4>
+        <p>Banks, healthcare, fintech use custom VPCs to enforce segmentation for PCI / HIPAA / SOC 2. Subnets become the auditor-readable boundary.</p>
+      </div>
+      <div class="use-card">
+        <h4>🏢 Enterprises with hybrid cloud</h4>
+        <p>Connect VPCs to on-prem data centers via Site-to-Site VPN or Direct Connect. The VPC is the AWS-side endpoint of the corporate network.</p>
+      </div>
+      <div class="use-card">
+        <h4>🌐 Multi-account organizations</h4>
+        <p>AWS Organizations + Transit Gateway connects dozens of VPCs across accounts. The VPC is the unit of network ownership per team / per environment.</p>
+      </div>
+      <div class="use-card">
+        <h4>🛡️ Security-first startups</h4>
+        <p>Default VPCs are too permissive. Even small teams build custom VPCs with private-by-default subnets and explicit egress rules.</p>
+      </div>
+      <div class="use-card">
+        <h4>🎮 Multi-region gaming / streaming</h4>
+        <p>One VPC per region (VPCs are regional), peered or connected via Transit Gateway. Players hit the closest region's VPC.</p>
+      </div>
+      <div class="use-card">
+        <h4>🎓 Learners (you, today)</h4>
+        <p>The default VPC is free-tier friendly and works fine for labs. Move to a custom VPC the moment your data is real.</p>
+      </div>
+    </div>
+
+    <h3>Why design a custom VPC instead of using the default?</h3>
+    <ul>
+      <li><strong>Default VPC has 5 public subnets and an open route to the internet.</strong> No private/isolated tier exists out of the box. That's wrong for production.</li>
+      <li><strong>Default Security Group allows all egress.</strong> A compromised host can phone home anywhere.</li>
+      <li><strong>You can't change the default VPC's CIDR.</strong> If you ever want to peer with another network, that 172.31.0.0/16 might overlap.</li>
+      <li><strong>Auditability.</strong> A custom VPC's Terraform file <em>is</em> your network diagram. The default VPC is undocumented.</li>
+    </ul>
+  </section>
+
+  <!-- ============================================================
+       SECTION 4 — Competitors and market share
+       ============================================================ -->
+  <section class="section reveal">
+    <h2><span class="section-num">04</span> Competitors &amp; market share</h2>
+    <p>
+      Every major cloud has a VPC equivalent. The concept is the same; the model
+      differs in interesting ways — and for once, AWS doesn't clearly win.
+    </p>
+
+    <table class="compare-table">
+      <thead>
+        <tr>
+          <th>Provider</th>
+          <th>Service</th>
+          <th>Scope</th>
+          <th>Where it wins / loses</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="lead-row">
+          <td><strong>AWS</strong></td>
+          <td>VPC</td>
+          <td>Regional</td>
+          <td>Most mature, most adjacent services. <em>Loss:</em> regional-only — multi-region needs Transit Gateway / peering.</td>
+        </tr>
+        <tr>
+          <td>Microsoft Azure</td>
+          <td>Virtual Network (VNet)</td>
+          <td>Regional</td>
+          <td>Service tags simplify NSG rules ("AllowFromAzureSql"). <em>Loss:</em> NSG model is less granular than AWS Security Groups.</td>
+        </tr>
+        <tr>
+          <td>Google Cloud</td>
+          <td>VPC</td>
+          <td><strong>Global</strong></td>
+          <td><strong>Best-in-class:</strong> a single GCP VPC spans all regions — no peering for cross-region traffic. Routing is simpler. Networking is widely considered Google's strongest area.</td>
+        </tr>
+        <tr>
+          <td>Alibaba Cloud</td>
+          <td>VPC</td>
+          <td>Regional</td>
+          <td>Concept matches AWS. Dominant in China.</td>
+        </tr>
+        <tr>
+          <td>Oracle Cloud</td>
+          <td>VCN (Virtual Cloud Network)</td>
+          <td>Regional</td>
+          <td>Free internal egress within a region. <em>Loss:</em> smaller ecosystem.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="callout">
+      <span class="callout-title">The honest take</span>
+      <p>
+        <strong>If you start over today, GCP's global VPC is genuinely the cleaner
+        model.</strong> AWS's regional VPC + Transit Gateway is more complex and
+        more expensive at multi-region scale. AWS still wins overall because of
+        ecosystem maturity and the surrounding services (security groups, VPC
+        endpoints, the IAM model) — but the network primitive itself isn't where
+        AWS leads. Worth knowing for interviews and for designing your own
+        multi-cloud architecture.
+      </p>
+    </div>
+  </section>
+
+  <!-- ============================================================
+       SECTION 5 — Who runs it
+       ============================================================ -->
+  <section class="section reveal">
+    <h2><span class="section-num">05</span> Who actually runs it for you?</h2>
+    <p>
+      VPC is unusual: it's <strong>configuration, not workload</strong>. There's no
+      "VPC instance" to patch, no service to keep running. You design it, deploy it,
+      and largely leave it alone — but the design decisions are permanent.
+    </p>
+
+    <div class="use-grid">
+      <div class="use-card">
+        <h4>👤 Self-managed (solo / startup)</h4>
+        <p>You design your CIDR plan, write the Terraform, and own every Security Group. CIDRs picked at the start are nearly unchangeable — get it right once.</p>
+      </div>
+      <div class="use-card">
+        <h4>🛠️ Platform / Network team</h4>
+        <p>At any company past 50 engineers, a platform team owns the VPC topology, peering, and Transit Gateway. Application teams request subnets / SGs via PR.</p>
+      </div>
+      <div class="use-card">
+        <h4>🏢 AWS Landing Zone / Control Tower</h4>
+        <p>Large enterprises use AWS Control Tower to provision pre-baked multi-account VPC architectures with guardrails. Removes a class of "first-month" mistakes.</p>
+      </div>
+      <div class="use-card">
+        <h4>📡 Managed networking products</h4>
+        <p>Aviatrix, Cisco Cloud ACI, Palo Alto Cloud NGFW sit on top of VPCs to give a multi-cloud / on-prem-style network experience.</p>
+      </div>
+      <div class="use-card">
+        <h4>🤝 Third-party MSP</h4>
+        <p>If you've outsourced AWS ops to Mission / Cloudreach / Rackspace, they design the VPC. You should still review the Terraform — VPC mistakes are permanent.</p>
+      </div>
+      <div class="use-card">
+        <h4>🤖 Higher-level abstractions</h4>
+        <p>VPC Lattice (newer AWS service) abstracts service-to-service connectivity above the VPC layer. App Runner / Lambda hide VPCs entirely. The trend is toward less hand-built networking.</p>
+      </div>
+    </div>
+
+    <div class="callout warning">
+      <span class="callout-title">⚠️ Permanent decisions</span>
+      <p>
+        Two things are extremely hard to change later: <strong>your CIDR block</strong>
+        and <strong>your account-VPC topology</strong>. Pick the CIDR with future
+        peering in mind (avoid <code>10.0.0.0/16</code> — it's everyone's default and
+        will collide). Decide early whether you want one VPC or many. Migrating
+        workloads between VPCs after the fact is painful.
+      </p>
+    </div>
+  </section>
+
+  <!-- ============================================================
+       SECTION 6 — Security mindset
+       ============================================================ -->
+  <section class="section reveal">
+    <h2><span class="section-num">06</span> Security mindset</h2>
+    <p>
+      VPC is where most cloud security <em>actually</em> happens. Misconfigured IAM
+      gets the headlines, but misconfigured networking is what turns a small
+      compromise into a big one.
+    </p>
+
+    <h3>Security Groups vs Network ACLs — the one chart everyone gets wrong</h3>
+    <table class="compare-table">
+      <thead>
+        <tr>
+          <th>&nbsp;</th>
+          <th>Security Group</th>
+          <th>Network ACL</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Scope</strong></td>
+          <td>Attached to ENIs (instance-level)</td>
+          <td>Attached to subnets</td>
+        </tr>
+        <tr>
+          <td><strong>State</strong></td>
+          <td>Stateful — return traffic auto-allowed</td>
+          <td>Stateless — must allow both directions</td>
+        </tr>
+        <tr>
+          <td><strong>Rules</strong></td>
+          <td>Allow only (no explicit deny)</td>
+          <td>Allow <em>and</em> deny, evaluated in order</td>
+        </tr>
+        <tr>
+          <td><strong>Default</strong></td>
+          <td>Default SG: deny inbound, allow all outbound</td>
+          <td>Default NACL: allow all both ways</td>
+        </tr>
+        <tr>
+          <td><strong>Use it for</strong></td>
+          <td>Almost everything. Reach for SGs first.</td>
+          <td>Explicit blocks (e.g., block a malicious CIDR temporarily)</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3>Five things to internalize</h3>
+    <ul>
+      <li><strong>Default SG allows all outbound.</strong> A compromised host inherits this. Lock egress down — only allow the destinations the workload actually needs.</li>
+      <li><strong>Use VPC Endpoints for AWS services.</strong> S3, DynamoDB, SSM, Secrets Manager — going through endpoints keeps traffic on the AWS network, audits via Endpoint Policies, and saves NAT Gateway $.</li>
+      <li><strong>Enable VPC Flow Logs.</strong> They're cheap, queryable in CloudWatch Logs Insights or Athena, and they're how you'll find lateral movement during an incident response.</li>
+      <li><strong>Private subnets + SSM Session Manager &gt; bastion hosts.</strong> Don't put EC2 in a public subnet "for SSH access." See the EC2 page for the modern pattern.</li>
+      <li><strong>Watch the NAT bill.</strong> A NAT Gateway is ~$32/month idle plus $0.045/GB processed. A misbehaving service can rack up thousands. NAT instances or VPC endpoints are cheaper alternatives in some cases.</li>
+    </ul>
+
+    <div class="callout security">
+      <span class="callout-title">For your career</span>
+      <p>
+        VPC questions are heavy on the AWS Solutions Architect and especially the
+        Security Specialty exam. Get fluent with: subnet routing, NACLs vs SGs,
+        VPC Endpoints (gateway vs interface), Flow Logs, Transit Gateway use cases,
+        and the cost model of NAT. These come up in <em>every</em> AWS networking
+        interview question.
+      </p>
+    </div>
+  </section>
+
+  <!-- ============================================================
+       SECTION 7 — Sources
+       ============================================================ -->
+  <section class="section reveal">
+    <h2><span class="section-num">07</span> Sources &amp; further reading</h2>
+    <ul class="sources">
+      <li>
+        <strong>AWS VPC official documentation</strong> — canonical reference for every component.
+        <a href="https://docs.aws.amazon.com/vpc/" target="_blank" rel="noopener">docs.aws.amazon.com/vpc/</a>
+        <span class="source-meta">Primary source for everything in this page.</span>
+      </li>
+      <li>
+        <strong>Amazon VPC product page</strong> — pricing, feature list.
+        <a href="https://aws.amazon.com/vpc/" target="_blank" rel="noopener">aws.amazon.com/vpc/</a>
+      </li>
+      <li>
+        <strong>AWS reference architectures: VPC with public and private subnets (NAT)</strong> — the diagram every textbook borrows.
+        <a href="https://docs.aws.amazon.com/vpc/latest/userguide/vpc-example-private-subnets-nat.html" target="_blank" rel="noopener">docs.aws.amazon.com → VPC scenarios</a>
+      </li>
+      <li>
+        <strong>RFC 1918 — Address Allocation for Private Internets</strong> — the standard that defines the private CIDR ranges (<code>10/8</code>, <code>172.16/12</code>, <code>192.168/16</code>) you use in VPCs.
+        <a href="https://datatracker.ietf.org/doc/html/rfc1918" target="_blank" rel="noopener">datatracker.ietf.org/doc/html/rfc1918</a>
+      </li>
+      <li>
+        <strong>RFC 4271 — Border Gateway Protocol 4 (BGP-4)</strong> — relevant for understanding Direct Connect / VPN routing.
+        <a href="https://datatracker.ietf.org/doc/html/rfc4271" target="_blank" rel="noopener">datatracker.ietf.org/doc/html/rfc4271</a>
+      </li>
+      <li>
+        <strong>AWS Networking Blog</strong> — engineering deep-dives on VPC, Transit Gateway, PrivateLink.
+        <a href="https://aws.amazon.com/blogs/networking-and-content-delivery/" target="_blank" rel="noopener">aws.amazon.com/blogs/networking-and-content-delivery/</a>
+      </li>
+      <li>
+        <strong>Synergy Research, Q4 2024 Cloud Market Report</strong> — for cross-cloud market share when comparing networking primitives.
+        <a href="https://www.srgresearch.com/" target="_blank" rel="noopener">srgresearch.com</a>
+        <span class="source-meta">Quarterly — re-verify before quoting.</span>
+      </li>
+      <li>
+        <strong><em>AWS Certified Solutions Architect Study Guide</em></strong> (Sybex) and <strong><em>AWS Networking Cookbook</em></strong> — solid book-length treatments.
+        <span class="source-meta">SAA-C03 has multiple VPC questions per exam attempt.</span>
+      </li>
+      <li>
+        <strong>NIST SP 800-125B</strong> — Secure Virtual Network Configuration guidance for hypervisor-based cloud environments.
+        <a href="https://csrc.nist.gov/pubs/sp/800/125/b/final" target="_blank" rel="noopener">csrc.nist.gov</a>
+        <span class="source-meta">Closest thing to academic / standards material on cloud network isolation.</span>
+      </li>
+    </ul>
+  </section>
+
+  <!-- ============================================================
+       Tutorial CTA
+       ============================================================ -->
+  <section class="section reveal" style="text-align: center;">
+    <h2 style="justify-content: center;">Ready to build one?</h2>
+    <p style="max-width: 580px; margin: 0 auto;">
+      The tutorial walks through building a custom VPC with public + private subnets,
+      route tables, an Internet Gateway, a NAT Gateway, and Flow Logs — Console, AWS CLI,
+      and Terraform side by side. With cleanup steps, because NAT Gateways are not free.
+    </p>
+    <p>
+      <a href="tutorial.html" class="cta-btn">Open Hands-on Tutorial →</a>
+      <a href="../index.html" class="cta-btn secondary">← Back to series</a>
+    </p>
+  </section>
+
+</main>
+
+<footer class="aws-footer">
+  <p>
+    Service 2 of 10 · <a href="../index.html">AWS in Practice index</a> ·
+    <a href="../../index.html">App Hub</a> · Last reviewed 2026-04
+  </p>
+</footer>
+
+<script src="../js/nav.js"></script>
+</body>
+</html>
