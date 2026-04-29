@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; script-src 'self'; img-src 'self' data:;">
+  <title>Amazon API Gateway — AWS in Practice</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../css/aws-hub.css">
+</head>
+<body data-svc="api-gateway">
+
+<!-- Shared top nav -->
+<nav class="aws-nav">
+  <div class="aws-nav-inner">
+    <a href="../index.html" class="aws-nav-brand">
+      <span class="brand-dot"></span>AWS in Practice
+    </a>
+    <div class="aws-nav-links">
+      <a href="../ec2/index.html"          class="aws-nav-link" data-svc="ec2">EC2</a>
+      <a href="../vpc/index.html"          class="aws-nav-link" data-svc="vpc">VPC</a>
+      <a href="../dynamodb/index.html"     class="aws-nav-link" data-svc="dynamodb">DynamoDB</a>
+      <a href="../api-gateway/index.html"  class="aws-nav-link" data-svc="api-gateway">API Gateway</a>
+      <a href="../s3/index.html"           class="aws-nav-link coming-soon" data-svc="s3">S3</a>
+      <a href="../iam/index.html"          class="aws-nav-link coming-soon" data-svc="iam">IAM</a>
+      <a href="../kms/index.html"          class="aws-nav-link coming-soon" data-svc="kms">KMS</a>
+      <a href="../cloudfront/index.html"   class="aws-nav-link coming-soon" data-svc="cloudfront">CloudFront</a>
+      <a href="../cloudtrail/index.html"   class="aws-nav-link coming-soon" data-svc="cloudtrail">CloudTrail</a>
+      <a href="../basic-audit/index.html"  class="aws-nav-link coming-soon" data-svc="basic-audit">Audit</a>
+    </div>
+  </div>
+</nav>
+
+<header class="hero">
+  <span class="hero-tag">Service 4 of 10 · API · Serverless</span>
+  <h1>Amazon API Gateway</h1>
+  <p class="hero-sub">
+    The bouncer at the door of your API. It checks IDs (auth), enforces rate limits,
+    transforms requests, and only routes the good ones to your backend.
+    Lambda's best friend and the most-used front door in serverless.
+  </p>
+
+  <!-- Inline SVG hero art: gate / funnel with selective routing -->
+  <div class="hero-art">
+    <svg viewBox="0 0 320 200" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="apigw-grad" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%"  stop-color="#4af7ff" />
+          <stop offset="50%" stop-color="#ff9900" />
+          <stop offset="100%" stop-color="#7b2fff" />
+        </linearGradient>
+      </defs>
+
+      <!-- Inbound clients (left) -->
+      <g font-family="monospace" font-size="9" fill="#4af7ff">
+        <circle cx="20" cy="40"  r="6" fill="none" stroke="#4af7ff" stroke-width="1.4"/>
+        <text x="32" y="44">📱 mobile</text>
+        <circle cx="20" cy="80"  r="6" fill="none" stroke="#4af7ff" stroke-width="1.4"/>
+        <text x="32" y="84">🌐 web</text>
+        <circle cx="20" cy="120" r="6" fill="none" stroke="#4af7ff" stroke-width="1.4"/>
+        <text x="32" y="124">⚙️ partner</text>
+        <circle cx="20" cy="160" r="6" fill="none" stroke="#ff4757" stroke-width="1.4" opacity="0.7"/>
+        <text x="32" y="164" fill="#ff4757">🤖 abuser</text>
+      </g>
+
+      <!-- Arrows toward gateway -->
+      <line x1="100" y1="40"  x2="138" y2="80" stroke="#4af7ff" stroke-width="1" opacity="0.5"/>
+      <line x1="100" y1="80"  x2="138" y2="90" stroke="#4af7ff" stroke-width="1" opacity="0.5"/>
+      <line x1="100" y1="120" x2="138" y2="100" stroke="#4af7ff" stroke-width="1" opacity="0.5"/>
+      <line x1="100" y1="160" x2="138" y2="115" stroke="#ff4757" stroke-width="1" opacity="0.4" stroke-dasharray="3 2"/>
+
+      <!-- The Gateway (center, hexagon-ish) -->
+      <polygon points="140,60 200,60 220,100 200,140 140,140 120,100"
+               fill="rgba(255,153,0,0.1)" stroke="url(#apigw-grad)" stroke-width="2"/>
+      <text x="142" y="86"  font-family="'Orbitron', monospace" font-size="8" fill="#ff9900">AUTH</text>
+      <text x="142" y="100" font-family="'Orbitron', monospace" font-size="8" fill="#ff9900">RATE</text>
+      <text x="142" y="114" font-family="'Orbitron', monospace" font-size="8" fill="#ff9900">XFORM</text>
+      <text x="142" y="128" font-family="'Orbitron', monospace" font-size="8" fill="#ff9900">ROUTE</text>
+
+      <!-- Backend targets (right) -->
+      <g font-family="monospace" font-size="9" fill="#b18bff">
+        <rect x="248" y="55"  width="60" height="20" rx="3" fill="none" stroke="#7b2fff" stroke-width="1.4"/>
+        <text x="254" y="69">λ Lambda</text>
+        <rect x="248" y="90"  width="60" height="20" rx="3" fill="none" stroke="#7b2fff" stroke-width="1.4"/>
+        <text x="254" y="104">EC2 / ALB</text>
+        <rect x="248" y="125" width="60" height="20" rx="3" fill="none" stroke="#7b2fff" stroke-width="1.4"/>
+        <text x="254" y="139">private API</text>
+      </g>
+      <line x1="222" y1="80"  x2="248" y2="65"  stroke="#ff9900" stroke-width="1.2"/>
+      <line x1="222" y1="100" x2="248" y2="100" stroke="#ff9900" stroke-width="1.2"/>
+      <line x1="222" y1="120" x2="248" y2="135" stroke="#ff9900" stroke-width="1.2"/>
+
+      <!-- Blocked indicator on abuser -->
+      <text x="106" y="167" font-family="monospace" font-size="10" fill="#ff4757">⛔</text>
+    </svg>
+  </div>
+</header>
+
+<main>
+
+  <!-- ============================================================
+       SECTION 1 — What is API Gateway?
+       ============================================================ -->
+  <section class="section reveal">
+    <h2><span class="section-num">01</span> What is API Gateway?</h2>
+    <p class="lead">
+      A fully managed service that lets you create, publish, secure, and monitor APIs
+      at any scale. Clients hit your gateway URL; the gateway authenticates them,
+      throttles them, transforms their requests if needed, and forwards the survivors
+      to a backend (Lambda, EC2/ALB, a private VPC service, or even another HTTP endpoint).
+    </p>
+
+    <h3>Three flavors — pick the right one</h3>
+    <table class="compare-table">
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>What it's for</th>
+          <th>Price</th>
+          <th>Notes</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>HTTP API</strong></td>
+          <td>New REST APIs in front of Lambda or HTTP backends</td>
+          <td>$1.00 / 1M calls</td>
+          <td>V2. <strong>Default choice for new work.</strong> Cheaper, lower latency, JWT auth built in.</td>
+        </tr>
+        <tr>
+          <td><strong>REST API</strong></td>
+          <td>Mature feature set, private APIs, request/response transformation, caching, API keys + usage plans</td>
+          <td>$3.50 / 1M calls</td>
+          <td>V1. Use when you need features HTTP API doesn't support yet.</td>
+        </tr>
+        <tr>
+          <td><strong>WebSocket API</strong></td>
+          <td>Real-time bi-directional connections (chat, live dashboards, multiplayer state)</td>
+          <td>$1.00 / 1M msgs + $0.25 / 1M conn-min</td>
+          <td>Stateful. Backend is usually Lambda for connect / disconnect / message handlers.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3>What the gateway does for you (so your backend doesn't have to)</h3>
+    <ul>
+      <li><strong>Authentication</strong> — Cognito user pools, JWT verification, Lambda authorizers, IAM-signed requests, mutual TLS for B2B.</li>
+      <li><strong>Rate limiting</strong> — per-stage, per-method, or per-API-key. Stops a misbehaving client from melting your backend.</li>
+      <li><strong>Request validation</strong> — JSON Schema validation rejects malformed requests before they cost you Lambda invocations.</li>
+      <li><strong>Request / response transformation</strong> — rewrite headers, body, status codes. Useful for legacy backend façades.</li>
+      <li><strong>Caching</strong> (REST API) — TTL-based response caching. Huge savings for read-heavy APIs.</li>
+      <li><strong>Custom domains + ACM certs</strong> — <code>api.yourdomain.com</code>, valid TLS, no work.</li>
+      <li><strong>WAF integration</strong> — bolt on AWS WAF for OWASP rule sets, IP reputation, bot blocking.</li>
+      <li><strong>Logging + tracing</strong> — full request logs to CloudWatch, X-Ray distributed traces, metrics by route.</li>
+    </ul>
+
+    <div class="callout">
+      <span class="callout-title">In one sentence</span>
+      <p>
+        API Gateway is the bouncer at the door of your API — it does auth, rate
+        limiting, validation, and routing as <em>configuration</em>, so your backend
+        code can focus on business logic.
+      </p>
+    </div>
+  </section>
+
+  <!-- ============================================================
+       SECTION 2 — Vibrant example
+       ============================================================ -->
+  <section class="section reveal">
+    <h2><span class="section-num">02</span> A vibrant example: launch day for a weather app</h2>
+    <p>
+      Imagine you've built a weather app. Day 1 you have 10 users and a Flask app on
+      a single EC2 instance. Fine. Then you get featured on the App Store. Now you have
+      <em>10 million</em> users hammering <code>/forecast?lat=...&amp;lon=...</code>
+      between 7 and 9 a.m. local time, every time zone in the world.
+    </p>
+    <p>
+      <strong>Without API Gateway</strong>: you're manually scaling EC2 instances,
+      configuring an ALB, writing rate-limit middleware, debugging connection-pool
+      exhaustion, fighting the noisy neighbor on a shared server, and getting paged.
+      You'll spend the next two weeks doing infrastructure work instead of building
+      your app.
+    </p>
+    <p>
+      <strong>With API Gateway + Lambda</strong>: you wrote a 30-line Lambda function.
+      You configured a route in API Gateway. AWS handled everything else — TLS,
+      certificate renewal, scaling from 0 to 10 million RPS, throttling, logging.
+      The bill goes up; the latency doesn't move; you keep building features.
+    </p>
+    <p>
+      That's the pitch. <strong>You stop running infrastructure and start writing
+      handlers.</strong> The cost is some lock-in (Lambda has limits, API Gateway
+      has its own quirks) and some learning curve. For a huge class of apps, it's
+      the right tradeoff.
+    </p>
+
+    <figure class="diagram">
+      <div class="placeholder">
+        🚪 Architecture diagram placeholder<br>
+        <small>
+          Classic serverless web stack: client → API Gateway → Lambda → DynamoDB.<br>
+          Save reference: <code>aws-series/api-gateway/images/serverless-stack.png</code><br>
+          Source: <a href="https://docs.aws.amazon.com/lambda/latest/dg/services-apigateway.html" target="_blank" rel="noopener">docs.aws.amazon.com → Using Lambda with API Gateway</a>
+        </small>
+      </div>
+      <figcaption>The canonical AWS serverless stack. API Gateway is the front door for ~80% of public-facing serverless apps.</figcaption>
+    </figure>
+  </section>
+
+  <!-- ============================================================
+       SECTION 3 — Who uses API Gateway and why
+       ============================================================ -->
+  <section class="section reveal">
+    <h2><span class="section-num">03</span> Who uses API Gateway — and why</h2>
+    <p>
+      Almost any team building a public or internal HTTP API on AWS. Concrete examples
+      (publicly documented):
+    </p>
+
+    <div class="use-grid">
+      <div class="use-card">
+        <h4>🏦 Capital One</h4>
+        <p>Has migrated huge swaths of their public API surface to API Gateway + Lambda. <a href="https://aws.amazon.com/solutions/case-studies/capital-one-enterprise/" target="_blank" rel="noopener">AWS case study →</a></p>
+      </div>
+      <div class="use-card">
+        <h4>🛡️ Liberty Mutual</h4>
+        <p>Insurance quote engines on serverless — API Gateway as the entry point for hundreds of microservices.</p>
+      </div>
+      <div class="use-card">
+        <h4>📰 The Guardian</h4>
+        <p>UK news outlet uses API Gateway for content delivery APIs and webhook receivers from publishing tools.</p>
+      </div>
+      <div class="use-card">
+        <h4>🤖 iRobot</h4>
+        <p>Roomba telemetry and control APIs — tens of millions of devices reporting in. WebSocket API for real-time control.</p>
+      </div>
+      <div class="use-card">
+        <h4>🎮 Indie game studios</h4>
+        <p>Match-making, leaderboards, player state — WebSocket APIs let small teams ship multiplayer features without running game servers.</p>
+      </div>
+      <div class="use-card">
+        <h4>🪝 Webhook receivers</h4>
+        <p>GitHub / Stripe / Twilio webhooks land at an API Gateway endpoint, get verified by a Lambda authorizer, then trigger downstream work. The 80%-use-case.</p>
+      </div>
+    </div>
+
+    <h3>Common reasons to reach for API Gateway</h3>
+    <ul>
+      <li><strong>Serverless apps</strong> — the canonical Lambda pairing. No server, no patching, scales to zero.</li>
+      <li><strong>Public APIs</strong> — auth, throttling, monetization (API keys + usage plans), per-customer rate limits.</li>
+      <li><strong>Microservice façade</strong> — one stable URL in front of many internal services. Hide implementation details.</li>
+      <li><strong>Webhook ingress</strong> — third-party services (Stripe, GitHub, Twilio) need a stable HTTPS endpoint with valid TLS.</li>
+      <li><strong>Real-time apps</strong> — WebSocket APIs for chat, live scores, multiplayer game state.</li>
+      <li><strong>Mobile / IoT backends</strong> — devices speak HTTP; API Gateway absorbs the spikes.</li>
+    </ul>
+
+    <h3>When NOT to use API Gateway</h3>
+    <ul>
+      <li><strong>High-throughput sustained traffic</strong> where ALB + ECS/EKS is dramatically cheaper at scale (think 100k+ RPS sustained).</li>
+      <li><strong>Latency-critical APIs</strong> — API Gateway adds 10–30ms overhead. Sub-10ms targets need ALB or NLB.</li>
+      <li><strong>gRPC</strong> — API Gateway doesn't support it. Use ALB or AppMesh.</li>
+      <li><strong>Heavy request-body transformation</strong> — gets unwieldy in Velocity templates. Often easier in code.</li>
+      <li><strong>Anything you can't put behind 30-second timeouts</strong> — API Gateway has hard limits (29s integration timeout for REST/HTTP).</li>
+    </ul>
+  </section>
+
+  <!-- ============================================================
+       SECTION 4 — Competitors
+       ============================================================ -->
+  <section class="section reveal">
+    <h2><span class="section-num">04</span> Competitors &amp; positioning</h2>
+    <p>
+      The "API gateway" pattern is widely recognized — every major cloud and several
+      open-source projects implement it. Honest framing: AWS API Gateway is the
+      easiest path on AWS, but it's not the cheapest at scale, not the fastest,
+      and not the most feature-rich.
+    </p>
+
+    <table class="compare-table">
+      <thead>
+        <tr>
+          <th>Service</th>
+          <th>Type</th>
+          <th>Where it wins / loses</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="lead-row">
+          <td><strong>AWS API Gateway</strong></td>
+          <td>Managed, AWS-only</td>
+          <td>Deepest AWS integration (Lambda, IAM, Cognito, WAF). <em>Loses on:</em> price at very high volumes, cold-start latency on REST API, configuration complexity for edge cases.</td>
+        </tr>
+        <tr>
+          <td>Kong / Kong Gateway</td>
+          <td>Open source + enterprise</td>
+          <td>Self-host anywhere (incl. on-prem), huge plugin ecosystem, Lua scripting. Multi-cloud. <em>Loses on:</em> you operate it.</td>
+        </tr>
+        <tr>
+          <td>Google Apigee</td>
+          <td>Managed, enterprise</td>
+          <td>Best analytics + developer portal in the category. Strong API monetization features. <em>Loses on:</em> price, complexity for simple use cases.</td>
+        </tr>
+        <tr>
+          <td>Azure API Management</td>
+          <td>Managed</td>
+          <td>Tight Active Directory + Office 365 integration. Built-in developer portal. <em>Loses on:</em> price tiers, regional model.</td>
+        </tr>
+        <tr>
+          <td>Cloudflare API Gateway</td>
+          <td>Edge-native</td>
+          <td>Runs at Cloudflare's 300+ edge locations — global low latency. Bundles WAF + DDoS. <em>Loses on:</em> AWS-native integration, fewer mature features.</td>
+        </tr>
+        <tr>
+          <td>NGINX / Traefik / HAProxy</td>
+          <td>Self-hosted reverse proxy</td>
+          <td>Very fast, very cheap if you have ops talent. <em>Loses on:</em> you build the auth, rate limiting, validation, observability yourself.</td>
+        </tr>
+        <tr>
+          <td>Tyk</td>
+          <td>Open source</td>
+          <td>Full-featured open-source alternative to Kong. Less plugin ecosystem.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="callout">
+      <span class="callout-title">The honest "why API Gateway"</span>
+      <p>
+        On AWS, the value isn't that API Gateway is the best gateway — it's that
+        it's <em>already integrated</em> with everything else you're using. Cognito
+        for auth, Lambda for handlers, WAF for protection, CloudWatch for logs,
+        IAM for access control, ACM for certs. Reaching for Kong or NGINX means
+        wiring those integrations yourself. For most teams that's not worth it.
+        If you're multi-cloud, multi-region active-active, or burning $50k+/month
+        on API Gateway, look at Kong or Cloudflare.
+      </p>
+    </div>
+  </section>
+
+  <!-- ============================================================
+       SECTION 5 — Who manages it
+       ============================================================ -->
+  <section class="section reveal">
+    <h2><span class="section-num">05</span> Who actually runs it for you?</h2>
+    <p>
+      Like DynamoDB, API Gateway is fully managed — no servers to patch, no version
+      upgrades. The interesting work is <strong>API design</strong>, <strong>auth
+      patterns</strong>, and <strong>cost discipline</strong>.
+    </p>
+
+    <div class="use-grid">
+      <div class="use-card">
+        <h4>👤 Self-managed (solo / startup)</h4>
+        <p>You define routes via Terraform, SAM, or CDK. Most learners start here. The default for any solo serverless project.</p>
+      </div>
+      <div class="use-card">
+        <h4>🛠️ Platform team</h4>
+        <p>Wraps API Gateway in a reusable Terraform module. Standard auth, logging, WAF, alarms baked in. App teams declare a route via PR.</p>
+      </div>
+      <div class="use-card">
+        <h4>🏗️ API design specialists</h4>
+        <p>At larger orgs, API design is owned by an API platform team that enforces OpenAPI standards, versioning, and a developer portal.</p>
+      </div>
+      <div class="use-card">
+        <h4>🛡️ Security / AppSec</h4>
+        <p>Owns the WAF rule sets, mTLS configurations, authorizer logic, and pen-test schedule. API Gateway is the front line of public-facing security.</p>
+      </div>
+      <div class="use-card">
+        <h4>💰 FinOps</h4>
+        <p>API Gateway gets expensive. Watches per-route invocation counts; flags candidates for caching, throttling, or migrating to ALB at scale.</p>
+      </div>
+      <div class="use-card">
+        <h4>🤖 SaaS gateway services</h4>
+        <p>Companies sometimes layer Cloudflare, Akamai, or Apigee in front of API Gateway for global edge + better analytics. Hybrid pattern.</p>
+      </div>
+    </div>
+
+    <div class="callout warning">
+      <span class="callout-title">⚠️ Cost gotcha</span>
+      <p>
+        API Gateway is cheap until it isn't. <strong>HTTP API at $1.00 per million
+        calls</strong> sounds free, but a moderately busy public API (1,000 RPS sustained)
+        is 86 million calls/day = <strong>~$2,580/month just on the gateway</strong>,
+        not counting Lambda or data transfer. At that scale, ALB + ECS Fargate is
+        often dramatically cheaper. Profile your actual traffic before assuming
+        serverless is "cheaper."
+      </p>
+    </div>
+  </section>
+
+  <!-- ============================================================
+       SECTION 6 — Security mindset
+       ============================================================ -->
+  <section class="section reveal">
+    <h2><span class="section-num">06</span> Security mindset</h2>
+    <p>
+      APIs are the #1 attack surface for modern apps. The
+      <a href="https://owasp.org/API-Security/editions/2023/en/0x00-introduction/" target="_blank" rel="noopener">OWASP API Security Top 10 (2023)</a>
+      is required reading — it catalogs the API-specific failure modes (broken
+      object-level auth, broken auth, excessive data exposure, etc.) that traditional
+      web vuln lists miss. Map every API Gateway control below to a Top-10 entry.
+    </p>
+
+    <h3>Five things to internalize before shipping a public API</h3>
+    <ul>
+      <li>
+        <strong>Always require an authorizer.</strong> Even for "internal" APIs.
+        Pick the right one: Cognito for user-auth, JWT for OIDC providers, Lambda
+        authorizer for custom logic, IAM for service-to-service. <em>Never</em>
+        leave <code>AuthorizationType=NONE</code> in production by accident — it's
+        how data gets scraped.
+      </li>
+      <li>
+        <strong>Set per-stage and per-method throttling.</strong> Default account
+        limit is 10,000 RPS — but a runaway client can still chew through your
+        Lambda budget in minutes. Throttle per-route, and use API keys + usage
+        plans for partner-tier limits.
+      </li>
+      <li>
+        <strong>Validate request bodies with JSON Schema.</strong> Rejects malformed
+        payloads at the gateway before they hit your Lambda — saves money and
+        kills a class of injection attacks at the door.
+      </li>
+      <li>
+        <strong>Bolt on AWS WAF for public APIs.</strong> Managed rule sets
+        (AWSManagedRulesCommonRuleSet, AWSManagedRulesKnownBadInputsRuleSet,
+        AWSManagedRulesAmazonIpReputationList) catch the obvious junk for
+        ~$5/month + per-request fees.
+      </li>
+      <li>
+        <strong>Enable execution logs and X-Ray.</strong> Default logging is light;
+        execution logs (full request/response) are off by default. Turn them on for
+        sensitive APIs — and protect the log group with KMS, because logs <em>will</em>
+        contain auth tokens you shouldn't have.
+      </li>
+    </ul>
+
+    <div class="callout security">
+      <span class="callout-title">For your career</span>
+      <p>
+        API Gateway shows up on the AWS Solutions Architect, Developer, and Security
+        Specialty exams. The recurring questions: which authorizer for which use case
+        (Cognito vs Lambda vs IAM), public vs private API endpoints, how to
+        rate-limit per consumer (API keys + usage plans), and integration with WAF.
+        Combined with the OWASP API Top 10, this is high-leverage cloud-security
+        knowledge.
+      </p>
+    </div>
+  </section>
+
+  <!-- ============================================================
+       SECTION 7 — Sources
+       ============================================================ -->
+  <section class="section reveal">
+    <h2><span class="section-num">07</span> Sources &amp; further reading</h2>
+    <ul class="sources">
+      <li>
+        <strong>Amazon API Gateway Developer Guide</strong> — canonical reference.
+        <a href="https://docs.aws.amazon.com/apigateway/latest/developerguide/" target="_blank" rel="noopener">docs.aws.amazon.com/apigateway/</a>
+        <span class="source-meta">Primary source for everything in this page.</span>
+      </li>
+      <li>
+        <strong>Amazon API Gateway product page &amp; pricing</strong>.
+        <a href="https://aws.amazon.com/api-gateway/" target="_blank" rel="noopener">aws.amazon.com/api-gateway/</a> ·
+        <a href="https://aws.amazon.com/api-gateway/pricing/" target="_blank" rel="noopener">pricing</a>
+      </li>
+      <li>
+        <strong>OWASP API Security Top 10 (2023)</strong> — the canonical catalog of API-specific vulnerabilities. Every API Gateway control should map to one of these.
+        <a href="https://owasp.org/API-Security/editions/2023/en/0x00-introduction/" target="_blank" rel="noopener">owasp.org/API-Security/</a>
+        <span class="source-meta">Required reading. Free, well-maintained.</span>
+      </li>
+      <li>
+        <strong>Microservices.io — "API Gateway" pattern</strong> by Chris Richardson — the architectural pattern explained as a vendor-neutral concept.
+        <a href="https://microservices.io/patterns/apigateway.html" target="_blank" rel="noopener">microservices.io/patterns/apigateway.html</a>
+      </li>
+      <li>
+        <strong><em>Building Microservices</em> by Sam Newman (O'Reilly)</strong> — the standard book on microservice architecture, with serious treatment of gateways and edge services.
+        <span class="source-meta">If you're going deep on distributed systems, read this.</span>
+      </li>
+      <li>
+        <strong>AWS Architecture Blog &amp; AWS Compute Blog</strong> — engineering deep-dives on serverless API patterns.
+        <a href="https://aws.amazon.com/blogs/architecture/" target="_blank" rel="noopener">aws.amazon.com/blogs/architecture/</a>
+      </li>
+      <li>
+        <strong>AWS Well-Architected Framework — Serverless Lens</strong> — official guidance for serverless apps including API Gateway sizing, error handling, and security.
+        <a href="https://docs.aws.amazon.com/wellarchitected/latest/serverless-applications-lens/welcome.html" target="_blank" rel="noopener">docs.aws.amazon.com → Serverless Lens</a>
+      </li>
+      <li>
+        <strong>HTTP API vs REST API feature matrix</strong> — official AWS comparison so you can pick the right flavor.
+        <a href="https://docs.aws.amazon.com/apigateway/latest/developerguide/http-api-vs-rest.html" target="_blank" rel="noopener">docs.aws.amazon.com → Choosing between REST and HTTP APIs</a>
+      </li>
+      <li>
+        <strong>RFC 7519 — JSON Web Token (JWT)</strong>.
+        <a href="https://datatracker.ietf.org/doc/html/rfc7519" target="_blank" rel="noopener">datatracker.ietf.org/doc/html/rfc7519</a>
+        <span class="source-meta">The standard you'll use most often for API auth. Read once, internalize.</span>
+      </li>
+    </ul>
+  </section>
+
+  <!-- ============================================================
+       Tutorial CTA
+       ============================================================ -->
+  <section class="section reveal" style="text-align: center;">
+    <h2 style="justify-content: center;">Ready to build one?</h2>
+    <p style="max-width: 580px; margin: 0 auto;">
+      The tutorial walks through building an HTTP API in front of a Lambda
+      function — Console, AWS CLI, and Terraform side by side. Includes a JWT
+      authorizer, throttling, and structured cleanup. Free-tier eligible.
+    </p>
+    <p>
+      <a href="tutorial.html" class="cta-btn">Open Hands-on Tutorial →</a>
+      <a href="../index.html" class="cta-btn secondary">← Back to series</a>
+    </p>
+  </section>
+
+</main>
+
+<footer class="aws-footer">
+  <p>
+    Service 4 of 10 · <a href="../index.html">AWS in Practice index</a> ·
+    <a href="../../index.html">App Hub</a> · Last reviewed 2026-04
+  </p>
+</footer>
+
+<script src="../js/nav.js"></script>
+</body>
+</html>
