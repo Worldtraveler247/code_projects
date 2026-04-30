@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; script-src 'self';">
+  <title>Code Typist — Eddie's App Hub</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header>
+  <a href="../index.html" class="back">← App Hub</a>
+  <h1>Code Typist</h1>
+  <p class="tagline">Learn to type real code — Go, Python, Bash. Lit keys + finger hints below.</p>
+</header>
+
+<div class="mobile-warning">
+  ⌨️ This trainer is built for a physical keyboard. On mobile/tablet, plug in or pair a keyboard for the full experience.
+</div>
+
+<section class="controls">
+  <div class="lang-tabs" role="tablist">
+    <button class="lang-tab active" role="tab" data-lang="go">Go</button>
+    <button class="lang-tab" role="tab" data-lang="python">Python</button>
+    <button class="lang-tab" role="tab" data-lang="bash">Bash</button>
+  </div>
+  <button class="btn" id="new-btn">New Snippet</button>
+  <button class="btn" id="restart-btn">Restart</button>
+</section>
+
+<section class="stats" aria-label="Stats">
+  <div class="stat">
+    <span class="stat-label">WPM</span>
+    <span class="stat-value" id="stat-wpm">0</span>
+  </div>
+  <div class="stat">
+    <span class="stat-label">Accuracy</span>
+    <span class="stat-value" id="stat-acc">100%</span>
+  </div>
+  <div class="stat">
+    <span class="stat-label">Time</span>
+    <span class="stat-value" id="stat-time">0:00</span>
+  </div>
+  <div class="stat">
+    <span class="stat-label">Errors</span>
+    <span class="stat-value" id="stat-err">0</span>
+  </div>
+</section>
+
+<section class="snippet-wrap">
+  <div class="snippet-title">
+    <h2 id="snippet-title">Loading...</h2>
+    <span class="lang" id="snippet-lang">go</span>
+  </div>
+  <pre class="snippet" id="snippet"></pre>
+</section>
+
+<!-- Stylized hand SVGs. Each finger is a <g data-finger="..."> with a stem path
+     plus a fingertip circle. JS toggles .active on the group whose finger maps
+     to the next-target character. -->
+<section class="hands-container">
+  <svg class="hand left-hand" id="left-hand" viewBox="0 0 200 130">
+    <!-- palm outline -->
+    <path class="palm" d="M30 110 Q22 80 30 55 Q42 38 60 36 L150 36 Q172 38 178 60 Q182 80 174 105"/>
+    <!-- pinky -->
+    <g class="finger" data-finger="lp">
+      <path class="finger-stem" d="M40 55 L36 18"/>
+      <circle class="fingertip" cx="36" cy="14" r="6"/>
+      <text class="finger-label" x="36" y="6">P</text>
+    </g>
+    <!-- ring -->
+    <g class="finger" data-finger="lr">
+      <path class="finger-stem" d="M70 50 L66 8"/>
+      <circle class="fingertip" cx="66" cy="6" r="6"/>
+    </g>
+    <!-- middle -->
+    <g class="finger" data-finger="lm">
+      <path class="finger-stem" d="M100 48 L98 2"/>
+      <circle class="fingertip" cx="98" cy="0" r="6"/>
+    </g>
+    <!-- index -->
+    <g class="finger" data-finger="li">
+      <path class="finger-stem" d="M130 50 L128 8"/>
+      <circle class="fingertip" cx="128" cy="6" r="6"/>
+    </g>
+    <!-- thumb (extends right toward space bar) -->
+    <g class="finger" data-finger="thumb">
+      <path class="finger-stem" d="M160 70 L188 92"/>
+      <circle class="fingertip" cx="190" cy="94" r="6"/>
+      <text class="finger-label" x="190" y="116">␣</text>
+    </g>
+  </svg>
+
+  <svg class="hand right-hand" id="right-hand" viewBox="0 0 200 130">
+    <!-- palm outline (mirrored) -->
+    <path class="palm" d="M170 110 Q178 80 170 55 Q158 38 140 36 L50 36 Q28 38 22 60 Q18 80 26 105"/>
+    <!-- thumb (extends left toward space bar) -->
+    <g class="finger" data-finger="thumb">
+      <path class="finger-stem" d="M40 70 L12 92"/>
+      <circle class="fingertip" cx="10" cy="94" r="6"/>
+      <text class="finger-label" x="10" y="116">␣</text>
+    </g>
+    <!-- index -->
+    <g class="finger" data-finger="ri">
+      <path class="finger-stem" d="M70 50 L72 8"/>
+      <circle class="fingertip" cx="72" cy="6" r="6"/>
+    </g>
+    <!-- middle -->
+    <g class="finger" data-finger="rm">
+      <path class="finger-stem" d="M100 48 L102 2"/>
+      <circle class="fingertip" cx="102" cy="0" r="6"/>
+    </g>
+    <!-- ring -->
+    <g class="finger" data-finger="rr">
+      <path class="finger-stem" d="M130 50 L134 8"/>
+      <circle class="fingertip" cx="134" cy="6" r="6"/>
+    </g>
+    <!-- pinky -->
+    <g class="finger" data-finger="rp">
+      <path class="finger-stem" d="M160 55 L164 18"/>
+      <circle class="fingertip" cx="164" cy="14" r="6"/>
+      <text class="finger-label" x="164" y="6">P</text>
+    </g>
+  </svg>
+</section>
+
+<section class="keyboard" id="keyboard" aria-label="On-screen keyboard"></section>
+
+<footer>
+  <p>
+    Press any key to start typing. <strong style="color: var(--cyan)">Cyan</strong> = next target ·
+    <strong style="color: var(--green)">Green</strong> = correct ·
+    <strong style="color: var(--red)">Red</strong> = wrong (Backspace to fix).
+  </p>
+  <p>Built by Eddie · <a href="../index.html">App Hub</a> · 2026</p>
+</footer>
+
+<script src="snippets.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
