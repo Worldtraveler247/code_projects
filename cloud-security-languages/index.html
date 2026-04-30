@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; script-src 'self'; img-src 'self' data:;">
+  <title>Cloud Security Engineering Languages — Eddie's Hub</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/cloud-langs.css">
+</head>
+<body data-lang="hub">
+
+<nav class="lang-nav">
+  <div class="lang-nav-inner">
+    <a href="../index.html" class="hub-brand">Eddie's App Hub</a>
+    <span class="crumb-sep">›</span>
+    <a href="index.html" class="lang-nav-brand">
+      <span class="brand-dot"></span>Cloud Security Languages
+    </a>
+    <div class="lang-nav-links">
+      <a href="go/index.html"     class="lang-nav-link" data-lang="go">Go</a>
+      <a href="python/index.html" class="lang-nav-link coming-soon" data-lang="python">Python</a>
+      <a href="bash/index.html"   class="lang-nav-link coming-soon" data-lang="bash">Bash</a>
+    </div>
+  </div>
+</nav>
+
+<header class="hero">
+  <span class="hero-tag">3-part series · Beginner → Competent</span>
+  <h1>Cloud Security Engineering Languages</h1>
+  <p class="hero-sub">
+    The three languages that show up in every cloud security toolchain — Go,
+    Python, and Bash. Honest lessons, runnable code, references straight to the
+    primary sources, and learning plans that respect how long real fluency takes.
+  </p>
+</header>
+
+<main>
+
+  <section class="section">
+    <h2>The three languages</h2>
+    <p class="lead">
+      Pick one. Each lesson is built so a beginner can open VS Code, copy the code,
+      run it, and learn by doing — with primary-source references for every claim.
+    </p>
+
+    <div class="lang-grid">
+
+      <a href="go/index.html" class="lang-card reveal">
+        <div class="lang-icon">🐹</div>
+        <h3>Go</h3>
+        <p>The language of Kubernetes, Docker, Terraform, and Vault. Compiled, fast, single-binary deploys. Where modern cloud infrastructure is written.</p>
+        <div class="lang-tags">
+          <span class="lang-tag">Compiled</span>
+          <span class="lang-tag">Concurrent</span>
+          <span class="lang-tag">Cloud-Native</span>
+        </div>
+      </a>
+
+      <a href="python/index.html" class="lang-card coming-soon reveal">
+        <div class="lang-icon">🐍</div>
+        <h3>Python</h3>
+        <p>The lingua franca of security tooling, automation, data analysis, and AWS SDK work. The fastest way to prototype anything.</p>
+        <div class="lang-tags">
+          <span class="lang-tag">Interpreted</span>
+          <span class="lang-tag">Batteries-included</span>
+          <span class="lang-tag">SDK-heavy</span>
+        </div>
+      </a>
+
+      <a href="bash/index.html" class="lang-card coming-soon reveal">
+        <div class="lang-icon">💻</div>
+        <h3>Bash</h3>
+        <p>The glue. Every cloud engineer runs Bash whether they want to or not — CI pipelines, init scripts, container entrypoints, ad-hoc fixes.</p>
+        <div class="lang-tags">
+          <span class="lang-tag">Shell</span>
+          <span class="lang-tag">Glue</span>
+          <span class="lang-tag">Universal</span>
+        </div>
+      </a>
+
+    </div>
+  </section>
+
+  <section class="section">
+    <h2>How these lessons are written</h2>
+    <ul>
+      <li><strong>Beginner-readable, accurate-by-source.</strong> Every claim links back to the language's primary docs (go.dev, python.org, gnu.org/software/bash) so you can verify and dig deeper.</li>
+      <li><strong>Runnable code throughout.</strong> Copy any block, paste into VS Code, run it. No "imagine this works" pseudocode.</li>
+      <li><strong>Honest timelines.</strong> No "expert in 30 days." Real fluency takes months; expertise takes years. Each lesson includes a milestone-based plan that matches reality.</li>
+      <li><strong>Cloud-security framing.</strong> Examples lean toward security and infrastructure work — port scanners, file integrity monitors, AWS API calls — not generic to-do apps.</li>
+    </ul>
+  </section>
+
+</main>
+
+<footer class="lang-footer">
+  Eddie's Hub · Cloud Security Languages series
+</footer>
+
+<script src="js/nav.js"></script>
+</body>
+</html>

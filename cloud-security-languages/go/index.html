@@ -1,0 +1,1526 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; script-src 'self'; img-src 'self' data:;">
+  <title>Go for Cloud Security — Eddie's Hub</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../css/cloud-langs.css">
+</head>
+<body data-lang="go">
+
+<nav class="lang-nav">
+  <div class="lang-nav-inner">
+    <a href="../../index.html" class="hub-brand">Eddie's App Hub</a>
+    <span class="crumb-sep">›</span>
+    <a href="../index.html" class="lang-nav-brand">
+      <span class="brand-dot"></span>Cloud Security Languages
+    </a>
+    <div class="lang-nav-links">
+      <a href="../go/index.html"     class="lang-nav-link" data-lang="go">Go</a>
+      <a href="../python/index.html" class="lang-nav-link coming-soon" data-lang="python">Python</a>
+      <a href="../bash/index.html"   class="lang-nav-link coming-soon" data-lang="bash">Bash</a>
+    </div>
+  </div>
+</nav>
+
+<header class="hero">
+  <span class="hero-tag">Lesson 1 · Beginner Track</span>
+  <h1>Go for Cloud Security</h1>
+  <p class="hero-sub">
+    From <code>package main</code> to a working concurrent port scanner — a
+    structured tour of Go for someone learning their first compiled language.
+    Every claim references <a href="https://go.dev/" target="_blank" rel="noopener">go.dev</a>,
+    every example is runnable in VS Code, and the learning plan is honest about
+    how long real fluency takes.
+  </p>
+</header>
+
+<main>
+
+  <!-- ===================== TOC ===================== -->
+  <section class="toc">
+    <h3>Lesson Map</h3>
+    <ol>
+      <li><a href="#why-go">Why Go for cloud security</a></li>
+      <li><a href="#setup">Setup — Go + VS Code</a></li>
+      <li><a href="#anatomy">Anatomy of a Go program</a></li>
+      <li><a href="#packages">Packages and imports</a></li>
+      <li><a href="#variables">Variables</a></li>
+      <li><a href="#constants">Constants</a></li>
+      <li><a href="#types">Basic types and formatting</a></li>
+      <li><a href="#conditionals">Conditionals</a></li>
+      <li><a href="#loops">Loops</a></li>
+      <li><a href="#functions">Functions</a></li>
+      <li><a href="#composite">Composite types — arrays, slices, maps</a></li>
+      <li><a href="#pointers">Pointers</a></li>
+      <li><a href="#structs">Structs and methods</a></li>
+      <li><a href="#interfaces">Interfaces</a></li>
+      <li><a href="#errors">Errors</a></li>
+      <li><a href="#concurrency">A taste of concurrency</a></li>
+      <li><a href="#drills">Daily code drills (10 programs)</a></li>
+      <li><a href="#plan">90-day learning plan (honest)</a></li>
+      <li><a href="#books">Books and audio for advanced study</a></li>
+      <li><a href="#sources">Sources and further reading</a></li>
+    </ol>
+  </section>
+
+  <!-- ===================== 1. Why Go ===================== -->
+  <section class="section" id="why-go">
+    <h2><span class="section-num">01</span>Why Go for cloud security</h2>
+    <p class="lead">
+      You don't pick Go because it's the prettiest language. You pick it because
+      the things you'll use every day in cloud infrastructure are written in it.
+    </p>
+    <p>
+      Kubernetes. Docker. Terraform. HashiCorp Vault. Consul. Prometheus. CoreDNS.
+      Caddy. Nearly every modern observability and infrastructure tool that
+      matters in the cloud-native ecosystem is Go. Reading their source — and
+      writing extensions, controllers, or your own security tools that integrate
+      with them — means reading and writing Go.
+    </p>
+
+    <h3>Concretely, what makes Go a good fit for security work</h3>
+    <ul>
+      <li><strong>Single static binary.</strong> <code>go build</code> produces one file you can scp to a server, drop in a container, or send to an air-gapped host. No runtime, no virtualenv, no pip install on the target.</li>
+      <li><strong>Cross-compilation built in.</strong> <code>GOOS=linux GOARCH=arm64 go build</code> from your Mac. Useful when you're building tools that run on whatever odd box the SOC needs them on.</li>
+      <li><strong>Concurrency that fits scanning, polling, and event handling.</strong> Goroutines and channels are first-class. A 200-target port scanner is ~50 lines.</li>
+      <li><strong>Strong, fast standard library.</strong> <code>net/http</code>, <code>crypto/tls</code>, <code>encoding/json</code>, <code>os/exec</code> — you rarely need third-party deps for security tooling.</li>
+      <li><strong>Static typing without ceremony.</strong> The compiler catches whole classes of bugs before they ship — the kind of bugs that turn into CVEs in long-lived security tools.</li>
+    </ul>
+
+    <div class="callout honest">
+      <span class="callout-title">Honest tradeoff</span>
+      <p>Go is verbose where Python is concise. <code>if err != nil { return err }</code> appears thousands of times in any real Go codebase. You'll read more lines, but you'll also debug fewer surprise crashes at 3am. For long-running infrastructure code that's the right trade. For a one-off scrape-and-parse script, Python wins.</p>
+    </div>
+  </section>
+
+  <!-- ===================== 2. Setup ===================== -->
+  <section class="section" id="setup">
+    <h2><span class="section-num">02</span>Setup — Go + VS Code</h2>
+
+    <h3>Install Go</h3>
+    <p>On macOS, the easiest path:</p>
+    <div class="code-block"><span class="code-label">terminal</span><pre>brew install go
+go version
+# go version go1.22.x darwin/arm64</pre></div>
+    <p>Or download the official installer from <a href="https://go.dev/dl/" target="_blank" rel="noopener">go.dev/dl</a>. Either works; Homebrew makes upgrades easier.</p>
+
+    <h3>Verify your environment</h3>
+    <div class="code-block"><span class="code-label">terminal</span><pre>go env GOPATH GOROOT GOOS GOARCH
+# /Users/you/go    /opt/homebrew/Cellar/go/1.22.x/libexec    darwin    arm64</pre></div>
+    <p>
+      <code>GOPATH</code> is where modules and binaries live by default
+      (<code>$HOME/go</code>). <code>GOROOT</code> is where Go itself is installed.
+      You almost never need to change either.
+    </p>
+
+    <h3>Set up VS Code</h3>
+    <ol>
+      <li>Install VS Code from <a href="https://code.visualstudio.com/" target="_blank" rel="noopener">code.visualstudio.com</a>.</li>
+      <li>Open the Extensions panel (<code>Cmd+Shift+X</code>) and install <strong>Go</strong> by Google (publisher: <code>golang.go</code>).</li>
+      <li>Open any <code>.go</code> file. VS Code will prompt to install Go tools (<code>gopls</code>, <code>dlv</code>, etc.). Click <em>Install All</em>.</li>
+      <li>You now have: autocomplete, jump-to-definition, error highlighting, formatting on save, and an integrated debugger.</li>
+    </ol>
+    <p>Reference: <a href="https://github.com/golang/vscode-go/blob/master/README.md" target="_blank" rel="noopener">VS Code Go extension docs</a>.</p>
+
+    <h3>Your first program</h3>
+    <p>Create a folder, then a file:</p>
+    <div class="code-block"><span class="code-label">terminal</span><pre>mkdir -p ~/go-learning/hello && cd ~/go-learning/hello
+go mod init hello
+touch main.go
+code .   # opens VS Code in this folder</pre></div>
+
+    <p>In <code>main.go</code>:</p>
+    <div class="code-block"><span class="code-label">main.go</span><pre>package main
+
+import "fmt"
+
+func main() {
+    fmt.Println("Hello, Go.")
+}</pre></div>
+
+    <p>Run it:</p>
+    <div class="code-block"><span class="code-label">terminal</span><pre>go run main.go
+# Hello, Go.
+
+go build -o hello main.go
+./hello
+# Hello, Go.</pre></div>
+    <p>
+      <code>go run</code> compiles and runs in one step (good for development).
+      <code>go build</code> produces a binary you can ship. Reference:
+      <a href="https://go.dev/doc/tutorial/getting-started" target="_blank" rel="noopener">go.dev/doc/tutorial/getting-started</a>.
+    </p>
+  </section>
+
+  <!-- ===================== 3. Anatomy ===================== -->
+  <section class="section" id="anatomy">
+    <h2><span class="section-num">03</span>Anatomy of a Go program</h2>
+    <p>Every Go file has the same skeleton. Let's read the smallest possible program one line at a time.</p>
+
+    <div class="code-block"><span class="code-label">main.go</span><pre>package main
+
+import "fmt"
+
+func main() {
+    fmt.Println("Hello, Go.")
+}</pre></div>
+
+    <h3><code>package main</code></h3>
+    <p>
+      Every Go file starts with a <strong>package declaration</strong>. A package
+      is Go's unit of code organization — like a Python module or a Java package.
+      The name <code>main</code> is special: it tells the Go toolchain "this is a
+      runnable program, not a library." Every other package name produces a
+      library that other Go code can import.
+    </p>
+    <p>Reference: <a href="https://go.dev/ref/spec#Packages" target="_blank" rel="noopener">Go spec — Packages</a>.</p>
+
+    <h3><code>import "fmt"</code></h3>
+    <p>
+      Brings in the <code>fmt</code> package from the standard library. <code>fmt</code>
+      handles formatted I/O — printing, scanning, formatting strings. After importing,
+      you reference its exported names via <code>fmt.Println</code>, <code>fmt.Printf</code>, etc.
+    </p>
+    <p>For multiple imports, use parentheses:</p>
+    <div class="code-block"><span class="code-label">go</span><pre>import (
+    "fmt"
+    "os"
+    "strings"
+)</pre></div>
+    <p>Reference: <a href="https://pkg.go.dev/fmt" target="_blank" rel="noopener">pkg.go.dev/fmt</a>.</p>
+
+    <h3><code>func main() { ... }</code></h3>
+    <p>
+      Declares a function called <code>main</code>. In package <code>main</code>,
+      this function is the program's entry point — Go runs it when the binary starts.
+      It takes no arguments and returns nothing.
+    </p>
+    <p><strong>Two non-negotiable Go style rules</strong> the compiler / formatter enforce:</p>
+    <ul>
+      <li>The opening <code>{</code> goes on the same line as the function declaration. Putting it on the next line is a syntax error.</li>
+      <li>Indentation is tabs, formatted by <code>gofmt</code>. The VS Code Go extension runs <code>gofmt</code> on save automatically. Don't fight it.</li>
+    </ul>
+
+    <h3><code>fmt.Println("Hello, Go.")</code></h3>
+    <p>
+      Calls the <code>Println</code> function from the <code>fmt</code> package
+      with the string <code>"Hello, Go."</code> as its argument. <code>Println</code>
+      writes its arguments to standard output followed by a newline.
+    </p>
+
+    <div class="callout go">
+      <span class="callout-title">Capitalization matters</span>
+      <p>
+        In Go, a name is <strong>exported</strong> (visible outside its package) if
+        and only if it starts with a capital letter. <code>fmt.Println</code> is
+        exported; <code>fmt.println</code> would not exist outside the <code>fmt</code>
+        package. This is the entire access-control system. No <code>public</code>,
+        <code>private</code>, or <code>protected</code> keywords.
+      </p>
+    </div>
+  </section>
+
+  <!-- ===================== 4. Packages ===================== -->
+  <section class="section" id="packages">
+    <h2><span class="section-num">04</span>Packages and imports</h2>
+    <p>
+      A Go <strong>module</strong> is a collection of related packages, identified
+      by a module path (typically a repo URL). The <code>go.mod</code> file at the
+      root of a module declares it.
+    </p>
+
+    <div class="code-block"><span class="code-label">terminal</span><pre>go mod init github.com/worldtraveler247/portscan
+# creates go.mod with: module github.com/worldtraveler247/portscan</pre></div>
+
+    <h3>Standard library imports</h3>
+    <div class="code-block"><span class="code-label">go</span><pre>import (
+    "fmt"      // formatted I/O
+    "os"       // operating system interface
+    "net"      // TCP/UDP/HTTP networking
+    "strings"  // string utilities
+)</pre></div>
+
+    <h3>Third-party imports</h3>
+    <p>
+      You add a dependency by importing it and running <code>go mod tidy</code>.
+      Go fetches the module, records the version in <code>go.mod</code>, and locks
+      checksums in <code>go.sum</code>.
+    </p>
+    <div class="code-block"><span class="code-label">go</span><pre>import "github.com/spf13/cobra"</pre></div>
+    <div class="code-block"><span class="code-label">terminal</span><pre>go mod tidy
+# go: downloading github.com/spf13/cobra v1.8.0
+# go: added github.com/spf13/cobra v1.8.0</pre></div>
+
+    <h3>Import aliases and the blank identifier</h3>
+    <div class="code-block"><span class="code-label">go</span><pre>import (
+    j "encoding/json"   // alias: use as j.Marshal(...)
+    _ "net/http/pprof"  // import for side effects only (registers handlers)
+)</pre></div>
+
+    <p>References: <a href="https://go.dev/ref/mod" target="_blank" rel="noopener">Go Modules reference</a>, <a href="https://go.dev/doc/modules/managing-dependencies" target="_blank" rel="noopener">Managing dependencies</a>.</p>
+  </section>
+
+  <!-- ===================== 5. Variables ===================== -->
+  <section class="section" id="variables">
+    <h2><span class="section-num">05</span>Variables</h2>
+    <p>Go has several ways to declare a variable. Use the shortest one that works in context.</p>
+
+    <h3>Full form: <code>var name type = value</code></h3>
+    <div class="code-block"><span class="code-label">go</span><pre>var name string = "Eddie"
+var age  int    = 30
+var on   bool   = true</pre></div>
+
+    <h3>Type inferred: <code>var name = value</code></h3>
+    <div class="code-block"><span class="code-label">go</span><pre>var name = "Eddie"   // string, inferred from "Eddie"
+var age  = 30        // int, inferred from 30
+var pi   = 3.14159   // float64, inferred</pre></div>
+
+    <h3>Short declaration: <code>name := value</code> (inside functions only)</h3>
+    <div class="code-block"><span class="code-label">go</span><pre>func main() {
+    name := "Eddie"
+    age  := 30
+    fmt.Println(name, age)
+}</pre></div>
+
+    <h3>Multiple variables in one line</h3>
+    <div class="code-block"><span class="code-label">go</span><pre>var x, y int = 1, 2
+a, b := "hello", 42       // different types are fine
+
+// Common pattern: function returning multiple values
+host, port := parseAddr(":8080")</pre></div>
+
+    <h3>Zero values</h3>
+    <p>
+      Every variable in Go is initialized. If you don't give it a value, Go gives
+      it the type's <strong>zero value</strong>:
+    </p>
+    <table class="compare-table">
+      <thead><tr><th>Type</th><th>Zero value</th></tr></thead>
+      <tbody>
+        <tr><td><code>int</code>, <code>float64</code>, all numeric</td><td><code>0</code></td></tr>
+        <tr><td><code>string</code></td><td><code>""</code> (empty string)</td></tr>
+        <tr><td><code>bool</code></td><td><code>false</code></td></tr>
+        <tr><td>pointers, slices, maps, channels, functions, interfaces</td><td><code>nil</code></td></tr>
+        <tr><td>structs</td><td>each field gets its own zero value</td></tr>
+      </tbody>
+    </table>
+
+    <p>References: <a href="https://go.dev/tour/basics/8" target="_blank" rel="noopener">Tour: Variables</a>, <a href="https://go.dev/ref/spec#Variables" target="_blank" rel="noopener">Go spec — Variables</a>.</p>
+  </section>
+
+  <!-- ===================== 6. Constants ===================== -->
+  <section class="section" id="constants">
+    <h2><span class="section-num">06</span>Constants</h2>
+    <p>
+      Constants are values fixed at compile time. They cannot be modified at runtime
+      and they cannot be declared with <code>:=</code>.
+    </p>
+
+    <div class="code-block"><span class="code-label">go</span><pre>const Pi = 3.14159
+const GreetingPrefix = "Hello, "
+const MaxRetries = 5
+
+// Multiple constants
+const (
+    KB = 1024
+    MB = 1024 * KB
+    GB = 1024 * MB
+)</pre></div>
+
+    <h3>iota — auto-incrementing constant generator</h3>
+    <p>
+      <code>iota</code> is Go's enum-builder. Inside a <code>const ( ... )</code>
+      block, it starts at 0 and increments by 1 for each line.
+    </p>
+    <div class="code-block"><span class="code-label">go</span><pre>const (
+    LogDebug = iota   // 0
+    LogInfo           // 1
+    LogWarn           // 2
+    LogError          // 3
+)
+
+// Bitmask flags
+const (
+    PermRead    = 1 &lt;&lt; iota   // 1
+    PermWrite                  // 2
+    PermExecute                // 4
+)</pre></div>
+
+    <p>References: <a href="https://go.dev/tour/basics/15" target="_blank" rel="noopener">Tour: Constants</a>, <a href="https://go.dev/ref/spec#Iota" target="_blank" rel="noopener">Go spec — iota</a>.</p>
+  </section>
+
+  <!-- ===================== 7. Types & formatting ===================== -->
+  <section class="section" id="types">
+    <h2><span class="section-num">07</span>Basic types and formatting</h2>
+
+    <h3>The basic types</h3>
+    <table class="compare-table">
+      <thead><tr><th>Group</th><th>Types</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td>Signed int</td><td><code>int</code>, <code>int8</code>, <code>int16</code>, <code>int32</code>, <code>int64</code></td><td>Use <code>int</code> unless you need a specific size</td></tr>
+        <tr><td>Unsigned int</td><td><code>uint</code>, <code>uint8</code>, <code>uint16</code>, <code>uint32</code>, <code>uint64</code>, <code>uintptr</code></td><td><code>byte</code> is an alias for <code>uint8</code></td></tr>
+        <tr><td>Float</td><td><code>float32</code>, <code>float64</code></td><td>Default to <code>float64</code></td></tr>
+        <tr><td>Complex</td><td><code>complex64</code>, <code>complex128</code></td><td>Rare outside scientific code</td></tr>
+        <tr><td>Bool</td><td><code>bool</code></td><td><code>true</code> / <code>false</code></td></tr>
+        <tr><td>String</td><td><code>string</code></td><td>Immutable. UTF-8 by convention.</td></tr>
+        <tr><td>Rune</td><td><code>rune</code></td><td>Alias for <code>int32</code>. A single Unicode code point.</td></tr>
+      </tbody>
+    </table>
+
+    <h3>The <code>fmt</code> package</h3>
+    <p>Three functions you'll use constantly:</p>
+    <div class="code-block"><span class="code-label">go</span><pre>fmt.Println("simple printing", 42, true)
+// simple printing 42 true
+
+fmt.Printf("name=%s age=%d active=%t\n", "Eddie", 30, true)
+// name=Eddie age=30 active=true
+
+s := fmt.Sprintf("%s/%d", "host", 443)   // returns the string instead of printing
+// s == "host/443"</pre></div>
+
+    <h3>Format verbs you'll use 90% of the time</h3>
+    <table class="compare-table">
+      <thead><tr><th>Verb</th><th>Meaning</th><th>Example</th></tr></thead>
+      <tbody>
+        <tr><td><code>%v</code></td><td>Default format for any value</td><td><code>fmt.Printf("%v", anyValue)</code></td></tr>
+        <tr><td><code>%+v</code></td><td>Struct with field names</td><td><code>{Name:Eddie Age:30}</code></td></tr>
+        <tr><td><code>%#v</code></td><td>Go-syntax representation</td><td><code>main.Person{Name:"Eddie", Age:30}</code></td></tr>
+        <tr><td><code>%T</code></td><td>The value's type</td><td><code>main.Person</code></td></tr>
+        <tr><td><code>%d</code></td><td>Decimal integer</td><td><code>42</code></td></tr>
+        <tr><td><code>%s</code></td><td>String</td><td><code>hello</code></td></tr>
+        <tr><td><code>%q</code></td><td>Quoted string</td><td><code>"hello"</code></td></tr>
+        <tr><td><code>%t</code></td><td>Boolean</td><td><code>true</code></td></tr>
+        <tr><td><code>%f</code></td><td>Float</td><td><code>3.141590</code></td></tr>
+        <tr><td><code>%x</code> / <code>%X</code></td><td>Hex (lower / upper)</td><td><code>ff</code> / <code>FF</code></td></tr>
+        <tr><td><code>%w</code></td><td>Wrap an error (in <code>fmt.Errorf</code>)</td><td>see Errors section</td></tr>
+      </tbody>
+    </table>
+
+    <p>Reference: <a href="https://pkg.go.dev/fmt" target="_blank" rel="noopener">pkg.go.dev/fmt</a> — keep this tab open while learning.</p>
+  </section>
+
+  <!-- ===================== 8. Conditionals ===================== -->
+  <section class="section" id="conditionals">
+    <h2><span class="section-num">08</span>Conditionals</h2>
+
+    <h3><code>if</code> / <code>else if</code> / <code>else</code></h3>
+    <div class="code-block"><span class="code-label">go</span><pre>if port &lt; 1024 {
+    fmt.Println("privileged port")
+} else if port &lt; 49152 {
+    fmt.Println("registered port")
+} else {
+    fmt.Println("ephemeral port")
+}</pre></div>
+    <p>
+      No parentheses around the condition (the compiler will reject them).
+      Braces are required even for one-line bodies.
+    </p>
+
+    <h3><code>if</code> with an initialization statement</h3>
+    <p>This is the single most common Go pattern. You'll write it a thousand times.</p>
+    <div class="code-block"><span class="code-label">go</span><pre>if conn, err := net.Dial("tcp", "1.1.1.1:80"); err != nil {
+    log.Fatal(err)
+} else {
+    defer conn.Close()
+    // use conn
+}</pre></div>
+    <p>
+      <code>conn</code> and <code>err</code> are scoped to the <code>if/else</code>
+      block. Any variables you declare in the init statement vanish after.
+    </p>
+
+    <h3><code>switch</code></h3>
+    <p>Go's switch is more powerful than C's and has no implicit fallthrough.</p>
+    <div class="code-block"><span class="code-label">go</span><pre>switch os := runtime.GOOS; os {
+case "darwin":
+    fmt.Println("macOS")
+case "linux":
+    fmt.Println("Linux")
+case "windows":
+    fmt.Println("Windows")
+default:
+    fmt.Printf("%s\n", os)
+}
+
+// Switch with no expression = clean if/else if chain
+switch {
+case statusCode &gt;= 500:
+    fmt.Println("server error")
+case statusCode &gt;= 400:
+    fmt.Println("client error")
+case statusCode &gt;= 300:
+    fmt.Println("redirect")
+default:
+    fmt.Println("ok")
+}</pre></div>
+
+    <p>References: <a href="https://go.dev/tour/flowcontrol/5" target="_blank" rel="noopener">Tour: If</a>, <a href="https://go.dev/tour/flowcontrol/9" target="_blank" rel="noopener">Tour: Switch</a>.</p>
+  </section>
+
+  <!-- ===================== 9. Loops ===================== -->
+  <section class="section" id="loops">
+    <h2><span class="section-num">09</span>Loops</h2>
+    <p>
+      Go has exactly <strong>one looping keyword</strong>: <code>for</code>. It
+      covers every iteration shape other languages spread across <code>for</code>,
+      <code>while</code>, <code>do/while</code>, and <code>foreach</code>.
+    </p>
+
+    <h3>C-style three-clause</h3>
+    <div class="code-block"><span class="code-label">go</span><pre>for i := 0; i &lt; 5; i++ {
+    fmt.Println(i)
+}</pre></div>
+
+    <h3>While-style (condition only)</h3>
+    <div class="code-block"><span class="code-label">go</span><pre>n := 1
+for n &lt; 1000 {
+    n *= 2
+}
+fmt.Println(n)   // 1024</pre></div>
+
+    <h3>Infinite loop</h3>
+    <div class="code-block"><span class="code-label">go</span><pre>for {
+    if shouldStop() {
+        break
+    }
+    work()
+}</pre></div>
+
+    <h3><code>for ... range</code> — iterate over collections</h3>
+    <div class="code-block"><span class="code-label">go</span><pre>// Slice
+ports := []int{22, 80, 443, 8080}
+for index, port := range ports {
+    fmt.Printf("[%d] %d\n", index, port)
+}
+
+// Map (order is randomized intentionally)
+headers := map[string]string{
+    "X-Forwarded-For": "10.0.0.1",
+    "User-Agent":      "scanner/1.0",
+}
+for key, value := range headers {
+    fmt.Printf("%s: %s\n", key, value)
+}
+
+// String — iterates over Unicode code points (runes), not bytes
+for i, r := range "héllo" {
+    fmt.Printf("%d %c\n", i, r)
+}</pre></div>
+
+    <h3><code>break</code>, <code>continue</code>, labels</h3>
+    <div class="code-block"><span class="code-label">go</span><pre>outer:
+for i := 0; i &lt; 10; i++ {
+    for j := 0; j &lt; 10; j++ {
+        if i*j &gt; 50 {
+            break outer   // breaks the labeled loop, not just the inner one
+        }
+    }
+}</pre></div>
+
+    <p>Reference: <a href="https://go.dev/tour/flowcontrol/1" target="_blank" rel="noopener">Tour: For</a>.</p>
+  </section>
+
+  <!-- ===================== 10. Functions ===================== -->
+  <section class="section" id="functions">
+    <h2><span class="section-num">10</span>Functions</h2>
+
+    <h3>Basic shape</h3>
+    <div class="code-block"><span class="code-label">go</span><pre>func add(a int, b int) int {
+    return a + b
+}
+
+// Same-type parameters can share a type declaration
+func add2(a, b int) int {
+    return a + b
+}</pre></div>
+
+    <h3>Multiple return values</h3>
+    <p>The defining feature of Go function signatures. Used pervasively for "value, error" returns.</p>
+    <div class="code-block"><span class="code-label">go</span><pre>func divide(a, b float64) (float64, error) {
+    if b == 0 {
+        return 0, fmt.Errorf("division by zero")
+    }
+    return a / b, nil
+}
+
+result, err := divide(10, 2)
+if err != nil {
+    log.Fatal(err)
+}
+fmt.Println(result)   // 5</pre></div>
+
+    <h3>Named returns</h3>
+    <div class="code-block"><span class="code-label">go</span><pre>func divmod(a, b int) (quotient, remainder int) {
+    quotient = a / b
+    remainder = a % b
+    return    // "naked return" — returns the named values
+}</pre></div>
+    <p>
+      Useful for short functions where the names document intent. For long
+      functions, prefer explicit returns — the indirection becomes confusing.
+    </p>
+
+    <h3>Variadic functions</h3>
+    <div class="code-block"><span class="code-label">go</span><pre>func sum(nums ...int) int {
+    total := 0
+    for _, n := range nums {
+        total += n
+    }
+    return total
+}
+
+sum(1, 2, 3)              // 6
+nums := []int{1, 2, 3, 4}
+sum(nums...)              // spread the slice into individual args</pre></div>
+
+    <h3>Anonymous functions and closures</h3>
+    <div class="code-block"><span class="code-label">go</span><pre>// Anonymous function called immediately
+func() {
+    fmt.Println("inline")
+}()
+
+// Closure: captures its enclosing scope
+func makeCounter() func() int {
+    count := 0
+    return func() int {
+        count++
+        return count
+    }
+}
+
+next := makeCounter()
+fmt.Println(next(), next(), next())   // 1 2 3</pre></div>
+
+    <h3>Functions are values</h3>
+    <div class="code-block"><span class="code-label">go</span><pre>operations := map[string]func(int, int) int{
+    "add": func(a, b int) int { return a + b },
+    "mul": func(a, b int) int { return a * b },
+}
+fmt.Println(operations["add"](3, 4))   // 7</pre></div>
+
+    <p>Reference: <a href="https://go.dev/tour/basics/4" target="_blank" rel="noopener">Tour: Functions</a>.</p>
+  </section>
+
+  <!-- ===================== 11. Composite types ===================== -->
+  <section class="section" id="composite">
+    <h2><span class="section-num">11</span>Composite types — arrays, slices, maps</h2>
+
+    <h3>Arrays — fixed size</h3>
+    <div class="code-block"><span class="code-label">go</span><pre>var ports [3]int = [3]int{22, 80, 443}
+fmt.Println(ports[0])     // 22
+fmt.Println(len(ports))   // 3</pre></div>
+    <p>You'll rarely use arrays directly. Slices are what you want.</p>
+
+    <h3>Slices — dynamic size, the workhorse</h3>
+    <div class="code-block"><span class="code-label">go</span><pre>var ports []int                // nil slice, len 0
+ports = []int{22, 80, 443}     // literal
+ports = append(ports, 8080)    // grow
+fmt.Println(len(ports), cap(ports))   // 4 4
+
+// make(): allocate with known length and capacity
+buf := make([]byte, 1024)            // len=1024, cap=1024
+buf := make([]byte, 0, 1024)         // len=0, cap=1024 — grow without reallocation
+
+// Slicing a slice
+fmt.Println(ports[1:3])              // [80 443]
+fmt.Println(ports[:2])               // [22 80]
+fmt.Println(ports[2:])               // [443 8080]</pre></div>
+
+    <div class="callout warning">
+      <span class="callout-title">Slice gotcha</span>
+      <p>Slices share an underlying array. Modifying a slice modifies any other slice that overlaps the same backing array. If you need an independent copy, use <code>copy()</code> or <code>append([]T{}, src...)</code>.</p>
+    </div>
+
+    <h3>Maps — key/value pairs</h3>
+    <div class="code-block"><span class="code-label">go</span><pre>// Literal
+ports := map[string]int{
+    "ssh":   22,
+    "http":  80,
+    "https": 443,
+}
+
+// make()
+counts := make(map[string]int)
+counts["denied"]++   // works on zero value (0)
+
+// Lookup with comma-ok (existence check)
+if port, ok := ports["smtp"]; ok {
+    fmt.Println("smtp on", port)
+} else {
+    fmt.Println("smtp not configured")
+}
+
+// Delete
+delete(ports, "http")</pre></div>
+
+    <p>References: <a href="https://go.dev/tour/moretypes/6" target="_blank" rel="noopener">Tour: Slices</a>, <a href="https://go.dev/blog/slices-intro" target="_blank" rel="noopener">Go blog: Slices</a>.</p>
+  </section>
+
+  <!-- ===================== 12. Pointers ===================== -->
+  <section class="section" id="pointers">
+    <h2><span class="section-num">12</span>Pointers</h2>
+    <p>
+      A pointer holds the memory address of a value. Go has pointers, but no
+      pointer arithmetic — much safer than C.
+    </p>
+
+    <div class="code-block"><span class="code-label">go</span><pre>x := 42
+p := &amp;x          // &amp; takes the address — p is *int
+fmt.Println(*p)   // * dereferences — prints 42
+
+*p = 100         // assign through the pointer
+fmt.Println(x)    // 100</pre></div>
+
+    <h3>When to use pointers</h3>
+    <ul>
+      <li><strong>Mutation.</strong> If a function needs to modify its argument, pass a pointer.</li>
+      <li><strong>Avoiding copies of large structs.</strong> Passing a pointer is one word; passing a struct by value copies every field.</li>
+      <li><strong>Signaling absence.</strong> A <code>*string</code> can be <code>nil</code>; a <code>string</code> cannot.</li>
+    </ul>
+
+    <h3>Struct field access through a pointer auto-dereferences</h3>
+    <div class="code-block"><span class="code-label">go</span><pre>type Server struct{ Port int }
+s := &amp;Server{Port: 8080}
+fmt.Println(s.Port)   // not (*s).Port — Go does this for you</pre></div>
+
+    <p>Reference: <a href="https://go.dev/tour/moretypes/1" target="_blank" rel="noopener">Tour: Pointers</a>.</p>
+  </section>
+
+  <!-- ===================== 13. Structs ===================== -->
+  <section class="section" id="structs">
+    <h2><span class="section-num">13</span>Structs and methods</h2>
+
+    <h3>Defining a struct</h3>
+    <div class="code-block"><span class="code-label">go</span><pre>type ScanResult struct {
+    Host    string
+    Port    int
+    Open    bool
+    Banner  string
+}</pre></div>
+
+    <h3>Creating instances</h3>
+    <div class="code-block"><span class="code-label">go</span><pre>// Named fields (preferred — explicit)
+r1 := ScanResult{
+    Host: "1.1.1.1",
+    Port: 443,
+    Open: true,
+}
+
+// Positional (fragile — breaks if field order changes)
+r2 := ScanResult{"1.1.1.1", 443, true, ""}
+
+// Zero value of all fields
+var r3 ScanResult
+fmt.Printf("%+v\n", r3)
+// {Host: Port:0 Open:false Banner:}</pre></div>
+
+    <h3>Methods</h3>
+    <p>
+      A method is a function with a <strong>receiver</strong>. The receiver
+      argument appears between <code>func</code> and the method name.
+    </p>
+    <div class="code-block"><span class="code-label">go</span><pre>func (r ScanResult) String() string {
+    state := "closed"
+    if r.Open {
+        state = "open"
+    }
+    return fmt.Sprintf("%s:%d %s", r.Host, r.Port, state)
+}
+
+r := ScanResult{Host: "1.1.1.1", Port: 443, Open: true}
+fmt.Println(r.String())   // 1.1.1.1:443 open</pre></div>
+
+    <h3>Value vs pointer receivers</h3>
+    <div class="code-block"><span class="code-label">go</span><pre>// Value receiver: the method gets a copy. Cannot mutate r.
+func (r ScanResult) Summary() string { ... }
+
+// Pointer receiver: the method can mutate r.
+func (r *ScanResult) MarkOpen() {
+    r.Open = true
+}</pre></div>
+    <p>
+      <strong>Convention:</strong> if any method on a type uses a pointer receiver,
+      use pointer receivers for all methods on that type. Mixing is allowed but
+      almost always a smell.
+    </p>
+
+    <h3>Struct embedding (composition)</h3>
+    <p>Go has no inheritance. It has embedding, which is more honest.</p>
+    <div class="code-block"><span class="code-label">go</span><pre>type Logger struct{ Prefix string }
+func (l Logger) Log(msg string) { fmt.Printf("[%s] %s\n", l.Prefix, msg) }
+
+type Scanner struct {
+    Logger      // embedded; no field name
+    Targets []string
+}
+
+s := Scanner{Logger: Logger{Prefix: "scan"}, Targets: []string{"1.1.1.1"}}
+s.Log("starting")   // promoted method call — same as s.Logger.Log("starting")
+// [scan] starting</pre></div>
+
+    <p>Reference: <a href="https://go.dev/tour/moretypes/2" target="_blank" rel="noopener">Tour: Structs</a>.</p>
+  </section>
+
+  <!-- ===================== 14. Interfaces ===================== -->
+  <section class="section" id="interfaces">
+    <h2><span class="section-num">14</span>Interfaces</h2>
+    <p>
+      An interface is a set of method signatures. Any type that has all those
+      methods <strong>satisfies</strong> the interface. There's no
+      <code>implements</code> keyword — satisfaction is implicit, structural,
+      checked at compile time.
+    </p>
+
+    <h3>Defining and satisfying an interface</h3>
+    <div class="code-block"><span class="code-label">go</span><pre>type Stringer interface {
+    String() string
+}
+
+// ScanResult already has String() string from the previous section,
+// so it automatically satisfies Stringer. No declaration needed.
+
+func describe(s Stringer) {
+    fmt.Println(s.String())
+}
+
+describe(ScanResult{Host: "1.1.1.1", Port: 443, Open: true})</pre></div>
+
+    <h3>The empty interface and <code>any</code></h3>
+    <p>
+      <code>interface{}</code> has no methods, so every type satisfies it.
+      Since Go 1.18, <code>any</code> is a built-in alias for it. Use sparingly —
+      you lose type safety.
+    </p>
+    <div class="code-block"><span class="code-label">go</span><pre>func printAnything(v any) {
+    fmt.Printf("%v (%T)\n", v, v)
+}
+
+printAnything(42)         // 42 (int)
+printAnything("hello")    // hello (string)</pre></div>
+
+    <h3>Type assertions</h3>
+    <div class="code-block"><span class="code-label">go</span><pre>var i any = "hello"
+
+s := i.(string)         // panics if i is not a string
+s, ok := i.(string)     // safe form: ok is false if assertion fails
+
+if n, ok := i.(int); ok {
+    fmt.Println("got int:", n)
+} else {
+    fmt.Println("not an int")
+}</pre></div>
+
+    <h3>Type switches</h3>
+    <div class="code-block"><span class="code-label">go</span><pre>func describe(i any) string {
+    switch v := i.(type) {
+    case int:
+        return fmt.Sprintf("int: %d", v)
+    case string:
+        return fmt.Sprintf("string: %q", v)
+    case error:
+        return fmt.Sprintf("error: %v", v)
+    default:
+        return fmt.Sprintf("unknown: %T", v)
+    }
+}</pre></div>
+
+    <h3>Standard-library interfaces worth knowing on day one</h3>
+    <table class="compare-table">
+      <thead><tr><th>Interface</th><th>Method</th><th>Why it matters</th></tr></thead>
+      <tbody>
+        <tr><td><code>error</code></td><td><code>Error() string</code></td><td>Every error in Go satisfies this</td></tr>
+        <tr><td><code>fmt.Stringer</code></td><td><code>String() string</code></td><td>Customizes how <code>%v</code> prints your type</td></tr>
+        <tr><td><code>io.Reader</code></td><td><code>Read(p []byte) (n int, err error)</code></td><td>Any source of bytes — files, network, strings</td></tr>
+        <tr><td><code>io.Writer</code></td><td><code>Write(p []byte) (n int, err error)</code></td><td>Any sink for bytes</td></tr>
+      </tbody>
+    </table>
+
+    <p>References: <a href="https://go.dev/tour/methods/9" target="_blank" rel="noopener">Tour: Interfaces</a>, <a href="https://go.dev/doc/effective_go#interfaces" target="_blank" rel="noopener">Effective Go: Interfaces</a>.</p>
+  </section>
+
+  <!-- ===================== 15. Errors ===================== -->
+  <section class="section" id="errors">
+    <h2><span class="section-num">15</span>Errors</h2>
+    <p class="lead">
+      Go's most distinctive design choice: <strong>errors are values, not exceptions.</strong>
+      Every function that can fail returns an error as its last value, and you check it.
+    </p>
+
+    <h3>The <code>error</code> interface</h3>
+    <div class="code-block"><span class="code-label">go</span><pre>type error interface {
+    Error() string
+}</pre></div>
+    <p>Built into the language. Anything with an <code>Error() string</code> method is an error.</p>
+
+    <h3>The pattern you will write thousands of times</h3>
+    <div class="code-block"><span class="code-label">go</span><pre>data, err := os.ReadFile("/etc/hosts")
+if err != nil {
+    return err
+}
+// ... use data</pre></div>
+
+    <h3>Creating errors</h3>
+    <div class="code-block"><span class="code-label">go</span><pre>import "errors"
+
+err := errors.New("scan timed out")
+err := fmt.Errorf("connect to %s:%d failed: %w", host, port, cause)
+//                                                ^^ wraps the underlying error</pre></div>
+
+    <h3>Inspecting wrapped errors</h3>
+    <div class="code-block"><span class="code-label">go</span><pre>import "errors"
+
+var ErrTimeout = errors.New("scan timed out")
+
+err := scan("1.1.1.1")
+if errors.Is(err, ErrTimeout) {
+    // err or anything it wraps == ErrTimeout
+    retryLater()
+}
+
+var pathErr *os.PathError
+if errors.As(err, &amp;pathErr) {
+    // err or anything it wraps is a *os.PathError
+    fmt.Println("path involved:", pathErr.Path)
+}</pre></div>
+
+    <h3>Custom error types</h3>
+    <div class="code-block"><span class="code-label">go</span><pre>type ScanError struct {
+    Host string
+    Port int
+    Err  error
+}
+
+func (e *ScanError) Error() string {
+    return fmt.Sprintf("scan %s:%d: %v", e.Host, e.Port, e.Err)
+}
+func (e *ScanError) Unwrap() error { return e.Err }   // makes errors.Is/As work</pre></div>
+
+    <h3>panic and recover (use sparingly)</h3>
+    <div class="code-block"><span class="code-label">go</span><pre>// panic — for genuinely unrecoverable situations.
+// In normal control flow, return an error instead.
+
+func mustHave(cond bool, msg string) {
+    if !cond {
+        panic(msg)
+    }
+}
+
+// recover — turns a panic into an error you can handle.
+// Only useful inside a deferred function.
+func safeCall(fn func()) (err error) {
+    defer func() {
+        if r := recover(); r != nil {
+            err = fmt.Errorf("recovered: %v", r)
+        }
+    }()
+    fn()
+    return nil
+}</pre></div>
+
+    <div class="callout go">
+      <span class="callout-title">The Go philosophy</span>
+      <p>"Don't just check errors, handle them gracefully." Errors carry context. Wrap them as they bubble up so the final log line tells the full story: <em>"scan: connect tcp 1.1.1.1:443: i/o timeout"</em> rather than just "timeout".</p>
+    </div>
+
+    <p>References: <a href="https://go.dev/blog/error-handling-and-go" target="_blank" rel="noopener">Go blog: Error handling and Go</a>, <a href="https://go.dev/blog/go1.13-errors" target="_blank" rel="noopener">Working with errors in Go 1.13+</a>.</p>
+  </section>
+
+  <!-- ===================== 16. Concurrency ===================== -->
+  <section class="section" id="concurrency">
+    <h2><span class="section-num">16</span>A taste of concurrency</h2>
+    <p>
+      This is a deep topic — entire books are written about it. Here's just enough
+      to recognize it when you see it.
+    </p>
+
+    <h3>Goroutines</h3>
+    <p>Prefix any function call with <code>go</code> and it runs concurrently.</p>
+    <div class="code-block"><span class="code-label">go</span><pre>go fetch("https://example.com")
+go fetch("https://example.org")
+// main keeps going immediately; both fetches run in the background</pre></div>
+
+    <h3>Channels</h3>
+    <p>Goroutines coordinate by sending values through channels.</p>
+    <div class="code-block"><span class="code-label">go</span><pre>results := make(chan string)
+
+go func() {
+    results &lt;- "hello from goroutine"   // send
+}()
+
+msg := &lt;-results                          // receive (blocks until a send happens)
+fmt.Println(msg)</pre></div>
+
+    <h3>The Go concurrency mantra</h3>
+    <div class="callout go">
+      <span class="callout-title">From the Go proverbs</span>
+      <p><em>"Don't communicate by sharing memory; share memory by communicating."</em> Use channels to pass values between goroutines instead of using mutexes around shared state. Mutexes are available (<code>sync.Mutex</code>) but channels are the idiomatic default.</p>
+    </div>
+
+    <p>References: <a href="https://go.dev/tour/concurrency/1" target="_blank" rel="noopener">Tour: Concurrency</a>, <a href="https://go.dev/doc/effective_go#concurrency" target="_blank" rel="noopener">Effective Go: Concurrency</a>.</p>
+  </section>
+
+  <!-- ===================== 17. Daily code drills ===================== -->
+  <section class="section" id="drills">
+    <h2><span class="section-num">17</span>Daily code drills</h2>
+    <p class="lead">
+      Ten small programs to type into VS Code, run, and break. Each one reinforces
+      a concept from above. Aim for one per day in the first two weeks.
+    </p>
+
+    <h3>Drill 1 — Hello, your name</h3>
+    <div class="code-block"><span class="code-label">drill1.go</span><pre>package main
+
+import "fmt"
+
+func main() {
+    name := "Eddie"
+    fmt.Printf("Hello, %s. Welcome to Go.\n", name)
+}</pre></div>
+
+    <h3>Drill 2 — FizzBuzz</h3>
+    <div class="code-block"><span class="code-label">drill2.go</span><pre>package main
+
+import "fmt"
+
+func main() {
+    for i := 1; i &lt;= 30; i++ {
+        switch {
+        case i%15 == 0:
+            fmt.Println("FizzBuzz")
+        case i%3 == 0:
+            fmt.Println("Fizz")
+        case i%5 == 0:
+            fmt.Println("Buzz")
+        default:
+            fmt.Println(i)
+        }
+    }
+}</pre></div>
+
+    <h3>Drill 3 — Reverse a string</h3>
+    <div class="code-block"><span class="code-label">drill3.go</span><pre>package main
+
+import "fmt"
+
+func reverse(s string) string {
+    runes := []rune(s)
+    for i, j := 0, len(runes)-1; i &lt; j; i, j = i+1, j-1 {
+        runes[i], runes[j] = runes[j], runes[i]
+    }
+    return string(runes)
+}
+
+func main() {
+    fmt.Println(reverse("cloud security"))   // ytiruces duolc
+}</pre></div>
+
+    <h3>Drill 4 — Sum of command-line numbers</h3>
+    <div class="code-block"><span class="code-label">drill4.go</span><pre>package main
+
+import (
+    "fmt"
+    "os"
+    "strconv"
+)
+
+func main() {
+    sum := 0
+    for _, arg := range os.Args[1:] {
+        n, err := strconv.Atoi(arg)
+        if err != nil {
+            fmt.Fprintf(os.Stderr, "skipping %q: %v\n", arg, err)
+            continue
+        }
+        sum += n
+    }
+    fmt.Println("sum:", sum)
+}
+// Run: go run drill4.go 1 2 3 4 5     -&gt; sum: 15</pre></div>
+
+    <h3>Drill 5 — Count lines in a file</h3>
+    <div class="code-block"><span class="code-label">drill5.go</span><pre>package main
+
+import (
+    "bufio"
+    "fmt"
+    "os"
+)
+
+func main() {
+    if len(os.Args) &lt; 2 {
+        fmt.Fprintln(os.Stderr, "usage: drill5 &lt;file&gt;")
+        os.Exit(1)
+    }
+    f, err := os.Open(os.Args[1])
+    if err != nil {
+        fmt.Fprintln(os.Stderr, err)
+        os.Exit(1)
+    }
+    defer f.Close()
+
+    count := 0
+    sc := bufio.NewScanner(f)
+    for sc.Scan() {
+        count++
+    }
+    fmt.Println("lines:", count)
+}</pre></div>
+
+    <h3>Drill 6 — Word frequency</h3>
+    <div class="code-block"><span class="code-label">drill6.go</span><pre>package main
+
+import (
+    "bufio"
+    "fmt"
+    "os"
+    "strings"
+)
+
+func main() {
+    counts := make(map[string]int)
+    sc := bufio.NewScanner(os.Stdin)
+    for sc.Scan() {
+        for _, word := range strings.Fields(sc.Text()) {
+            counts[strings.ToLower(word)]++
+        }
+    }
+    for word, n := range counts {
+        fmt.Printf("%4d %s\n", n, word)
+    }
+}
+// Run: echo "the quick brown fox the lazy dog" | go run drill6.go</pre></div>
+
+    <h3>Drill 7 — HTTP GET</h3>
+    <div class="code-block"><span class="code-label">drill7.go</span><pre>package main
+
+import (
+    "fmt"
+    "io"
+    "net/http"
+    "os"
+)
+
+func main() {
+    resp, err := http.Get("https://go.dev/")
+    if err != nil {
+        fmt.Fprintln(os.Stderr, err)
+        os.Exit(1)
+    }
+    defer resp.Body.Close()
+
+    fmt.Println("status:", resp.Status)
+    body, _ := io.ReadAll(resp.Body)
+    fmt.Printf("body length: %d bytes\n", len(body))
+}</pre></div>
+
+    <h3>Drill 8 — JSON decode</h3>
+    <div class="code-block"><span class="code-label">drill8.go</span><pre>package main
+
+import (
+    "encoding/json"
+    "fmt"
+)
+
+type User struct {
+    Name  string `json:"name"`
+    Email string `json:"email"`
+    Roles []string `json:"roles"`
+}
+
+func main() {
+    raw := []byte(`{"name":"Eddie","email":"e@example.com","roles":["admin","auditor"]}`)
+    var u User
+    if err := json.Unmarshal(raw, &amp;u); err != nil {
+        panic(err)
+    }
+    fmt.Printf("%+v\n", u)
+}</pre></div>
+
+    <h3>Drill 9 — Concurrent URL pinger</h3>
+    <div class="code-block"><span class="code-label">drill9.go</span><pre>package main
+
+import (
+    "fmt"
+    "net/http"
+    "sync"
+    "time"
+)
+
+func ping(url string, wg *sync.WaitGroup) {
+    defer wg.Done()
+    start := time.Now()
+    resp, err := http.Get(url)
+    if err != nil {
+        fmt.Printf("%-30s ERROR %v\n", url, err)
+        return
+    }
+    resp.Body.Close()
+    fmt.Printf("%-30s %s in %v\n", url, resp.Status, time.Since(start))
+}
+
+func main() {
+    urls := []string{
+        "https://go.dev",
+        "https://kubernetes.io",
+        "https://aws.amazon.com",
+    }
+    var wg sync.WaitGroup
+    for _, u := range urls {
+        wg.Add(1)
+        go ping(u, &amp;wg)
+    }
+    wg.Wait()
+}</pre></div>
+
+    <h3>Drill 10 — Concurrent TCP port scanner</h3>
+    <div class="code-block"><span class="code-label">drill10.go</span><pre>package main
+
+import (
+    "fmt"
+    "net"
+    "sync"
+    "time"
+)
+
+func scan(host string, port int, wg *sync.WaitGroup) {
+    defer wg.Done()
+    addr := fmt.Sprintf("%s:%d", host, port)
+    conn, err := net.DialTimeout("tcp", addr, 1*time.Second)
+    if err != nil {
+        return
+    }
+    conn.Close()
+    fmt.Printf("%s open\n", addr)
+}
+
+func main() {
+    host := "scanme.nmap.org"   // explicitly authorizes scanning
+    var wg sync.WaitGroup
+    for port := 1; port &lt;= 1024; port++ {
+        wg.Add(1)
+        go scan(host, port, &amp;wg)
+    }
+    wg.Wait()
+}</pre></div>
+    <div class="callout warning">
+      <span class="callout-title">Only scan what you own or are authorized to scan</span>
+      <p><a href="http://scanme.nmap.org/" target="_blank" rel="noopener">scanme.nmap.org</a> is run by the Nmap project specifically to be a legal scan target. Pointing port scanners at random hosts on the internet is computer-crime-statute territory in most jurisdictions. For practice, run a vulnerable container locally (e.g., DVWA, OWASP Juice Shop) and scan that.</p>
+    </div>
+  </section>
+
+  <!-- ===================== 18. Plan ===================== -->
+  <section class="section" id="plan">
+    <h2><span class="section-num">18</span>90-day learning plan (honest)</h2>
+
+    <div class="callout honest">
+      <span class="callout-title">First, a reality check on "expert"</span>
+      <p>
+        No one becomes a Go <em>expert</em> in 90 days. Real expertise — knowing the
+        runtime, reading the source of <code>net/http</code>, designing
+        production-grade concurrent systems, mentoring others — takes <strong>2–5
+        years</strong> of regular use. What you can absolutely reach in 90 days is
+        <strong>competent</strong>: comfortable enough to read most Go code, write
+        small-to-medium tools, and ship something that handles real input safely.
+        That's the goal here.
+      </p>
+    </div>
+
+    <h3>Days 1–7 — Syntax fluency</h3>
+    <div class="day-plan">
+      <div class="day-block">
+        <h4>Days 1–2</h4>
+        <p>Install Go and VS Code. Read sections 1–7 of this lesson. Type drills 1–3 from scratch (don't copy-paste).</p>
+        <p class="day-meta">~2 hours/day</p>
+      </div>
+      <div class="day-block">
+        <h4>Days 3–5</h4>
+        <p>Read sections 8–12. Type drills 4–6. Run them, break them on purpose, read the error messages until the messages stop being scary.</p>
+        <p class="day-meta">~2 hours/day</p>
+      </div>
+      <div class="day-block">
+        <h4>Days 6–7</h4>
+        <p>Read sections 13–15. Type drills 7–8. Start the official <a href="https://go.dev/tour/" target="_blank" rel="noopener">Tour of Go</a> end-to-end on the side.</p>
+        <p class="day-meta">~3 hours over weekend</p>
+      </div>
+    </div>
+
+    <h3>Days 8–21 — Standard library comfort</h3>
+    <div class="day-plan">
+      <div class="day-block">
+        <h4>Week 2</h4>
+        <p>Deep dive: <code>fmt</code>, <code>strings</code>, <code>strconv</code>, <code>os</code>, <code>bufio</code>, <code>errors</code>. Build a CLI tool that takes a CSV file and produces a sorted summary.</p>
+        <p class="day-meta">~1 hour/day weekday, 3 hours/weekend day</p>
+      </div>
+      <div class="day-block">
+        <h4>Week 3</h4>
+        <p>Deep dive: <code>encoding/json</code>, <code>net/http</code>, <code>io</code>. Build a CLI that takes a URL, fetches it, parses JSON, and pretty-prints a summary.</p>
+        <p class="day-meta">~1 hour/day</p>
+      </div>
+    </div>
+
+    <h3>Days 22–45 — Real programs</h3>
+    <div class="day-plan">
+      <div class="day-block">
+        <h4>Weeks 4–5</h4>
+        <p>Learn <code>flag</code> for CLI argument parsing. Rebuild your CSV tool with proper flags and subcommands. Add unit tests using the built-in <code>testing</code> package.</p>
+      </div>
+      <div class="day-block">
+        <h4>Week 6</h4>
+        <p>Build a small HTTP server using <code>net/http</code>: 3 endpoints, JSON responses, structured logging with <code>log/slog</code>. Containerize it with a Dockerfile.</p>
+      </div>
+    </div>
+
+    <h3>Days 46–66 — Concurrency for real</h3>
+    <div class="day-plan">
+      <div class="day-block">
+        <h4>Weeks 7–8</h4>
+        <p>Goroutines, channels, <code>sync.Mutex</code>, <code>sync.WaitGroup</code>, <code>context.Context</code>. Read <a href="https://go.dev/blog/pipelines" target="_blank" rel="noopener">Go Concurrency Patterns: Pipelines</a>.</p>
+      </div>
+      <div class="day-block">
+        <h4>Week 9</h4>
+        <p>Rewrite drill 10 (port scanner) with bounded concurrency (worker pool) and per-target timeouts using <code>context.WithTimeout</code>.</p>
+      </div>
+    </div>
+
+    <h3>Days 67–90 — Ship something real</h3>
+    <div class="day-plan">
+      <div class="day-block">
+        <h4>Weeks 10–13</h4>
+        <p>Pick a project that solves an actual problem you have. Suggestions for a cloud security path: an AWS IAM policy diff tool, a TLS cert expiration checker for a list of domains, a CloudTrail event filter, a small file-integrity monitor for a directory tree.</p>
+      </div>
+      <div class="day-block">
+        <h4>Quality bar</h4>
+        <p>Tests for the core logic. Proper error handling (no <code>panic</code> in normal flow). A README that someone else could actually use. Cross-compiled binaries for at least <code>linux/amd64</code> and <code>darwin/arm64</code>.</p>
+      </div>
+    </div>
+
+    <h3>Beyond day 90</h3>
+    <p>
+      You're competent. To get to <em>expert</em>, the path is reading and writing
+      a lot more Go: contribute to an open-source Go project, read parts of the
+      standard library source (<code>net/http</code> is famously approachable),
+      and read <a href="https://www.gopl.io/" target="_blank" rel="noopener">The Go Programming Language</a>
+      cover to cover. Plan for another year or two of regular practice.
+    </p>
+  </section>
+
+  <!-- ===================== 19. Books and audio ===================== -->
+  <section class="section" id="books">
+    <h2><span class="section-num">19</span>Books and audio for advanced study</h2>
+    <p class="lead">
+      The books below are the ones experienced Go engineers actually recommend
+      when asked. Order them by where you are: the beginner books first, the
+      domain-specific ones once you've shipped something real.
+    </p>
+
+    <h3>The five books that come up in every "what should I read" thread</h3>
+
+    <ul class="sources">
+      <li>
+        <strong>The Go Programming Language</strong> — Alan A. A. Donovan &amp; Brian W. Kernighan (Addison-Wesley, 2015).
+        <span class="source-meta">
+          Universally called "GOPL" or "the K&amp;R of Go." Kernighan co-wrote <em>The C Programming Language</em>; the same precision and economy. Slightly dated on tooling and modules, but the language fundamentals haven't changed and no other book treats them with the same rigor. Buy this around month 2–3.
+          Publisher: <a href="https://www.gopl.io/" target="_blank" rel="noopener">gopl.io</a>.
+        </span>
+      </li>
+      <li>
+        <strong>Learning Go: An Idiomatic Approach to Real-World Go Programming</strong> — Jon Bodner (O'Reilly, 2nd ed. 2024).
+        <span class="source-meta">
+          The current best beginner-to-intermediate book. Covers Go 1.21+, generics, modules, structured logging, the modern toolchain. Reading this alongside the Tour gives you a complete first pass.
+          Publisher: <a href="https://www.oreilly.com/library/view/learning-go-2nd/9781098139278/" target="_blank" rel="noopener">O'Reilly catalog</a>.
+        </span>
+      </li>
+      <li>
+        <strong>100 Go Mistakes and How to Avoid Them</strong> — Teiva Harsanyi (Manning, 2022).
+        <span class="source-meta">
+          Anti-patterns and their fixes. Reads like a senior engineer code-reviewing your work in advance. The right book to bridge "I can write Go" → "I write Go that won't embarrass me." Read at month 4–6.
+          Publisher: <a href="https://www.manning.com/books/100-go-mistakes-and-how-to-avoid-them" target="_blank" rel="noopener">Manning</a>.
+        </span>
+      </li>
+      <li>
+        <strong>Concurrency in Go: Tools and Techniques for Developers</strong> — Katherine Cox-Buday (O'Reilly, 2017).
+        <span class="source-meta">
+          The definitive treatment of goroutines, channels, the sync package, and pipeline patterns. Slightly dated (predates <code>context</code> being everywhere) but the underlying model is unchanged. Pair with the official <a href="https://go.dev/blog/pipelines" target="_blank" rel="noopener">Go Concurrency Patterns</a> blog posts.
+          Publisher: <a href="https://www.oreilly.com/library/view/concurrency-in-go/9781491941294/" target="_blank" rel="noopener">O'Reilly catalog</a>.
+        </span>
+      </li>
+      <li>
+        <strong>Cloud Native Go: Building Reliable Services in Unreliable Environments</strong> — Matthew A. Titmus (O'Reilly, 2nd ed. 2024).
+        <span class="source-meta">
+          Direct match for your trajectory. Covers the patterns Go is actually used for in cloud infrastructure: idempotency, circuit breakers, observability, deployment, the SRE-adjacent design choices. Read this in parallel with whatever cloud project you build at the end of the 90-day plan.
+          Publisher: <a href="https://www.oreilly.com/library/view/cloud-native-go/9781098156404/" target="_blank" rel="noopener">O'Reilly catalog</a>.
+        </span>
+      </li>
+    </ul>
+
+    <h3>Specialty books for the cloud-security path</h3>
+    <ul class="sources">
+      <li>
+        <strong>Black Hat Go: Go Programming for Hackers and Pentesters</strong> — Tom Steele, Chris Patten, Dan Kottmann (No Starch Press, 2020).
+        <span class="source-meta">
+          Building actual security tools in Go: TCP scanners, packet manipulation, HTTP fuzzers, exploit delivery, C2 framework basics. Treat the offensive examples as <em>blue-team understanding</em> — read it to know what an attacker might build, not to point it at systems you don't own.
+          Publisher: <a href="https://nostarch.com/blackhatgo" target="_blank" rel="noopener">No Starch Press</a>.
+        </span>
+      </li>
+      <li>
+        <strong>Network Programming with Go</strong> — Adam Woodbeck (No Starch Press, 2021).
+        <span class="source-meta">
+          TCP, UDP, TLS, HTTP/2, streaming, custom protocols — all from the standard library, no third-party dependencies. The practical companion to <em>Cloud Native Go</em>. Essential if you'll write security tooling.
+          Publisher: <a href="https://nostarch.com/networkprogrammingwithgo" target="_blank" rel="noopener">No Starch Press</a>.
+        </span>
+      </li>
+      <li>
+        <strong>Distributed Services with Go</strong> — Travis Jeffery (Pragmatic Bookshelf, 2021).
+        <span class="source-meta">
+          Build a distributed log service from scratch — gRPC, Raft consensus, service discovery, deployment to Kubernetes. Useful for understanding how the systems you'll secure are actually built.
+          Publisher: <a href="https://pragprog.com/titles/tjgo/distributed-services-with-go/" target="_blank" rel="noopener">Pragmatic Bookshelf</a>.
+        </span>
+      </li>
+      <li>
+        <strong>Powerful Command-Line Applications in Go</strong> — Ricardo Gerardi (Pragmatic Bookshelf, 2021).
+        <span class="source-meta">
+          Building production-quality CLIs with <code>cobra</code>, <code>viper</code>, testing, releasing. Most security tools you'll write are CLIs; this is the craftsmanship book.
+          Publisher: <a href="https://pragprog.com/titles/rggo/powerful-command-line-applications-in-go/" target="_blank" rel="noopener">Pragmatic Bookshelf</a>.
+        </span>
+      </li>
+      <li>
+        <strong>The Go Programming Language Specification</strong> — The Go Authors (free, online).
+        <span class="source-meta">
+          Not a tutorial — the actual normative document defining the language. Surprisingly readable. Read once at month 6+ when you can appreciate the precision.
+          Source: <a href="https://go.dev/ref/spec" target="_blank" rel="noopener">go.dev/ref/spec</a>.
+        </span>
+      </li>
+    </ul>
+
+    <h3>Audio — an honest take</h3>
+    <div class="callout honest">
+      <span class="callout-title">Programming books don't really work as audiobooks</span>
+      <p>
+        None of the books above have audiobook versions, and that's correct: a
+        narrator reading <code>for i := 0; i &lt; len(slice); i++ {</code> aloud is
+        useless. The few "Go" titles on Audible are usually low-effort summaries
+        of free content. Save your Audible credits.
+      </p>
+      <p>
+        For ear-based learning, podcasts and conference talks are what actually
+        works — they're conversations <em>about</em> Go rather than reading code
+        verbatim. Recommended:
+      </p>
+    </div>
+
+    <ul class="sources">
+      <li>
+        <strong>Go Time</strong> (Changelog Media) — weekly podcast with Go core-team members and prominent community engineers.
+        <span class="source-meta">
+          The single best Go podcast. Conversational, technical, no fluff. Start with episodes on topics you care about (concurrency, generics, observability) rather than chronologically.
+          Listen: <a href="https://changelog.com/gotime" target="_blank" rel="noopener">changelog.com/gotime</a>.
+        </span>
+      </li>
+      <li>
+        <strong>Cup o' Go</strong> — biweekly news podcast covering the Go ecosystem.
+        <span class="source-meta">
+          Shorter, news-focused. Good for keeping up with releases, proposals, and community happenings without reading the mailing lists.
+          Listen: <a href="https://cupogo.dev/" target="_blank" rel="noopener">cupogo.dev</a>.
+        </span>
+      </li>
+      <li>
+        <strong>GopherCon talks on YouTube</strong> — the annual Go conference, archived.
+        <span class="source-meta">
+          Audio works most of the time; glance at the slides when needed. Search for talks by Bill Kennedy (concurrency), Rob Pike (language design), Dave Cheney (performance), Mat Ryer (HTTP services), Robert Griesemer (generics).
+          Channel: <a href="https://www.youtube.com/@GopherAcademy" target="_blank" rel="noopener">YouTube — GopherAcademy</a>.
+        </span>
+      </li>
+      <li>
+        <strong>Just for Func</strong> — Francesc Campoy's series of short Go videos.
+        <span class="source-meta">
+          Older (2016–2019) but still excellent for fundamentals. Each video is 10–20 minutes on one focused topic.
+          Channel: <a href="https://www.youtube.com/@JustForFunc" target="_blank" rel="noopener">YouTube — Just for Func</a>.
+        </span>
+      </li>
+      <li>
+        <strong>Ardan Labs — Bill Kennedy talks</strong>
+        <span class="source-meta">
+          Bill Kennedy (Ardan Labs) is one of the most respected Go educators. His talks on the Go memory model, scheduler, and idiomatic concurrency are foundational. Many are free on YouTube.
+          Search: <a href="https://www.youtube.com/results?search_query=bill+kennedy+ardan+labs+go" target="_blank" rel="noopener">YouTube — Bill Kennedy / Ardan Labs</a>.
+        </span>
+      </li>
+      <li>
+        <strong>The Changelog</strong> (general, not Go-only) — long-form interviews with notable open-source maintainers, including frequent Go ecosystem episodes.
+        <span class="source-meta">
+          Good context for who's who in the cloud-native world.
+          Listen: <a href="https://changelog.com/podcast" target="_blank" rel="noopener">changelog.com/podcast</a>.
+        </span>
+      </li>
+    </ul>
+
+    <h3>Suggested reading sequence</h3>
+    <table class="compare-table">
+      <thead><tr><th>When</th><th>Read / listen to</th><th>Why now</th></tr></thead>
+      <tbody>
+        <tr><td>Month 1</td><td>This lesson + Tour of Go + <em>Learning Go</em> (Bodner)</td><td>Establish the syntax and idioms.</td></tr>
+        <tr><td>Month 2–3</td><td><em>The Go Programming Language</em> (Donovan/Kernighan)</td><td>Internalize the language deeply.</td></tr>
+        <tr><td>Month 3+</td><td>Go Time podcast (any episode that catches your eye)</td><td>Background ear-training; lets you absorb idioms passively.</td></tr>
+        <tr><td>Month 4–5</td><td><em>Concurrency in Go</em> (Cox-Buday)</td><td>Prerequisite for any real backend or scanning work.</td></tr>
+        <tr><td>Month 5–6</td><td><em>100 Go Mistakes</em> (Harsanyi)</td><td>Sharpen your code. You now know enough to recognize the anti-patterns.</td></tr>
+        <tr><td>Month 6+</td><td><em>Cloud Native Go</em> (Titmus) + <em>Network Programming with Go</em> (Woodbeck)</td><td>Domain-specific depth for your cloud-security path.</td></tr>
+        <tr><td>Month 9+</td><td><em>Black Hat Go</em> (Steele et al.) + GopherCon talks</td><td>Security tooling specifically. By now you can read code as fast as English.</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ===================== 20. Sources ===================== -->
+  <section class="section" id="sources">
+    <h2><span class="section-num">20</span>Sources and further reading</h2>
+    <ul class="sources">
+      <li>
+        <a href="https://go.dev/" target="_blank" rel="noopener">go.dev</a> — official site, the source of truth for everything in this lesson.
+        <span class="source-meta">Bookmark this. Every claim above can be verified there.</span>
+      </li>
+      <li>
+        <a href="https://go.dev/tour/" target="_blank" rel="noopener">Tour of Go</a> — interactive tour, runnable in the browser.
+        <span class="source-meta">Best free first-pass; run it alongside this lesson.</span>
+      </li>
+      <li>
+        <a href="https://go.dev/doc/effective_go" target="_blank" rel="noopener">Effective Go</a> — the official idiom guide.
+        <span class="source-meta">Read once at week 4, again at week 12. It changes meaning as you grow.</span>
+      </li>
+      <li>
+        <a href="https://pkg.go.dev/std" target="_blank" rel="noopener">Standard library reference</a> — every package, every type, every function.
+        <span class="source-meta">Keep <a href="https://pkg.go.dev/fmt" target="_blank" rel="noopener">pkg.go.dev/fmt</a> open while learning.</span>
+      </li>
+      <li>
+        <a href="https://gobyexample.com/" target="_blank" rel="noopener">Go by Example</a> — annotated example code for every common task.
+        <span class="source-meta">Best place to look up "how do I do X in Go" once you know the basics.</span>
+      </li>
+      <li>
+        <a href="https://go.dev/blog/" target="_blank" rel="noopener">The Go Blog</a> — official deep-dives by the Go team.
+        <span class="source-meta">Required reading: <a href="https://go.dev/blog/error-handling-and-go" target="_blank" rel="noopener">Error handling</a>, <a href="https://go.dev/blog/slices-intro" target="_blank" rel="noopener">Slices</a>, <a href="https://go.dev/blog/pipelines" target="_blank" rel="noopener">Pipelines</a>.</span>
+      </li>
+      <li>
+        <a href="https://www.gopl.io/" target="_blank" rel="noopener">The Go Programming Language</a> — Donovan &amp; Kernighan, the book.
+        <span class="source-meta">The single best book on the language. Worth the money around month 3.</span>
+      </li>
+      <li>
+        <a href="https://go.dev/ref/spec" target="_blank" rel="noopener">The Go Programming Language Specification</a> — the actual spec.
+        <span class="source-meta">Surprisingly readable. Use it to settle arguments.</span>
+      </li>
+    </ul>
+
+    <a href="../index.html" class="cta-btn secondary">← Back to series</a>
+  </section>
+
+</main>
+
+<footer class="lang-footer">
+  Eddie's Hub · Cloud Security Languages · Lesson 1: Go ·
+  Built from primary sources at <a href="https://go.dev/" target="_blank" rel="noopener">go.dev</a>
+</footer>
+
+<script src="../js/nav.js"></script>
+</body>
+</html>
