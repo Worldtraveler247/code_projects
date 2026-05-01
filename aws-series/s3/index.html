@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; script-src 'self'; img-src 'self' data:;">
+  <title>Amazon S3 — AWS in Practice</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../css/aws-hub.css">
+</head>
+<body data-svc="s3">
+
+<!-- Shared top nav -->
+<nav class="aws-nav">
+  <div class="aws-nav-inner">
+    <a href="../index.html" class="aws-nav-brand">
+      <span class="brand-dot"></span>AWS in Practice
+    </a>
+    <div class="aws-nav-links">
+      <a href="../ec2/index.html"          class="aws-nav-link" data-svc="ec2">EC2</a>
+      <a href="../vpc/index.html"          class="aws-nav-link" data-svc="vpc">VPC</a>
+      <a href="../dynamodb/index.html"     class="aws-nav-link" data-svc="dynamodb">DynamoDB</a>
+      <a href="../api-gateway/index.html"  class="aws-nav-link" data-svc="api-gateway">API Gateway</a>
+      <a href="../s3/index.html"           class="aws-nav-link" data-svc="s3">S3</a>
+      <a href="../iam/index.html"          class="aws-nav-link coming-soon" data-svc="iam">IAM</a>
+      <a href="../kms/index.html"          class="aws-nav-link coming-soon" data-svc="kms">KMS</a>
+      <a href="../cloudfront/index.html"   class="aws-nav-link coming-soon" data-svc="cloudfront">CloudFront</a>
+      <a href="../cloudtrail/index.html"   class="aws-nav-link coming-soon" data-svc="cloudtrail">CloudTrail</a>
+      <a href="../basic-audit/index.html"  class="aws-nav-link coming-soon" data-svc="basic-audit">Audit</a>
+    </div>
+  </div>
+</nav>
+
+<header class="hero">
+  <span class="hero-tag">Service 5 of 10 · Storage · Security</span>
+  <h1>Amazon S3</h1>
+  <p class="hero-sub">
+    Simple Storage Service — durable object storage that the entire internet runs on.
+    Eleven nines of durability, infinite scale, pennies per gigabyte — and the
+    most-misconfigured service in cloud security history.
+  </p>
+
+  <!-- Inline SVG hero art: stylized buckets + objects + lock -->
+  <div class="hero-art">
+    <svg viewBox="0 0 320 200" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="s3-grad" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%"  stop-color="#ff9900" />
+          <stop offset="100%" stop-color="#ffd700" />
+        </linearGradient>
+        <linearGradient id="s3-bucket-fill" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%"  stop-color="rgba(255, 153, 0, 0.18)" />
+          <stop offset="100%" stop-color="rgba(255, 153, 0, 0.02)" />
+        </linearGradient>
+      </defs>
+
+      <!-- Center bucket (large) -->
+      <g transform="translate(120, 60)">
+        <!-- Bucket trapezoid -->
+        <path d="M 5 15 L 75 15 L 70 90 L 10 90 Z"
+              fill="url(#s3-bucket-fill)" stroke="url(#s3-grad)" stroke-width="2"/>
+        <!-- Bucket rim ellipse -->
+        <ellipse cx="40" cy="15" rx="35" ry="6"
+                 fill="none" stroke="url(#s3-grad)" stroke-width="2"/>
+        <!-- Object dots inside bucket -->
+        <circle cx="22" cy="35" r="3" fill="#ffd700" opacity="0.85"/>
+        <circle cx="40" cy="42" r="3" fill="#4af7ff" opacity="0.85"/>
+        <circle cx="58" cy="35" r="3" fill="#ff9900" opacity="0.85"/>
+        <circle cx="28" cy="55" r="3" fill="#7b2fff" opacity="0.85"/>
+        <circle cx="50" cy="58" r="3" fill="#ffd700" opacity="0.85"/>
+        <circle cx="40" cy="72" r="3" fill="#4af7ff" opacity="0.85"/>
+        <!-- Padlock on the bucket front -->
+        <g transform="translate(32, 78)">
+          <rect x="0" y="3" width="14" height="10" rx="1.5" fill="#0d0820" stroke="#4af7ff" stroke-width="1.2"/>
+          <path d="M 3 3 L 3 0.5 Q 3 -2 7 -2 Q 11 -2 11 0.5 L 11 3"
+                fill="none" stroke="#4af7ff" stroke-width="1.2"/>
+        </g>
+      </g>
+
+      <!-- Smaller bucket left -->
+      <g transform="translate(40, 100)" opacity="0.7">
+        <path d="M 4 10 L 50 10 L 46 60 L 8 60 Z"
+              fill="url(#s3-bucket-fill)" stroke="#ffb84d" stroke-width="1.5"/>
+        <ellipse cx="27" cy="10" rx="23" ry="4"
+                 fill="none" stroke="#ffb84d" stroke-width="1.5"/>
+        <circle cx="18" cy="28" r="2" fill="#ffd700" opacity="0.7"/>
+        <circle cx="35" cy="32" r="2" fill="#4af7ff" opacity="0.7"/>
+        <circle cx="27" cy="46" r="2" fill="#ff9900" opacity="0.7"/>
+      </g>
+
+      <!-- Smaller bucket right -->
+      <g transform="translate(225, 100)" opacity="0.7">
+        <path d="M 4 10 L 50 10 L 46 60 L 8 60 Z"
+              fill="url(#s3-bucket-fill)" stroke="#ffb84d" stroke-width="1.5"/>
+        <ellipse cx="27" cy="10" rx="23" ry="4"
+                 fill="none" stroke="#ffb84d" stroke-width="1.5"/>
+        <circle cx="18" cy="28" r="2" fill="#7b2fff" opacity="0.7"/>
+        <circle cx="35" cy="32" r="2" fill="#ffd700" opacity="0.7"/>
+        <circle cx="27" cy="46" r="2" fill="#4af7ff" opacity="0.7"/>
+      </g>
+
+      <!-- Floating data dots -->
+      <circle cx="60"  cy="40"  r="2"   fill="#4af7ff" opacity="0.7"/>
+      <circle cx="260" cy="50"  r="2.5" fill="#ff9900" opacity="0.8"/>
+      <circle cx="290" cy="180" r="2"   fill="#ffd700" opacity="0.7"/>
+      <circle cx="30"  cy="180" r="1.5" fill="#7b2fff" opacity="0.7"/>
+      <circle cx="160" cy="190" r="2"   fill="#4af7ff" opacity="0.6"/>
+    </svg>
+  </div>
+</header>
+
+<main>
+
+  <!-- ============================================================
+       SECTION 1 — What is S3?
+       ============================================================ -->
+  <section class="section reveal">
+    <h2><span class="section-num">01</span> What is S3?</h2>
+    <p class="lead">
+      S3 stores files — billions of them, of any size up to 5 TB each — as <strong>objects</strong>
+      inside <strong>buckets</strong>, accessed over HTTPS via a globally unique URL.
+      AWS designs it for <strong>11 nines of durability</strong> (99.999999999%) and
+      practically unlimited scale.
+    </p>
+    <p>
+      Launched in March 2006 as the very first public AWS service, S3 predates EC2 by months.
+      Today it stores <em>hundreds of trillions</em> of objects, peaks at tens of millions of
+      requests per second, and underpins a huge fraction of the internet — websites, backups,
+      data lakes, ML training sets, video archives, container images, application logs.
+      If you've used the web today, you've read from S3.
+    </p>
+
+    <h3>The core mental model</h3>
+    <ul>
+      <li><strong>Object storage, not a filesystem.</strong> No directories. Keys like <code>logs/2026/05/01/app.log</code> <em>look</em> like paths but are flat strings. Operations are <code>PUT</code>, <code>GET</code>, <code>DELETE</code>, <code>LIST</code> — not <code>open()</code> / <code>seek()</code>.</li>
+      <li><strong>Bucket name = global namespace.</strong> Bucket names are unique <em>across every AWS account on Earth</em>. <code>my-bucket</code> was taken in 2006. Use a prefix like <code>eddie-2026-logs</code>.</li>
+      <li><strong>Eventually consistent → strongly consistent (since Dec 2020).</strong> A successful PUT is immediately readable. This used to not be true; old blog posts may still warn about it. Ignore them.</li>
+      <li><strong>Storage classes are a first-class concept.</strong> Standard, Infrequent Access, One-Zone-IA, Glacier Instant / Flexible / Deep Archive, Intelligent-Tiering. Same API — different price/latency tradeoff.</li>
+      <li><strong>Versioning + Object Lock</strong> turn S3 into a tamper-evident, ransomware-resistant store — required by many compliance regimes (SEC 17a-4, HIPAA backup rules).</li>
+      <li><strong>Eventual cost surprises hide in <code>LIST</code> calls and cross-region transfer.</strong> Storage is cheap. Egress and request volume aren't.</li>
+    </ul>
+
+    <div class="callout">
+      <span class="callout-title">In one sentence</span>
+      <p>
+        S3 is the internet's hard drive — durable, infinitely scalable, addressable
+        via HTTPS, and so cheap to keep data in that the actual cost question is
+        almost always "how often will you read it?" not "how much can you store?"
+      </p>
+    </div>
+  </section>
+
+  <!-- ============================================================
+       SECTION 2 — Vibrant example
+       ============================================================ -->
+  <section class="section reveal">
+    <h2><span class="section-num">02</span> A vibrant example: Dropbox, then and now</h2>
+    <p>
+      In 2008, Dropbox launched on top of S3. They didn't have to build storage —
+      they uploaded your file to a bucket, kept the metadata in their own database,
+      and let S3 do the heavy lifting. That's how a small team scaled to hundreds
+      of millions of users without owning a single hard drive.
+    </p>
+    <p>
+      Years later, at sufficient scale, Dropbox famously moved off S3 onto their own
+      "Magic Pocket" infrastructure — they were big enough that the unit economics
+      finally favored building. <em>That</em> is the S3 success story: the only
+      reason to ever leave S3 is that you've outgrown the entire public cloud
+      pricing model. Almost no one does.
+    </p>
+    <p>
+      Today the same pattern repeats every week: a startup ships a "we host your
+      photos / videos / contracts / X-rays" product backed by a single S3 bucket,
+      a Lambda for thumbnails, and CloudFront in front for delivery.
+      Two engineers, infinite storage, $30/month bill at launch.
+    </p>
+
+    <figure class="diagram">
+      <div class="placeholder">
+        📐 Architecture diagram placeholder<br>
+        <small>Browser → CloudFront → S3 (private bucket via Origin Access Control)<br>
+        Save reference: <code>aws-series/s3/images/cloudfront-s3-arch.png</code><br>
+        Source: <a href="https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/private-content-restricting-access-to-s3.html" target="_blank" rel="noopener">docs.aws.amazon.com → Restricting access to an S3 origin</a>
+        </small>
+      </div>
+      <figcaption>The "static site / asset CDN" pattern — private bucket fronted by CloudFront with OAC.</figcaption>
+    </figure>
+  </section>
+
+  <!-- ============================================================
+       SECTION 3 — Who uses S3 and why
+       ============================================================ -->
+  <section class="section reveal">
+    <h2><span class="section-num">03</span> Who uses S3 — and why</h2>
+    <p>
+      Effectively everyone with an AWS account, plus a huge number of customers
+      using S3 standalone for storage. Concrete examples (publicly documented):
+    </p>
+
+    <div class="use-grid">
+      <div class="use-card">
+        <h4>📸 Pinterest</h4>
+        <p>Hundreds of billions of pins — every image you've ever pinned lives in S3, served via CloudFront. <a href="https://medium.com/pinterest-engineering" target="_blank" rel="noopener">Pinterest Engineering →</a></p>
+      </div>
+      <div class="use-card">
+        <h4>🎬 Netflix</h4>
+        <p>Source video masters, encoded variants, subtitles, manifests — all sit in S3 before being pushed to Open Connect edges.</p>
+      </div>
+      <div class="use-card">
+        <h4>🛰️ NASA / NOAA</h4>
+        <p>Petabytes of open satellite imagery (Landsat, GOES, Sentinel) on S3 as part of the AWS Open Data program. Free to read in-region.</p>
+      </div>
+      <div class="use-card">
+        <h4>🧬 Genomics England, Illumina</h4>
+        <p>Whole-genome sequences are gigabytes each. S3 + Glacier holds the cohort archive; EC2 / Batch reads it for analysis runs.</p>
+      </div>
+      <div class="use-card">
+        <h4>🏛️ U.S. Government</h4>
+        <p>FedRAMP-authorized S3 in GovCloud holds sensitive but unclassified data for DoD, DHS, and intelligence agency workloads.</p>
+      </div>
+      <div class="use-card">
+        <h4>🤖 OpenAI / Anthropic / model trainers</h4>
+        <p>Multi-petabyte training corpora, model checkpoints, eval datasets — S3 is the standard ML data plane (often paired with FSx for Lustre for hot reads).</p>
+      </div>
+    </div>
+
+    <h3>Common reasons to reach for S3</h3>
+    <ul>
+      <li><strong>Static website / SPA hosting:</strong> bucket + CloudFront + Route 53 = global, HTTPS, sub-cent per GB. The default frontend deploy target for half the internet.</li>
+      <li><strong>Backups &amp; archives:</strong> nightly snapshots, log retention, S3 + Glacier Deep Archive at $1/TB/month. Cheaper than tape — and online.</li>
+      <li><strong>Data lake:</strong> Parquet / ORC files in S3 queried by Athena, Redshift Spectrum, EMR, Spark. The standard analytics storage layer.</li>
+      <li><strong>Application uploads:</strong> presigned URLs let your app accept user uploads <em>directly to S3</em> without proxying through your servers. Saves bandwidth, scales infinitely.</li>
+      <li><strong>Inter-service handoff:</strong> Service A writes a file, S3 fires an EventBridge event, Lambda B picks it up. The original serverless ETL pattern.</li>
+      <li><strong>Compliance retention:</strong> Object Lock + WORM modes give you legal-hold and retention-period guarantees that auditors recognize.</li>
+    </ul>
+  </section>
+
+  <!-- ============================================================
+       SECTION 4 — Competitors and market share
+       ============================================================ -->
+  <section class="section reveal">
+    <h2><span class="section-num">04</span> Competitors &amp; market share</h2>
+    <p>
+      Object storage is a commodity primitive — every cloud has one, and a few
+      independents specifically target S3's egress pricing. Honest framing: AWS
+      defined the API, and almost everyone else implements an "S3-compatible" surface.
+    </p>
+
+    <table class="compare-table">
+      <thead>
+        <tr>
+          <th>Provider</th>
+          <th>Service</th>
+          <th>S3 API compatible?</th>
+          <th>Where it wins / loses</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="lead-row">
+          <td><strong>AWS</strong></td>
+          <td>S3</td>
+          <td>The reference</td>
+          <td>Most storage classes, deepest IAM, biggest ecosystem (Athena, Glue, Lake Formation, Snowball). <em>Loss:</em> egress pricing is famously expensive ($0.09/GB out to internet in most regions).</td>
+        </tr>
+        <tr>
+          <td>Microsoft Azure</td>
+          <td>Blob Storage</td>
+          <td>No (different API)</td>
+          <td>Hot / Cool / Archive tiers, AAD integration, integrated with Synapse and Fabric. Strong for Microsoft-heavy enterprises.</td>
+        </tr>
+        <tr>
+          <td>Google Cloud</td>
+          <td>Cloud Storage (GCS)</td>
+          <td>Partial (interop layer)</td>
+          <td>Excellent multi-region buckets, single global namespace per bucket. Often pricing-competitive, especially analytics with BigQuery.</td>
+        </tr>
+        <tr>
+          <td>Cloudflare</td>
+          <td>R2</td>
+          <td><strong>Yes</strong></td>
+          <td><strong>Zero egress fees.</strong> Game-changer for bandwidth-heavy workloads (video, downloads). Smaller storage-class catalog and weaker analytics integration.</td>
+        </tr>
+        <tr>
+          <td>Backblaze</td>
+          <td>B2</td>
+          <td><strong>Yes</strong></td>
+          <td>~$6/TB/month, very cheap egress to Cloudflare. Popular for backup workflows. Smaller ecosystem.</td>
+        </tr>
+        <tr>
+          <td>Wasabi</td>
+          <td>Hot Cloud Storage</td>
+          <td><strong>Yes</strong></td>
+          <td>Flat pricing, no egress fees within fair-use limits. Pitched as "S3 with predictable bills."</td>
+        </tr>
+        <tr>
+          <td>MinIO, Ceph, OpenStack Swift</td>
+          <td>Self-hosted</td>
+          <td><strong>Yes</strong> (MinIO/Ceph)</td>
+          <td>Run S3-compatible storage on your own hardware — common for on-prem AI clusters and air-gapped environments.</td>
+        </tr>
+      </tbody>
+    </table>
+    <p style="font-size: 0.85rem; color: var(--muted); margin-top: -0.5rem;">
+      Pricing claims above are headline figures; verify on each provider's pricing page before quoting in a proposal.
+    </p>
+
+    <div class="callout">
+      <span class="callout-title">The honest "why AWS S3"</span>
+      <p>
+        S3 wins because the <em>ecosystem</em> wins. Every analytics tool, every backup
+        product, every CI/CD runner has S3 as the default storage backend. The
+        switching cost isn't moving the bytes — it's rewriting the integrations.
+        For pure bandwidth-heavy workloads (video, large downloads, public datasets),
+        Cloudflare R2 with zero egress can be a dramatic cost win and is worth a serious look.
+      </p>
+    </div>
+
+    <h3>Where AWS doesn't always win</h3>
+    <ul>
+      <li><strong>Egress-heavy products:</strong> if you serve many TB/month to end users, R2 / B2 will absolutely beat S3 on bill.</li>
+      <li><strong>Single global bucket:</strong> GCS gives you a multi-region bucket out of the box; S3 requires cross-region replication (extra storage cost).</li>
+      <li><strong>Predictable flat pricing:</strong> Wasabi and similar appeal to teams that hate surprise request and egress charges.</li>
+      <li><strong>On-prem / air-gapped:</strong> MinIO and Ceph let you run an S3 API where AWS literally cannot reach.</li>
+    </ul>
+  </section>
+
+  <!-- ============================================================
+       SECTION 5 — Who runs it
+       ============================================================ -->
+  <section class="section reveal">
+    <h2><span class="section-num">05</span> Who actually runs it for you?</h2>
+    <p>
+      S3's shared-responsibility line is unusually skewed in AWS's favor:
+      <strong>AWS runs the storage, replication, durability math, and the API
+      front door. You own the bucket policy, the encryption choice, the public-access
+      settings, and the lifecycle rules.</strong> Almost every "S3 breach" you've read
+      about was the customer side, not the AWS side.
+    </p>
+
+    <div class="use-grid">
+      <div class="use-card">
+        <h4>👤 Self-managed (solo / startup)</h4>
+        <p>You create buckets, write policies, and (hopefully) enable Block Public Access. Easy to ship; easy to misconfigure. The default lab setup.</p>
+      </div>
+      <div class="use-card">
+        <h4>🛠️ Platform team</h4>
+        <p>At scale a platform team ships a Terraform module ("the blessed bucket"): private by default, KMS-encrypted, versioned, logged, lifecycled. App teams just call the module.</p>
+      </div>
+      <div class="use-card">
+        <h4>🏢 AWS Organizations + SCPs</h4>
+        <p>Service Control Policies block account-wide footguns: deny <code>s3:PutBucketPublicAccessBlock</code> with disable, deny <code>s3:PutBucketAcl</code> grants to <code>AllUsers</code>. Guardrails, not requests.</p>
+      </div>
+      <div class="use-card">
+        <h4>📡 Macie / Access Analyzer</h4>
+        <p>AWS Macie continuously scans S3 for PII; IAM Access Analyzer flags buckets with cross-account or public access. Often run by the security team, not the app team.</p>
+      </div>
+      <div class="use-card">
+        <h4>🤝 Backup / archive vendors</h4>
+        <p>Veeam, Rubrik, Druva, AWS Backup all use S3 (and Glacier) under the hood for enterprise backup. You consume their UI; the bucket is theirs.</p>
+      </div>
+      <div class="use-card">
+        <h4>🤖 Higher-level abstractions</h4>
+        <p>Amplify Storage, AppSync file uploads, Lambda + presigned URLs — frameworks abstract away the bucket lifecycle. You may never touch the S3 console directly.</p>
+      </div>
+    </div>
+
+    <div class="callout warning">
+      <span class="callout-title">⚠️ The default isn't neutral anymore</span>
+      <p>
+        Since April 2023, new S3 buckets have <strong>Block Public Access on by default</strong>
+        and <strong>ACLs disabled</strong>. That's a huge improvement — but older buckets
+        in your account may not have those defaults. Always audit existing buckets;
+        don't assume the modern defaults apply retroactively.
+      </p>
+    </div>
+  </section>
+
+  <!-- ============================================================
+       SECTION 6 — Security mindset
+       ============================================================ -->
+  <section class="section reveal">
+    <h2><span class="section-num">06</span> Security mindset</h2>
+    <p>
+      Misconfigured S3 is the headline cloud breach. A short, incomplete list of
+      famous public-bucket exposures: Verizon (2017, 14M customer records),
+      Accenture (2017, internal infrastructure), Pentagon / U.S. Army INSCOM
+      (2017, classified-adjacent data), Capital One (2019 — more famously an EC2/IAM
+      flaw, but the data lived in S3), GoDaddy (2018, server config), Booz Allen Hamilton
+      (2017, geospatial intelligence). The pattern almost never changes:
+      <em>a bucket got marked public and nobody noticed until a researcher tweeted.</em>
+    </p>
+
+    <h3>The five S3 controls every security engineer must know cold</h3>
+    <table class="compare-table">
+      <thead>
+        <tr>
+          <th>Control</th>
+          <th>What it does</th>
+          <th>When it fires</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="lead-row">
+          <td><strong>Block Public Access (BPA)</strong></td>
+          <td>Account- and bucket-level switches that override <em>any</em> policy or ACL granting public read/write.</td>
+          <td>The kill switch. Turn it on at the account level. Unless you are explicitly hosting public files, leave it on.</td>
+        </tr>
+        <tr>
+          <td><strong>Bucket Policy</strong></td>
+          <td>Resource-based JSON policy attached to the bucket. Controls who can do what — most powerful S3 access control.</td>
+          <td>Default access decision when IAM policies and bucket policies disagree → most-restrictive wins.</td>
+        </tr>
+        <tr>
+          <td><strong>Default Encryption (SSE-S3 / SSE-KMS)</strong></td>
+          <td>Every new object encrypted at rest. SSE-KMS gives per-object audit logs and customer-managed keys.</td>
+          <td>Always on by default since Jan 2023. Customer-managed KMS keys cost extra but give full key control.</td>
+        </tr>
+        <tr>
+          <td><strong>Versioning + Object Lock</strong></td>
+          <td>Versioning keeps every overwrite/delete recoverable. Object Lock prevents deletion entirely (WORM).</td>
+          <td>Ransomware defense. A compromised key can't permanently delete what Object Lock retains.</td>
+        </tr>
+        <tr>
+          <td><strong>Access Logging + CloudTrail Data Events</strong></td>
+          <td>Server access logs (every request, ~1-min latency) + CloudTrail data events (every <code>GetObject</code>/<code>PutObject</code>, near real time, queryable by IAM identity).</td>
+          <td>Required for incident response and most compliance frameworks. CloudTrail data events are not on by default and cost extra.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3>Six things to internalize before your first production bucket</h3>
+    <ul>
+      <li><strong>Account-level Block Public Access</strong> — set this once, leave it on. It's a global override that prevents anyone in the account from publishing a bucket by accident.</li>
+      <li><strong>Disable ACLs (Object Ownership = Bucket Owner Enforced).</strong> ACLs are a 2006-era mechanism and the source of most legacy public-bucket bugs. Use bucket policies + IAM exclusively.</li>
+      <li><strong>Encrypt with KMS for sensitive data.</strong> SSE-S3 protects against physical-disk theft. SSE-KMS adds per-object access decisions and full audit logs — required for HIPAA / PCI / SOC 2 in practice.</li>
+      <li><strong>Enable versioning everywhere it doesn't bankrupt you.</strong> Pair with a lifecycle rule that expires non-current versions after 30/90 days. Versioning + lifecycle = ransomware insurance.</li>
+      <li><strong>Use Origin Access Control (OAC) with CloudFront, never public read.</strong> If a file should be served to the public web, the bucket itself stays private and CloudFront fetches it with a signed identity. This is now the AWS-recommended pattern.</li>
+      <li><strong>Enable IAM Access Analyzer for S3.</strong> Free, account-wide, continuously flags any bucket with public or cross-account access. The single highest-value alert pipeline you'll wire up.</li>
+    </ul>
+
+    <div class="callout security">
+      <span class="callout-title">For your career</span>
+      <p>
+        S3 misconfiguration is on every cloud-security interview, every AWS Security
+        Specialty exam, and every real incident-response playbook. Get fluent with:
+        bucket policy syntax (especially <code>Condition</code> blocks), the BPA
+        precedence model, KMS-vs-S3 encryption decisions, OAC, presigned URLs, and
+        the difference between server access logs and CloudTrail data events.
+        These come up <em>constantly</em>.
+      </p>
+    </div>
+  </section>
+
+  <!-- ============================================================
+       SECTION 7 — Sources
+       ============================================================ -->
+  <section class="section reveal">
+    <h2><span class="section-num">07</span> Sources &amp; further reading</h2>
+    <ul class="sources">
+      <li>
+        <strong>AWS S3 official documentation</strong> — canonical reference, updated continuously.
+        <a href="https://docs.aws.amazon.com/s3/" target="_blank" rel="noopener">docs.aws.amazon.com/s3/</a>
+        <span class="source-meta">Primary source for everything in this page.</span>
+      </li>
+      <li>
+        <strong>Amazon S3 product page</strong> — pricing, storage class catalog, regional availability.
+        <a href="https://aws.amazon.com/s3/" target="_blank" rel="noopener">aws.amazon.com/s3/</a>
+      </li>
+      <li>
+        <strong>S3 security best practices</strong> — AWS's own checklist; the BPA / encryption / Access Analyzer trio.
+        <a href="https://docs.aws.amazon.com/AmazonS3/latest/userguide/security-best-practices.html" target="_blank" rel="noopener">docs.aws.amazon.com → S3 security best practices</a>
+      </li>
+      <li>
+        <strong>Block Public Access for S3</strong> — the kill-switch every account should turn on.
+        <a href="https://docs.aws.amazon.com/AmazonS3/latest/userguide/access-control-block-public-access.html" target="_blank" rel="noopener">docs.aws.amazon.com → Block Public Access</a>
+      </li>
+      <li>
+        <strong>Restricting access to an S3 origin (CloudFront OAC)</strong> — the modern private-bucket-via-CDN pattern.
+        <a href="https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/private-content-restricting-access-to-s3.html" target="_blank" rel="noopener">docs.aws.amazon.com → Private content with OAC</a>
+      </li>
+      <li>
+        <strong>S3 Object Lock</strong> — WORM compliance for SEC 17a-4, FINRA, CFTC, healthcare retention.
+        <a href="https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-lock.html" target="_blank" rel="noopener">docs.aws.amazon.com → Object Lock</a>
+      </li>
+      <li>
+        <strong>Amazon Macie</strong> — managed PII / sensitive-data discovery for S3.
+        <a href="https://docs.aws.amazon.com/macie/" target="_blank" rel="noopener">docs.aws.amazon.com/macie/</a>
+      </li>
+      <li>
+        <strong>AWS Storage Blog</strong> — engineering deep-dives on storage classes, replication, performance.
+        <a href="https://aws.amazon.com/blogs/storage/" target="_blank" rel="noopener">aws.amazon.com/blogs/storage/</a>
+      </li>
+      <li>
+        <strong>CIS AWS Foundations Benchmark</strong> — independent audit checklist with multiple S3 controls.
+        <a href="https://www.cisecurity.org/benchmark/amazon_web_services" target="_blank" rel="noopener">cisecurity.org → AWS benchmark</a>
+        <span class="source-meta">Industry-standard baseline; AWS Security Hub maps controls directly to it.</span>
+      </li>
+      <li>
+        <strong>NIST SP 800-209</strong> — Security Guidelines for Storage Infrastructure.
+        <a href="https://csrc.nist.gov/pubs/sp/800/209/final" target="_blank" rel="noopener">csrc.nist.gov → SP 800-209</a>
+        <span class="source-meta">Closest standards material on cloud object storage controls.</span>
+      </li>
+      <li>
+        <strong><em>AWS Certified Solutions Architect Study Guide</em></strong> (Sybex) and <strong><em>AWS Security Specialty Study Guide</em></strong> — both have heavy S3 chapters.
+        <span class="source-meta">SAA-C03 and SCS-C02 each have multiple S3 questions per attempt.</span>
+      </li>
+    </ul>
+  </section>
+
+  <!-- ============================================================
+       Tutorial CTA
+       ============================================================ -->
+  <section class="section reveal" style="text-align: center;">
+    <h2 style="justify-content: center;">Ready to ship a hardened bucket?</h2>
+    <p style="max-width: 580px; margin: 0 auto;">
+      The tutorial walks through creating a private, encrypted, versioned bucket
+      with Block Public Access, server-side KMS encryption, lifecycle rules, and
+      CloudTrail data events — Console, AWS CLI, and Terraform side by side.
+      Free-tier eligible.
+    </p>
+    <p>
+      <a href="tutorial.html" class="cta-btn">Open Hands-on Tutorial →</a>
+      <a href="../index.html" class="cta-btn secondary">← Back to series</a>
+    </p>
+  </section>
+
+</main>
+
+<footer class="aws-footer">
+  <p>
+    Service 5 of 10 · <a href="../index.html">AWS in Practice index</a> ·
+    <a href="../../index.html">App Hub</a> · Last reviewed 2026-05
+  </p>
+</footer>
+
+<script src="../js/nav.js"></script>
+</body>
+</html>
