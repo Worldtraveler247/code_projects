@@ -53,9 +53,10 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ── Constants ──────────────────────────────────────────────────────────────────
-TICKERS = ("VOO", "SPY", "QQQ", "MSFT", "LLY", "NVDA", "AAPL", "BTC-USD")
+TICKERS = ("^VIX", "VOO", "SPY", "QQQ", "MSFT", "LLY", "NVDA", "AAPL", "BTC-USD")
 
 COMPANY = {
+    "^VIX":    "CBOE Volatility Index",
     "VOO":     "Vanguard S&P 500 ETF",
     "SPY":     "SPDR S&P 500 ETF",
     "QQQ":     "Invesco Nasdaq-100 ETF",
@@ -243,7 +244,32 @@ def make_styled_table(rows: list[dict]) -> "pd.io.formats.style.Styler":
 
 # ── Fetch & annotate ───────────────────────────────────────────────────────────
 st.markdown("# 📈 Stock Monitor")
-ticker_display = ' · '.join(t if t != "BTC-USD" else "₿ BTC" for t in TICKERS)
+
+# ── VIX Header & Significance ──────────────────────────────────────────────────
+try:
+    vix_ticker = yf.Ticker("^VIX")
+    vix_data = vix_ticker.history(period="2d")
+    if not vix_data.empty and len(vix_data) >= 2:
+        current_vix = vix_data["Close"].iloc[-1]
+        prev_vix = vix_data["Close"].iloc[-2]
+        vix_delta = ((current_vix - prev_vix) / prev_vix) * 100
+        
+        st.markdown(f"""
+        <div style="background: rgba(255, 75, 75, 0.2); border-left: 5px solid #ff4b4b; padding: 20px; border-radius: 10px; margin-bottom: 25px;">
+            <h1 style="margin: 0; color: #d32f2f; font-size: 3rem;">VIX: {current_vix:.2f} <span style="font-size: 1.5rem;">({vix_delta:+.2f}%)</span></h1>
+            <p style="font-size: 1.1rem; margin-top: 10px; line-height: 1.6; color: #1a1a1a; font-weight: 500;">
+                The <b>CBOE Volatility Index (VIX)</b>, known as the "Fear Gauge," measures the market's expectation of 30-day forward-looking volatility. 
+                A rising VIX typically signals increased market fear and potential downward pressure on stocks, while a falling VIX suggests stability and confidence.
+            </p>
+            <a href="https://www.investopedia.com/terms/v/vix.asp" target="_blank" style="color: #0056b3; text-decoration: underline; font-weight: bold;">
+                📚 Learn more about the VIX on Investopedia →
+            </a>
+        </div>
+        """, unsafe_allow_html=True)
+except Exception:
+    pass
+
+ticker_display = ' · '.join(t if t != "BTC-USD" else "₿ BTC" for t in TICKERS if t != "^VIX")
 st.caption(
     f"Watchlist: **{ticker_display}**  "
     f"|  Buy alert: price **>{sma_drop:.0f}%** below SMA-{SMA_WIN}  "
@@ -262,117 +288,182 @@ raw = annotate_signals(raw, sma_drop, rsi_level)
 st.caption(f"Last updated: {datetime.now().strftime('%B %d, %Y  %I:%M:%S %p')}")
 st.markdown("---")
 
-# ── Price metric cards ─────────────────────────────────────────────────────────
-cols = st.columns(len(raw))
-for col, r in zip(cols, raw):
-    with col:
-        st.metric(
-            label=r["ticker"],
-            value=f"${r['price']:,.2f}",
-            delta=f"{r['day_chg']:+.2f}%",
+# ── Main Tabs ──────────────────────────────────────────────────────────────────
+tab_market, tab_ipo = st.tabs(["📊 Market Overview", "🚀 IPO Watch List"])
+
+with tab_market:
+    # ── Price metric cards ─────────────────────────────────────────────────────────
+    # Sort raw data to ensure VIX is first if present
+    sorted_raw = sorted(raw, key=lambda x: x['ticker'] != '^VIX')
+    cols = st.columns(len(sorted_raw))
+    for col, r in zip(cols, sorted_raw):
+        with col:
+            st.metric(
+                label=r["ticker"],
+                value=f"${r['price']:,.2f}" if r["ticker"] != "^VIX" else f"{r['price']:.2f}",
+                delta=f"{r['day_chg']:+.2f}%",
+            )
+
+    st.markdown("")
+
+    # ── Buy alert banner ───────────────────────────────────────────────────────────
+    buy_rows = [r for r in raw if r["buy"]]
+
+    if buy_rows:
+        n     = len(buy_rows)
+        lines = "".join(
+            f"<b>{r['ticker']}</b> (${r['price']:,.2f}) &mdash; {r['trigger']}<br>"
+            for r in buy_rows
+        )
+        st.markdown(
+            f'<div class="alert-banner">'
+            f'<h4>🟢 BUY ALERT — {n} ticker{"s" if n > 1 else ""} triggered</h4>'
+            f"<p>{lines}</p>"
+            f"</div>",
+            unsafe_allow_html=True,
+        )
+    else:
+        st.success("No buy alerts — all tickers are within thresholds.", icon="✅")
+
+    # ── Main overview table ────────────────────────────────────────────────────────
+    st.markdown("### Overview")
+    st.dataframe(
+        make_styled_table(raw),
+        use_container_width=True,
+        height=len(raw) * 52 + 46,
+    )
+
+    st.markdown("")
+
+    # ── Daily summary cards ────────────────────────────────────────────────────────
+    st.markdown("### 📋 Daily Summary")
+    c_gain, c_loss, c_buy = st.columns(3)
+
+    by_chg  = sorted(raw, key=lambda r: r["day_chg"], reverse=True)
+    gainers = [r for r in by_chg if r["day_chg"] > 0]
+    losers  = [r for r in by_chg if r["day_chg"] < 0]
+
+    with c_gain:
+        st.markdown("**🟢 Gainers today**")
+        if gainers:
+            for r in gainers:
+                st.markdown(
+                    f"**{r['ticker']}** &nbsp; "
+                    f"<span style='color:#00e676'>+{r['day_chg']:.2f}%</span> &nbsp; "
+                    f"${r['price']:,.2f}",
+                    unsafe_allow_html=True,
+                )
+        else:
+            st.caption("None today")
+
+    with c_loss:
+        st.markdown("**🔴 Losers today**")
+        if losers:
+            for r in reversed(losers):
+                st.markdown(
+                    f"**{r['ticker']}** &nbsp; "
+                    f"<span style='color:#ff5252'>{r['day_chg']:.2f}%</span> &nbsp; "
+                    f"${r['price']:,.2f}",
+                    unsafe_allow_html=True,
+                )
+        else:
+            st.caption("None today")
+
+    with c_buy:
+        st.markdown("**🟢 Buy signals**")
+        if buy_rows:
+            for r in buy_rows:
+                st.markdown(
+                    f"**{r['ticker']}** &nbsp; "
+                    f"RSI <span style='color:#00e676'>{r['rsi']:.1f}</span> &nbsp;·&nbsp; "
+                    f"SMA <span style='color:#00e676'>{r['vs_sma']:+.1f}%</span>",
+                    unsafe_allow_html=True,
+                )
+        else:
+            st.caption("No alerts triggered")
+
+    # ── Price history chart ────────────────────────────────────────────────────────
+    st.markdown("")
+    with st.expander("📉 30-Day Price History + SMA", expanded=False):
+        ticker_sel = st.selectbox(
+            "Select ticker",
+            options=[r["ticker"] for r in raw],
+            key="chart_sel",
         )
 
-st.markdown("")
+        @st.cache_data(ttl=300, show_spinner=False)
+        def load_history(t: str) -> pd.DataFrame:
+            hist = yf.Ticker(t).history(period="1mo")[["Close"]]
+            hist.index = hist.index.tz_localize(None)
+            hist.columns = ["Price"]
+            hist[f"SMA {SMA_WIN}"] = hist["Price"].rolling(SMA_WIN).mean()
+            return hist.dropna()
 
-# ── Buy alert banner ───────────────────────────────────────────────────────────
-buy_rows = [r for r in raw if r["buy"]]
+        chart_data = load_history(ticker_sel)
+        st.line_chart(chart_data, use_container_width=True, height=280)
+        st.caption(
+            f"Green line = {ticker_sel} close · Orange line = {SMA_WIN}-day SMA. "
+            f"Buy alert triggers when price drops >{sma_drop:.0f}% below SMA."
+        )
 
-if buy_rows:
-    n     = len(buy_rows)
-    lines = "".join(
-        f"<b>{r['ticker']}</b> (${r['price']:,.2f}) &mdash; {r['trigger']}<br>"
-        for r in buy_rows
-    )
-    st.markdown(
-        f'<div class="alert-banner">'
-        f'<h4>🟢 BUY ALERT — {n} ticker{"s" if n > 1 else ""} triggered</h4>'
-        f"<p>{lines}</p>"
-        f"</div>",
-        unsafe_allow_html=True,
-    )
-else:
-    st.success("No buy alerts — all tickers are within thresholds.", icon="✅")
+with tab_ipo:
+    st.markdown("### 🚀 IPO Watch List")
+    st.info("Information on high-profile private companies and how retail investors can gain exposure.")
 
-# ── Main overview table ────────────────────────────────────────────────────────
-st.markdown("### 📊 Market Overview")
-st.dataframe(
-    make_styled_table(raw),
-    use_container_width=True,
-    height=len(raw) * 52 + 46,
-)
+    ipo_data = [
+        {
+            "Company": "OpenAI",
+            "Status": "Private",
+            "Pre-IPO Platforms": "Forge Global, EquityZen, Hiive, DXYZ",
+            "Public Proxies": "Microsoft (MSFT)",
+            "Details": "Leader in AGI. Heavily backed by Microsoft. No confirmed IPO date."
+        },
+        {
+            "Company": "Anthropic",
+            "Status": "Private",
+            "Pre-IPO Platforms": "Hiive, Linqto",
+            "Public Proxies": "Amazon (AMZN), Google (GOOGL)",
+            "Details": "AI safety research. Backed by billions from Amazon and Google."
+        },
+        {
+            "Company": "SpaceX",
+            "Status": "Private",
+            "Pre-IPO Platforms": "Forge Global, EquityZen, Hiive",
+            "Public Proxies": "Google (GOOGL), Destiny Tech100 (DXYZ)",
+            "Details": "Space exploration. Regularly trades on secondary markets."
+        },
+        {
+            "Company": "Starlink",
+            "Status": "Private (Part of SpaceX)",
+            "Pre-IPO Platforms": "Indirect via SpaceX equity",
+            "Public Proxies": "Google (GOOGL - indirect)",
+            "Details": "Satellite internet. Hints of a future spinoff IPO once cashflow is predictable."
+        }
+    ]
 
-st.markdown("")
+    st.table(pd.DataFrame(ipo_data))
 
-# ── Daily summary cards ────────────────────────────────────────────────────────
-st.markdown("### 📋 Daily Summary")
-c_gain, c_loss, c_buy = st.columns(3)
+    st.markdown("#### 💡 How to Invest")
+    col1, col2 = st.columns(2)
 
-by_chg  = sorted(raw, key=lambda r: r["day_chg"], reverse=True)
-gainers = [r for r in by_chg if r["day_chg"] > 0]
-losers  = [r for r in by_chg if r["day_chg"] < 0]
+    with col1:
+        st.markdown("**1. Pre-IPO (Secondary Markets)**")
+        st.write("""
+        Retail investors typically use platforms that aggregate shares from former employees or early investors:
+        - **Secondary Platforms:** Forge Global, EquityZen, Hiive, and Linqto.
+        - **Funds:** Some platforms offer "feeder funds" with lower minimums ($10k-$25k) compared to direct private equity.
+        - **Closed-End Funds:** **Destiny Tech100 (DXYZ)** is a publicly traded fund that holds stakes in SpaceX and OpenAI.
+        """)
 
-with c_gain:
-    st.markdown("**🟢 Gainers today**")
-    if gainers:
-        for r in gainers:
-            st.markdown(
-                f"**{r['ticker']}** &nbsp; "
-                f"<span style='color:#00e676'>+{r['day_chg']:.2f}%</span> &nbsp; "
-                f"${r['price']:,.2f}",
-                unsafe_allow_html=True,
-            )
-    else:
-        st.caption("None today")
+    with col2:
+        st.markdown("**2. Post-IPO (Public Markets)**")
+        st.write("""
+        Once a company goes public (Initial Public Offering):
+        - **Brokerage:** You can buy shares directly through any standard brokerage (Fidelity, Robinhood, Schwab).
+        - **IPO Access:** Some brokers (like Robinhood or SoFi) offer "IPO Access" to retail investors to buy at the IPO price before it hits the open market.
+        """)
 
-with c_loss:
-    st.markdown("**🔴 Losers today**")
-    if losers:
-        for r in reversed(losers):
-            st.markdown(
-                f"**{r['ticker']}** &nbsp; "
-                f"<span style='color:#ff5252'>{r['day_chg']:.2f}%</span> &nbsp; "
-                f"${r['price']:,.2f}",
-                unsafe_allow_html=True,
-            )
-    else:
-        st.caption("None today")
-
-with c_buy:
-    st.markdown("**🟢 Buy signals**")
-    if buy_rows:
-        for r in buy_rows:
-            st.markdown(
-                f"**{r['ticker']}** &nbsp; "
-                f"RSI <span style='color:#00e676'>{r['rsi']:.1f}</span> &nbsp;·&nbsp; "
-                f"SMA <span style='color:#00e676'>{r['vs_sma']:+.1f}%</span>",
-                unsafe_allow_html=True,
-            )
-    else:
-        st.caption("No alerts triggered")
-
-# ── Price history chart ────────────────────────────────────────────────────────
-st.markdown("")
-with st.expander("📉 30-Day Price History + SMA", expanded=False):
-    ticker_sel = st.selectbox(
-        "Select ticker",
-        options=[r["ticker"] for r in raw],
-        key="chart_sel",
-    )
-
-    @st.cache_data(ttl=300, show_spinner=False)
-    def load_history(t: str) -> pd.DataFrame:
-        hist = yf.Ticker(t).history(period="1mo")[["Close"]]
-        hist.index = hist.index.tz_localize(None)
-        hist.columns = ["Price"]
-        hist[f"SMA {SMA_WIN}"] = hist["Price"].rolling(SMA_WIN).mean()
-        return hist.dropna()
-
-    chart_data = load_history(ticker_sel)
-    st.line_chart(chart_data, use_container_width=True, height=280)
-    st.caption(
-        f"Green line = {ticker_sel} close · Orange line = {SMA_WIN}-day SMA. "
-        f"Buy alert triggers when price drops >{sma_drop:.0f}% below SMA."
-    )
+    st.warning("⚠️ **Risk Warning:** Private equity is highly illiquid and high-risk. Valuations are speculative.")
 
 # ── Auto-refresh countdown ─────────────────────────────────────────────────────
 if auto_refresh:
