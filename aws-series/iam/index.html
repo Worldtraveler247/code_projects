@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; script-src 'self'; img-src 'self' data:;">
+  <title>AWS IAM — AWS in Practice</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../css/aws-hub.css">
+</head>
+<body data-svc="iam">
+
+<!-- Shared top nav -->
+<nav class="aws-nav">
+  <div class="aws-nav-inner">
+    <a href="../index.html" class="aws-nav-brand">
+      <span class="brand-dot"></span>AWS in Practice
+    </a>
+    <div class="aws-nav-links">
+      <a href="../ec2/index.html"          class="aws-nav-link" data-svc="ec2">EC2</a>
+      <a href="../vpc/index.html"          class="aws-nav-link" data-svc="vpc">VPC</a>
+      <a href="../dynamodb/index.html"     class="aws-nav-link" data-svc="dynamodb">DynamoDB</a>
+      <a href="../api-gateway/index.html"  class="aws-nav-link" data-svc="api-gateway">API Gateway</a>
+      <a href="../s3/index.html"           class="aws-nav-link" data-svc="s3">S3</a>
+      <a href="../iam/index.html"          class="aws-nav-link" data-svc="iam">IAM</a>
+      <a href="../kms/index.html"          class="aws-nav-link coming-soon" data-svc="kms">KMS</a>
+      <a href="../cloudfront/index.html"   class="aws-nav-link coming-soon" data-svc="cloudfront">CloudFront</a>
+      <a href="../cloudtrail/index.html"   class="aws-nav-link coming-soon" data-svc="cloudtrail">CloudTrail</a>
+      <a href="../basic-audit/index.html"  class="aws-nav-link coming-soon" data-svc="basic-audit">Audit</a>
+    </div>
+  </div>
+</nav>
+
+<header class="hero">
+  <span class="hero-tag">Service 6 of 10 · Identity &amp; Access</span>
+  <h1>AWS IAM</h1>
+  <p class="hero-sub">
+    Identity and Access Management — the blast-radius control plane for your AWS account.
+    The service that decides who can do what to which resource, and the one most likely to be
+    quoted in a breach post-mortem when it's wrong.
+  </p>
+
+  <!-- Inline SVG hero art: stylized key + shield -->
+  <div class="hero-art">
+    <svg viewBox="0 0 320 180" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="iam-grad" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%"  stop-color="#ff9900" />
+          <stop offset="100%" stop-color="#ffd700" />
+        </linearGradient>
+      </defs>
+      <!-- shield outline -->
+      <path d="M160 30 L210 50 L210 100 Q210 140 160 158 Q110 140 110 100 L110 50 Z"
+            fill="none" stroke="url(#iam-grad)" stroke-width="2.5" opacity="0.7"/>
+      <!-- key body -->
+      <g transform="translate(140,70)">
+        <circle cx="14" cy="14" r="12" fill="none" stroke="url(#iam-grad)" stroke-width="2"/>
+        <circle cx="14" cy="14" r="4"  fill="#ff9900"/>
+        <rect x="24" y="11" width="32" height="6" rx="1" fill="none" stroke="url(#iam-grad)" stroke-width="2"/>
+        <rect x="48" y="17" width="4"  height="6" fill="url(#iam-grad)"/>
+        <rect x="40" y="17" width="4"  height="4" fill="url(#iam-grad)"/>
+      </g>
+      <!-- floating policy markers -->
+      <circle cx="50"  cy="60"  r="2"   fill="#4af7ff" opacity="0.7"/>
+      <circle cx="265" cy="55"  r="2.5" fill="#ff9900" opacity="0.8"/>
+      <circle cx="40"  cy="130" r="2"   fill="#ffd700" opacity="0.7"/>
+      <circle cx="280" cy="125" r="3"   fill="#ff9900" opacity="0.6"/>
+      <circle cx="80"  cy="160" r="1.5" fill="#7b2fff" opacity="0.7"/>
+    </svg>
+  </div>
+</header>
+
+<main>
+
+  <!-- ============================================================
+       SECTION 1 — What is IAM?
+       ============================================================ -->
+  <section class="section reveal">
+    <h2><span class="section-num">01</span> What is IAM?</h2>
+    <p class="lead">
+      IAM is the service that answers <strong>"is this caller allowed to perform this action on this resource?"</strong>
+      for every API call inside your AWS account — from <code>s3:GetObject</code> on a single
+      file, to <code>iam:DeleteUser</code> on the human who created the account.
+    </p>
+    <p>
+      Every AWS API call passes through IAM. AWS receives a request, looks up the caller's
+      <strong>identity</strong> (a user, a role, or a service), evaluates every <strong>policy</strong>
+      attached to that identity and to the target resource, and either allows the call or returns
+      <code>AccessDenied</code>. There is no AWS API call that bypasses this check — not from the
+      Console, not from the CLI, not from inside an EC2 instance.
+    </p>
+
+    <h3>The four primitives</h3>
+    <ul>
+      <li><strong>Users</strong> — long-lived identities for humans or legacy automation. Have passwords and/or access keys. Strongly discouraged in 2026 for humans (use SSO/Identity Center) and for workloads (use roles).</li>
+      <li><strong>Roles</strong> — identities you <em>assume</em>. Issue short-lived credentials (15 min – 12 hr) via STS. The right answer for EC2 instances, Lambda functions, cross-account access, and federated humans.</li>
+      <li><strong>Policies</strong> — JSON documents that describe what's allowed or denied. Attached to identities (identity-based) or to resources (resource-based, e.g. an S3 bucket policy).</li>
+      <li><strong>Groups</strong> — bundles of users that share the same policies. Convenient for human management; irrelevant for workload identity (which uses roles).</li>
+    </ul>
+
+    <div class="callout">
+      <span class="callout-title">In one sentence</span>
+      <p>IAM is "who can do what" expressed as JSON, evaluated on every API call, with deny winning over allow.</p>
+    </div>
+  </section>
+
+  <!-- ============================================================
+       SECTION 2 — A vibrant example
+       ============================================================ -->
+  <section class="section reveal">
+    <h2><span class="section-num">02</span> A vibrant example: Capital One, 2019</h2>
+    <p>
+      A single misconfigured IAM permission on an EC2 instance role exposed
+      <strong>106 million customer records</strong> — the most-cited cloud-security case study in
+      modern history, and an IAM lesson at every layer.
+    </p>
+    <p>
+      The attacker exploited an SSRF vulnerability in a Capital One web app to make the EC2 instance
+      call its own Instance Metadata Service and hand over its IAM role's temporary credentials.
+      Those credentials were then used against S3 — and because the role had
+      <code>s3:ListAllMyBuckets</code> + <code>s3:GetObject</code> on production buckets it had no
+      business reading, the attacker walked out with credit applications, SSNs, and bank account
+      numbers.
+    </p>
+    <p>
+      Three IAM-shaped failures stacked: (1) the role had way more permissions than the workload
+      needed; (2) IMDSv1 was enabled, letting the SSRF reach the metadata endpoint; (3) no
+      condition keys restricted which buckets the role could read. Any one of those fixed in
+      isolation would have stopped the breach. <em>That's IAM in production.</em>
+      <a href="https://www.capitalone.com/digital/facts2019/" target="_blank" rel="noopener">Capital One disclosure →</a>
+    </p>
+
+    <figure class="diagram">
+      <div class="placeholder">
+        📐 Architecture diagram placeholder<br>
+        <small>
+          Attacker → SSRF → EC2 IMDSv1 → over-privileged IAM role → S3 buckets.<br>
+          Save reference diagram from
+          <a href="https://www.capitalone.com/digital/facts2019/" target="_blank" rel="noopener">Capital One disclosure</a> or the
+          <a href="https://krebsonsecurity.com/2019/08/what-we-can-learn-from-the-capital-one-hack/" target="_blank" rel="noopener">Krebs on Security write-up</a>.<br>
+          Save it as: <code>aws-series/iam/images/capital-one-attack-path.png</code>
+        </small>
+      </div>
+      <figcaption>The Capital One attack path. Every step crossed an IAM boundary that should have stopped it.</figcaption>
+    </figure>
+  </section>
+
+  <!-- ============================================================
+       SECTION 3 — Who uses IAM and why
+       ============================================================ -->
+  <section class="section reveal">
+    <h2><span class="section-num">03</span> Who uses IAM — and why</h2>
+    <p>
+      Everyone with an AWS account uses IAM, whether they realize it or not. The interesting
+      question is <em>how seriously</em> different organizations take it. A few publicly documented
+      examples:
+    </p>
+
+    <div class="use-grid">
+      <div class="use-card">
+        <h4>🏛️ U.S. Department of Defense</h4>
+        <p>Runs JWCC and earlier JEDI/JWICS workloads in AWS GovCloud. IAM policies are the security boundary between unclassified, secret, and TS workloads — audited continuously by independent assessors.</p>
+      </div>
+      <div class="use-card">
+        <h4>🏦 Capital One (post-2019)</h4>
+        <p>Rewrote their entire IAM posture after the breach: SCPs at the org level, permission boundaries on every role, automated continuous-compliance scanners. <a href="https://www.capitalone.com/tech/cloud/" target="_blank" rel="noopener">Capital One Tech →</a></p>
+      </div>
+      <div class="use-card">
+        <h4>🎬 Netflix</h4>
+        <p>Open-sourced <em>Repokid</em> and <em>Aardvark</em> to right-size IAM permissions automatically — strip privileges that haven't been used in 90 days. <a href="https://netflixtechblog.com/" target="_blank" rel="noopener">Netflix Tech Blog →</a></p>
+      </div>
+      <div class="use-card">
+        <h4>🏢 Anduril, Palantir, defense-tech</h4>
+        <p>Cleared workloads use IAM Identity Center federated to the company's ID provider, with roles assumed via short-lived SAML/OIDC tokens. No long-lived access keys touch human laptops.</p>
+      </div>
+      <div class="use-card">
+        <h4>🚀 Startups (the cautionary tale)</h4>
+        <p>The first 3 engineers all use the root account. Then a contractor commits AWS keys to GitHub. The bill is $40,000 of crypto-mining the next morning. IAM exists to prevent this exact story.</p>
+      </div>
+      <div class="use-card">
+        <h4>🛂 Federal agencies (FedRAMP)</h4>
+        <p>FedRAMP Moderate and High require detailed IAM controls — least privilege, MFA, audited via CloudTrail, role-based access. IAM is the spine of every FedRAMP authorization.</p>
+      </div>
+    </div>
+
+    <h3>Common reasons IAM gets called out specifically</h3>
+    <ul>
+      <li><strong>Compliance frameworks</strong> — SOC 2, PCI-DSS, HIPAA, FedRAMP all have control families that map directly to IAM policies, MFA, and access reviews.</li>
+      <li><strong>Multi-account architectures</strong> — AWS Organizations + Service Control Policies (SCPs) + cross-account IAM roles are how big companies isolate prod from dev from sandbox.</li>
+      <li><strong>Workload identity</strong> — every modern Lambda, ECS task, EC2 instance, EKS pod gets a role. Long-lived keys are 2010-thinking.</li>
+      <li><strong>Federation</strong> — IAM Identity Center (formerly AWS SSO) lets your Okta / Entra ID / Google Workspace handle authentication, with IAM handling authorization once they land.</li>
+      <li><strong>Incident response</strong> — when something is wrong, "what permissions did this principal actually have, and what did it use?" is always the first IAM question. Access Analyzer + CloudTrail answer it.</li>
+    </ul>
+  </section>
+
+  <!-- ============================================================
+       SECTION 4 — Competitors and market share
+       ============================================================ -->
+  <section class="section reveal">
+    <h2><span class="section-num">04</span> Competitors &amp; market share</h2>
+    <p>
+      IAM isn't a standalone product — it's bundled with the cloud. So the comparison is really
+      "how each cloud vendor models identity and authorization." Honest framing: the model
+      choices are different enough that switching is hard, but the underlying problem is the same.
+    </p>
+
+    <table class="compare-table">
+      <thead>
+        <tr>
+          <th>Provider</th>
+          <th>Identity Service</th>
+          <th>Cloud Market Share</th>
+          <th>Where it wins</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="lead-row">
+          <td><strong>AWS</strong></td>
+          <td>IAM + Identity Center + STS</td>
+          <td>~30%</td>
+          <td>Most granular policy language (resource-based, condition keys, SCPs), oldest catalog of permissions, deepest IaC tooling.</td>
+        </tr>
+        <tr>
+          <td>Microsoft Azure</td>
+          <td>Microsoft Entra ID (formerly Azure AD) + Azure RBAC</td>
+          <td>~21%</td>
+          <td>Best-in-class for human identity (corporate SSO, conditional access, MFA UX). Tight Office 365 / Windows integration.</td>
+        </tr>
+        <tr>
+          <td>Google Cloud</td>
+          <td>Cloud IAM</td>
+          <td>~12%</td>
+          <td>Cleaner mental model (resource-hierarchy inheritance), fewer concepts to learn, strong workload identity for GKE.</td>
+        </tr>
+        <tr>
+          <td>HashiCorp Vault (cross-cloud)</td>
+          <td>secrets engine + dynamic credentials</td>
+          <td>—</td>
+          <td>Generates short-lived AWS / Azure / GCP credentials on demand. Common in multi-cloud + on-prem hybrid shops.</td>
+        </tr>
+        <tr>
+          <td>Okta / Auth0</td>
+          <td>workforce + customer identity</td>
+          <td>—</td>
+          <td>Sits in front of all three clouds. Federates into IAM Identity Center / Entra ID / Cloud IAM. Best human-side IdP.</td>
+        </tr>
+      </tbody>
+    </table>
+    <p style="font-size: 0.85rem; color: var(--muted); margin-top: -0.5rem;">
+      Cloud market share: <a href="https://www.srgresearch.com/" target="_blank" rel="noopener">Synergy Research Group, Q4 2024</a>. Verify before quoting.
+    </p>
+
+    <div class="callout">
+      <span class="callout-title">The honest "why AWS IAM"</span>
+      <p>
+        IAM has the most expressive policy language of the three majors — resource-based policies,
+        condition keys, organization-wide guardrails (SCPs), permission boundaries, session policies.
+        That expressiveness is also why it's the easiest to get wrong. Azure's RBAC and GCP IAM are
+        both <em>simpler</em>; whether that's better depends on whether you need the precision.
+      </p>
+    </div>
+
+    <h3>Where AWS IAM doesn't always win</h3>
+    <ul>
+      <li><strong>Human identity UX:</strong> Entra ID's conditional access, device trust, and risk-based MFA are noticeably ahead of IAM Identity Center.</li>
+      <li><strong>Mental model overhead:</strong> AWS has users, groups, roles, identity-based policies, resource-based policies, permission boundaries, SCPs, session policies, and ACLs. GCP's "principal + role on resource hierarchy" is much smaller.</li>
+      <li><strong>Cross-cloud:</strong> if you're running on AWS + Azure + GCP, Vault or a single IdP is friendlier than maintaining three native IAM stacks.</li>
+    </ul>
+  </section>
+
+  <!-- ============================================================
+       SECTION 5 — Who manages it
+       ============================================================ -->
+  <section class="section reveal">
+    <h2><span class="section-num">05</span> Who actually runs it for you?</h2>
+    <p>
+      IAM's "shared responsibility" line: <strong>AWS runs the IAM service itself (control plane,
+      policy evaluation, STS). You write every policy, every role's trust relationship, and every
+      permission boundary.</strong> Misconfigurations are entirely on the customer.
+    </p>
+
+    <div class="use-grid">
+      <div class="use-card">
+        <h4>👤 Self-managed (startup / solo)</h4>
+        <p>You're the IAM admin and the developer and the on-call. Easy to over-grant "to make it work" and never circle back. Most learning happens here; most over-privileged roles also start here.</p>
+      </div>
+      <div class="use-card">
+        <h4>🏢 Cloud platform team</h4>
+        <p>A central platform team owns the IAM baseline (SCPs, permission boundaries, role templates). Developers request roles via PR or a self-service portal — never write policies from scratch.</p>
+      </div>
+      <div class="use-card">
+        <h4>🛡️ Cloud security engineering</h4>
+        <p>Distinct from platform. Owns guardrails, continuous compliance scanning (Access Analyzer, Security Hub), and incident response when an IAM credential leaks. Often the team that hires for this exact role.</p>
+      </div>
+      <div class="use-card">
+        <h4>🤝 Third-party MSP</h4>
+        <p>Mid-market companies often outsource IAM hygiene to MSPs (Mission, Cloudreach, Rackspace, etc.). The MSP runs the IdP federation, role templates, and audits.</p>
+      </div>
+      <div class="use-card">
+        <h4>🤖 Automated tooling</h4>
+        <p>Repokid (Netflix), Cloudsplaining (Salesforce), Pacu, Prowler — open-source tools that audit IAM state continuously. Increasingly run inside CI to block over-privileged policies before they merge.</p>
+      </div>
+      <div class="use-card">
+        <h4>🛂 Compliance / GRC</h4>
+        <p>FedRAMP / SOC 2 / PCI assessors don't manage IAM, but they read it. Quarterly access reviews are usually their deliverable — the IAM team just exports the data.</p>
+      </div>
+    </div>
+
+    <div class="callout warning">
+      <span class="callout-title">⚠️ Startup gotcha</span>
+      <p>
+        First-time AWS users often grant <code>AdministratorAccess</code> to "make it work for now"
+        and never revisit. <strong>That role is the entire account.</strong> If it's attached to an
+        EC2 instance whose web app has an SSRF, you're Capital One.
+        Treat <code>AdministratorAccess</code> the way you'd treat <code>sudo -i</code>: rare, audited, never automatic.
+      </p>
+    </div>
+  </section>
+
+  <!-- ============================================================
+       SECTION 6 — Security mindset
+       ============================================================ -->
+  <section class="section reveal">
+    <h2><span class="section-num">06</span> Security mindset</h2>
+    <p>
+      IAM <em>is</em> the security mindset. Every other AWS service's security story bottoms out
+      in "what permissions does the calling identity have." Get IAM right and most other services
+      get easier; get it wrong and nothing else matters.
+    </p>
+
+    <h3>Five things to internalize before you write your first policy</h3>
+    <ul>
+      <li><strong>Least privilege isn't a slogan, it's a measurable property.</strong> Use IAM Access Analyzer and CloudTrail-derived policy generation to check what permissions were <em>actually used</em> versus granted. Strip the rest.</li>
+      <li><strong>Roles for workloads, federation for humans.</strong> Long-lived access keys belong in a 2014 post-mortem, not in 2026 production. EC2 / Lambda / ECS get instance roles; humans get Identity Center + SSO.</li>
+      <li><strong>Default deny, explicit allow, deny wins.</strong> An IAM policy without a matching <code>Allow</code> denies. An <code>Allow</code> at any level is overridden by a <code>Deny</code> at any level. SCPs and permission boundaries deny — that's their job.</li>
+      <li><strong>Use conditions to scope.</strong> <code>aws:SourceIp</code>, <code>aws:RequestTag</code>, <code>aws:PrincipalOrgID</code>, <code>kms:ViaService</code> — condition keys turn "allow this action" into "allow this action only when X." Skip them and you've granted the unconditional version.</li>
+      <li><strong>Audit continuously, review periodically.</strong> CloudTrail logs every IAM call. Access Analyzer flags policies granting external access. Quarterly access reviews catch the stale grants no automation will.</li>
+    </ul>
+
+    <div class="callout security">
+      <span class="callout-title">For your career</span>
+      <p>
+        If you're targeting cloud security roles, IAM is the single highest-leverage skill on
+        the AWS Security Specialty exam and in every real engagement. Every breach story
+        bottoms out in "the policy was wrong" or "the credential leaked." Become fluent in
+        the policy language — actions, resources, conditions, principals — and you're already
+        more useful than half the field.
+      </p>
+    </div>
+  </section>
+
+  <!-- ============================================================
+       SECTION 7 — Sources
+       ============================================================ -->
+  <section class="section reveal">
+    <h2><span class="section-num">07</span> Sources &amp; further reading</h2>
+    <ul class="sources">
+      <li>
+        <strong>AWS official IAM documentation</strong> — canonical reference, updated continuously.
+        <a href="https://docs.aws.amazon.com/iam/" target="_blank" rel="noopener">docs.aws.amazon.com/iam/</a>
+        <span class="source-meta">Primary source for everything in this page.</span>
+      </li>
+      <li>
+        <strong>IAM JSON policy reference</strong> — every action, every condition key, every resource type AWS recognizes.
+        <a href="https://docs.aws.amazon.com/service-authorization/latest/reference/reference_policies_actions-resources-contextkeys.html" target="_blank" rel="noopener">Service Authorization Reference</a>
+        <span class="source-meta">Bookmark this. You'll look something up here weekly.</span>
+      </li>
+      <li>
+        <strong>AWS IAM best-practices guide</strong> — the short list of things AWS itself tells you to do.
+        <a href="https://docs.aws.amazon.com/IAM/latest/UserGuide/best-practices.html" target="_blank" rel="noopener">docs.aws.amazon.com → IAM Best Practices</a>
+      </li>
+      <li>
+        <strong>Capital One 2019 breach disclosure</strong> — the canonical IAM misconfiguration case study.
+        <a href="https://www.capitalone.com/digital/facts2019/" target="_blank" rel="noopener">capitalone.com/digital/facts2019/</a>
+      </li>
+      <li>
+        <strong>Cloudsplaining</strong> (Salesforce) — open-source IAM policy auditor that flags risky permissions.
+        <a href="https://github.com/salesforce/cloudsplaining" target="_blank" rel="noopener">github.com/salesforce/cloudsplaining</a>
+      </li>
+      <li>
+        <strong>Repokid + Aardvark</strong> (Netflix) — open-source tools for stripping unused IAM permissions automatically.
+        <a href="https://netflixtechblog.com/" target="_blank" rel="noopener">netflixtechblog.com</a>
+      </li>
+      <li>
+        <strong>Synergy Research Group, Q4 2024 Cloud Market Report</strong> — quarterly cloud-infrastructure market share figures.
+        <a href="https://www.srgresearch.com/" target="_blank" rel="noopener">srgresearch.com</a>
+        <span class="source-meta">Use for market-share quotes; figures change every quarter.</span>
+      </li>
+      <li>
+        <strong>AWS Security Blog</strong> — engineering write-ups on IAM features, condition keys, attack-path defenses.
+        <a href="https://aws.amazon.com/blogs/security/" target="_blank" rel="noopener">aws.amazon.com/blogs/security</a>
+      </li>
+      <li>
+        <strong><em>AWS Certified Security – Specialty Study Guide</em></strong> (Sybex) — the IAM chapters alone are worth it for the policy-evaluation walkthroughs.
+        <span class="source-meta">Recommended if you're studying for SCS-C02.</span>
+      </li>
+    </ul>
+    <p style="font-size: 0.85rem; color: var(--muted); font-style: italic;">
+      Note: peer-reviewed academic literature on IAM is rare — most authoritative material lives in
+      AWS documentation, vendor security blogs, and incident-response post-mortems. All quoted
+      figures should be re-verified before quoting professionally.
+    </p>
+  </section>
+
+  <!-- ============================================================
+       Tutorial CTA
+       ============================================================ -->
+  <section class="section reveal" style="text-align: center;">
+    <h2 style="justify-content: center;">Ready to write your first policy?</h2>
+    <p style="max-width: 580px; margin: 0 auto;">
+      The tutorial walks you through creating a least-privilege role for a Lambda function —
+      Console, AWS CLI, and Terraform side by side. Free-tier eligible.
+    </p>
+    <p>
+      <a href="tutorial.html" class="cta-btn">Open Hands-on Tutorial →</a>
+      <a href="../index.html" class="cta-btn secondary">← Back to series</a>
+    </p>
+  </section>
+
+</main>
+
+<footer class="aws-footer">
+  <p>
+    Service 6 of 10 · <a href="../index.html">AWS in Practice index</a> ·
+    <a href="../../index.html">App Hub</a> · Last reviewed 2026-05
+  </p>
+</footer>
+
+<script src="../js/nav.js"></script>
+</body>
+</html>

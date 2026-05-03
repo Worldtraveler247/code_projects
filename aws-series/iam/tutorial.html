@@ -1,0 +1,687 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; script-src 'self'; img-src 'self' data:;">
+  <title>IAM Hands-On Tutorial — AWS in Practice</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../css/aws-hub.css">
+  <style>
+    /* Tutorial-only additions */
+    .toc {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1.25rem 1.5rem;
+      margin: 2rem 0;
+    }
+    .toc h2 { margin: 0 0 0.75rem; font-size: 1rem; color: var(--aws-orange); }
+    .toc ol { margin: 0; padding-left: 1.5rem; }
+    .toc li { margin: 0.3rem 0; font-size: 0.92rem; }
+    .toc a { color: var(--text); text-decoration: none; }
+    .toc a:hover { color: var(--aws-orange); }
+    .track-pill {
+      display: inline-block;
+      font-family: 'Orbitron', sans-serif;
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.18em;
+      padding: 0.25rem 0.75rem;
+      border-radius: 999px;
+      margin-right: 0.5rem;
+    }
+    .track-console  { background: rgba(74, 247, 255, 0.12); color: var(--cyan); border: 1px solid rgba(74, 247, 255, 0.3); }
+    .track-cli      { background: rgba(255, 153, 0, 0.12); color: var(--aws-orange); border: 1px solid var(--aws-border); }
+    .track-tf       { background: rgba(123, 47, 255, 0.15); color: #b18bff; border: 1px solid rgba(123, 47, 255, 0.35); }
+    .step-list { counter-reset: stepnum; padding: 0; list-style: none; }
+    .step-list > li {
+      counter-increment: stepnum;
+      position: relative;
+      padding-left: 3rem;
+      margin: 1.25rem 0;
+    }
+    .step-list > li::before {
+      content: counter(stepnum);
+      position: absolute;
+      left: 0;
+      top: -2px;
+      width: 2rem;
+      height: 2rem;
+      border-radius: 50%;
+      background: var(--aws-orange-dim);
+      color: var(--aws-orange);
+      border: 1px solid var(--aws-border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Orbitron', sans-serif;
+      font-weight: 600;
+      font-size: 0.9rem;
+    }
+    kbd {
+      display: inline-block;
+      padding: 0.15em 0.45em;
+      font-family: 'Menlo', monospace;
+      font-size: 0.85em;
+      color: var(--text);
+      background: rgba(74, 247, 255, 0.1);
+      border: 1px solid rgba(74, 247, 255, 0.25);
+      border-bottom-width: 2px;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body data-svc="iam">
+
+<!-- Shared top nav -->
+<nav class="aws-nav">
+  <div class="aws-nav-inner">
+    <a href="../index.html" class="aws-nav-brand">
+      <span class="brand-dot"></span>AWS in Practice
+    </a>
+    <div class="aws-nav-links">
+      <a href="../ec2/index.html"          class="aws-nav-link" data-svc="ec2">EC2</a>
+      <a href="../vpc/index.html"          class="aws-nav-link" data-svc="vpc">VPC</a>
+      <a href="../dynamodb/index.html"     class="aws-nav-link" data-svc="dynamodb">DynamoDB</a>
+      <a href="../api-gateway/index.html"  class="aws-nav-link" data-svc="api-gateway">API Gateway</a>
+      <a href="../s3/index.html"           class="aws-nav-link" data-svc="s3">S3</a>
+      <a href="../iam/index.html"          class="aws-nav-link" data-svc="iam">IAM</a>
+      <a href="../kms/index.html"          class="aws-nav-link coming-soon" data-svc="kms">KMS</a>
+      <a href="../cloudfront/index.html"   class="aws-nav-link coming-soon" data-svc="cloudfront">CloudFront</a>
+      <a href="../cloudtrail/index.html"   class="aws-nav-link coming-soon" data-svc="cloudtrail">CloudTrail</a>
+      <a href="../basic-audit/index.html"  class="aws-nav-link coming-soon" data-svc="basic-audit">Audit</a>
+    </div>
+  </div>
+</nav>
+
+<header class="hero">
+  <span class="hero-tag">Hands-on Tutorial · Free-tier eligible</span>
+  <h1>IAM: Build a Least-Privilege Role</h1>
+  <p class="hero-sub">
+    Three tracks, same lab. We build a role for a Lambda function that can read one specific
+    S3 prefix and nothing else — then prove it using IAM Access Analyzer and CloudTrail.
+  </p>
+</header>
+
+<main>
+
+  <!-- Table of contents -->
+  <nav class="toc reveal">
+    <h2>What's in this tutorial</h2>
+    <ol>
+      <li><a href="#prereqs">Prerequisites &amp; safety net</a></li>
+      <li><a href="#whatwell">What we'll build</a></li>
+      <li><a href="#console">Track A — Console (click-by-click)</a></li>
+      <li><a href="#cli">Track B — AWS CLI v2</a></li>
+      <li><a href="#terraform">Track C — Terraform</a></li>
+      <li><a href="#verify">Verify least privilege (Access Analyzer + simulator)</a></li>
+      <li><a href="#cleanup">Cleanup — read this <em>first</em></a></li>
+      <li><a href="#takeaways">Senior-engineer takeaways</a></li>
+    </ol>
+  </nav>
+
+  <!-- ============================================================
+       PREREQS
+       ============================================================ -->
+  <section class="section reveal" id="prereqs">
+    <h2><span class="section-num">01</span> Prerequisites &amp; safety net</h2>
+
+    <h3>You'll need</h3>
+    <ul>
+      <li>An AWS account (everything in this tutorial is free).</li>
+      <li>An IAM user or Identity Center role with permission to create IAM roles, policies, and S3 buckets. <strong>Don't use the root account.</strong></li>
+      <li><a href="https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html" target="_blank" rel="noopener">AWS CLI v2</a> installed (<code>aws --version</code> should print 2.x).</li>
+      <li><a href="https://developer.hashicorp.com/terraform/downloads" target="_blank" rel="noopener">Terraform 1.7+</a> for Track C.</li>
+    </ul>
+
+    <h3>Configure a named CLI profile (one-time setup)</h3>
+    <p>Don't dump credentials into env vars; use named profiles in <code>~/.aws/credentials</code>. Replace <code>eddie-lab</code> with whatever you want to call this profile.</p>
+
+    <div class="code-block"><pre>aws configure --profile eddie-lab
+# AWS Access Key ID [None]: AKIA...
+# AWS Secret Access Key [None]: ...
+# Default region name [None]: us-east-1
+# Default output format [None]: json
+
+# Verify
+aws sts get-caller-identity --profile eddie-lab</pre></div>
+
+    <p>Every CLI command in this tutorial uses <code>--profile eddie-lab --region us-east-1</code>. Adjust to your profile/region.</p>
+
+    <div class="callout warning">
+      <span class="callout-title">⚠️ A note about the principle of least privilege</span>
+      <p>
+        The temptation is always to attach <code>AdministratorAccess</code>, get the lab working,
+        and "tighten it later." Resist. The whole point of this tutorial is to feel the
+        friction of writing a tight policy from scratch — that friction is the muscle memory
+        that prevents the next Capital One.
+      </p>
+    </div>
+  </section>
+
+  <!-- ============================================================
+       WHAT WE'LL BUILD
+       ============================================================ -->
+  <section class="section reveal" id="whatwell">
+    <h2><span class="section-num">02</span> What we'll build</h2>
+    <p>
+      A role that an <strong>AWS Lambda function</strong> can assume, with permission to:
+    </p>
+    <ul>
+      <li><code>s3:GetObject</code> on objects under <strong>exactly one prefix</strong> in <strong>exactly one bucket</strong>.</li>
+      <li>Write its own logs to CloudWatch (the basic Lambda execution-role permissions).</li>
+      <li><strong>Nothing else.</strong> No <code>s3:ListAllMyBuckets</code>, no <code>s3:GetObject</code> on other buckets, no <code>iam:*</code>, no <code>ec2:*</code>.</li>
+    </ul>
+    <p>
+      We'll then prove the policy is tight by running it through the IAM <strong>policy simulator</strong>
+      and <strong>Access Analyzer</strong> — the same tools auditors use.
+    </p>
+
+    <div class="callout security">
+      <span class="callout-title">Why this lab</span>
+      <p>
+        "Write a least-privilege Lambda role" is the AWS Security Specialty exam in microcosm.
+        Every condition key, every <code>Resource</code> ARN, every <code>Effect</code> matters.
+        After this lab you'll know exactly what's in <code>AmazonS3ReadOnlyAccess</code>
+        — and why you'd never attach it to a real workload.
+      </p>
+    </div>
+
+    <figure class="diagram">
+      <div class="placeholder">
+        📐 Architecture diagram placeholder<br>
+        <small>
+          Lambda → assumes IAM role → s3:GetObject on bucket/prefix only.<br>
+          Save reference diagram from
+          <a href="https://docs.aws.amazon.com/lambda/latest/dg/lambda-permissions.html" target="_blank" rel="noopener">docs.aws.amazon.com → Lambda permissions</a>
+          and store it as <code>aws-series/iam/images/least-priv-lambda.png</code>.
+        </small>
+      </div>
+    </figure>
+  </section>
+
+  <!-- ============================================================
+       TRACK A — CONSOLE
+       ============================================================ -->
+  <section class="section reveal" id="console">
+    <h2><span class="track-pill track-console">Track A</span> Console — click-by-click</h2>
+    <p>Best for the first time, when you want to see the policy editor visually.</p>
+
+    <ol class="step-list">
+      <li>
+        <strong>Sign in</strong> at <a href="https://console.aws.amazon.com" target="_blank" rel="noopener">console.aws.amazon.com</a> as your IAM user (not root). Pick region <kbd>US East (N. Virginia) us-east-1</kbd> top right.
+      </li>
+      <li>
+        <strong>Create a test S3 bucket.</strong> Go to <strong>S3 → Create bucket</strong>.
+        <ul>
+          <li>Name: <code>iam-tutorial-&lt;your-name&gt;-&lt;random-4-chars&gt;</code> (S3 names are global).</li>
+          <li>Block all public access: <em>checked</em> (default).</li>
+          <li>Create bucket. Then upload any small file under prefix <code>readable/</code> (e.g. <code>readable/hello.txt</code>) and another under <code>secret/</code> (e.g. <code>secret/keep-out.txt</code>).</li>
+        </ul>
+      </li>
+      <li>
+        <strong>Create the IAM policy.</strong> Go to <strong>IAM → Policies → Create policy</strong>. Switch to the <strong>JSON</strong> tab and paste:
+        <div class="code-block"><pre>{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "ReadOnlyOneBucketPrefix",
+      "Effect": "Allow",
+      "Action": "s3:GetObject",
+      "Resource": "arn:aws:s3:::iam-tutorial-&lt;your-name&gt;-&lt;random&gt;/readable/*"
+    }
+  ]
+}</pre></div>
+        Name it <code>iam-tutorial-s3-readable-prefix</code>. Create policy.
+      </li>
+      <li>
+        <strong>Create the role.</strong> Go to <strong>IAM → Roles → Create role</strong>.
+        <ul>
+          <li>Trusted entity: <em>AWS service</em> → use case <em>Lambda</em>.</li>
+          <li>Permissions: attach <strong><code>AWSLambdaBasicExecutionRole</code></strong> (CloudWatch logs) and your <strong><code>iam-tutorial-s3-readable-prefix</code></strong> policy.</li>
+          <li>Name: <code>iam-tutorial-lambda-role</code>.</li>
+          <li>Create role.</li>
+        </ul>
+      </li>
+      <li>
+        <strong>Sanity check.</strong> Open the role, click <strong>Permissions → Simulate</strong>. Test:
+        <ul>
+          <li><code>s3:GetObject</code> on <code>arn:aws:s3:::iam-tutorial-…/readable/hello.txt</code> → <em>allowed</em>.</li>
+          <li><code>s3:GetObject</code> on <code>arn:aws:s3:::iam-tutorial-…/secret/keep-out.txt</code> → <em>implicit deny</em>.</li>
+          <li><code>s3:DeleteObject</code> on either → <em>implicit deny</em>.</li>
+        </ul>
+      </li>
+    </ol>
+
+    <p>That's a least-privilege Lambda role. Skip ahead to <a href="#verify">Verify</a> for the audit step.</p>
+  </section>
+
+  <!-- ============================================================
+       TRACK B — CLI
+       ============================================================ -->
+  <section class="section reveal" id="cli">
+    <h2><span class="track-pill track-cli">Track B</span> AWS CLI v2</h2>
+    <p>Same lab, all from your terminal. Worth doing once — you'll learn what the Console buttons actually call.</p>
+
+    <h3>1. Create a test bucket and seed it</h3>
+    <div class="code-block"><pre>BUCKET="iam-tutorial-$(whoami)-$(openssl rand -hex 2)"
+
+aws s3api create-bucket \
+  --bucket "$BUCKET" \
+  --region us-east-1 \
+  --profile eddie-lab
+
+# Two objects under two different prefixes
+echo "hello" | aws s3 cp - "s3://$BUCKET/readable/hello.txt" --profile eddie-lab
+echo "secret" | aws s3 cp - "s3://$BUCKET/secret/keep-out.txt" --profile eddie-lab
+
+echo "Bucket: $BUCKET"</pre></div>
+
+    <h3>2. Write the policy and trust documents</h3>
+    <div class="code-block"><pre># The policy that actually grants access
+cat &gt; /tmp/iam-tutorial-policy.json &lt;&lt;EOF
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "ReadOnlyOneBucketPrefix",
+      "Effect": "Allow",
+      "Action": "s3:GetObject",
+      "Resource": "arn:aws:s3:::${BUCKET}/readable/*"
+    }
+  ]
+}
+EOF
+
+# Trust policy (lets Lambda assume the role)
+cat &gt; /tmp/iam-tutorial-trust.json &lt;&lt;'EOF'
+{
+  "Version": "2012-10-17",
+  "Statement": [{
+    "Effect": "Allow",
+    "Principal": { "Service": "lambda.amazonaws.com" },
+    "Action": "sts:AssumeRole"
+  }]
+}
+EOF</pre></div>
+
+    <h3>3. Create the policy + role</h3>
+    <div class="code-block"><pre># Create the customer-managed policy
+POLICY_ARN=$(aws iam create-policy \
+  --policy-name iam-tutorial-s3-readable-prefix \
+  --policy-document file:///tmp/iam-tutorial-policy.json \
+  --query 'Policy.Arn' \
+  --output text \
+  --profile eddie-lab)
+
+# Create the role with the Lambda trust policy
+aws iam create-role \
+  --role-name iam-tutorial-lambda-role \
+  --assume-role-policy-document file:///tmp/iam-tutorial-trust.json \
+  --profile eddie-lab
+
+# Attach our custom policy AND the AWS-managed basic-execution policy
+aws iam attach-role-policy \
+  --role-name iam-tutorial-lambda-role \
+  --policy-arn "$POLICY_ARN" \
+  --profile eddie-lab
+
+aws iam attach-role-policy \
+  --role-name iam-tutorial-lambda-role \
+  --policy-arn arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole \
+  --profile eddie-lab</pre></div>
+
+    <h3>4. Verify with the policy simulator</h3>
+    <div class="code-block"><pre>ROLE_ARN=$(aws iam get-role \
+  --role-name iam-tutorial-lambda-role \
+  --query 'Role.Arn' \
+  --output text \
+  --profile eddie-lab)
+
+# Should be allowed
+aws iam simulate-principal-policy \
+  --policy-source-arn "$ROLE_ARN" \
+  --action-names s3:GetObject \
+  --resource-arns "arn:aws:s3:::${BUCKET}/readable/hello.txt" \
+  --query 'EvaluationResults[0].EvalDecision' \
+  --output text \
+  --profile eddie-lab
+
+# Should be implicitly denied
+aws iam simulate-principal-policy \
+  --policy-source-arn "$ROLE_ARN" \
+  --action-names s3:GetObject \
+  --resource-arns "arn:aws:s3:::${BUCKET}/secret/keep-out.txt" \
+  --query 'EvaluationResults[0].EvalDecision' \
+  --output text \
+  --profile eddie-lab</pre></div>
+
+    <p>Now skip to <a href="#verify">Verify</a> for the Access Analyzer step.</p>
+  </section>
+
+  <!-- ============================================================
+       TRACK C — TERRAFORM
+       ============================================================ -->
+  <section class="section reveal" id="terraform">
+    <h2><span class="track-pill track-tf">Track C</span> Terraform</h2>
+    <p>The production track. Idempotent, code-reviewable, destroy-safe.</p>
+
+    <h3>1. Create a working directory and <code>main.tf</code></h3>
+    <div class="code-block"><pre>mkdir -p ~/labs/iam-tutorial &amp;&amp; cd ~/labs/iam-tutorial</pre></div>
+
+    <p>Save this as <code>main.tf</code>:</p>
+    <div class="code-block"><pre>terraform {
+  required_version = "&gt;= 1.7"
+  required_providers {
+    aws    = { source = "hashicorp/aws", version = "~&gt; 5.0" }
+    random = { source = "hashicorp/random", version = "~&gt; 3.5" }
+  }
+}
+
+provider "aws" {
+  region  = "us-east-1"
+  profile = "eddie-lab"
+
+  default_tags {
+    tags = {
+      Project   = "iam-tutorial"
+      ManagedBy = "terraform"
+    }
+  }
+}
+
+# Globally-unique bucket name suffix
+resource "random_id" "suffix" {
+  byte_length = 2
+}
+
+resource "aws_s3_bucket" "lab" {
+  bucket        = "iam-tutorial-${random_id.suffix.hex}"
+  force_destroy = true # only because this is a lab
+}
+
+# Seed two objects: one we'll grant access to, one we won't
+resource "aws_s3_object" "readable" {
+  bucket  = aws_s3_bucket.lab.id
+  key     = "readable/hello.txt"
+  content = "hello\n"
+}
+
+resource "aws_s3_object" "secret" {
+  bucket  = aws_s3_bucket.lab.id
+  key     = "secret/keep-out.txt"
+  content = "secret\n"
+}
+
+# Trust policy — only Lambda may assume this role
+data "aws_iam_policy_document" "lambda_trust" {
+  statement {
+    effect  = "Allow"
+    actions = ["sts:AssumeRole"]
+    principals {
+      type        = "Service"
+      identifiers = ["lambda.amazonaws.com"]
+    }
+  }
+}
+
+# Permissions policy — exactly one action, on exactly one prefix
+data "aws_iam_policy_document" "s3_readable_prefix" {
+  statement {
+    sid       = "ReadOnlyOneBucketPrefix"
+    effect    = "Allow"
+    actions   = ["s3:GetObject"]
+    resources = ["${aws_s3_bucket.lab.arn}/readable/*"]
+  }
+}
+
+resource "aws_iam_policy" "s3_readable_prefix" {
+  name   = "iam-tutorial-s3-readable-prefix"
+  policy = data.aws_iam_policy_document.s3_readable_prefix.json
+}
+
+resource "aws_iam_role" "lambda" {
+  name               = "iam-tutorial-lambda-role"
+  assume_role_policy = data.aws_iam_policy_document.lambda_trust.json
+}
+
+resource "aws_iam_role_policy_attachment" "basic_execution" {
+  role       = aws_iam_role.lambda.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+}
+
+resource "aws_iam_role_policy_attachment" "s3_readable_prefix" {
+  role       = aws_iam_role.lambda.name
+  policy_arn = aws_iam_policy.s3_readable_prefix.arn
+}
+
+output "role_arn" {
+  value       = aws_iam_role.lambda.arn
+  description = "Plug into a Lambda function or aws iam simulate-principal-policy"
+}
+
+output "bucket_name" {
+  value = aws_s3_bucket.lab.id
+}</pre></div>
+
+    <h3>2. Init, plan, apply</h3>
+    <div class="code-block"><pre>terraform init
+terraform plan      # READ THIS. Always read the plan before applying.
+terraform apply     # type 'yes' to confirm</pre></div>
+
+    <p>Outputs print the role ARN and bucket name. Now go to <a href="#verify">Verify</a>.</p>
+
+    <div class="callout">
+      <span class="callout-title">Why this is the production track</span>
+      <p>
+        Idempotent (apply twice = same result), code-reviewable (your teammate sees the diff),
+        and reversible in one command (<code>terraform destroy</code>). The CLI track is great
+        for learning what's underneath; Terraform is what you'd actually use at work.
+      </p>
+    </div>
+  </section>
+
+  <!-- ============================================================
+       VERIFY
+       ============================================================ -->
+  <section class="section reveal" id="verify">
+    <h2><span class="section-num">06</span> Verify least privilege (Access Analyzer + simulator)</h2>
+    <p>
+      The role exists. The policy looks right. <em>Prove</em> it's tight using the same tools an
+      auditor would.
+    </p>
+
+    <h3>Policy simulator — exhaustive what-if</h3>
+    <p>For each (action, resource) pair, ask AWS what the role's policies actually decide.</p>
+    <div class="code-block"><pre>ROLE_ARN="arn:aws:iam::&lt;ACCOUNT_ID&gt;:role/iam-tutorial-lambda-role"
+BUCKET="iam-tutorial-..."
+
+# Allowed
+aws iam simulate-principal-policy \
+  --policy-source-arn "$ROLE_ARN" \
+  --action-names s3:GetObject \
+  --resource-arns "arn:aws:s3:::${BUCKET}/readable/hello.txt" \
+  --profile eddie-lab \
+  --query 'EvaluationResults[0].[EvalActionName,EvalDecision]' \
+  --output text
+
+# Implicit deny — wrong prefix
+aws iam simulate-principal-policy \
+  --policy-source-arn "$ROLE_ARN" \
+  --action-names s3:GetObject \
+  --resource-arns "arn:aws:s3:::${BUCKET}/secret/keep-out.txt" \
+  --profile eddie-lab \
+  --query 'EvaluationResults[0].[EvalActionName,EvalDecision]' \
+  --output text
+
+# Implicit deny — wrong action
+aws iam simulate-principal-policy \
+  --policy-source-arn "$ROLE_ARN" \
+  --action-names s3:DeleteObject s3:PutObject s3:ListBucket \
+  --resource-arns "arn:aws:s3:::${BUCKET}/readable/hello.txt" \
+  --profile eddie-lab \
+  --query 'EvaluationResults[*].[EvalActionName,EvalDecision]' \
+  --output table</pre></div>
+
+    <h3>Access Analyzer — does anything outside our account get in?</h3>
+    <p>Access Analyzer is the AWS-native tool that detects external trust paths and unused permissions.</p>
+
+    <div class="code-block"><pre># One-time: create the analyzer in your account (free)
+aws accessanalyzer create-analyzer \
+  --analyzer-name iam-tutorial-analyzer \
+  --type ACCOUNT \
+  --region us-east-1 \
+  --profile eddie-lab
+
+# List findings — should be empty for the role we built (no external access)
+aws accessanalyzer list-findings \
+  --analyzer-arn "$(aws accessanalyzer list-analyzers --query 'analyzers[0].arn' --output text --profile eddie-lab)" \
+  --filter '{"resourceType":{"eq":["AWS::IAM::Role"]}}' \
+  --region us-east-1 \
+  --profile eddie-lab</pre></div>
+
+    <p>
+      You can also generate a policy from CloudTrail history:
+      <strong>IAM → Roles → iam-tutorial-lambda-role → Generate policy based on CloudTrail events</strong>.
+      After the role is used in production for a while, this tells you exactly which actions it
+      <em>actually called</em> — strip everything else.
+    </p>
+
+    <div class="callout security">
+      <span class="callout-title">The audit pattern</span>
+      <p>
+        Simulator answers "what could this role do?" Access Analyzer answers "is anything outside
+        my account / org reachable through this role?" CloudTrail-derived policy generation
+        answers "what did this role <em>actually need</em> over the last 90 days?" Use all three.
+      </p>
+    </div>
+  </section>
+
+  <!-- ============================================================
+       CLEANUP
+       ============================================================ -->
+  <section class="section reveal" id="cleanup">
+    <h2><span class="section-num">07</span> Cleanup — read this <em>first</em></h2>
+
+    <div class="callout warning">
+      <span class="callout-title">Why this matters</span>
+      <p>
+        IAM resources don't cost money — but a forgotten role with broad permissions is a
+        latent vulnerability. <strong>Delete labs when you're done.</strong> Future-you will
+        not remember which one of 14 <code>tutorial-*</code> roles was the safe one.
+      </p>
+    </div>
+
+    <h3>Track C (Terraform) — easiest</h3>
+    <div class="code-block"><pre>cd ~/labs/iam-tutorial
+terraform destroy   # type 'yes' — wipes everything we created</pre></div>
+
+    <h3>Track B (CLI) — manual</h3>
+    <div class="code-block"><pre># Detach policies from the role
+aws iam detach-role-policy \
+  --role-name iam-tutorial-lambda-role \
+  --policy-arn arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole \
+  --profile eddie-lab
+
+aws iam detach-role-policy \
+  --role-name iam-tutorial-lambda-role \
+  --policy-arn "$POLICY_ARN" \
+  --profile eddie-lab
+
+# Delete role + custom policy
+aws iam delete-role --role-name iam-tutorial-lambda-role --profile eddie-lab
+aws iam delete-policy --policy-arn "$POLICY_ARN" --profile eddie-lab
+
+# Empty + delete bucket
+aws s3 rm "s3://$BUCKET" --recursive --profile eddie-lab
+aws s3api delete-bucket --bucket "$BUCKET" --region us-east-1 --profile eddie-lab
+
+# Delete the analyzer (free, but keep things tidy)
+ANALYZER_ARN=$(aws accessanalyzer list-analyzers --query 'analyzers[0].arn' --output text --profile eddie-lab)
+aws accessanalyzer delete-analyzer --analyzer-name iam-tutorial-analyzer --profile eddie-lab</pre></div>
+
+    <h3>Track A (Console)</h3>
+    <ol>
+      <li><strong>IAM → Roles → delete <code>iam-tutorial-lambda-role</code></strong>. The Console offers to detach policies for you.</li>
+      <li><strong>IAM → Policies → delete <code>iam-tutorial-s3-readable-prefix</code></strong>.</li>
+      <li><strong>S3 → empty + delete the bucket</strong> you created.</li>
+      <li><strong>IAM Access Analyzer → Settings → delete the analyzer</strong>. Free either way; tidy is better.</li>
+    </ol>
+
+    <h3>Verify nothing is left</h3>
+    <div class="code-block"><pre>aws iam list-roles \
+  --query "Roles[?contains(RoleName, 'iam-tutorial')].RoleName" \
+  --profile eddie-lab
+# (empty output = nothing left)
+
+aws iam list-policies --scope Local \
+  --query "Policies[?contains(PolicyName, 'iam-tutorial')].PolicyName" \
+  --profile eddie-lab
+# (empty output = nothing left)</pre></div>
+  </section>
+
+  <!-- ============================================================
+       TAKEAWAYS
+       ============================================================ -->
+  <section class="section reveal" id="takeaways">
+    <h2><span class="section-num">08</span> Senior-engineer takeaways</h2>
+
+    <h3>What this exercise drilled into you</h3>
+    <ul>
+      <li><strong>Resource scoping is the policy.</strong> The difference between safe and Capital One is <code>arn:aws:s3:::bucket/prefix/*</code> versus <code>*</code>. Get fluent reading ARNs.</li>
+      <li><strong>Implicit deny is the default.</strong> Anything not explicitly allowed is denied. You don't need to write deny statements for actions you didn't grant — leave them out.</li>
+      <li><strong>Trust policies and permission policies do different jobs.</strong> Trust policy = "who can become this role." Permission policy = "what this role can do once they have it." Both wrong = breach.</li>
+      <li><strong>AWS-managed policies are starting points, not endings.</strong> <code>AmazonS3ReadOnlyAccess</code> grants read on every bucket. For real workloads, write a custom policy scoped to one bucket and one prefix.</li>
+      <li><strong>Verify, don't trust.</strong> Simulator + Access Analyzer + CloudTrail-derived generation are the audit pyramid. Use them on every non-trivial policy.</li>
+    </ul>
+
+    <h3>Where to take it next</h3>
+    <ul>
+      <li>Add a <strong>condition key</strong> — restrict the role to your org (<code>aws:PrincipalOrgID</code>) or a source IP range (<code>aws:SourceIp</code>).</li>
+      <li>Build a <strong>permission boundary</strong> — a policy that <em>caps</em> what the role can ever do, even if a future policy attachment grants more. Standard guardrail in regulated environments.</li>
+      <li>Add an <strong>SCP at the org level</strong> denying <code>iam:CreateUser</code> account-wide — force everyone onto Identity Center + roles.</li>
+      <li>Take the <strong>AWS Security Specialty (SCS-C02)</strong> exam. The IAM domain is ~30% of it; this lab is the muscle memory.</li>
+    </ul>
+
+    <h3>Costs at a glance</h3>
+    <ul>
+      <li>IAM users, roles, policies: <strong>free</strong>.</li>
+      <li>IAM Access Analyzer (account-level findings): <strong>free</strong>. The unused-access tier costs ~$0.20/role/month — we didn't enable it here.</li>
+      <li>S3 bucket: free under 5GB / 12 months on new accounts. Two tiny objects round to zero.</li>
+      <li>CloudTrail: 90-day management-event history is free.</li>
+    </ul>
+    <p style="font-size: 0.85rem; color: var(--muted);">
+      Pricing reference: <a href="https://aws.amazon.com/iam/" target="_blank" rel="noopener">AWS IAM</a>. IAM itself is free; what you'll pay for is what the roles <em>do</em> in other services.
+    </p>
+  </section>
+
+  <!-- ============================================================
+       CTA
+       ============================================================ -->
+  <section class="section reveal" style="text-align: center;">
+    <h2 style="justify-content: center;">Done?</h2>
+    <p style="max-width: 580px; margin: 0 auto;">
+      Once you've written, attached, simulated, and destroyed — you've done the IAM lifecycle.
+      The next service is the one that holds the encryption keys IAM decides who can use.
+    </p>
+    <p>
+      <a href="index.html" class="cta-btn secondary">← IAM Overview</a>
+      <a href="../kms/index.html" class="cta-btn">Next: KMS →</a>
+    </p>
+  </section>
+
+</main>
+
+<footer class="aws-footer">
+  <p>
+    IAM Tutorial · <a href="../index.html">Series index</a> ·
+    <a href="../../index.html">App Hub</a> · Last reviewed 2026-05
+  </p>
+</footer>
+
+<script src="../js/nav.js"></script>
+</body>
+</html>
