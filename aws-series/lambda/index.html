@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; script-src 'self'; img-src 'self' data:;">
+  <title>AWS Lambda — AWS in Practice</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../css/aws-hub.css">
+</head>
+<body data-svc="lambda">
+
+<!-- Shared top nav -->
+<nav class="aws-nav">
+  <div class="aws-nav-inner">
+    <a href="../index.html" class="aws-nav-brand">
+      <span class="brand-dot"></span>AWS in Practice
+    </a>
+    <div class="aws-nav-links">
+      <a href="../ec2/index.html"          class="aws-nav-link" data-svc="ec2">EC2</a>
+      <a href="../vpc/index.html"          class="aws-nav-link" data-svc="vpc">VPC</a>
+      <a href="../dynamodb/index.html"     class="aws-nav-link" data-svc="dynamodb">DynamoDB</a>
+      <a href="../api-gateway/index.html"  class="aws-nav-link" data-svc="api-gateway">API Gateway</a>
+      <a href="../s3/index.html"           class="aws-nav-link" data-svc="s3">S3</a>
+      <a href="../iam/index.html"          class="aws-nav-link" data-svc="iam">IAM</a>
+      <a href="../lambda/index.html"       class="aws-nav-link" data-svc="lambda">Lambda</a>
+      <a href="../kms/index.html"          class="aws-nav-link coming-soon" data-svc="kms">KMS</a>
+      <a href="../cloudfront/index.html"   class="aws-nav-link coming-soon" data-svc="cloudfront">CloudFront</a>
+      <a href="../basic-audit/index.html"  class="aws-nav-link coming-soon" data-svc="basic-audit">Audit</a>
+    </div>
+  </div>
+</nav>
+
+<header class="hero">
+  <span class="hero-tag">Service 7 of 10 · Compute &middot; Serverless</span>
+  <h1>AWS Lambda</h1>
+  <p class="hero-sub">
+    The compute service you don't run. Upload a function, point an event source at it, and AWS
+    executes your code on demand &mdash; billed per millisecond &mdash; without a server in sight.
+    Most modern AWS architectures bottom out in Lambda somewhere.
+  </p>
+
+  <!-- Inline SVG hero art: stylized lambda glyph + event flow -->
+  <div class="hero-art">
+    <svg viewBox="0 0 320 180" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="lambda-grad" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%"  stop-color="#ff9900" />
+          <stop offset="100%" stop-color="#4af7ff" />
+        </linearGradient>
+      </defs>
+      <!-- Hexagonal "function" boundary -->
+      <polygon points="160,28 218,62 218,130 160,164 102,130 102,62"
+               fill="none" stroke="url(#lambda-grad)" stroke-width="2.5" opacity="0.65"/>
+      <!-- Greek lambda glyph -->
+      <text x="160" y="128" text-anchor="middle"
+            font-family="Orbitron, sans-serif" font-size="78" font-weight="800"
+            fill="url(#lambda-grad)">&#955;</text>
+      <!-- Inbound event-source markers + flow lines -->
+      <rect x="22" y="58" width="11" height="11" rx="2" fill="#ff9900" opacity="0.8"/>
+      <path d="M 33 64 Q 70 70 102 80" stroke="#ff9900" stroke-width="1.3" fill="none" opacity="0.7"/>
+      <circle cx="27" cy="118" r="5.5" fill="#ff9900" opacity="0.8"/>
+      <path d="M 33 118 Q 70 118 102 110" stroke="#ff9900" stroke-width="1.3" fill="none" opacity="0.7"/>
+      <!-- Outbound (logs) arrow -->
+      <path d="M 218 96 L 290 96" stroke="#4af7ff" stroke-width="1.5" fill="none" opacity="0.85"/>
+      <line x1="284" y1="91"  x2="290" y2="96" stroke="#4af7ff" stroke-width="1.5" opacity="0.85"/>
+      <line x1="284" y1="101" x2="290" y2="96" stroke="#4af7ff" stroke-width="1.5" opacity="0.85"/>
+      <!-- Decorative dots -->
+      <circle cx="50"  cy="35"  r="2"   fill="#ffd700" opacity="0.7"/>
+      <circle cx="280" cy="50"  r="2.5" fill="#ff9900" opacity="0.7"/>
+      <circle cx="55"  cy="155" r="2"   fill="#7b2fff" opacity="0.65"/>
+      <circle cx="270" cy="160" r="2"   fill="#ffd700" opacity="0.6"/>
+    </svg>
+  </div>
+</header>
+
+<main>
+
+  <!-- ============================================================
+       SECTION 1 — What is Lambda?
+       ============================================================ -->
+  <section class="section reveal">
+    <h2><span class="section-num">01</span> What is Lambda?</h2>
+    <p class="lead">
+      Lambda is the AWS service that runs <strong>your code in response to an event</strong> &mdash;
+      without you provisioning, patching, or scaling a server. You hand AWS a small bundle of code,
+      tell it what should trigger the function, and pay only for the milliseconds it actually runs.
+    </p>
+    <p>
+      Behind the curtain Lambda runs your function inside a Firecracker microVM that AWS spins up,
+      reuses for a while, and eventually retires. You never log into it, never patch it, never see
+      its IP. The trade-off: your code has to be quick (15-minute hard limit), stateless between
+      invocations, and small enough (250 MB unzipped, or 10 GB as a container image) to fit the
+      runtime contract.
+    </p>
+
+    <h3>The four primitives</h3>
+    <ul>
+      <li><strong>Function</strong> &mdash; your code plus its runtime (Python, Node, Java, Go, .NET, Ruby, or a custom runtime). The unit you deploy and version.</li>
+      <li><strong>Execution role</strong> &mdash; the IAM role Lambda assumes when it runs. Determines which AWS APIs your code can call. <em>The most important security knob in the entire service.</em></li>
+      <li><strong>Event source</strong> &mdash; what wakes the function up: S3 PutObject, API Gateway request, EventBridge cron, SQS message, DynamoDB Stream, manual invoke, Function URL, and ~200 more.</li>
+      <li><strong>Concurrency</strong> &mdash; how many copies of your function may run at once. Default 1,000 per region per account; can be reserved (cap) or provisioned (pre-warmed).</li>
+    </ul>
+
+    <div class="callout">
+      <span class="callout-title">In one sentence</span>
+      <p>Lambda is "run my code when something happens, scale automatically, charge me by the millisecond" &mdash; and the bill stops the instant the event queue empties.</p>
+    </div>
+  </section>
+
+  <!-- ============================================================
+       SECTION 2 — A vibrant example
+       ============================================================ -->
+  <section class="section reveal">
+    <h2><span class="section-num">02</span> A vibrant example: FINRA's 75-billion-events-a-day surveillance</h2>
+    <p>
+      The Financial Industry Regulatory Authority (FINRA) runs market-surveillance analytics on
+      <strong>roughly 75 billion stock-market events per day</strong> &mdash; every quote, trade, and
+      order from every U.S. equity and options exchange &mdash; and the platform is built on Lambda.
+      It's one of the largest publicly documented Lambda deployments on AWS.
+    </p>
+    <p>
+      The pattern: market events land in S3 throughout the trading day. Lambda functions, fanned out
+      to thousands of concurrent invocations, parse and enrich each batch, write structured output
+      to other S3 prefixes, and publish anomaly findings to downstream surveillance jobs. There are
+      no servers to scale up before market open or scale down after close &mdash; concurrency tracks
+      demand automatically. FINRA's own writeup quotes a roughly <strong>50% cost reduction</strong>
+      versus the cluster-of-servers architecture they replaced.
+      <a href="https://aws.amazon.com/solutions/case-studies/finra-data-validation/" target="_blank" rel="noopener">FINRA on AWS &rarr;</a>
+    </p>
+    <p>
+      What makes it a useful Lambda lesson, not just a war story: the workload is <em>bursty,
+      embarrassingly parallel, security-regulated, and event-driven</em> &mdash; exactly the shape
+      Lambda was built for. The same pattern applied to log enrichment, fraud detection, or
+      compliance sweeps in your own account is a perfectly reasonable reach for a junior
+      cloud-security engineer. <em>That's Lambda in production.</em>
+    </p>
+
+    <figure class="diagram">
+      <div class="placeholder">
+        &#128208; Architecture diagram placeholder<br>
+        <small>
+          Market events &rarr; S3 raw bucket &rarr; Lambda (massively concurrent) &rarr; S3 enriched + anomaly findings.<br>
+          Save reference diagram from
+          <a href="https://aws.amazon.com/solutions/case-studies/finra-data-validation/" target="_blank" rel="noopener">FINRA AWS case study</a>
+          and store it as <code>aws-series/lambda/images/finra-pipeline.png</code>.
+        </small>
+      </div>
+      <figcaption>FINRA's market-surveillance pipeline. Lambda absorbs the bursty fan-out so no operator has to.</figcaption>
+    </figure>
+  </section>
+
+  <!-- ============================================================
+       SECTION 3 — Who uses Lambda and why
+       ============================================================ -->
+  <section class="section reveal">
+    <h2><span class="section-num">03</span> Who uses Lambda &mdash; and why</h2>
+    <p>
+      Lambda is everywhere because the price-per-invocation is hard to beat and the operational
+      cost is essentially zero. A few publicly documented examples:
+    </p>
+
+    <div class="use-grid">
+      <div class="use-card">
+        <h4>&#129302; iRobot</h4>
+        <p>Connected vacuums emit telemetry at scale; iRobot processes it through Lambda + IoT Core, scaling to millions of devices without managing fleet servers. <a href="https://aws.amazon.com/solutions/case-studies/irobot/" target="_blank" rel="noopener">iRobot AWS case study &rarr;</a></p>
+      </div>
+      <div class="use-card">
+        <h4>&#129380; Coca-Cola Freestyle</h4>
+        <p>Every drink poured at a Freestyle vending machine fires a Lambda &mdash; for inventory, recipe analytics, and the loyalty app. Deeply transactional, very bursty. <a href="https://aws.amazon.com/solutions/case-studies/coca-cola-freestyle/" target="_blank" rel="noopener">Coca-Cola AWS case study &rarr;</a></p>
+      </div>
+      <div class="use-card">
+        <h4>&#128211; Notion / modern SaaS</h4>
+        <p>Image resizing, file conversion, and notification fan-out run on Lambda across most "modern SaaS" you use every day. The unsexy backbone of the contemporary web.</p>
+      </div>
+      <div class="use-card">
+        <h4>&#127916; Netflix</h4>
+        <p>Event-driven encoding pipelines, file validation, and security tooling all use Lambda. Netflix's Security Monkey and Repokid lineages helped popularize "compliance as code in Lambda."</p>
+      </div>
+      <div class="use-card">
+        <h4>&#128706; Defense / cleared workloads</h4>
+        <p>AWS GovCloud customers use Lambda for event-driven security automation &mdash; rotate credentials, quarantine resources, respond to GuardDuty findings &mdash; without standing up always-on infrastructure on a regulated network.</p>
+      </div>
+      <div class="use-card">
+        <h4>&#128640; Startups (the 2 a.m. cron job)</h4>
+        <p>Every startup runs at least one Lambda by year two: nightly DB backup, Slack-bot, GitHub webhook, billing-alert handler. It's the "free tier of running anything ever again" service.</p>
+      </div>
+    </div>
+
+    <h3>Common reasons Lambda gets called out specifically</h3>
+    <ul>
+      <li><strong>Event-driven architectures</strong> &mdash; <code>S3 PutObject &rarr; Lambda</code> is the canonical "do something when a file lands" pattern. EventBridge rules + Lambda is how AWS itself wires automation.</li>
+      <li><strong>Glue between AWS services</strong> &mdash; when two AWS services need to talk and there's no built-in integration, the answer is almost always "a small Lambda."</li>
+      <li><strong>Cost-sensitive workloads with idle time</strong> &mdash; anything that runs a few minutes a day costs cents on Lambda versus dollars on an always-on instance.</li>
+      <li><strong>Serverless web backends</strong> &mdash; API Gateway + Lambda + DynamoDB is a complete production stack with no servers to patch.</li>
+      <li><strong>Security automation</strong> &mdash; GuardDuty finding &rarr; Lambda &rarr; quarantine the IAM principal is a one-page answer to "how do we respond to incidents at 3 a.m. without a human?"</li>
+    </ul>
+  </section>
+
+  <!-- ============================================================
+       SECTION 4 — Competitors and market share
+       ============================================================ -->
+  <section class="section reveal">
+    <h2><span class="section-num">04</span> Competitors &amp; market share</h2>
+    <p>
+      Lambda invented the modern function-as-a-service category in 2014. The other major clouds and
+      a few independents have shipped credible alternatives since. Honest framing: the model
+      differences are real, and "which one wins" depends on what you're optimizing for.
+    </p>
+
+    <table class="compare-table">
+      <thead>
+        <tr>
+          <th>Provider</th>
+          <th>Service</th>
+          <th>Cloud Market Share</th>
+          <th>Where it wins</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="lead-row">
+          <td><strong>AWS</strong></td>
+          <td>Lambda</td>
+          <td>~30%</td>
+          <td>Largest event-source catalog (200+ AWS services + EventBridge), best-in-class concurrency model, ARM/Graviton cost wins, deepest IaC tooling.</td>
+        </tr>
+        <tr>
+          <td>Microsoft Azure</td>
+          <td>Azure Functions</td>
+          <td>~21%</td>
+          <td>Best .NET / Power Platform integration, Durable Functions for long-running orchestration, Premium plan keeps warm instances available.</td>
+        </tr>
+        <tr>
+          <td>Google Cloud</td>
+          <td>Cloud Functions + Cloud Run</td>
+          <td>~12%</td>
+          <td>Cloud Run's container-native model is cleaner if you already build Docker images. Per-request billing, scale-to-zero, no 15-min wall-clock cap.</td>
+        </tr>
+        <tr>
+          <td>Cloudflare</td>
+          <td>Workers</td>
+          <td>&mdash;</td>
+          <td>V8 isolates start in &lt; 5&nbsp;ms &mdash; effectively no cold-start. 300+ edge POPs. Unbeatable for low-latency global request handling, limited for heavy compute.</td>
+        </tr>
+        <tr>
+          <td>Container platforms (cross-cloud)</td>
+          <td>ECS Fargate &middot; GKE Autopilot &middot; Container Apps</td>
+          <td>&mdash;</td>
+          <td>When Lambda's 15-min limit, 250-MB package limit, or stateless model gets in the way. Slower to scale; you write the deploy pipeline.</td>
+        </tr>
+      </tbody>
+    </table>
+    <p style="font-size: 0.85rem; color: var(--muted); margin-top: -0.5rem;">
+      Cloud market share: <a href="https://www.srgresearch.com/" target="_blank" rel="noopener">Synergy Research Group, Q4 2024</a>. Verify before quoting.
+    </p>
+
+    <div class="callout">
+      <span class="callout-title">The honest "why AWS Lambda"</span>
+      <p>
+        Lambda's pricing is the sharpest of any major cloud &mdash; 1M free invocations/month,
+        400,000 GB-seconds free, then sub-cent rates. Combine that with the AWS event-source catalog
+        (every service emits events Lambda can consume) and the gravitational pull is hard to escape
+        <em>once you're already in AWS</em>. On a greenfield project Cloud Run or Cloudflare Workers
+        may genuinely fit better.
+      </p>
+    </div>
+
+    <h3>Where Lambda doesn't always win</h3>
+    <ul>
+      <li><strong>Cold-start sensitive workloads:</strong> first-invocation latency in the 100&nbsp;ms&ndash;2&nbsp;s range depending on runtime and VPC config. Cloudflare Workers and Cloud Run's second-gen runtime are faster. Provisioned concurrency closes the gap on Lambda but at a cost.</li>
+      <li><strong>Long-running jobs:</strong> 15-minute hard wall-clock limit. Anything longer needs Step Functions, Fargate, or AWS Batch.</li>
+      <li><strong>Container-first teams:</strong> Cloud Run / ECS Fargate let you ship the same Dockerfile you already build, with no special-casing for the Lambda runtime contract.</li>
+      <li><strong>Heavily stateful workloads:</strong> Lambda is stateless between invocations. Anything needing in-memory state across requests usually wants a container.</li>
+    </ul>
+  </section>
+
+  <!-- ============================================================
+       SECTION 5 — Who manages it
+       ============================================================ -->
+  <section class="section reveal">
+    <h2><span class="section-num">05</span> Who actually runs it for you?</h2>
+    <p>
+      Lambda's "shared responsibility" line is unusually customer-friendly:
+      <strong>AWS runs the host, the runtime, the patches, the autoscaler. You own the function code,
+      the dependencies, the execution-role policy, the event-source wiring, and the secrets.</strong>
+      Misconfigurations and supply-chain issues stay entirely on you.
+    </p>
+
+    <div class="use-grid">
+      <div class="use-card">
+        <h4>&#128100; Self-managed (startup / solo)</h4>
+        <p>You write the function, you write its IAM role, you wire up the event source. Easy to attach <code>AWSLambdaBasicExecutionRole</code> + <code>AmazonS3FullAccess</code> "to make it work." Don't.</p>
+      </div>
+      <div class="use-card">
+        <h4>&#127970; Cloud platform team</h4>
+        <p>Owns the Lambda baseline: standard runtimes, signed-layer policy, code-signing config, default tags, log retention, default reserved concurrency. Developers ship via PR-driven IaC, not Console clicks.</p>
+      </div>
+      <div class="use-card">
+        <h4>&#128737; Cloud security engineering</h4>
+        <p>Owns dependency scanning (Snyk, Dependabot, ECR scanning for container images), secrets-out-of-env enforcement, code-signing roots of trust, and incident response when a Lambda's role gets used badly.</p>
+      </div>
+      <div class="use-card">
+        <h4>&#129309; Third-party serverless platforms</h4>
+        <p>Serverless Framework, AWS SAM, Terraform, Pulumi, SST &mdash; toolchains that wrap Lambda and its event sources into a deploy pipeline. Most production teams use one.</p>
+      </div>
+      <div class="use-card">
+        <h4>&#129302; Automated tooling</h4>
+        <p>AWS Lambda Powertools (logging, tracing, metrics), Cloudsplaining for execution-role audits, OWASP Serverless Top 10 scanners. Increasingly run inside CI to gate every deploy.</p>
+      </div>
+      <div class="use-card">
+        <h4>&#128706; Compliance / GRC</h4>
+        <p>FedRAMP, SOC 2, PCI assessors look at execution roles, code-signing, log retention, and dependency provenance. Serverless makes some controls easier (no host patching) and others harder (proving artifact integrity).</p>
+      </div>
+    </div>
+
+    <div class="callout warning">
+      <span class="callout-title">&#9888;&#65039; Startup gotcha</span>
+      <p>
+        First-time Lambda builders often paste secrets into <code>Environment Variables</code> in
+        the Console. Those values are visible in CloudTrail, in error reports, and to anyone with
+        <code>lambda:GetFunctionConfiguration</code>. <strong>Lambda env vars are config, not
+        secrets.</strong> Use Secrets Manager or Parameter Store (SecureString) and pull at cold start.
+      </p>
+    </div>
+  </section>
+
+  <!-- ============================================================
+       SECTION 6 — Security mindset
+       ============================================================ -->
+  <section class="section reveal">
+    <h2><span class="section-num">06</span> Security mindset</h2>
+    <p>
+      Most Lambda incidents aren't novel &mdash; they're recycled web-app and supply-chain
+      vulnerabilities with a serverless flavor. Internalize five things and you're already ahead of
+      most production Lambda code in the wild.
+    </p>
+
+    <h3>Five things to internalize before you ship your first function</h3>
+    <ul>
+      <li><strong>One execution role per function, scoped tight.</strong> Resist the urge to share a single <code>LambdaBasicExecutionRole</code> across every function. The blast radius if a function is compromised <em>is</em> its execution role's permissions.</li>
+      <li><strong>Env vars are NOT secrets.</strong> They're surfaced in CloudTrail, X-Ray traces, error reports, and to anyone with <code>lambda:GetFunctionConfiguration</code>. Real secrets live in Secrets Manager or Parameter Store and get pulled on cold start.</li>
+      <li><strong>Reserved concurrency is a safety brake.</strong> A runaway loop or a misfiring event source can scale your function to thousands of concurrent invocations &mdash; and the bill that follows. Cap concurrency on anything that doesn't genuinely need to burst.</li>
+      <li><strong>VPC config is a tradeoff, not a default.</strong> Attaching a Lambda to a VPC adds cold-start cost and ENI overhead; only do it when the function genuinely needs private-subnet egress (e.g., to reach an RDS instance). Don't VPC-attach reflexively.</li>
+      <li><strong>Supply chain is the new perimeter.</strong> Codecov 2021, the npm <code>colors</code> incident, the PyPI typo-squat parade &mdash; a Lambda is only as trustworthy as its dependencies. Pin versions, scan layers, sign artifacts, prefer container images you build over zip uploads.</li>
+    </ul>
+
+    <div class="callout security">
+      <span class="callout-title">For your career</span>
+      <p>
+        Lambda hardening shows up on the AWS Security Specialty (SCS-C02) and in every real audit:
+        execution-role least privilege, code signing, log retention, secrets handling, supply-chain
+        provenance. Get fluent at deploying one function with all the knobs set correctly &mdash;
+        Console, CLI, and Terraform &mdash; and you can bring that muscle memory to the largest
+        Lambda fleet you'll ever see.
+      </p>
+    </div>
+  </section>
+
+  <!-- ============================================================
+       SECTION 7 — Sources
+       ============================================================ -->
+  <section class="section reveal">
+    <h2><span class="section-num">07</span> Sources &amp; further reading</h2>
+    <ul class="sources">
+      <li>
+        <strong>AWS Lambda Developer Guide</strong> &mdash; canonical reference, updated continuously.
+        <a href="https://docs.aws.amazon.com/lambda/latest/dg/welcome.html" target="_blank" rel="noopener">docs.aws.amazon.com/lambda/</a>
+        <span class="source-meta">Primary source for everything in this page.</span>
+      </li>
+      <li>
+        <strong>AWS Lambda Operator Guide</strong> &mdash; AWS's own opinions on running Lambda in production: concurrency, retries, observability.
+        <a href="https://docs.aws.amazon.com/lambda/latest/operatorguide/intro.html" target="_blank" rel="noopener">Lambda Operator Guide</a>
+      </li>
+      <li>
+        <strong>AWS Lambda Powertools</strong> (Python / TypeScript / Java / .NET) &mdash; opinionated libraries for structured logging, tracing, metrics, and idempotency.
+        <a href="https://docs.powertools.aws.dev/" target="_blank" rel="noopener">docs.powertools.aws.dev</a>
+        <span class="source-meta">Use it from day one. The defaults are sane.</span>
+      </li>
+      <li>
+        <strong>FINRA market-surveillance case study</strong> &mdash; the canonical "Lambda at hyper-scale" public reference.
+        <a href="https://aws.amazon.com/solutions/case-studies/finra-data-validation/" target="_blank" rel="noopener">aws.amazon.com &rarr; FINRA case study</a>
+      </li>
+      <li>
+        <strong>Codecov 2021 supply-chain disclosure</strong> &mdash; bash uploader compromised, exfil'd CI environment variables (including Lambda configs) for ~2 months. The defining serverless supply-chain lesson.
+        <a href="https://about.codecov.io/security-update/" target="_blank" rel="noopener">about.codecov.io/security-update</a>
+      </li>
+      <li>
+        <strong>"Denonia" malware analysis (Cado Security, 2022)</strong> &mdash; first publicly documented malware specifically targeting Lambda. Useful read for understanding the runtime attack surface.
+        <a href="https://www.cadosecurity.com/blog/the-denonia-malware" target="_blank" rel="noopener">cadosecurity.com &rarr; Denonia analysis</a>
+      </li>
+      <li>
+        <strong>OWASP Serverless Top 10</strong> &mdash; community catalog of recurring serverless misconfigurations and code patterns.
+        <a href="https://owasp.org/www-project-serverless-top-10/" target="_blank" rel="noopener">owasp.org/www-project-serverless-top-10</a>
+      </li>
+      <li>
+        <strong>AWS Security Blog &mdash; serverless category</strong> &mdash; engineering write-ups on Lambda code-signing, VPC patterns, secrets handling.
+        <a href="https://aws.amazon.com/blogs/security/" target="_blank" rel="noopener">aws.amazon.com/blogs/security</a>
+      </li>
+      <li>
+        <strong>Synergy Research Group, Q4 2024 Cloud Market Report</strong> &mdash; quarterly cloud-infrastructure market share figures.
+        <a href="https://www.srgresearch.com/" target="_blank" rel="noopener">srgresearch.com</a>
+        <span class="source-meta">Use for market-share quotes; figures change every quarter.</span>
+      </li>
+    </ul>
+    <p style="font-size: 0.85rem; color: var(--muted); font-style: italic;">
+      Note: the Lambda ecosystem moves quickly &mdash; runtimes are deprecated on a 6&ndash;12 month
+      cadence, pricing changes annually, and "best practices" today may not be best practices in two
+      years. All quoted figures should be re-verified before quoting professionally.
+    </p>
+  </section>
+
+  <!-- ============================================================
+       Tutorial CTA
+       ============================================================ -->
+  <section class="section reveal" style="text-align: center;">
+    <h2 style="justify-content: center;">Ready to ship your first hardened function?</h2>
+    <p style="max-width: 580px; margin: 0 auto;">
+      The tutorial walks you through deploying a Python 3.12 Lambda the production way &mdash;
+      Console, AWS CLI, and Terraform side by side. ARM64 / Graviton, X-Ray on, log retention set,
+      least-privilege role, no public exposure. Free-tier eligible.
+    </p>
+    <p>
+      <a href="tutorial.html" class="cta-btn">Open Hands-on Tutorial &rarr;</a>
+      <a href="../index.html" class="cta-btn secondary">&larr; Back to series</a>
+    </p>
+  </section>
+
+</main>
+
+<footer class="aws-footer">
+  <p>
+    Service 7 of 10 &middot; <a href="../index.html">AWS in Practice index</a> &middot;
+    <a href="../../index.html">App Hub</a> &middot; Last reviewed 2026-05
+  </p>
+</footer>
+
+<script src="../js/nav.js"></script>
+</body>
+</html>
