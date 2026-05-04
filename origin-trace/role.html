@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Role Detail — Origin Trace</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <canvas id="bg-canvas"></canvas>
+
+  <nav class="nav-bar">
+    <a href="index.html" class="back-link">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <polyline points="15 18 9 12 15 6"/>
+      </svg>
+      All Roles
+    </a>
+    <span class="nav-title" id="nav-title">Origin Trace</span>
+  </nav>
+
+  <main>
+    <!-- Role header — populated by tree.js -->
+    <div id="role-header" class="role-header" style="display:none;">
+      <div class="role-header-icon" id="role-icon"></div>
+      <h1 id="role-title"></h1>
+      <p class="role-header-tagline" id="role-tagline"></p>
+      <div class="role-caveat" id="role-caveat" style="display:none;"></div>
+    </div>
+
+    <!-- SVG tree (desktop) -->
+    <div id="tree-container">
+      <svg id="tree-svg" xmlns="http://www.w3.org/2000/svg"></svg>
+    </div>
+
+    <!-- Accordion (mobile <600px) -->
+    <div class="accordion" id="accordion"></div>
+  </main>
+
+  <footer>
+    <p>Origin Trace &bull; Entry-level IT career research catalog</p>
+    <div class="footer-links">
+      <a href="index.html">All Roles</a>
+      <a href="map.html">Career Atlas</a>
+      <a href="../index.html">App Hub</a>
+    </div>
+  </footer>
+
+  <div id="tooltip" role="tooltip" aria-live="polite"></div>
+
+  <script src="js/tooltip.js"></script>
+  <script src="js/tree.js"></script>
+</body>
+</html>

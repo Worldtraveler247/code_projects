@@ -1,0 +1,665 @@
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Inter:wght@400;500;600&display=swap');
+
+/* ── Reset ── */
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --bg:      #07010f;
+  --cyan:    #4af7ff;
+  --purple:  #7b2fff;
+  --magenta: #ff4af7;
+  --gold:    #ffd700;
+  --text:    #dde0f0;
+  --muted:   #5a607a;
+  --border:  rgba(74, 247, 255, 0.13);
+  --card-bg: rgba(255, 255, 255, 0.025);
+
+  /* Tier band colors */
+  --tier-entry:  rgba(74, 247, 255, 0.06);
+  --tier-mid:    rgba(123, 47, 255, 0.08);
+  --tier-senior: rgba(255, 74, 247, 0.08);
+}
+
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Inter', system-ui, sans-serif;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ── Particle canvas ── */
+#bg-canvas {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+
+/* ── Headings ── */
+h1, h2, h3 { font-family: 'Orbitron', system-ui; }
+
+.grad {
+  background: linear-gradient(120deg, var(--cyan) 0%, var(--purple) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ── Hero ── */
+.hero {
+  position: relative;
+  z-index: 1;
+  padding: 80px 24px 60px;
+  text-align: center;
+  border-bottom: 1px solid var(--border);
+  background: radial-gradient(ellipse 80% 60% at 50% -10%, rgba(123,47,255,0.18), transparent 70%);
+}
+
+.hero-inner { max-width: 720px; margin: 0 auto; }
+
+.hero-eyebrow {
+  display: inline-block;
+  padding: 6px 18px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: 0.78rem;
+  color: var(--cyan);
+  letter-spacing: 1.5px;
+  margin-bottom: 28px;
+  background: rgba(74, 247, 255, 0.05);
+  text-transform: uppercase;
+}
+
+.hero h1 {
+  font-size: clamp(2rem, 7vw, 3.8rem);
+  line-height: 1.1;
+  color: #fff;
+  margin-bottom: 16px;
+  letter-spacing: -1px;
+}
+
+.hero-sub {
+  color: var(--muted);
+  font-size: 1rem;
+  margin-bottom: 12px;
+  max-width: 580px;
+  margin-left: auto;
+  margin-right: auto;
+  line-height: 1.65;
+}
+
+.hero-caveat {
+  font-size: 0.82rem;
+  color: var(--cyan);
+  opacity: 0.7;
+  margin-bottom: 32px;
+  font-style: italic;
+}
+
+/* ── Nav / Back link ── */
+.nav-bar {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 28px;
+  border-bottom: 1px solid var(--border);
+}
+
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.78rem;
+  color: var(--muted);
+  text-decoration: none;
+  letter-spacing: 0.8px;
+  transition: color 0.2s;
+}
+.back-link:hover { color: var(--cyan); }
+
+.nav-title {
+  font-family: 'Orbitron', system-ui;
+  font-size: 0.75rem;
+  color: var(--cyan);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  opacity: 0.7;
+}
+
+/* ── Section layout ── */
+main { position: relative; z-index: 1; }
+
+.section {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 56px 24px;
+}
+
+.section-label {
+  font-size: 0.72rem;
+  color: var(--cyan);
+  letter-spacing: 5px;
+  text-transform: uppercase;
+  margin-bottom: 36px;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+.section-label::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+/* ── 6-card landing grid ── */
+.role-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 18px;
+}
+
+.role-card {
+  display: flex;
+  flex-direction: column;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  overflow: hidden;
+  text-decoration: none;
+  color: inherit;
+  opacity: 0;
+  transform: translateY(22px);
+  transition: opacity 0.55s ease, transform 0.55s ease,
+              border-color 0.25s, box-shadow 0.25s;
+  cursor: pointer;
+}
+.role-card.visible { opacity: 1; transform: translateY(0); }
+.role-card:hover {
+  border-color: rgba(74, 247, 255, 0.38);
+  box-shadow: 0 24px 60px rgba(0,0,0,0.55), 0 0 30px rgba(74,247,255,0.09);
+  transform: translateY(-6px) scale(1.01);
+}
+
+.role-card-visual {
+  height: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2.8rem;
+  background: linear-gradient(135deg, var(--grad-a, #0a1520), var(--grad-b, #0d2030));
+  position: relative;
+  overflow: hidden;
+}
+.role-card-visual::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse 60% 80% at 70% -10%, rgba(74,247,255,0.12), transparent 60%);
+}
+
+.role-card-body {
+  padding: 18px 20px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+}
+
+.role-card-tag {
+  font-size: 0.62rem;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--cyan);
+  opacity: 0.7;
+}
+
+.role-card-body h3 {
+  font-size: 0.95rem;
+  color: #fff;
+  letter-spacing: 0.3px;
+  margin-top: 2px;
+}
+
+.role-card-body p {
+  font-size: 0.8rem;
+  color: var(--muted);
+  line-height: 1.6;
+  flex: 1;
+  margin-top: 4px;
+}
+
+.role-card-cta {
+  display: inline-block;
+  font-size: 0.73rem;
+  color: var(--cyan);
+  font-weight: 600;
+  letter-spacing: 0.8px;
+  margin-top: 10px;
+  opacity: 0;
+  transform: translateX(-6px);
+  transition: opacity 0.2s, transform 0.2s;
+}
+.role-card:hover .role-card-cta { opacity: 1; transform: translateX(0); }
+
+/* ── Role detail page ── */
+.role-header {
+  position: relative;
+  z-index: 1;
+  padding: 48px 28px 40px;
+  border-bottom: 1px solid var(--border);
+  background: radial-gradient(ellipse 70% 50% at 50% -10%, rgba(123,47,255,0.15), transparent 70%);
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.role-header-icon { font-size: 3rem; margin-bottom: 14px; }
+
+.role-header h1 {
+  font-size: clamp(1.6rem, 5vw, 2.8rem);
+  color: #fff;
+  margin-bottom: 10px;
+  line-height: 1.2;
+}
+
+.role-header-tagline {
+  font-size: 0.92rem;
+  color: var(--muted);
+  max-width: 600px;
+  line-height: 1.65;
+  margin-bottom: 14px;
+}
+
+.role-caveat {
+  background: rgba(74, 247, 255, 0.05);
+  border: 1px solid rgba(74, 247, 255, 0.2);
+  border-radius: 10px;
+  padding: 12px 16px;
+  font-size: 0.8rem;
+  color: var(--cyan);
+  max-width: 700px;
+  line-height: 1.6;
+  margin-top: 12px;
+}
+.role-caveat::before { content: 'Honest context: '; font-weight: 600; }
+
+/* ── Tree container ── */
+#tree-container {
+  position: relative;
+  z-index: 1;
+  padding: 32px 0 48px;
+  overflow-x: auto;
+}
+
+#tree-svg {
+  display: block;
+  margin: 0 auto;
+}
+
+/* Tier band labels in SVG are styled via SVG text attributes */
+
+/* Node styles (applied via JS to SVG elements) */
+.tree-node-group { cursor: default; }
+
+.tree-node-rect {
+  fill: var(--card-bg);
+  stroke-width: 1.5;
+  rx: 10;
+  transition: filter 0.2s;
+}
+.tree-node-rect:hover { filter: brightness(1.2); }
+
+/* ── Accordion (mobile, <600px) ── */
+.accordion { display: none; padding: 0 20px 40px; max-width: 700px; margin: 0 auto; }
+
+.accordion-tier {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  margin-bottom: 12px;
+  overflow: hidden;
+}
+
+.accordion-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 18px;
+  cursor: pointer;
+  background: var(--card-bg);
+  user-select: none;
+  transition: background 0.2s;
+}
+.accordion-header:hover { background: rgba(255,255,255,0.04); }
+
+.accordion-tier-label {
+  font-family: 'Orbitron', system-ui;
+  font-size: 0.7rem;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+}
+.accordion-tier[data-tier="entry"]  .accordion-tier-label { color: var(--cyan); }
+.accordion-tier[data-tier="mid"]    .accordion-tier-label { color: var(--purple); }
+.accordion-tier[data-tier="senior"] .accordion-tier-label { color: var(--magenta); }
+
+.accordion-chevron {
+  color: var(--muted);
+  transition: transform 0.25s;
+  font-size: 0.9rem;
+}
+.accordion-tier.open .accordion-chevron { transform: rotate(180deg); }
+
+.accordion-body {
+  display: none;
+  padding: 18px 18px 20px;
+  border-top: 1px solid var(--border);
+}
+.accordion-tier.open .accordion-body { display: block; }
+
+.accordion-field {
+  margin-bottom: 12px;
+}
+.accordion-field-label {
+  font-size: 0.65rem;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+.accordion-field-value {
+  font-size: 0.85rem;
+  color: var(--text);
+  line-height: 1.5;
+}
+
+.cert-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(74, 247, 255, 0.07);
+  border: 1px solid rgba(74, 247, 255, 0.2);
+  border-radius: 999px;
+  padding: 4px 12px;
+  font-size: 0.75rem;
+  color: var(--cyan);
+  margin: 3px 4px 3px 0;
+  text-decoration: none;
+  transition: background 0.2s;
+}
+.cert-pill:hover { background: rgba(74, 247, 255, 0.14); }
+
+.salary-range {
+  font-size: 0.88rem;
+  color: var(--text);
+}
+.salary-source {
+  font-size: 0.7rem;
+  color: var(--muted);
+  margin-left: 6px;
+}
+.salary-source a { color: var(--cyan); text-decoration: none; }
+.salary-source a:hover { text-decoration: underline; }
+
+/* ⓘ icon on salary/cert citations */
+.cite-icon {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  line-height: 14px;
+  text-align: center;
+  border-radius: 50%;
+  background: rgba(74, 247, 255, 0.12);
+  border: 1px solid rgba(74, 247, 255, 0.3);
+  font-size: 9px;
+  color: var(--cyan);
+  cursor: pointer;
+  vertical-align: middle;
+  margin-left: 4px;
+  font-style: normal;
+  transition: background 0.2s;
+}
+.cite-icon:hover { background: rgba(74, 247, 255, 0.25); }
+
+/* ── Tooltip ── */
+#tooltip {
+  position: fixed;
+  z-index: 1000;
+  background: #0e0520;
+  border: 1px solid rgba(74, 247, 255, 0.3);
+  border-radius: 10px;
+  padding: 12px 16px;
+  max-width: 280px;
+  font-size: 0.78rem;
+  color: var(--text);
+  line-height: 1.55;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+}
+#tooltip.visible { opacity: 1; }
+#tooltip strong { color: var(--cyan); display: block; margin-bottom: 4px; }
+#tooltip a { color: var(--cyan); font-size: 0.72rem; }
+
+/* verify_before_publish badge */
+.vbp-badge {
+  display: inline-block;
+  background: rgba(255, 200, 0, 0.1);
+  border: 1px solid rgba(255, 200, 0, 0.35);
+  border-radius: 4px;
+  padding: 1px 6px;
+  font-size: 0.62rem;
+  color: #ffc800;
+  letter-spacing: 0.5px;
+  margin-left: 6px;
+  vertical-align: middle;
+}
+
+/* ── Career Atlas (map.html) ── */
+.atlas-banner {
+  position: relative;
+  z-index: 2;
+  background: rgba(123, 47, 255, 0.12);
+  border-bottom: 1px solid rgba(123, 47, 255, 0.3);
+  padding: 14px 24px;
+  font-size: 0.8rem;
+  color: var(--text);
+  text-align: center;
+  line-height: 1.5;
+}
+.atlas-banner strong { color: var(--cyan); }
+
+.atlas-section {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 40px 20px 60px;
+  position: relative;
+  z-index: 1;
+}
+
+.atlas-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 0;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.atlas-family-header {
+  background: rgba(255,255,255,0.03);
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  padding: 14px 10px 12px;
+  text-align: center;
+}
+.atlas-family-header:last-child { border-right: none; }
+
+.atlas-family-name {
+  font-family: 'Orbitron', system-ui;
+  font-size: 0.58rem;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--cyan);
+  line-height: 1.4;
+}
+
+.atlas-band-row {
+  display: contents;
+}
+
+.atlas-cell {
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  padding: 12px 8px;
+  min-height: 100px;
+  vertical-align: top;
+}
+.atlas-cell:last-child { border-right: none; }
+.atlas-cell:nth-last-child(-n+7) { border-bottom: none; }
+
+/* Tier row backgrounds */
+.atlas-cell[data-tier="entry"]  { background: var(--tier-entry); }
+.atlas-cell[data-tier="mid"]    { background: var(--tier-mid); }
+.atlas-cell[data-tier="senior"] { background: var(--tier-senior); }
+
+/* Tier label column (first column hack — we use a side label row) */
+.atlas-tier-label-row {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  padding: 6px 14px;
+  background: rgba(255,255,255,0.015);
+  border-bottom: 1px solid var(--border);
+}
+.atlas-tier-label-row span {
+  font-family: 'Orbitron', system-ui;
+  font-size: 0.6rem;
+  letter-spacing: 4px;
+  text-transform: uppercase;
+}
+.atlas-tier-label-row[data-tier="entry"]  span { color: var(--cyan); }
+.atlas-tier-label-row[data-tier="mid"]    span { color: var(--purple); }
+.atlas-tier-label-row[data-tier="senior"] span { color: var(--magenta); }
+
+/* Role pills inside atlas cells */
+.atlas-pill {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  color: var(--muted);
+  margin: 3px 2px;
+  white-space: nowrap;
+  cursor: default;
+  line-height: 1.5;
+}
+
+/* Researched pills */
+.atlas-pill.researched {
+  background: rgba(74, 247, 255, 0.06);
+  border: 1.5px solid var(--cyan);
+  color: var(--text);
+  cursor: pointer;
+  box-shadow: 0 0 8px rgba(74, 247, 255, 0.12);
+  text-decoration: none;
+  transition: box-shadow 0.2s, background 0.2s;
+}
+.atlas-pill.researched:hover {
+  background: rgba(74, 247, 255, 0.14);
+  box-shadow: 0 0 18px rgba(74, 247, 255, 0.3);
+}
+.atlas-pill.researched::after {
+  content: ' ✓';
+  font-size: 0.6rem;
+  color: var(--cyan);
+}
+
+/* Cross-track bridge section */
+.bridge-section {
+  margin-top: 40px;
+  padding: 24px 20px;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+}
+
+.bridge-section h3 {
+  font-size: 0.7rem;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--cyan);
+  margin-bottom: 16px;
+}
+
+.bridge-list {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.bridge-item {
+  font-size: 0.78rem;
+  color: var(--muted);
+  background: rgba(255,255,255,0.02);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 6px 12px;
+  line-height: 1.4;
+}
+.bridge-item .arrow { color: var(--purple); margin: 0 3px; }
+
+/* ── Footer ── */
+footer {
+  position: relative;
+  z-index: 1;
+  text-align: center;
+  padding: 28px 20px;
+  border-top: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 0.75rem;
+  letter-spacing: 1.2px;
+}
+
+.footer-links {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  margin-top: 10px;
+}
+.footer-links a {
+  color: var(--muted);
+  text-decoration: none;
+  font-size: 0.72rem;
+  transition: color 0.2s;
+}
+.footer-links a:hover { color: var(--cyan); }
+
+/* ── Responsive ── */
+@media (max-width: 900px) {
+  .role-grid { grid-template-columns: repeat(2, 1fr); }
+  .atlas-grid { grid-template-columns: repeat(4, 1fr); }
+}
+
+@media (max-width: 600px) {
+  .role-grid { grid-template-columns: 1fr; }
+
+  /* Tree hidden on mobile; accordion shown */
+  #tree-container { display: none; }
+  .accordion { display: block; }
+
+  .atlas-grid { grid-template-columns: repeat(2, 1fr); }
+  .atlas-family-header { padding: 10px 6px; }
+  .atlas-family-name { font-size: 0.5rem; }
+}
+
+@media (max-width: 400px) {
+  .atlas-grid { grid-template-columns: 1fr; }
+}

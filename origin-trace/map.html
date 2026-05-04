@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Career Atlas — Origin Trace</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <canvas id="bg-canvas"></canvas>
+
+  <nav class="nav-bar">
+    <a href="index.html" class="back-link">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <polyline points="15 18 9 12 15 6"/>
+      </svg>
+      All Roles
+    </a>
+    <span class="nav-title">Career Atlas</span>
+  </nav>
+
+  <div class="atlas-banner" id="atlas-banner">
+    <!-- filled by JS with text nodes only -->
+  </div>
+
+  <header class="hero" style="padding:40px 24px 36px;">
+    <div class="hero-inner">
+      <h1 style="font-size:clamp(1.6rem,5vw,2.8rem);">IT <span class="grad">Career Atlas</span></h1>
+      <p class="hero-sub">Seven families. Entry through senior IC. The 6 researched roots are your starting points — everything else shows where the landscape goes.</p>
+    </div>
+  </header>
+
+  <main>
+    <div class="atlas-section" id="atlas-section">
+      <!-- Populated by inline script below -->
+    </div>
+  </main>
+
+  <footer>
+    <p>Origin Trace &bull; Career Atlas</p>
+    <div class="footer-links">
+      <a href="index.html">All Roles</a>
+      <a href="../index.html">App Hub</a>
+    </div>
+  </footer>
+
+  <div id="tooltip" role="tooltip" aria-live="polite"></div>
+
+  <script src="js/tooltip.js"></script>
+  <script src="js/atlas.js"></script>
+  <script>
+  // Particle background
+  (function() {
+    const bg = document.getElementById('bg-canvas');
+    if (!bg) return;
+    const bx = bg.getContext('2d');
+    let W, H, pts;
+    function initBg() {
+      W = bg.width  = window.innerWidth;
+      H = bg.height = window.innerHeight;
+      pts = Array.from({length: 70}, () => ({
+        x: Math.random() * W, y: Math.random() * H,
+        r: Math.random() * 1.2 + 0.2,
+        vx: (Math.random() - 0.5) * 0.18,
+        vy: (Math.random() - 0.5) * 0.18,
+        a: Math.random() * 0.5 + 0.1
+      }));
+    }
+    function animBg() {
+      bx.clearRect(0, 0, W, H);
+      pts.forEach(p => {
+        p.x += p.vx; p.y += p.vy;
+        if (p.x < 0) p.x = W; if (p.x > W) p.x = 0;
+        if (p.y < 0) p.y = H; if (p.y > H) p.y = 0;
+        bx.beginPath();
+        bx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+        bx.fillStyle = 'rgba(74,247,255,' + (p.a * 0.4) + ')';
+        bx.fill();
+      });
+      requestAnimationFrame(animBg);
+    }
+    initBg(); animBg();
+    window.addEventListener('resize', initBg);
+  })();
+  </script>
+</body>
+</html>

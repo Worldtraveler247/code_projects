@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Origin Trace — IT Career Paths</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <canvas id="bg-canvas"></canvas>
+
+  <header class="hero">
+    <div class="hero-inner">
+      <div class="hero-eyebrow">Entry-Level IT Career Catalog</div>
+      <h1><span class="grad">Origin Trace</span></h1>
+      <p class="hero-sub">
+        You have a degree, Network+, and Security+. This catalog maps the six most realistic entry paths into IT — with honest caveats, cited salary data, and no aspirational nonsense.
+      </p>
+      <p class="hero-caveat">All salary data from BLS, cert costs from official vendor pages. Sources cited on each role page.</p>
+    </div>
+  </header>
+
+  <main>
+    <section class="section">
+      <h2 class="section-label">Six Entry Roots</h2>
+      <div class="role-grid" id="role-grid">
+        <!-- Populated by main.js -->
+        <p style="color:var(--muted);font-size:0.85rem;">Loading roles...</p>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <p>Origin Trace &bull; Entry-level IT career research catalog</p>
+    <div class="footer-links">
+      <a href="map.html">Career Atlas</a>
+      <a href="../index.html">App Hub</a>
+    </div>
+  </footer>
+
+  <div id="tooltip" role="tooltip" aria-live="polite"></div>
+
+  <script src="js/tooltip.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>
