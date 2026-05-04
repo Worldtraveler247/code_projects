@@ -1,0 +1,635 @@
+{
+  "roles": [
+    {
+      "id": "help-desk",
+      "slug": "help-desk",
+      "title": "Help Desk / IT Support",
+      "icon": "🖥️",
+      "accent": "#4af7ff",
+      "tagline": "Broadest on-ramp. A+ validates the basics; local market determines whether it's the right first step.",
+      "entry_note": "Sometimes the right strategic move depending on local market. High volume of postings, genuine exposure to tickets/hardware/AD. Don't overlook it because it feels unglamorous.",
+      "tiers": [
+        {
+          "tier": "entry",
+          "label": "ENTRY",
+          "typical_titles": ["Help Desk Technician", "IT Support Specialist", "Desktop Support Analyst"],
+          "required_certs": [
+            {
+              "name": "CompTIA A+",
+              "source_label": "CompTIA",
+              "source_url": "https://www.comptia.org/certifications/a",
+              "cost_usd": 253,
+              "cost_note": "per exam voucher (2 exams required = ~$506 total). Prices as of 2024.",
+              "verify_before_publish": false
+            }
+          ],
+          "education_bar": "No degree required; associate's degree helpful. Many employers list degree as preferred, not required at this tier.",
+          "salary_range": {
+            "low": 38000,
+            "high": 55000,
+            "currency": "USD",
+            "geo": "US national median",
+            "source_label": "BLS OOH — Computer Support Specialists",
+            "source_url": "https://www.bls.gov/ooh/computer-and-information-technology/computer-support-specialists.htm",
+            "verify_before_publish": false
+          },
+          "typical_time_in_tier": "1–3 years",
+          "branches_into": ["noc-technician", "cloud-support"],
+          "branch_rationale": {
+            "noc-technician": "Network+ earned at Help Desk tier is the primary credential gate for NOC roles; many job postings explicitly list prior Help Desk experience as qualifying.",
+            "cloud-support": "AWS CCP / AZ-900 can be added while at Help Desk; several cloud vendors explicitly recruit from Help Desk for their Tier 1 cloud support queues."
+          }
+        },
+        {
+          "tier": "mid",
+          "label": "MID",
+          "typical_titles": ["Desktop Support Engineer", "IT Systems Administrator", "Sysadmin"],
+          "required_certs": [
+            {
+              "name": "CompTIA Network+",
+              "source_label": "CompTIA",
+              "source_url": "https://www.comptia.org/certifications/network",
+              "cost_usd": 369,
+              "cost_note": "Single exam voucher, 2024 pricing.",
+              "verify_before_publish": false
+            }
+          ],
+          "education_bar": "Bachelor's degree increasingly expected; associate's + experience common path.",
+          "salary_range": {
+            "low": 55000,
+            "high": 80000,
+            "currency": "USD",
+            "geo": "US national median",
+            "source_label": "BLS OOH — Computer Support Specialists",
+            "source_url": "https://www.bls.gov/ooh/computer-and-information-technology/computer-support-specialists.htm",
+            "verify_before_publish": false
+          },
+          "typical_time_in_tier": "2–4 years",
+          "branches_into": [],
+          "branch_rationale": {}
+        },
+        {
+          "tier": "senior",
+          "label": "SENIOR",
+          "typical_titles": ["Senior Systems Administrator", "IT Operations Lead", "Sr. Desktop Engineer"],
+          "required_certs": [
+            {
+              "name": "CompTIA Security+",
+              "source_label": "CompTIA",
+              "source_url": "https://www.comptia.org/certifications/security",
+              "cost_usd": 404,
+              "cost_note": "Single exam voucher, 2024 pricing.",
+              "verify_before_publish": false
+            }
+          ],
+          "education_bar": "Bachelor's in CS, IT, or related field standard at this level.",
+          "salary_range": {
+            "low": 75000,
+            "high": 110000,
+            "currency": "USD",
+            "geo": "US national median",
+            "source_label": "BLS OOH — Computer Support Specialists (senior band)",
+            "source_url": "https://www.bls.gov/ooh/computer-and-information-technology/computer-support-specialists.htm",
+            "verify_before_publish": true
+          },
+          "typical_time_in_tier": "3–6 years",
+          "branches_into": [],
+          "branch_rationale": {}
+        }
+      ],
+      "node_positions": {
+        "entry": {"x": 300, "y": 120},
+        "mid":   {"x": 300, "y": 310},
+        "senior":{"x": 300, "y": 500}
+      }
+    },
+
+    {
+      "id": "noc-technician",
+      "slug": "noc-technician",
+      "title": "NOC Technician",
+      "icon": "📡",
+      "accent": "#4af7ff",
+      "tagline": "Network operations monitoring. Network+ is the direct qualifier.",
+      "entry_note": "Shift work is common. Strong exposure to real network infrastructure, alerting tools, and escalation workflows — legitimate foundation for network engineering.",
+      "tiers": [
+        {
+          "tier": "entry",
+          "label": "ENTRY",
+          "typical_titles": ["NOC Technician", "Network Operations Technician", "Network Monitoring Analyst"],
+          "required_certs": [
+            {
+              "name": "CompTIA Network+",
+              "source_label": "CompTIA",
+              "source_url": "https://www.comptia.org/certifications/network",
+              "cost_usd": 369,
+              "cost_note": "Single exam voucher, 2024 pricing.",
+              "verify_before_publish": false
+            }
+          ],
+          "education_bar": "No degree required in many postings; associate's or bachelor's preferred.",
+          "salary_range": {
+            "low": 42000,
+            "high": 62000,
+            "currency": "USD",
+            "geo": "US national median",
+            "source_label": "BLS OOH — Network and Computer Systems Administrators",
+            "source_url": "https://www.bls.gov/ooh/computer-and-information-technology/network-and-computer-systems-administrators.htm",
+            "verify_before_publish": true
+          },
+          "typical_time_in_tier": "1–3 years",
+          "branches_into": ["junior-network-admin"],
+          "branch_rationale": {
+            "junior-network-admin": "NOC experience is explicitly cited as qualifying experience for Junior Network Admin postings; the operational exposure to routing, switching, and monitoring tools is directly transferable."
+          }
+        },
+        {
+          "tier": "mid",
+          "label": "MID",
+          "typical_titles": ["NOC Engineer", "Network Administrator", "Network Analyst"],
+          "required_certs": [
+            {
+              "name": "Cisco CCNA",
+              "source_label": "Cisco",
+              "source_url": "https://www.cisco.com/c/en/us/training-events/training-certifications/certifications/associate/ccna.html",
+              "cost_usd": 330,
+              "cost_note": "Single exam (200-301). Pricing as of 2024. Verify at Pearson VUE.",
+              "verify_before_publish": true
+            }
+          ],
+          "education_bar": "Bachelor's in networking or IT increasingly expected.",
+          "salary_range": {
+            "low": 60000,
+            "high": 88000,
+            "currency": "USD",
+            "geo": "US national median",
+            "source_label": "BLS OOH — Network and Computer Systems Administrators",
+            "source_url": "https://www.bls.gov/ooh/computer-and-information-technology/network-and-computer-systems-administrators.htm",
+            "verify_before_publish": false
+          },
+          "typical_time_in_tier": "2–4 years",
+          "branches_into": [],
+          "branch_rationale": {}
+        },
+        {
+          "tier": "senior",
+          "label": "SENIOR",
+          "typical_titles": ["Senior Network Engineer", "Lead Network Engineer", "Principal Network Engineer"],
+          "required_certs": [
+            {
+              "name": "Cisco CCNP Enterprise",
+              "source_label": "Cisco",
+              "source_url": "https://www.cisco.com/c/en/us/training-events/training-certifications/certifications/professional/ccnp-enterprise.html",
+              "cost_usd": null,
+              "cost_note": "Core + Concentration exam required. Verify current pricing at Pearson VUE.",
+              "verify_before_publish": true
+            }
+          ],
+          "education_bar": "Bachelor's standard; master's in some enterprise orgs.",
+          "salary_range": {
+            "low": 90000,
+            "high": 135000,
+            "currency": "USD",
+            "geo": "US national median",
+            "source_label": "BLS OOH — Network Architects (adjacent senior band)",
+            "source_url": "https://www.bls.gov/ooh/computer-and-information-technology/network-and-computer-systems-administrators.htm",
+            "verify_before_publish": true
+          },
+          "typical_time_in_tier": "3–6 years",
+          "branches_into": [],
+          "branch_rationale": {}
+        }
+      ],
+      "node_positions": {
+        "entry": {"x": 300, "y": 120},
+        "mid":   {"x": 300, "y": 310},
+        "senior":{"x": 300, "y": 500}
+      }
+    },
+
+    {
+      "id": "cloud-support",
+      "slug": "cloud-support",
+      "title": "Cloud Support Associate",
+      "icon": "☁️",
+      "accent": "#4af7ff",
+      "tagline": "Vendor-side or third-party cloud Tier 1 support. AWS CCP / AZ-900 is the entry gate.",
+      "entry_note": "AWS and Azure both hire at this level with just a foundational cert. Direct path into cloud engineering with consistent cert progression.",
+      "tiers": [
+        {
+          "tier": "entry",
+          "label": "ENTRY",
+          "typical_titles": ["Cloud Support Associate", "Cloud Help Desk Technician", "Cloud Operations Analyst"],
+          "required_certs": [
+            {
+              "name": "AWS Certified Cloud Practitioner",
+              "source_label": "AWS Training & Certification",
+              "source_url": "https://aws.amazon.com/certification/certified-cloud-practitioner/",
+              "cost_usd": 100,
+              "cost_note": "Exam fee as of 2024. Register via aws.training.",
+              "verify_before_publish": false
+            },
+            {
+              "name": "Microsoft Azure Fundamentals (AZ-900)",
+              "source_label": "Microsoft Learn",
+              "source_url": "https://learn.microsoft.com/en-us/certifications/azure-fundamentals/",
+              "cost_usd": 165,
+              "cost_note": "Exam fee as of 2024. Register via Pearson VUE or Certiport.",
+              "verify_before_publish": false
+            }
+          ],
+          "education_bar": "No degree required for many cloud support roles; bachelor's preferred.",
+          "salary_range": {
+            "low": 45000,
+            "high": 68000,
+            "currency": "USD",
+            "geo": "US national median",
+            "source_label": "BLS OOH — Computer Support Specialists",
+            "source_url": "https://www.bls.gov/ooh/computer-and-information-technology/computer-support-specialists.htm",
+            "verify_before_publish": true
+          },
+          "typical_time_in_tier": "1–2 years",
+          "branches_into": [],
+          "branch_rationale": {}
+        },
+        {
+          "tier": "mid",
+          "label": "MID",
+          "typical_titles": ["Cloud Engineer", "Cloud Operations Engineer", "Cloud Platform Engineer"],
+          "required_certs": [
+            {
+              "name": "AWS Certified SysOps Administrator – Associate",
+              "source_label": "AWS Training & Certification",
+              "source_url": "https://aws.amazon.com/certification/certified-sysops-admin-associate/",
+              "cost_usd": 300,
+              "cost_note": "Exam fee as of 2024.",
+              "verify_before_publish": false
+            }
+          ],
+          "education_bar": "Bachelor's in CS, IT, or cloud-adjacent increasingly standard.",
+          "salary_range": {
+            "low": 85000,
+            "high": 125000,
+            "currency": "USD",
+            "geo": "US national median",
+            "source_label": "BLS OOH — Software Developers, QA, and Testers (cloud ops proxy)",
+            "source_url": "https://www.bls.gov/ooh/computer-and-information-technology/software-developers.htm",
+            "verify_before_publish": true
+          },
+          "typical_time_in_tier": "2–4 years",
+          "branches_into": [],
+          "branch_rationale": {}
+        },
+        {
+          "tier": "senior",
+          "label": "SENIOR",
+          "typical_titles": ["Senior Cloud Engineer", "Cloud Solutions Architect", "Sr. Cloud Platform Engineer"],
+          "required_certs": [
+            {
+              "name": "AWS Certified Solutions Architect – Professional",
+              "source_label": "AWS Training & Certification",
+              "source_url": "https://aws.amazon.com/certification/certified-solutions-architect-professional/",
+              "cost_usd": 300,
+              "cost_note": "Exam fee as of 2024.",
+              "verify_before_publish": false
+            }
+          ],
+          "education_bar": "Bachelor's standard; strong portfolio can substitute.",
+          "salary_range": {
+            "low": 130000,
+            "high": 185000,
+            "currency": "USD",
+            "geo": "US national median",
+            "source_label": "Levels.fyi — Cloud Engineer / Solutions Architect",
+            "source_url": "https://www.levels.fyi/t/software-engineer/title/cloud-engineer",
+            "verify_before_publish": true
+          },
+          "typical_time_in_tier": "3–6 years",
+          "branches_into": [],
+          "branch_rationale": {}
+        }
+      ],
+      "node_positions": {
+        "entry": {"x": 300, "y": 120},
+        "mid":   {"x": 300, "y": 310},
+        "senior":{"x": 300, "y": 500}
+      }
+    },
+
+    {
+      "id": "grc-analyst",
+      "slug": "grc-analyst",
+      "title": "GRC / IT Audit Analyst T1",
+      "icon": "📋",
+      "accent": "#7b2fff",
+      "tagline": "Governance, risk, and compliance. Security+ + BA degree is the common entry combination.",
+      "entry_note": "One of the few IT tracks where a non-technical bachelor's (accounting, business, poli-sci) is a genuine advantage. Heavy documentation and framework work (NIST, ISO 27001, SOC 2).",
+      "tiers": [
+        {
+          "tier": "entry",
+          "label": "ENTRY",
+          "typical_titles": ["GRC Analyst", "IT Audit Analyst", "Compliance Analyst", "Risk Analyst T1"],
+          "required_certs": [
+            {
+              "name": "CompTIA Security+",
+              "source_label": "CompTIA",
+              "source_url": "https://www.comptia.org/certifications/security",
+              "cost_usd": 404,
+              "cost_note": "Single exam voucher, 2024 pricing.",
+              "verify_before_publish": false
+            }
+          ],
+          "education_bar": "Bachelor's degree common (any field); accounting, business, or IT preferred. BA is more commonly a real requirement here than in other entry tracks.",
+          "salary_range": {
+            "low": 50000,
+            "high": 72000,
+            "currency": "USD",
+            "geo": "US national median",
+            "source_label": "BLS OOH — Information Security Analysts",
+            "source_url": "https://www.bls.gov/ooh/computer-and-information-technology/information-security-analysts.htm",
+            "verify_before_publish": true
+          },
+          "typical_time_in_tier": "1–3 years",
+          "branches_into": [],
+          "branch_rationale": {}
+        },
+        {
+          "tier": "mid",
+          "label": "MID",
+          "typical_titles": ["GRC Engineer", "IT Auditor", "Senior Compliance Analyst", "Risk Analyst"],
+          "required_certs": [
+            {
+              "name": "ISACA CISA (Certified Information Systems Auditor)",
+              "source_label": "ISACA",
+              "source_url": "https://www.isaca.org/credentialing/cisa",
+              "cost_usd": 575,
+              "cost_note": "ISACA member exam fee as of 2024. Non-member: $760. Verify at isaca.org.",
+              "verify_before_publish": false
+            }
+          ],
+          "education_bar": "Bachelor's required; master's increasingly common at mid-level in financial services and healthcare.",
+          "salary_range": {
+            "low": 75000,
+            "high": 105000,
+            "currency": "USD",
+            "geo": "US national median",
+            "source_label": "BLS OOH — Information Security Analysts",
+            "source_url": "https://www.bls.gov/ooh/computer-and-information-technology/information-security-analysts.htm",
+            "verify_before_publish": false
+          },
+          "typical_time_in_tier": "2–4 years",
+          "branches_into": [],
+          "branch_rationale": {}
+        },
+        {
+          "tier": "senior",
+          "label": "SENIOR",
+          "typical_titles": ["Senior GRC Engineer", "Senior IT Auditor", "Principal Compliance Analyst"],
+          "required_certs": [
+            {
+              "name": "ISACA CRISC (Certified in Risk and Information Systems Control)",
+              "source_label": "ISACA",
+              "source_url": "https://www.isaca.org/credentialing/crisc",
+              "cost_usd": 575,
+              "cost_note": "ISACA member exam fee as of 2024. Verify at isaca.org.",
+              "verify_before_publish": false
+            }
+          ],
+          "education_bar": "Bachelor's required; master's common. CISSP sometimes listed as senior bar.",
+          "salary_range": {
+            "low": 100000,
+            "high": 145000,
+            "currency": "USD",
+            "geo": "US national median",
+            "source_label": "BLS OOH — Information Security Analysts (senior band)",
+            "source_url": "https://www.bls.gov/ooh/computer-and-information-technology/information-security-analysts.htm",
+            "verify_before_publish": true
+          },
+          "typical_time_in_tier": "3–6 years",
+          "branches_into": [],
+          "branch_rationale": {}
+        }
+      ],
+      "node_positions": {
+        "entry": {"x": 300, "y": 120},
+        "mid":   {"x": 300, "y": 310},
+        "senior":{"x": 300, "y": 500}
+      }
+    },
+
+    {
+      "id": "soc-analyst",
+      "slug": "soc-analyst",
+      "title": "SOC Analyst T1",
+      "icon": "🛡️",
+      "accent": "#ff4af7",
+      "tagline": "Defensive security monitoring. Entry is real but competitive — most postings still prefer prior IT experience.",
+      "entry_note": "Honest caveat: despite T1 labeling, many SOC postings request 1–2 years of IT or security experience. Your Network+ + Security+ combo with a degree puts you in the running, but homelab evidence (SIEM configs, detection rules) will separate you from other applicants. Don't assume the cert alone is sufficient.",
+      "tiers": [
+        {
+          "tier": "entry",
+          "label": "ENTRY",
+          "typical_titles": ["SOC Analyst T1", "Security Operations Analyst", "Cyber Defense Analyst"],
+          "required_certs": [
+            {
+              "name": "CompTIA Security+",
+              "source_label": "CompTIA",
+              "source_url": "https://www.comptia.org/certifications/security",
+              "cost_usd": 404,
+              "cost_note": "Single exam voucher, 2024 pricing.",
+              "verify_before_publish": false
+            },
+            {
+              "name": "CompTIA CySA+ (recommended, not always required)",
+              "source_label": "CompTIA",
+              "source_url": "https://www.comptia.org/certifications/cybersecurity-analyst",
+              "cost_usd": 404,
+              "cost_note": "Single exam voucher, 2024 pricing. Often listed as preferred, not required.",
+              "verify_before_publish": false
+            }
+          ],
+          "education_bar": "Bachelor's in CS, cybersecurity, or IT is common. Degree + Security+ is the minimum credible package for most employers.",
+          "salary_range": {
+            "low": 52000,
+            "high": 75000,
+            "currency": "USD",
+            "geo": "US national median",
+            "source_label": "BLS OOH — Information Security Analysts",
+            "source_url": "https://www.bls.gov/ooh/computer-and-information-technology/information-security-analysts.htm",
+            "verify_before_publish": false
+          },
+          "typical_time_in_tier": "1–2 years",
+          "branches_into": [],
+          "branch_rationale": {}
+        },
+        {
+          "tier": "mid",
+          "label": "MID",
+          "typical_titles": ["SOC Analyst T2", "Security Analyst", "Threat Detection Analyst"],
+          "required_certs": [
+            {
+              "name": "CompTIA CySA+",
+              "source_label": "CompTIA",
+              "source_url": "https://www.comptia.org/certifications/cybersecurity-analyst",
+              "cost_usd": 404,
+              "cost_note": "Single exam voucher, 2024 pricing.",
+              "verify_before_publish": false
+            }
+          ],
+          "education_bar": "Bachelor's standard. Active SIEM and EDR tool experience increasingly expected.",
+          "salary_range": {
+            "low": 75000,
+            "high": 105000,
+            "currency": "USD",
+            "geo": "US national median",
+            "source_label": "BLS OOH — Information Security Analysts",
+            "source_url": "https://www.bls.gov/ooh/computer-and-information-technology/information-security-analysts.htm",
+            "verify_before_publish": false
+          },
+          "typical_time_in_tier": "2–4 years",
+          "branches_into": [],
+          "branch_rationale": {}
+        },
+        {
+          "tier": "senior",
+          "label": "SENIOR",
+          "typical_titles": ["SOC Analyst T3", "Senior Threat Analyst", "Threat Hunter", "Senior Detection Engineer"],
+          "required_certs": [
+            {
+              "name": "GIAC GCIA or GCIH",
+              "source_label": "GIAC",
+              "source_url": "https://www.giac.org/certifications/intrusion-analyst-gcia/",
+              "cost_usd": 949,
+              "cost_note": "Exam fee as of 2024. Includes two practice tests. Verify at giac.org.",
+              "verify_before_publish": true
+            }
+          ],
+          "education_bar": "Bachelor's standard. SANS/GIAC certs carry significant weight at this tier.",
+          "salary_range": {
+            "low": 105000,
+            "high": 150000,
+            "currency": "USD",
+            "geo": "US national median",
+            "source_label": "BLS OOH — Information Security Analysts (senior band)",
+            "source_url": "https://www.bls.gov/ooh/computer-and-information-technology/information-security-analysts.htm",
+            "verify_before_publish": true
+          },
+          "ai_branch": {
+            "title": "AI Security Engineer",
+            "note": "Senior-only branch. Requires deep SOC experience + LLM/ML security knowledge. Not a realistic entry or mid-tier destination.",
+            "verify_before_publish": false
+          },
+          "typical_time_in_tier": "3–6 years",
+          "branches_into": [],
+          "branch_rationale": {}
+        }
+      ],
+      "node_positions": {
+        "entry": {"x": 300, "y": 120},
+        "mid":   {"x": 300, "y": 310},
+        "senior":{"x": 300, "y": 500}
+      }
+    },
+
+    {
+      "id": "junior-network-admin",
+      "slug": "junior-network-admin",
+      "title": "Junior Network Admin",
+      "icon": "🔌",
+      "accent": "#4af7ff",
+      "tagline": "Hands-on network configuration and maintenance. Homelab is table stakes.",
+      "entry_note": "Honest caveat: postings often expect hands-on lab or home lab experience with Cisco gear even at junior level. Your Network+ is necessary but not sufficient — build a homelab (GNS3, Packet Tracer, or physical gear) before applying. Competition from candidates with prior NOC or Help Desk experience is real.",
+      "tiers": [
+        {
+          "tier": "entry",
+          "label": "ENTRY",
+          "typical_titles": ["Junior Network Administrator", "Associate Network Technician", "Network Support Specialist"],
+          "required_certs": [
+            {
+              "name": "CompTIA Network+",
+              "source_label": "CompTIA",
+              "source_url": "https://www.comptia.org/certifications/network",
+              "cost_usd": 369,
+              "cost_note": "Single exam voucher, 2024 pricing.",
+              "verify_before_publish": false
+            }
+          ],
+          "education_bar": "Bachelor's in networking or IT preferred; associate's + homelab can substitute in smaller orgs.",
+          "salary_range": {
+            "low": 48000,
+            "high": 70000,
+            "currency": "USD",
+            "geo": "US national median",
+            "source_label": "BLS OOH — Network and Computer Systems Administrators",
+            "source_url": "https://www.bls.gov/ooh/computer-and-information-technology/network-and-computer-systems-administrators.htm",
+            "verify_before_publish": false
+          },
+          "typical_time_in_tier": "1–3 years",
+          "branches_into": [],
+          "branch_rationale": {}
+        },
+        {
+          "tier": "mid",
+          "label": "MID",
+          "typical_titles": ["Network Engineer", "Network Administrator", "Network Systems Engineer"],
+          "required_certs": [
+            {
+              "name": "Cisco CCNA",
+              "source_label": "Cisco",
+              "source_url": "https://www.cisco.com/c/en/us/training-events/training-certifications/certifications/associate/ccna.html",
+              "cost_usd": 330,
+              "cost_note": "Single exam (200-301) as of 2024. Verify at Pearson VUE.",
+              "verify_before_publish": true
+            }
+          ],
+          "education_bar": "Bachelor's standard.",
+          "salary_range": {
+            "low": 72000,
+            "high": 100000,
+            "currency": "USD",
+            "geo": "US national median",
+            "source_label": "BLS OOH — Network and Computer Systems Administrators",
+            "source_url": "https://www.bls.gov/ooh/computer-and-information-technology/network-and-computer-systems-administrators.htm",
+            "verify_before_publish": false
+          },
+          "typical_time_in_tier": "2–4 years",
+          "branches_into": [],
+          "branch_rationale": {}
+        },
+        {
+          "tier": "senior",
+          "label": "SENIOR",
+          "typical_titles": ["Senior Network Engineer", "Lead Network Engineer", "Principal Network Engineer"],
+          "required_certs": [
+            {
+              "name": "Cisco CCNP Enterprise",
+              "source_label": "Cisco",
+              "source_url": "https://www.cisco.com/c/en/us/training-events/training-certifications/certifications/professional/ccnp-enterprise.html",
+              "cost_usd": null,
+              "cost_note": "Core + Concentration exams. Verify current pricing at Pearson VUE.",
+              "verify_before_publish": true
+            }
+          ],
+          "education_bar": "Bachelor's standard.",
+          "salary_range": {
+            "low": 95000,
+            "high": 140000,
+            "currency": "USD",
+            "geo": "US national median",
+            "source_label": "BLS OOH — Network Architects",
+            "source_url": "https://www.bls.gov/ooh/computer-and-information-technology/network-and-computer-systems-administrators.htm",
+            "verify_before_publish": true
+          },
+          "typical_time_in_tier": "3–6 years",
+          "branches_into": [],
+          "branch_rationale": {}
+        }
+      ],
+      "node_positions": {
+        "entry": {"x": 300, "y": 120},
+        "mid":   {"x": 300, "y": 310},
+        "senior":{"x": 300, "y": 500}
+      }
+    }
+  ]
+}
