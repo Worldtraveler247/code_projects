@@ -26,6 +26,11 @@ renderer.toneMapping       = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.15;
 document.getElementById('canvas-container').appendChild(renderer.domElement);
 
+const labelRenderer = new THREE.CSS2DRenderer();
+labelRenderer.setSize(window.innerWidth, window.innerHeight);
+labelRenderer.domElement.id = 'label-container';
+document.getElementById('canvas-container').appendChild(labelRenderer.domElement);
+
 // OrbitControls
 const controls = new THREE.OrbitControls(camera, renderer.domElement);
 controls.enableDamping  = true;
@@ -37,7 +42,7 @@ controls.target.set(0, 0, 0);
 controls.update();
 
 // ─── Lighting — warm Roman torchlight ────────────────────────────────────────
-const ambient = new THREE.AmbientLight(0xfff3d0, 0.5);
+const ambient = new THREE.AmbientLight(0xfff3d0, 0.65);
 scene.add(ambient);
 
 const keyLight = new THREE.DirectionalLight(0xffd080, 1.5);
@@ -132,15 +137,56 @@ function makeMarbleTex(baseCss, vein1, vein2, w = 512, h = 512) {
     return tex;
 }
 
-// Carrara white marble (light squares)
-const lightTex = makeMarbleTex('#e8dece', '#c0b09a', '#b8a890');
-// Verde antico / dark marble (dark squares)
-const darkTex  = makeMarbleTex('#283530', '#3a4e42', '#2e4038');
+// Warm cream (light squares)
+const lightTex = makeMarbleTex('#f0ead8', '#cfc4a8', '#c8bc9a');
+// Emerald green (dark squares)
+const darkTex  = makeMarbleTex('#2d6a4f', '#1e5c40', '#245c44');
+
+// ─── Procedural wood texture ───────────────────────────────────────────────────
+function drawGrainLine(ctx, w, h, color, alpha) {
+    const y = Math.random() * h;
+    ctx.beginPath();
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 0.5 + Math.random() * 1.4;
+    ctx.globalAlpha = alpha;
+    ctx.moveTo(0, y);
+    let x = 0, cy = y;
+    while (x < w) {
+        const sx = 20 + Math.random() * 40;
+        const sy = (Math.random() - 0.5) * 4;
+        ctx.quadraticCurveTo(x + sx / 2, cy + sy * 2, x + sx, cy + sy);
+        x += sx; cy += sy;
+    }
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+}
+
+function makeWoodTex(baseCss, darkGrain, lightGrain, w = 256, h = 512) {
+    const cv = document.createElement('canvas');
+    cv.width = w; cv.height = h;
+    const ctx = cv.getContext('2d');
+    ctx.fillStyle = baseCss;
+    ctx.fillRect(0, 0, w, h);
+    const g = ctx.createRadialGradient(w / 2, h * 0.3, 0, w / 2, h * 0.3, w * 0.8);
+    g.addColorStop(0, 'rgba(255,255,255,0.10)');
+    g.addColorStop(1, 'rgba(0,0,0,0.12)');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, w, h);
+    for (let i = 0; i < 30; i++) drawGrainLine(ctx, w, h, darkGrain, 0.18 + Math.random() * 0.14);
+    for (let i = 0; i < 15; i++) drawGrainLine(ctx, w, h, lightGrain, 0.06 + Math.random() * 0.08);
+    const tex = new THREE.CanvasTexture(cv);
+    tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+    tex.repeat.set(1, 2);
+    return tex;
+}
+
+const whiteWoodTex = makeWoodTex('#d4a96a', '#8b6230', '#e8c080');
+const blackWoodTex = makeWoodTex('#3d1f0a', '#251008', '#5a2e10');
 
 // ─── Shared piece materials ───────────────────────────────────────────────────
-const W_MAT   = new THREE.MeshStandardMaterial({ color: 0xf0e6d2, roughness: 0.22, metalness: 0.0 });
-const B_MAT   = new THREE.MeshStandardMaterial({ color: 0x1a1820, roughness: 0.20, metalness: 0.06 });
-const GOLD_MAT = new THREE.MeshStandardMaterial({ color: 0xc9a227, roughness: 0.28, metalness: 0.85, emissive: 0x7a5800, emissiveIntensity: 0.08 });
+const W_MAT    = new THREE.MeshStandardMaterial({ color: 0xd4a96a, map: whiteWoodTex, roughness: 0.85, metalness: 0.0 });
+const B_MAT    = new THREE.MeshStandardMaterial({ color: 0x3d1f0a, map: blackWoodTex, roughness: 0.80, metalness: 0.0 });
+const GOLD_MAT = new THREE.MeshStandardMaterial({ color: 0x8b6230, roughness: 0.75, metalness: 0.0 });
 
 // ─── Highlight colors ─────────────────────────────────────────────────────────
 const C = {
@@ -206,29 +252,31 @@ const PROFILES = {
         v2(0.03, 0.70),v2(0, 0.70),
     ],
     r: [ // Rook body (battlements added as separate geometry)
-        v2(0, 0),      v2(0.26, 0),    v2(0.30, 0.042), v2(0.28, 0.085),
-        v2(0.20, 0.14),v2(0.18, 0.56), v2(0.22, 0.63),  v2(0.23, 0.80),
+        v2(0.00,0.00), v2(0.26,0.00), v2(0.31,0.03), v2(0.29,0.07),
+        v2(0.22,0.12), v2(0.19,0.20), v2(0.18,0.35), v2(0.17,0.50),
+        v2(0.18,0.56), v2(0.20,0.60), v2(0.23,0.65), v2(0.24,0.80),
     ],
     n: [ // Knight base (head added separately)
         v2(0, 0),      v2(0.26, 0),    v2(0.30, 0.042), v2(0.28, 0.085),
         v2(0.20, 0.14),v2(0.15, 0.36), v2(0.13, 0.52),
     ],
     b: [ // Bishop — tall tapered mitre
-        v2(0, 0),      v2(0.26, 0),    v2(0.30, 0.042), v2(0.28, 0.085),
-        v2(0.18, 0.14),v2(0.12, 0.36), v2(0.09, 0.58),  v2(0.11, 0.73),
-        v2(0.13, 0.79),v2(0.11, 0.87), v2(0.07, 0.97),  v2(0.03, 1.07),
-        v2(0, 1.09),
+        v2(0.00,0.00), v2(0.26,0.00), v2(0.30,0.03), v2(0.28,0.07),
+        v2(0.19,0.12), v2(0.14,0.24), v2(0.11,0.36), v2(0.09,0.48),
+        v2(0.10,0.58), v2(0.13,0.66), v2(0.14,0.73), v2(0.12,0.80),
+        v2(0.09,0.89), v2(0.06,0.99), v2(0.04,1.07), v2(0.00,1.10),
     ],
     q: [ // Queen — wide waist, flared crown
-        v2(0, 0),      v2(0.28, 0),    v2(0.32, 0.042), v2(0.30, 0.085),
-        v2(0.20, 0.14),v2(0.14, 0.39), v2(0.11, 0.59),  v2(0.16, 0.69),
-        v2(0.22, 0.77),v2(0.20, 0.87), v2(0.14, 0.97),  v2(0.10, 1.04),
-        v2(0, 1.06),
+        v2(0.00,0.00), v2(0.28,0.00), v2(0.33,0.03), v2(0.31,0.07),
+        v2(0.22,0.12), v2(0.16,0.28), v2(0.12,0.42), v2(0.10,0.55),
+        v2(0.14,0.65), v2(0.20,0.72), v2(0.23,0.78), v2(0.21,0.86),
+        v2(0.16,0.94), v2(0.11,1.01), v2(0.00,1.06),
     ],
     k: [ // King — tallest, receives cross ornament
-        v2(0, 0),      v2(0.30, 0),    v2(0.34, 0.042), v2(0.32, 0.085),
-        v2(0.22, 0.14),v2(0.15, 0.41), v2(0.12, 0.63),  v2(0.18, 0.73),
-        v2(0.24, 0.83),v2(0.22, 0.95), v2(0.16, 1.05),  v2(0.12, 1.13),
+        v2(0.00,0.00), v2(0.30,0.00), v2(0.35,0.03), v2(0.33,0.07),
+        v2(0.24,0.12), v2(0.17,0.30), v2(0.13,0.46), v2(0.11,0.60),
+        v2(0.16,0.70), v2(0.22,0.78), v2(0.25,0.86), v2(0.23,0.96),
+        v2(0.17,1.06), v2(0.13,1.14),
     ],
 };
 
@@ -249,9 +297,30 @@ function createPieceMesh(type, color) {
     switch (type) {
 
         case 'p': {
-            const body = mesh(new THREE.LatheGeometry(PROFILES.p, SEGS));
-            body.position.y = BASE_Y;
-            group.add(body);
+            const shape = new THREE.Shape();
+            shape.moveTo(0, 0.80);
+            shape.bezierCurveTo( 0.10, 0.80,  0.14, 0.72,  0.14, 0.66);
+            shape.bezierCurveTo( 0.14, 0.60,  0.10, 0.57,  0.09, 0.54);
+            shape.bezierCurveTo( 0.13, 0.50,  0.20, 0.45,  0.22, 0.38);
+            shape.bezierCurveTo( 0.22, 0.32,  0.18, 0.28,  0.13, 0.26);
+            shape.bezierCurveTo( 0.10, 0.24,  0.09, 0.20,  0.11, 0.16);
+            shape.bezierCurveTo( 0.16, 0.12,  0.24, 0.08,  0.26, 0.03);
+            shape.lineTo( 0.26, 0.00);
+            shape.lineTo(-0.26, 0.00);
+            shape.bezierCurveTo(-0.24, 0.08, -0.16, 0.12, -0.11, 0.16);
+            shape.bezierCurveTo(-0.09, 0.20, -0.10, 0.24, -0.13, 0.26);
+            shape.bezierCurveTo(-0.18, 0.28, -0.22, 0.32, -0.22, 0.38);
+            shape.bezierCurveTo(-0.20, 0.45, -0.13, 0.50, -0.09, 0.54);
+            shape.bezierCurveTo(-0.10, 0.57, -0.14, 0.60, -0.14, 0.66);
+            shape.bezierCurveTo(-0.14, 0.72, -0.10, 0.80,  0.00, 0.80);
+            const extrudeSettings = { depth: 0.10, bevelEnabled: true, bevelThickness: 0.012, bevelSize: 0.008, bevelSegments: 3 };
+            const geo = new THREE.ExtrudeGeometry(shape, extrudeSettings);
+            geo.translate(0, 0, -0.05);
+            const slab = new THREE.Mesh(geo, color === 'w' ? W_MAT : B_MAT);
+            slab.castShadow = true;
+            slab.position.y = BASE_Y;
+            slab.rotation.y = Math.PI / 2;
+            group.add(slab);
             break;
         }
 
@@ -261,7 +330,7 @@ function createPieceMesh(type, color) {
             // Small gold band on bishop's mitre
             const band = mesh(new THREE.TorusGeometry(0.12, 0.025, 8, 24), GOLD_MAT);
             band.rotation.x = Math.PI / 2;
-            band.position.y = BASE_Y + 0.79;
+            band.position.y = BASE_Y + 0.66;
             group.add(body, band);
             break;
         }
@@ -339,6 +408,33 @@ function createPieceMesh(type, color) {
     }
 
     return group;
+}
+
+// ─── Coordinate labels ────────────────────────────────────────────────────────
+function createLabels() {
+    const files = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
+    files.forEach((file, i) => {
+        const x = i - 3.5;
+        [3.9, -3.9].forEach(z => {
+            const div = document.createElement('div');
+            div.className = 'coord-label';
+            div.textContent = file;
+            const lbl = new THREE.CSS2DObject(div);
+            lbl.position.set(x, 0.08, z);
+            scene.add(lbl);
+        });
+    });
+    for (let rank = 1; rank <= 8; rank++) {
+        const z = (8 - rank) - 3.5;
+        [-3.9, 3.9].forEach(x => {
+            const div = document.createElement('div');
+            div.className = 'coord-label';
+            div.textContent = String(rank);
+            const lbl = new THREE.CSS2DObject(div);
+            lbl.position.set(x, 0.08, z);
+            scene.add(lbl);
+        });
+    }
 }
 
 // ─── Board ↔ Engine Sync ──────────────────────────────────────────────────────
@@ -535,6 +631,7 @@ function animate() {
     torch1.intensity = 1.15 + Math.sin(t * 3.1) * 0.20 + Math.sin(t * 7.4) * 0.08;
     torch2.intensity = 0.90 + Math.sin(t * 2.6 + 1.2) * 0.16 + Math.sin(t * 6.1) * 0.06;
     renderer.render(scene, camera);
+    labelRenderer.render(scene, camera);
 }
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
@@ -545,9 +642,11 @@ window.addEventListener('resize', () => {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
+    labelRenderer.setSize(window.innerWidth, window.innerHeight);
 });
 
 createBoard();
+createLabels();
 sync3DWithEngine();
 initFirebaseAuth();
 loadFromFirebase();
