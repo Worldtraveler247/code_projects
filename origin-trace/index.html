@@ -6,7 +6,7 @@
   <title>Origin Trace — IT Career Paths</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -18,18 +18,34 @@
       <div class="hero-eyebrow">Entry-Level IT Career Catalog</div>
       <h1><span class="grad">Origin Trace</span></h1>
       <p class="hero-sub">
-        You have a degree, Network+, and Security+. This catalog maps the six most realistic entry paths into IT — with honest caveats, cited salary data, and no aspirational nonsense.
+        You have a degree, Network+, and Security+. This catalog maps the six most realistic entry paths into IT — with honest caveats, verified salary data, and no aspirational nonsense.
       </p>
-      <p class="hero-caveat">All salary data from BLS, cert costs from official vendor pages. Sources cited on each role page.</p>
+      <p class="hero-caveat">All salary data from BLS (May 2024). Cert costs verified at official vendor pages.</p>
     </div>
   </header>
 
   <main>
     <section class="section">
+      <!-- Search + Filter -->
+      <div class="search-bar-wrap" style="padding-left:0;padding-right:0;max-width:100%;">
+        <div class="search-input-wrap">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+          <input type="search" id="role-search" placeholder="Search roles, skills, or certs…" autocomplete="off" aria-label="Search roles">
+        </div>
+        <div class="filter-chips" role="group" aria-label="Filter by track">
+          <button class="filter-chip active" data-track="all">All Tracks</button>
+          <button class="filter-chip" data-track="networking">Networking</button>
+          <button class="filter-chip" data-track="cloud">Cloud</button>
+          <button class="filter-chip" data-track="security">Security</button>
+          <button class="filter-chip" data-track="operations">Operations</button>
+        </div>
+      </div>
+
       <h2 class="section-label">Six Entry Roots</h2>
       <div class="role-grid" id="role-grid">
-        <!-- Populated by main.js -->
-        <p style="color:var(--muted);font-size:0.85rem;">Loading roles...</p>
+        <p style="color:var(--muted);font-size:0.85rem;">Loading roles…</p>
       </div>
     </section>
   </main>
@@ -38,6 +54,7 @@
     <p>Origin Trace &bull; Entry-level IT career research catalog</p>
     <div class="footer-links">
       <a href="map.html">Career Atlas</a>
+      <a href="dag.html">Career DAG</a>
       <a href="../index.html">App Portfolio</a>
     </div>
   </footer>

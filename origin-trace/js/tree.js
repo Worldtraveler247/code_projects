@@ -1,29 +1,17 @@
 /**
- * tree.js
- * Renders the per-role career tree on role.html.
- *
- * Desktop: orthogonal-elbow SVG with tier bands.
- * Mobile (<600px): HTML accordion (tree-container hidden by CSS).
- *
- * No graph library. All node positions are hand-authored in roles.json
- * under node_positions: { entry:{x,y}, mid:{x,y}, senior:{x,y} }.
+ * tree.js — Role detail page renderer.
+ * Draws SVG career tree, role overview panel, next-moves section, and mobile accordion.
  */
 
 // ── SVG constants ─────────────────────────────────────────────────────────────
-const SVG_W     = 660;   // viewBox width
-const SVG_H     = 620;   // viewBox height
-const NODE_W    = 220;   // node rectangle width
-const NODE_H    = 78;    // node rectangle height
-const BAND_X    = 16;    // left margin for tier band labels
-const BAND_FONT = 9;     // px
+const SVG_W   = 860;
+const SVG_H   = 880;
+const NODE_W  = 340;
+const NODE_H  = 130;
+const BAND_X  = 18;
 
-// Tier band horizontal divider Y values (between entry/mid and mid/senior)
-const DIVIDER_Y = {
-  entry_mid:   215,
-  mid_senior:  415
-};
+const DIVIDER_Y = { entry_mid: 295, mid_senior: 580 };
 
-// Tier accent colors
 const TIER_COLORS = {
   entry:  '#4af7ff',
   mid:    '#7b2fff',
@@ -36,7 +24,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   const params = new URLSearchParams(window.location.search);
   const slug   = params.get('role');
-  if (!slug) { showError('No role specified. '); return; }
+  if (!slug) { showError('No role specified.'); return; }
 
   let data;
   try {
@@ -51,9 +39,15 @@ document.addEventListener('DOMContentLoaded', async () => {
   const role = data.roles.find(r => r.slug === slug);
   if (!role) { showError('Role "' + slug + '" not found.'); return; }
 
+  // Build a lookup map for next-moves
+  const roleMap = {};
+  data.roles.forEach(r => { roleMap[r.slug] = r; });
+
   renderHeader(role);
+  renderOverview(role);
   renderSVGTree(role);
   renderAccordion(role);
+  renderNextMoves(role, roleMap);
 });
 
 // ── Header ────────────────────────────────────────────────────────────────────
@@ -64,7 +58,6 @@ function renderHeader(role) {
   setText('role-icon',    role.icon);
   setText('nav-title',    role.title);
   document.title = role.title + ' — Origin Trace';
-
   setText('role-title',   role.title);
   setText('role-tagline', role.tagline);
 
@@ -77,9 +70,124 @@ function renderHeader(role) {
   }
 }
 
-function setText(id, text) {
-  const el = document.getElementById(id);
-  if (el) el.textContent = text;
+// ── Overview panel ────────────────────────────────────────────────────────────
+function renderOverview(role) {
+  const panel = document.getElementById('role-overview');
+  const left  = document.getElementById('overview-left');
+  const right = document.getElementById('overview-right');
+  const label = document.getElementById('tree-section-label');
+  if (!panel || !left || !right) return;
+
+  // LEFT: description + what they do
+  if (role.description) {
+    const h4desc = document.createElement('h4');
+    h4desc.textContent = 'What is this role?';
+    left.appendChild(h4desc);
+
+    const desc = document.createElement('p');
+    desc.textContent = role.description;
+    left.appendChild(desc);
+  }
+
+  if (role.what_they_do && role.what_they_do.length) {
+    const h4wd = document.createElement('h4');
+    h4wd.textContent = 'Day-to-Day Responsibilities';
+    h4wd.style.marginTop = '20px';
+    left.appendChild(h4wd);
+
+    const ul = document.createElement('ul');
+    ul.className = 'overview-list';
+    role.what_they_do.forEach(item => {
+      const li = document.createElement('li');
+      li.textContent = item;
+      ul.appendChild(li);
+    });
+    left.appendChild(ul);
+  }
+
+  // RIGHT: entry salary highlight + requirements
+  const entryTier = role.tiers && role.tiers.find(t => t.tier === 'entry');
+  if (entryTier && entryTier.salary_range) {
+    const h4sal = document.createElement('h4');
+    h4sal.textContent = 'Entry Salary Range';
+    right.appendChild(h4sal);
+
+    const salBox = document.createElement('div');
+    salBox.className = 'overview-salary-highlight';
+
+    const salRange = document.createElement('span');
+    salRange.className = 'sal-range';
+    const lo = '$' + (entryTier.salary_range.low / 1000).toFixed(0) + 'k';
+    const hi = '$' + (entryTier.salary_range.high / 1000).toFixed(0) + 'k';
+    salRange.textContent = lo + ' – ' + hi;
+
+    const salLabel = document.createElement('span');
+    salLabel.className = 'sal-label';
+    salLabel.textContent = 'US National · BLS 2024';
+
+    salBox.appendChild(salRange);
+    salBox.appendChild(salLabel);
+    right.appendChild(salBox);
+  }
+
+  if (role.requirements && role.requirements.length) {
+    const h4req = document.createElement('h4');
+    h4req.textContent = 'How to Get This Job';
+    h4req.style.marginTop = entryTier ? '24px' : '0';
+    right.appendChild(h4req);
+
+    const ul = document.createElement('ul');
+    ul.className = 'overview-list';
+    role.requirements.forEach(item => {
+      const li = document.createElement('li');
+      li.textContent = item;
+      ul.appendChild(li);
+    });
+    right.appendChild(ul);
+  }
+
+  panel.style.display = '';
+  if (label) label.style.display = '';
+}
+
+// ── Next Moves ────────────────────────────────────────────────────────────────
+function renderNextMoves(role, roleMap) {
+  if (!role.next_moves || !role.next_moves.length) return;
+
+  const section = document.getElementById('next-moves');
+  const grid    = document.getElementById('next-moves-grid');
+  if (!section || !grid) return;
+
+  role.next_moves.forEach(move => {
+    const target = roleMap[move.slug];
+    if (!target) return;
+
+    const card = document.createElement('a');
+    card.className = 'next-move-card';
+    card.href = 'role.html?role=' + encodeURIComponent(move.slug);
+
+    const nmIcon = document.createElement('div');
+    nmIcon.className = 'nm-icon';
+    nmIcon.textContent = target.icon;
+
+    const nmArrow = document.createElement('div');
+    nmArrow.className = 'nm-arrow';
+    nmArrow.textContent = '→ Next move';
+
+    const nmTitle = document.createElement('h4');
+    nmTitle.textContent = move.title;
+
+    const nmWhy = document.createElement('p');
+    nmWhy.textContent = move.why;
+
+    card.appendChild(nmIcon);
+    card.appendChild(nmArrow);
+    card.appendChild(nmTitle);
+    card.appendChild(nmWhy);
+    grid.appendChild(card);
+  });
+
+  section.style.display = '';
 }
 
 // ── SVG tree renderer ─────────────────────────────────────────────────────────
@@ -91,64 +199,59 @@ function renderSVGTree(role) {
   svg.setAttribute('width',   SVG_W);
   svg.setAttribute('height',  SVG_H);
   svg.setAttribute('aria-label', role.title + ' career progression tree');
+  svg.style.maxWidth = '100%';
+  svg.style.height   = 'auto';
 
   // Tier band fills
-  appendBandFill(svg, 0,                 DIVIDER_Y.entry_mid,  'entry');
-  appendBandFill(svg, DIVIDER_Y.entry_mid, DIVIDER_Y.mid_senior, 'mid');
-  appendBandFill(svg, DIVIDER_Y.mid_senior, SVG_H,             'senior');
+  appendBandFill(svg, 0,                      DIVIDER_Y.entry_mid,  'entry');
+  appendBandFill(svg, DIVIDER_Y.entry_mid,    DIVIDER_Y.mid_senior, 'mid');
+  appendBandFill(svg, DIVIDER_Y.mid_senior,   SVG_H,                'senior');
 
   // Band dividers
   appendDivider(svg, DIVIDER_Y.entry_mid);
   appendDivider(svg, DIVIDER_Y.mid_senior);
 
-  // Tier band labels (left margin)
-  appendBandLabel(svg, 'ENTRY',  (DIVIDER_Y.entry_mid) / 2,                        TIER_COLORS.entry);
+  // Tier band labels
+  appendBandLabel(svg, 'ENTRY',  DIVIDER_Y.entry_mid / 2,                                           TIER_COLORS.entry);
   appendBandLabel(svg, 'MID',    DIVIDER_Y.entry_mid + (DIVIDER_Y.mid_senior - DIVIDER_Y.entry_mid) / 2, TIER_COLORS.mid);
-  appendBandLabel(svg, 'SENIOR', DIVIDER_Y.mid_senior + (SVG_H - DIVIDER_Y.mid_senior) / 2,             TIER_COLORS.senior);
+  appendBandLabel(svg, 'SENIOR', DIVIDER_Y.mid_senior + (SVG_H - DIVIDER_Y.mid_senior) / 2,         TIER_COLORS.senior);
 
-  // Orthogonal elbow connectors (drawn first — behind nodes)
+  // Connectors (drawn before nodes)
   const tiers = ['entry', 'mid', 'senior'];
   for (let i = 0; i < tiers.length - 1; i++) {
     const from = role.node_positions[tiers[i]];
     const to   = role.node_positions[tiers[i + 1]];
-    if (from && to) {
-      appendElbow(svg, from, to, NODE_W, NODE_H, TIER_COLORS[tiers[i + 1]]);
-    }
+    if (from && to) appendElbow(svg, from, to, NODE_W, NODE_H, TIER_COLORS[tiers[i + 1]]);
   }
 
   // Nodes
   role.tiers.forEach(tierData => {
     const pos = role.node_positions[tierData.tier];
     if (!pos) return;
-    appendNode(svg, pos, tierData, role.slug);
+    appendNode(svg, pos, tierData);
   });
 }
 
 function appendBandFill(svg, y1, y2, tier) {
+  const fills = {
+    entry:  'rgba(74,247,255,0.04)',
+    mid:    'rgba(123,47,255,0.06)',
+    senior: 'rgba(255,74,247,0.07)'
+  };
   const rect = svgEl('rect');
   rect.setAttribute('x',      0);
   rect.setAttribute('y',      y1);
   rect.setAttribute('width',  SVG_W);
   rect.setAttribute('height', y2 - y1);
-  const alpha = { entry: '0.04', mid: '0.055', senior: '0.07' };
-  const color = TIER_COLORS[tier].replace('#', '');
-  // Use rgba equivalent
-  const fills = {
-    entry:  'rgba(74,247,255,0.04)',
-    mid:    'rgba(123,47,255,0.055)',
-    senior: 'rgba(255,74,247,0.07)'
-  };
-  rect.setAttribute('fill', fills[tier]);
+  rect.setAttribute('fill',   fills[tier]);
   svg.appendChild(rect);
 }
 
 function appendDivider(svg, y) {
   const line = svgEl('line');
-  line.setAttribute('x1', 0);
-  line.setAttribute('y1', y);
-  line.setAttribute('x2', SVG_W);
-  line.setAttribute('y2', y);
-  line.setAttribute('stroke', 'rgba(74,247,255,0.1)');
+  line.setAttribute('x1', 0);  line.setAttribute('y1', y);
+  line.setAttribute('x2', SVG_W); line.setAttribute('y2', y);
+  line.setAttribute('stroke', 'rgba(74,247,255,0.12)');
   line.setAttribute('stroke-width', '1');
   svg.appendChild(line);
 }
@@ -158,67 +261,48 @@ function appendBandLabel(svg, text, cy, color) {
   t.setAttribute('x', BAND_X);
   t.setAttribute('y', cy);
   t.setAttribute('fill', color);
-  t.setAttribute('font-size', BAND_FONT);
+  t.setAttribute('font-size', 9);
   t.setAttribute('font-family', 'Orbitron, system-ui');
   t.setAttribute('font-weight', '600');
   t.setAttribute('letter-spacing', '3');
   t.setAttribute('opacity', '0.55');
   t.setAttribute('dominant-baseline', 'middle');
   t.setAttribute('text-anchor', 'start');
-  // Rotate 90deg around the label's center
   t.setAttribute('transform', 'rotate(-90, ' + BAND_X + ', ' + cy + ')');
   t.textContent = text;
   svg.appendChild(t);
 }
 
-/**
- * Orthogonal elbow connector: from bottom-center of upper node
- * to top-center of lower node, with a right-angle mid-step.
- */
 function appendElbow(svg, from, to, nw, nh, color) {
-  const x1 = from.x + nw / 2;
-  const y1 = from.y + nh;
-  const x2 = to.x   + nw / 2;
-  const y2 = to.y;
+  const x1  = from.x + nw / 2;
+  const y1  = from.y + nh;
+  const x2  = to.x   + nw / 2;
+  const y2  = to.y;
   const mid = (y1 + y2) / 2;
 
-  // Path: go down to midpoint, then horizontal, then down to target
-  const d = [
-    'M', x1, y1,
-    'L', x1, mid,
-    'L', x2, mid,
-    'L', x2, y2
-  ].join(' ');
-
+  const d = ['M', x1, y1, 'L', x1, mid, 'L', x2, mid, 'L', x2, y2].join(' ');
   const path = svgEl('path');
   path.setAttribute('d', d);
   path.setAttribute('fill', 'none');
   path.setAttribute('stroke', color);
-  path.setAttribute('stroke-width', '1.5');
+  path.setAttribute('stroke-width', '2');
   path.setAttribute('stroke-opacity', '0.55');
-  path.setAttribute('stroke-dasharray', '4 3');
+  path.setAttribute('stroke-dasharray', '6 4');
   svg.appendChild(path);
 
-  // Arrowhead at y2
   appendArrow(svg, x2, y2, color);
 }
 
 function appendArrow(svg, x, y, color) {
   const poly = svgEl('polygon');
-  const s = 5;
-  // Downward triangle
-  const pts = [
-    (x - s) + ',' + (y),
-    (x + s) + ',' + (y),
-    x       + ',' + (y + s * 1.5)
-  ].join(' ');
-  poly.setAttribute('points', pts);
+  const s    = 6;
+  poly.setAttribute('points', [(x-s)+','+y, (x+s)+','+y, x+','+(y+s*1.6)].join(' '));
   poly.setAttribute('fill', color);
-  poly.setAttribute('opacity', '0.7');
+  poly.setAttribute('opacity', '0.75');
   svg.appendChild(poly);
 }
 
-function appendNode(svg, pos, tierData, roleSlug) {
+function appendNode(svg, pos, tierData) {
   const color = TIER_COLORS[tierData.tier];
   const x = pos.x;
   const y = pos.y;
@@ -226,7 +310,20 @@ function appendNode(svg, pos, tierData, roleSlug) {
   const g = svgEl('g');
   g.setAttribute('class', 'tree-node-group');
   g.setAttribute('role', 'img');
-  g.setAttribute('aria-label', tierData.label + ' tier: ' + tierData.typical_titles.join(', '));
+  g.setAttribute('aria-label', tierData.label + ': ' + tierData.typical_titles.join(', '));
+
+  // Shadow / glow
+  const glow = svgEl('rect');
+  glow.setAttribute('x',      x - 2);
+  glow.setAttribute('y',      y - 2);
+  glow.setAttribute('width',  NODE_W + 4);
+  glow.setAttribute('height', NODE_H + 4);
+  glow.setAttribute('rx',     14);
+  glow.setAttribute('fill',   'none');
+  glow.setAttribute('stroke', color);
+  glow.setAttribute('stroke-width', '1');
+  glow.setAttribute('opacity', '0.15');
+  g.appendChild(glow);
 
   // Background rect
   const rect = svgEl('rect');
@@ -234,123 +331,135 @@ function appendNode(svg, pos, tierData, roleSlug) {
   rect.setAttribute('y',      y);
   rect.setAttribute('width',  NODE_W);
   rect.setAttribute('height', NODE_H);
-  rect.setAttribute('rx',     10);
-  rect.setAttribute('fill',   'rgba(7,1,15,0.82)');
+  rect.setAttribute('rx',     12);
+  rect.setAttribute('fill',   'rgba(7,1,15,0.88)');
   rect.setAttribute('stroke', color);
   rect.setAttribute('stroke-width', '1.5');
   g.appendChild(rect);
 
-  // Tier label (small)
+  // Top accent bar
+  const accent = svgEl('rect');
+  accent.setAttribute('x',      x);
+  accent.setAttribute('y',      y);
+  accent.setAttribute('width',  NODE_W);
+  accent.setAttribute('height', 4);
+  accent.setAttribute('rx',     12);
+  accent.setAttribute('fill',   color);
+  accent.setAttribute('opacity', '0.6');
+  g.appendChild(accent);
+
+  // Tier label
   const tierLabel = svgEl('text');
-  tierLabel.setAttribute('x', x + 12);
-  tierLabel.setAttribute('y', y + 18);
+  tierLabel.setAttribute('x', x + 16);
+  tierLabel.setAttribute('y', y + 24);
   tierLabel.setAttribute('fill', color);
-  tierLabel.setAttribute('font-size', '7');
+  tierLabel.setAttribute('font-size', '8');
   tierLabel.setAttribute('font-family', 'Orbitron, system-ui');
   tierLabel.setAttribute('font-weight', '600');
-  tierLabel.setAttribute('letter-spacing', '2.5');
-  tierLabel.setAttribute('opacity', '0.8');
+  tierLabel.setAttribute('letter-spacing', '3');
+  tierLabel.setAttribute('opacity', '0.85');
   tierLabel.textContent = tierData.label;
   g.appendChild(tierLabel);
 
-  // Primary title
+  // Primary title (larger)
+  const primaryTitle = (tierData.typical_titles[0] || '');
   const title = svgEl('text');
-  title.setAttribute('x', x + 12);
-  title.setAttribute('y', y + 34);
+  title.setAttribute('x', x + 16);
+  title.setAttribute('y', y + 50);
   title.setAttribute('fill', '#ffffff');
-  title.setAttribute('font-size', '11');
+  title.setAttribute('font-size', '14');
   title.setAttribute('font-family', 'Inter, system-ui');
   title.setAttribute('font-weight', '600');
-  // Truncate long titles
-  const primaryTitle = tierData.typical_titles[0] || '';
-  title.textContent = primaryTitle.length > 28 ? primaryTitle.slice(0, 26) + '…' : primaryTitle;
+  title.textContent = primaryTitle.length > 32 ? primaryTitle.slice(0, 30) + '…' : primaryTitle;
   g.appendChild(title);
 
-  // Salary range (if available)
+  // Secondary titles
+  if (tierData.typical_titles.length > 1) {
+    const altTitles = tierData.typical_titles.slice(1, 3).join(' · ');
+    const alt = svgEl('text');
+    alt.setAttribute('x', x + 16);
+    alt.setAttribute('y', y + 70);
+    alt.setAttribute('fill', '#5a607a');
+    alt.setAttribute('font-size', '10');
+    alt.setAttribute('font-family', 'Inter, system-ui');
+    alt.textContent = altTitles.length > 42 ? altTitles.slice(0, 40) + '…' : altTitles;
+    g.appendChild(alt);
+  }
+
+  // Salary range
   const sal = tierData.salary_range;
   if (sal) {
+    const lo   = sal.low  ? '$' + (sal.low  / 1000).toFixed(0) + 'k' : '?';
+    const hi   = sal.high ? '$' + (sal.high / 1000).toFixed(0) + 'k' : '?';
+
     const salText = svgEl('text');
-    salText.setAttribute('x', x + 12);
-    salText.setAttribute('y', y + 52);
-    salText.setAttribute('fill', '#5a607a');
-    salText.setAttribute('font-size', '9.5');
+    salText.setAttribute('x', x + 16);
+    salText.setAttribute('y', y + 96);
+    salText.setAttribute('fill', '#6a7090');
+    salText.setAttribute('font-size', '11');
     salText.setAttribute('font-family', 'Inter, system-ui');
-    const low  = sal.low  ? '$' + (sal.low  / 1000).toFixed(0) + 'k' : '?';
-    const high = sal.high ? '$' + (sal.high / 1000).toFixed(0) + 'k' : '?';
-    salText.textContent = low + ' – ' + high;
+    salText.setAttribute('font-weight', '500');
+    salText.textContent = lo + ' – ' + hi;
     g.appendChild(salText);
 
-    // ⓘ icon for salary cite
-    const citeCircle = svgEl('circle');
-    citeCircle.setAttribute('cx', x + NODE_W - 16);
-    citeCircle.setAttribute('cy', y + 49);
-    citeCircle.setAttribute('r',  7);
-    citeCircle.setAttribute('fill', 'rgba(74,247,255,0.1)');
-    citeCircle.setAttribute('stroke', 'rgba(74,247,255,0.3)');
-    citeCircle.setAttribute('stroke-width', '0.8');
-    citeCircle.setAttribute('cursor', 'pointer');
-    citeCircle.dataset = {};
-    g.appendChild(citeCircle);
-
-    const citeText = svgEl('text');
-    citeText.setAttribute('x', x + NODE_W - 16);
-    citeText.setAttribute('y', y + 53);
-    citeText.setAttribute('fill', '#4af7ff');
-    citeText.setAttribute('font-size', '8');
-    citeText.setAttribute('font-family', 'Inter, system-ui');
-    citeText.setAttribute('text-anchor', 'middle');
-    citeText.setAttribute('dominant-baseline', 'middle');
-    citeText.setAttribute('cursor', 'pointer');
-    citeText.setAttribute('pointer-events', 'all');
-    citeText.textContent = 'i';
-    g.appendChild(citeText);
-
-    // Tooltip trigger on the ⓘ group
+    // ⓘ tooltip trigger group
     const citeGroup = svgEl('g');
     citeGroup.setAttribute('cursor', 'pointer');
-    citeGroup.setAttribute('data-cite', 'true');
 
-    // Invisible hit area (larger than the visible circle)
-    const hit = svgEl('rect');
-    hit.setAttribute('x',      x + NODE_W - 26);
-    hit.setAttribute('y',      y + 40);
-    hit.setAttribute('width',  20);
-    hit.setAttribute('height', 18);
-    hit.setAttribute('fill',   'transparent');
-    citeGroup.appendChild(hit);
+    const hitArea = svgEl('rect');
+    hitArea.setAttribute('x',      x + NODE_W - 32);
+    hitArea.setAttribute('y',      y + 82);
+    hitArea.setAttribute('width',  24);
+    hitArea.setAttribute('height', 24);
+    hitArea.setAttribute('fill',   'transparent');
+    citeGroup.appendChild(hitArea);
+
+    const citeCircle = svgEl('circle');
+    citeCircle.setAttribute('cx', x + NODE_W - 20);
+    citeCircle.setAttribute('cy', y + 94);
+    citeCircle.setAttribute('r',  8);
+    citeCircle.setAttribute('fill',   'rgba(74,247,255,0.1)');
+    citeCircle.setAttribute('stroke', 'rgba(74,247,255,0.32)');
+    citeCircle.setAttribute('stroke-width', '1');
+    citeGroup.appendChild(citeCircle);
+
+    const citeLabel = svgEl('text');
+    citeLabel.setAttribute('x', x + NODE_W - 20);
+    citeLabel.setAttribute('y', y + 98);
+    citeLabel.setAttribute('fill', '#4af7ff');
+    citeLabel.setAttribute('font-size', '9');
+    citeLabel.setAttribute('font-family', 'Inter, system-ui');
+    citeLabel.setAttribute('text-anchor', 'middle');
+    citeLabel.setAttribute('dominant-baseline', 'middle');
+    citeLabel.textContent = 'i';
+    citeGroup.appendChild(citeLabel);
 
     const tooltipData = {
       title:    tierData.label + ' salary',
-      body:     low + ' – ' + high + ' (US national median)',
+      body:     lo + ' – ' + hi + ' (US national · BLS May 2024)',
       url:      sal.source_url,
-      urlLabel: sal.source_label,
-      warn:     sal.verify_before_publish
+      urlLabel: sal.source_label
     };
 
-    citeGroup.addEventListener('mouseenter', (e) => {
-      Tooltip.show(citeGroup, tooltipData);
-    });
+    citeGroup.addEventListener('mouseenter', () => Tooltip.show(citeGroup, tooltipData));
     citeGroup.addEventListener('mouseleave', () => Tooltip.hide());
-    citeGroup.addEventListener('click', (e) => {
-      e.stopPropagation();
-      Tooltip.show(citeGroup, tooltipData);
-    });
+    citeGroup.addEventListener('click', e => { e.stopPropagation(); Tooltip.show(citeGroup, tooltipData); });
 
     g.appendChild(citeGroup);
   }
 
-  // Cert pill at bottom
+  // Cert label
   const cert = tierData.required_certs && tierData.required_certs[0];
   if (cert) {
     const certText = svgEl('text');
-    certText.setAttribute('x', x + 12);
-    certText.setAttribute('y', y + NODE_H - 8);
+    certText.setAttribute('x', x + 16);
+    certText.setAttribute('y', y + NODE_H - 12);
     certText.setAttribute('fill', color);
-    certText.setAttribute('font-size', '8.5');
+    certText.setAttribute('font-size', '10');
     certText.setAttribute('font-family', 'Inter, system-ui');
-    certText.setAttribute('opacity', '0.75');
-    const certName = cert.name.length > 34 ? cert.name.slice(0, 32) + '…' : cert.name;
-    certText.textContent = certName;
+    certText.setAttribute('opacity', '0.65');
+    const certName = cert.name.length > 42 ? cert.name.slice(0, 40) + '…' : cert.name;
+    certText.textContent = '🏅 ' + certName;
     g.appendChild(certText);
   }
 
@@ -368,7 +477,6 @@ function renderAccordion(role) {
     section.dataset.tier = tierData.tier;
     if (idx === 0) section.classList.add('open');
 
-    // Header (toggle button)
     const header = document.createElement('div');
     header.className = 'accordion-header';
     header.setAttribute('role', 'button');
@@ -387,31 +495,27 @@ function renderAccordion(role) {
     header.appendChild(label);
     header.appendChild(chevron);
 
-    // Toggle handler
     function toggle() {
       const isOpen = section.classList.toggle('open');
       header.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
     }
     header.addEventListener('click', toggle);
-    header.addEventListener('keydown', (e) => {
+    header.addEventListener('keydown', e => {
       if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); }
     });
 
-    // Body
     const body = document.createElement('div');
     body.className = 'accordion-body';
 
-    // Titles
     appendAccordionField(body, 'Typical Titles', tierData.typical_titles.join(', '));
 
-    // Certs
     if (tierData.required_certs && tierData.required_certs.length) {
       const fieldEl = document.createElement('div');
       fieldEl.className = 'accordion-field';
-      const fieldLabel = document.createElement('div');
-      fieldLabel.className = 'accordion-field-label';
-      fieldLabel.textContent = 'Certifications';
-      fieldEl.appendChild(fieldLabel);
+      const fl = document.createElement('div');
+      fl.className = 'accordion-field-label';
+      fl.textContent = 'Certifications';
+      fieldEl.appendChild(fl);
       const certWrap = document.createElement('div');
       certWrap.className = 'accordion-field-value';
       tierData.required_certs.forEach(cert => {
@@ -421,41 +525,28 @@ function renderAccordion(role) {
         a.target = '_blank';
         a.rel = 'noopener noreferrer';
         a.textContent = cert.name;
-        if (cert.cost_usd) {
-          a.title = '$' + cert.cost_usd + ' — ' + (cert.cost_note || '');
-        }
-        if (cert.verify_before_publish) {
-          const badge = document.createElement('span');
-          badge.className = 'vbp-badge';
-          badge.textContent = 'verify';
-          certWrap.appendChild(a);
-          certWrap.appendChild(badge);
-        } else {
-          certWrap.appendChild(a);
-        }
+        if (cert.cost_usd) a.title = '$' + cert.cost_usd + ' — ' + (cert.cost_note || '');
+        certWrap.appendChild(a);
       });
       fieldEl.appendChild(certWrap);
       body.appendChild(fieldEl);
     }
 
-    // Salary
     if (tierData.salary_range) {
       const sal = tierData.salary_range;
       const fieldEl = document.createElement('div');
       fieldEl.className = 'accordion-field';
-      const fieldLabel = document.createElement('div');
-      fieldLabel.className = 'accordion-field-label';
-      fieldLabel.textContent = 'Salary Range';
-      fieldEl.appendChild(fieldLabel);
+      const fl = document.createElement('div');
+      fl.className = 'accordion-field-label';
+      fl.textContent = 'Salary Range';
+      fieldEl.appendChild(fl);
       const val = document.createElement('div');
       val.className = 'accordion-field-value';
-
       const rangeSpan = document.createElement('span');
       rangeSpan.className = 'salary-range';
-      const low  = sal.low  ? '$' + sal.low.toLocaleString()  : 'unknown';
-      const high = sal.high ? '$' + sal.high.toLocaleString() : 'unknown';
-      rangeSpan.textContent = low + ' – ' + high;
-
+      const lo = sal.low  ? '$' + sal.low.toLocaleString()  : 'unknown';
+      const hi = sal.high ? '$' + sal.high.toLocaleString() : 'unknown';
+      rangeSpan.textContent = lo + ' – ' + hi;
       const sourceSpan = document.createElement('span');
       sourceSpan.className = 'salary-source';
       const sourceLink = document.createElement('a');
@@ -464,35 +555,15 @@ function renderAccordion(role) {
       sourceLink.rel = 'noopener noreferrer';
       sourceLink.textContent = sal.source_label;
       sourceSpan.appendChild(sourceLink);
-
       val.appendChild(rangeSpan);
       val.appendChild(sourceSpan);
-
-      if (sal.verify_before_publish) {
-        const badge = document.createElement('span');
-        badge.className = 'vbp-badge';
-        badge.textContent = 'verify';
-        val.appendChild(badge);
-      }
-
       fieldEl.appendChild(val);
       body.appendChild(fieldEl);
     }
 
-    // Education
-    if (tierData.education_bar) {
-      appendAccordionField(body, 'Education', tierData.education_bar);
-    }
-
-    // Time in tier
-    if (tierData.typical_time_in_tier) {
-      appendAccordionField(body, 'Typical Time in Tier', tierData.typical_time_in_tier);
-    }
-
-    // AI branch (senior only)
-    if (tierData.ai_branch) {
-      appendAccordionField(body, 'AI Branch (senior-only)', tierData.ai_branch.title + ': ' + tierData.ai_branch.note);
-    }
+    if (tierData.education_bar)       appendAccordionField(body, 'Education',           tierData.education_bar);
+    if (tierData.typical_time_in_tier) appendAccordionField(body, 'Typical Time in Tier', tierData.typical_time_in_tier);
+    if (tierData.ai_branch)            appendAccordionField(body, 'AI Branch (senior)', tierData.ai_branch.title + ': ' + tierData.ai_branch.note);
 
     section.appendChild(header);
     section.appendChild(body);
@@ -503,34 +574,38 @@ function renderAccordion(role) {
 function appendAccordionField(parent, label, value) {
   const fieldEl = document.createElement('div');
   fieldEl.className = 'accordion-field';
-  const fieldLabel = document.createElement('div');
-  fieldLabel.className = 'accordion-field-label';
-  fieldLabel.textContent = label;
-  const fieldValue = document.createElement('div');
-  fieldValue.className = 'accordion-field-value';
-  fieldValue.textContent = value;
-  fieldEl.appendChild(fieldLabel);
-  fieldEl.appendChild(fieldValue);
+  const fl = document.createElement('div');
+  fl.className = 'accordion-field-label';
+  fl.textContent = label;
+  const fv = document.createElement('div');
+  fv.className = 'accordion-field-value';
+  fv.textContent = value;
+  fieldEl.appendChild(fl);
+  fieldEl.appendChild(fv);
   parent.appendChild(fieldEl);
 }
 
-// ── SVG helper ────────────────────────────────────────────────────────────────
+// ── Helpers ───────────────────────────────────────────────────────────────────
 function svgEl(tag) {
   return document.createElementNS('http://www.w3.org/2000/svg', tag);
 }
 
-// ── Error display ─────────────────────────────────────────────────────────────
+function setText(id, text) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = text;
+}
+
 function showError(msg) {
   const container = document.getElementById('tree-container');
   if (container) {
     const p = document.createElement('p');
-    p.style.cssText = 'color:var(--muted);padding:40px 24px;font-size:0.9rem;';
+    p.style.cssText = 'color:var(--muted);padding:48px 28px;font-size:0.9rem;';
     p.textContent = msg;
     container.appendChild(p);
   }
 }
 
-// ── Particles (re-used) ───────────────────────────────────────────────────────
+// ── Particles ─────────────────────────────────────────────────────────────────
 function initParticles() {
   const bg = document.getElementById('bg-canvas');
   if (!bg) return;
@@ -540,22 +615,22 @@ function initParticles() {
     W = bg.width  = window.innerWidth;
     H = bg.height = window.innerHeight;
     pts = Array.from({length: 70}, () => ({
-      x: Math.random() * W, y: Math.random() * H,
-      r: Math.random() * 1.2 + 0.2,
-      vx: (Math.random() - 0.5) * 0.2,
-      vy: (Math.random() - 0.5) * 0.2,
-      a: Math.random() * 0.6 + 0.1
+      x: Math.random()*W, y: Math.random()*H,
+      r: Math.random()*1.2+0.2,
+      vx: (Math.random()-0.5)*0.18,
+      vy: (Math.random()-0.5)*0.18,
+      a: Math.random()*0.55+0.08
     }));
   }
   function draw() {
-    bx.clearRect(0, 0, W, H);
+    bx.clearRect(0,0,W,H);
     pts.forEach(p => {
-      p.x += p.vx; p.y += p.vy;
-      if (p.x < 0) p.x = W; if (p.x > W) p.x = 0;
-      if (p.y < 0) p.y = H; if (p.y > H) p.y = 0;
+      p.x+=p.vx; p.y+=p.vy;
+      if(p.x<0)p.x=W; if(p.x>W)p.x=0;
+      if(p.y<0)p.y=H; if(p.y>H)p.y=0;
       bx.beginPath();
-      bx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-      bx.fillStyle = 'rgba(74,247,255,' + (p.a * 0.45) + ')';
+      bx.arc(p.x,p.y,p.r,0,Math.PI*2);
+      bx.fillStyle='rgba(74,247,255,'+(p.a*0.4)+')';
       bx.fill();
     });
     requestAnimationFrame(draw);
