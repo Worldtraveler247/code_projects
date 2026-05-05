@@ -10,8 +10,8 @@ const moveLogEl = document.getElementById('move-log');
 
 // ─── Renderer ─────────────────────────────────────────────────────────────────
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x080604);
-scene.fog = new THREE.FogExp2(0x080604, 0.028);
+scene.background = new THREE.Color(0x08080c);
+scene.fog = new THREE.FogExp2(0x08080c, 0.016);
 
 const camera = new THREE.PerspectiveCamera(44, window.innerWidth / window.innerHeight, 0.1, 100);
 camera.position.set(0, 10, 11);
@@ -23,7 +23,7 @@ renderer.shadowMap.enabled = true;
 renderer.shadowMap.type    = THREE.PCFSoftShadowMap;
 renderer.outputEncoding    = THREE.sRGBEncoding;
 renderer.toneMapping       = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.15;
+renderer.toneMappingExposure = 1.05;
 document.getElementById('canvas-container').appendChild(renderer.domElement);
 
 const labelRenderer = new THREE.CSS2DRenderer();
@@ -41,12 +41,12 @@ controls.maxPolarAngle  = Math.PI / 2.05;
 controls.target.set(0, 0, 0);
 controls.update();
 
-// ─── Lighting — warm Roman torchlight ────────────────────────────────────────
-const ambient = new THREE.AmbientLight(0xfff3d0, 0.65);
+// ─── Lighting — clean studio ──────────────────────────────────────────────────
+const ambient = new THREE.AmbientLight(0xffffff, 0.55);
 scene.add(ambient);
 
-const keyLight = new THREE.DirectionalLight(0xffd080, 1.5);
-keyLight.position.set(5, 14, 8);
+const keyLight = new THREE.DirectionalLight(0xffffff, 2.2);
+keyLight.position.set(3, 14, 6);
 keyLight.castShadow = true;
 keyLight.shadow.mapSize.set(2048, 2048);
 keyLight.shadow.camera.left   = keyLight.shadow.camera.bottom = -10;
@@ -56,22 +56,13 @@ keyLight.shadow.camera.far    = 30;
 keyLight.shadow.bias          = -0.001;
 scene.add(keyLight);
 
-const fillLight = new THREE.DirectionalLight(0xff9955, 0.28);
-fillLight.position.set(-5, 6, -5);
+const fillLight = new THREE.DirectionalLight(0x88ccdd, 0.45);
+fillLight.position.set(-4, 8, -4);
 scene.add(fillLight);
 
-// Two flickering torches
-const torch1 = new THREE.PointLight(0xffaa44, 1.2, 18);
-torch1.position.set(-7.5, 5, 1);
-scene.add(torch1);
-
-const torch2 = new THREE.PointLight(0xff9933, 0.9, 16);
-torch2.position.set(7, 4, -1);
-scene.add(torch2);
-
-// Subtle rim light from below
-const rimLight = new THREE.PointLight(0xffcc66, 0.25, 10);
-rimLight.position.set(0, -3, 0);
+// Cool under-rim to lift the teal resin
+const rimLight = new THREE.PointLight(0x44aacc, 0.35, 14);
+rimLight.position.set(0, -2, 0);
 scene.add(rimLight);
 
 // ─── Raycaster ────────────────────────────────────────────────────────────────
@@ -137,10 +128,8 @@ function makeMarbleTex(baseCss, vein1, vein2, w = 512, h = 512) {
     return tex;
 }
 
-// Warm cream (light squares)
-const lightTex = makeMarbleTex('#f0ead8', '#cfc4a8', '#c8bc9a');
-// Emerald green (dark squares)
-const darkTex  = makeMarbleTex('#2d6a4f', '#1e5c40', '#245c44');
+// Walnut wood (light squares and board frame)
+const walnutTex = makeWoodTex('#7a4f2e', '#523520', '#9a6840');
 
 // ─── Procedural wood texture ───────────────────────────────────────────────────
 function drawGrainLine(ctx, w, h, color, alpha) {
@@ -180,13 +169,11 @@ function makeWoodTex(baseCss, darkGrain, lightGrain, w = 256, h = 512) {
     return tex;
 }
 
-const whiteWoodTex = makeWoodTex('#d4a96a', '#8b6230', '#e8c080');
-const blackWoodTex = makeWoodTex('#3d1f0a', '#251008', '#5a2e10');
-
 // ─── Shared piece materials ───────────────────────────────────────────────────
-const W_MAT    = new THREE.MeshStandardMaterial({ color: 0xd4a96a, map: whiteWoodTex, roughness: 0.85, metalness: 0.0 });
-const B_MAT    = new THREE.MeshStandardMaterial({ color: 0x3d1f0a, map: blackWoodTex, roughness: 0.80, metalness: 0.0 });
-const GOLD_MAT = new THREE.MeshStandardMaterial({ color: 0x8b6230, roughness: 0.75, metalness: 0.0 });
+// White: frosted crystal glass  |  Black: polished ebony resin
+const W_MAT    = new THREE.MeshPhysicalMaterial({ color: 0xd0ecf2, roughness: 0.04, metalness: 0, clearcoat: 1.0, clearcoatRoughness: 0.02, transparent: true, opacity: 0.72 });
+const B_MAT    = new THREE.MeshStandardMaterial({ color: 0x080808, roughness: 0.10, metalness: 0.08 });
+const GOLD_MAT = new THREE.MeshStandardMaterial({ color: 0xc9a227, roughness: 0.28, metalness: 0.85, emissive: 0x7a5800, emissiveIntensity: 0.06 });
 
 // ─── Highlight colors ─────────────────────────────────────────────────────────
 const C = {
@@ -197,40 +184,32 @@ const C = {
 
 // ─── Board ────────────────────────────────────────────────────────────────────
 function createBoard() {
-    // Stone pedestal
-    const pedMat = new THREE.MeshStandardMaterial({ color: 0x221c14, roughness: 0.9, metalness: 0.05 });
+    // Walnut pedestal base
+    const pedMat = new THREE.MeshStandardMaterial({ map: walnutTex, color: 0x6b4226, roughness: 0.65, metalness: 0.02 });
     const ped = new THREE.Mesh(new THREE.BoxGeometry(10.6, 0.4, 10.6), pedMat);
     ped.position.y = -0.25;
     ped.receiveShadow = true;
     boardGroup.add(ped);
 
-    // Dark stone frame
-    const frameMat = new THREE.MeshStandardMaterial({ color: 0x2e2418, roughness: 0.8, metalness: 0.05 });
-    const frame = new THREE.Mesh(new THREE.BoxGeometry(10.0, 0.16, 10.0), frameMat);
+    // Walnut frame
+    const frameMat = new THREE.MeshStandardMaterial({ map: walnutTex, color: 0x7a5030, roughness: 0.60, metalness: 0.02 });
+    const frame = new THREE.Mesh(new THREE.BoxGeometry(10.0, 0.18, 10.0), frameMat);
     frame.position.y = -0.02;
     frame.receiveShadow = true;
     boardGroup.add(frame);
 
-    // Thin gold inlay stripe around board edge
-    const inlayMat = new THREE.MeshStandardMaterial({
-        color: 0xc9a227, emissive: 0xc9a227, emissiveIntensity: 0.12,
-        transparent: true, opacity: 0.3, roughness: 0.3, metalness: 0.9,
-    });
-    boardGroup.add(new THREE.Mesh(new THREE.BoxGeometry(10.0, 0.18, 10.0), inlayMat));
-
-    // 64 marble tiles — each gets its own material for independent highlighting
+    // 64 tiles — teal resin (dark) + walnut wood (light), each owns its material for highlighting
     for (let r = 0; r < 8; r++) {
         for (let f = 0; f < 8; f++) {
             const isDark  = (r + f) % 2 === 0;
-            const geo     = new THREE.BoxGeometry(0.96, 0.14, 0.96);
-            const mat     = new THREE.MeshStandardMaterial({
-                map:      isDark ? darkTex : lightTex,
-                roughness: isDark ? 0.32 : 0.28,
-                metalness: 0,
-            });
+            const geo     = new THREE.BoxGeometry(0.96, 0.20, 0.96);
+            const mat     = isDark
+                ? new THREE.MeshStandardMaterial({ color: 0x00c4b0, roughness: 0.04, metalness: 0.0 })
+                : new THREE.MeshStandardMaterial({ map: walnutTex, roughness: 0.62, metalness: 0 });
+            const baseColor = isDark ? 0x00c4b0 : 0xffffff;
             const tile    = new THREE.Mesh(geo, mat);
             const square  = String.fromCharCode(97 + f) + (r + 1);
-            tile.userData = { square, isDark };
+            tile.userData = { square, isDark, baseColor };
             tile.position.set(f - 3.5, 0, (7 - r) - 3.5);
             tile.receiveShadow = true;
             boardGroup.add(tile);
@@ -297,30 +276,9 @@ function createPieceMesh(type, color) {
     switch (type) {
 
         case 'p': {
-            const shape = new THREE.Shape();
-            shape.moveTo(0, 0.80);
-            shape.bezierCurveTo( 0.10, 0.80,  0.14, 0.72,  0.14, 0.66);
-            shape.bezierCurveTo( 0.14, 0.60,  0.10, 0.57,  0.09, 0.54);
-            shape.bezierCurveTo( 0.13, 0.50,  0.20, 0.45,  0.22, 0.38);
-            shape.bezierCurveTo( 0.22, 0.32,  0.18, 0.28,  0.13, 0.26);
-            shape.bezierCurveTo( 0.10, 0.24,  0.09, 0.20,  0.11, 0.16);
-            shape.bezierCurveTo( 0.16, 0.12,  0.24, 0.08,  0.26, 0.03);
-            shape.lineTo( 0.26, 0.00);
-            shape.lineTo(-0.26, 0.00);
-            shape.bezierCurveTo(-0.24, 0.08, -0.16, 0.12, -0.11, 0.16);
-            shape.bezierCurveTo(-0.09, 0.20, -0.10, 0.24, -0.13, 0.26);
-            shape.bezierCurveTo(-0.18, 0.28, -0.22, 0.32, -0.22, 0.38);
-            shape.bezierCurveTo(-0.20, 0.45, -0.13, 0.50, -0.09, 0.54);
-            shape.bezierCurveTo(-0.10, 0.57, -0.14, 0.60, -0.14, 0.66);
-            shape.bezierCurveTo(-0.14, 0.72, -0.10, 0.80,  0.00, 0.80);
-            const extrudeSettings = { depth: 0.10, bevelEnabled: true, bevelThickness: 0.012, bevelSize: 0.008, bevelSegments: 3 };
-            const geo = new THREE.ExtrudeGeometry(shape, extrudeSettings);
-            geo.translate(0, 0, -0.05);
-            const slab = new THREE.Mesh(geo, color === 'w' ? W_MAT : B_MAT);
-            slab.castShadow = true;
-            slab.position.y = BASE_Y;
-            slab.rotation.y = Math.PI / 2;
-            group.add(slab);
+            const body = mesh(new THREE.LatheGeometry(PROFILES.p, SEGS));
+            body.position.y = BASE_Y;
+            group.add(body);
             break;
         }
 
@@ -517,8 +475,7 @@ function highlightLegalMoves(from) {
 }
 
 function clearHighlights() {
-    // Reset all tiles to their natural marble color (no tint — map shows true)
-    tileMeshes.forEach(t => t.material.color.setHex(0xffffff));
+    tileMeshes.forEach(t => t.material.color.setHex(t.userData.baseColor));
     if (game.in_check()) highlightKing(game.turn());
 }
 
@@ -626,10 +583,6 @@ function loadFromFirebase() {
 function animate() {
     requestAnimationFrame(animate);
     controls.update();
-    // Torch flicker — layered sine waves for organic feel
-    const t = Date.now() * 0.001;
-    torch1.intensity = 1.15 + Math.sin(t * 3.1) * 0.20 + Math.sin(t * 7.4) * 0.08;
-    torch2.intensity = 0.90 + Math.sin(t * 2.6 + 1.2) * 0.16 + Math.sin(t * 6.1) * 0.06;
     renderer.render(scene, camera);
     labelRenderer.render(scene, camera);
 }
@@ -646,7 +599,6 @@ window.addEventListener('resize', () => {
 });
 
 createBoard();
-createLabels();
 sync3DWithEngine();
 initFirebaseAuth();
 loadFromFirebase();
