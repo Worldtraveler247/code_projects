@@ -434,6 +434,34 @@ function flipCamera() {
     controls.update();
 }
 
+// ─── Panel Toggle ─────────────────────────────────────────────────────────────
+function togglePanel() {
+    const panel = document.getElementById('ui-container');
+    const btn   = document.getElementById('panel-toggle');
+    panel.classList.toggle('collapsed');
+    btn.textContent = panel.classList.contains('collapsed') ? '☰' : '✕';
+    btn.title       = panel.classList.contains('collapsed') ? 'Show controls' : 'Hide controls';
+}
+
+// ─── Name Persistence ─────────────────────────────────────────────────────────
+function loadNamesFromStorage() {
+    const wEl = document.getElementById('name-white');
+    const bEl = document.getElementById('name-black');
+    const w = localStorage.getItem('chess_name_w');
+    const b = localStorage.getItem('chess_name_b');
+    if (w) wEl.value = w;
+    if (b) bEl.value = b;
+}
+
+let nameSaveTimer = null;
+function onNameInput(color) {
+    const key = color === 'w' ? 'name-white' : 'name-black';
+    localStorage.setItem('chess_name_' + color, document.getElementById(key).value);
+    updateStatus();
+    clearTimeout(nameSaveTimer);
+    nameSaveTimer = setTimeout(saveToFirebase, 800);
+}
+
 // ─── Firebase ─────────────────────────────────────────────────────────────────
 function firebaseReady() {
     return typeof firebase !== 'undefined'
@@ -468,8 +496,14 @@ function loadFromFirebase() {
             // Populate name fields from remote if local is blank
             const wEl = document.getElementById('name-white');
             const bEl = document.getElementById('name-black');
-            if (!wEl.value.trim() && data.nameWhite) wEl.value = data.nameWhite;
-            if (!bEl.value.trim() && data.nameBlack) bEl.value = data.nameBlack;
+            if (!wEl.value.trim() && data.nameWhite) {
+                wEl.value = data.nameWhite;
+                localStorage.setItem('chess_name_w', data.nameWhite);
+            }
+            if (!bEl.value.trim() && data.nameBlack) {
+                bEl.value = data.nameBlack;
+                localStorage.setItem('chess_name_b', data.nameBlack);
+            }
             if (data.fen && data.fen !== game.fen()) {
                 game.load(data.fen);
                 sync3DWithEngine();
@@ -488,8 +522,8 @@ function animate() {
 }
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
-document.getElementById('name-white').addEventListener('input', updateStatus);
-document.getElementById('name-black').addEventListener('input', updateStatus);
+document.getElementById('name-white').addEventListener('input', () => onNameInput('w'));
+document.getElementById('name-black').addEventListener('input', () => onNameInput('b'));
 window.addEventListener('click', onCanvasClick);
 window.addEventListener('resize', () => {
     camera.aspect = window.innerWidth / window.innerHeight;
@@ -497,6 +531,14 @@ window.addEventListener('resize', () => {
     renderer.setSize(window.innerWidth, window.innerHeight);
 });
 
+// Collapse panel by default on narrow screens (mobile)
+if (window.innerWidth < 600) {
+    const panel = document.getElementById('ui-container');
+    panel.classList.add('collapsed');
+    document.getElementById('panel-toggle').textContent = '☰';
+}
+
+loadNamesFromStorage();
 createBoard();
 sync3DWithEngine();
 initFirebaseAuth();

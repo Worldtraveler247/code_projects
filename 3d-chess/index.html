@@ -21,25 +21,28 @@
     <a href="../index.html" class="back-link">← Portfolio</a>
 
     <div id="ui-container">
-        <h1>3D Chess</h1>
-        <div class="player-names">
-            <div class="player-row">
-                <span class="piece-dot white-dot"></span>
-                <input id="name-white" type="text" placeholder="White player" maxlength="24">
+        <button id="panel-toggle" onclick="togglePanel()" title="Hide controls">✕</button>
+        <div id="panel-content">
+            <h1>3D Chess</h1>
+            <div class="player-names">
+                <div class="player-row">
+                    <span class="piece-dot white-dot"></span>
+                    <input id="name-white" type="text" placeholder="White player" maxlength="24">
+                </div>
+                <div class="player-row">
+                    <span class="piece-dot black-dot"></span>
+                    <input id="name-black" type="text" placeholder="Black player" maxlength="24">
+                </div>
             </div>
-            <div class="player-row">
-                <span class="piece-dot black-dot"></span>
-                <input id="name-black" type="text" placeholder="Black player" maxlength="24">
+            <p id="status">White's Turn</p>
+            <div class="divider"></div>
+            <div class="game-controls">
+                <button onclick="resetGame()">↺ &nbsp;New Game</button>
+                <button onclick="flipCamera()">⟳ &nbsp;Flip Board</button>
             </div>
+            <div id="move-log"></div>
+            <div class="controls-hint">Drag to rotate · Scroll to zoom</div>
         </div>
-        <p id="status">White's Turn</p>
-        <div class="divider"></div>
-        <div class="game-controls">
-            <button onclick="resetGame()">↺ &nbsp;New Game</button>
-            <button onclick="flipCamera()">⟳ &nbsp;Flip Board</button>
-        </div>
-        <div id="move-log"></div>
-        <div class="controls-hint">Drag to rotate · Scroll to zoom</div>
     </div>
 
     <div id="canvas-container"></div>

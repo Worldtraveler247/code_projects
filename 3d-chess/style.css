@@ -45,6 +45,42 @@ body {
         0 8px 40px rgba(0, 0, 0, 0.7);
 }
 
+/* ── Panel toggle button ── */
+#panel-toggle {
+    position: absolute;
+    top: 7px;
+    right: 8px;
+    width: auto;
+    padding: 2px 7px;
+    font-size: 0.68rem;
+    border: 1px solid rgba(201, 162, 39, 0.12);
+    background: transparent;
+    text-align: center;
+    letter-spacing: 0;
+    color: #6a5830;
+}
+#panel-toggle:hover {
+    background: rgba(201, 162, 39, 0.08);
+    border-color: rgba(201, 162, 39, 0.35);
+    color: #c9a227;
+}
+
+/* ── Collapsed state ── */
+#ui-container.collapsed {
+    min-width: 0;
+    padding: 10px 12px;
+}
+#ui-container.collapsed #panel-content { display: none; }
+#ui-container.collapsed #panel-toggle {
+    position: static;
+    display: block;
+    width: 100%;
+    text-align: center;
+    font-size: 1rem;
+    padding: 4px 10px;
+    letter-spacing: 0;
+}
+
 #ui-container h1 {
     font-family: 'Cinzel', serif;
     font-size: 1.05rem;
