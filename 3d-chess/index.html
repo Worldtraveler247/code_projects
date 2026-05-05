@@ -3,48 +3,42 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Async 3D Chess - Eddie Camacho</title>
+    <title>3D Chess — Eddie Camacho</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
 </head>
 <body>
+
+    <a href="../index.html" class="back-link">← Portfolio</a>
+
     <div id="ui-container">
-        <h1>Async Chess</h1>
+        <h1>3D Chess</h1>
         <p id="status">White's Turn</p>
-        <div class="nudge-controls">
-            <button onclick="nudgeFriend('email')">📧 Nudge via Email</button>
-            <button onclick="nudgeFriend('text')">📱 Nudge via Text</button>
-        </div>
+        <div class="divider"></div>
         <div class="game-controls">
-            <button onclick="resetGame()">🔄 Reset Match</button>
+            <button onclick="resetGame()">↺ &nbsp;New Game</button>
+            <button onclick="flipCamera()">⟳ &nbsp;Flip Board</button>
         </div>
-        <div id="debug" style="font-size: 10px; margin-top: 10px; color: #888;">Select a piece to see moves.</div>
+        <div id="move-log"></div>
+        <div class="controls-hint">Drag to rotate · Scroll to zoom</div>
     </div>
+
     <div id="canvas-container"></div>
-    
-    <!--
-        FIREBASE SETUP (currently disabled — app runs fully client-side until you wire this up)
 
-        BEFORE going live with a real Firebase project:
-          1. Create a Firebase project at console.firebase.google.com → add a Realtime Database.
-          2. In Authentication, enable the "Anonymous" sign-in provider.
-          3. In Realtime Database → Rules, paste the contents of ./database.rules.json (deny-by-default + auth required + shape validation).
-          4. Paste your config into the block below and uncomment firebase.initializeApp(...).
-          5. Confirm in the Firebase console that test reads/writes from an unauthenticated client are rejected.
-
-        Threat model for this demo: a single shared global match. Anonymous auth raises the bar (must be a Firebase client) but is NOT a substitute for per-user/per-game scoping if you ever store private data here.
-    -->
     <script>
-        // Placeholder only — fill in real values from your Firebase project console, then uncomment initializeApp.
-        // Note: apiKey is safe to be public; security comes from database rules + auth, not the key.
+        // Firebase disabled — wire up a real Firebase project to enable async multiplayer.
+        // See comments in app.js and database.rules.json for setup steps.
         // const firebaseConfig = { apiKey: "...", authDomain: "...", databaseURL: "...", projectId: "...", storageBucket: "...", messagingSenderId: "...", appId: "..." };
         // firebase.initializeApp(firebaseConfig);
     </script>
-
     <script src="app.js"></script>
 </body>
 </html>
