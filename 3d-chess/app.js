@@ -380,15 +380,22 @@ function clearHighlights() {
     if (game.in_check()) highlightKing(game.turn());
 }
 
-// ─── Click Handling ───────────────────────────────────────────────────────────
-function onCanvasClick(event) {
-    if (event.target !== renderer.domElement) return;
-    mouse.x =  (event.clientX / window.innerWidth)  * 2 - 1;
-    mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+// ─── Input Handling ───────────────────────────────────────────────────────────
+function pickSquare(clientX, clientY) {
+    mouse.x =  (clientX / window.innerWidth)  * 2 - 1;
+    mouse.y = -(clientY / window.innerHeight) * 2 + 1;
     raycaster.setFromCamera(mouse, camera);
     const hits = raycaster.intersectObjects(boardGroup.children, false);
     const hit  = hits.find(i => i.object.userData.square);
-    if (hit) handleSquareClick(hit.object.userData.square);
+    return hit ? hit.object.userData.square : null;
+}
+
+let lastTouchFired = 0;
+function onCanvasClick(event) {
+    if (event.target !== renderer.domElement) return;
+    if (Date.now() - lastTouchFired < 500) return; // skip synthetic click fired after touchend
+    const sq = pickSquare(event.clientX, event.clientY);
+    if (sq) handleSquareClick(sq);
 }
 
 function handleSquareClick(square) {
@@ -525,6 +532,25 @@ function animate() {
 document.getElementById('name-white').addEventListener('input', () => onNameInput('w'));
 document.getElementById('name-black').addEventListener('input', () => onNameInput('b'));
 window.addEventListener('click', onCanvasClick);
+
+// Touch tap detection — distinguish tap from orbit drag
+let touchStart = null;
+window.addEventListener('touchstart', (e) => {
+    if (e.target !== renderer.domElement || e.touches.length !== 1) return;
+    touchStart = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+}, { passive: true });
+window.addEventListener('touchend', (e) => {
+    if (!touchStart || e.changedTouches.length !== 1) { touchStart = null; return; }
+    const t  = e.changedTouches[0];
+    const dx = t.clientX - touchStart.x;
+    const dy = t.clientY - touchStart.y;
+    touchStart = null;
+    if (Math.sqrt(dx * dx + dy * dy) > 8) return; // swipe = orbit, ignore
+    lastTouchFired = Date.now();
+    const sq = pickSquare(t.clientX, t.clientY);
+    if (sq) handleSquareClick(sq);
+}, { passive: true });
+
 window.addEventListener('resize', () => {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
