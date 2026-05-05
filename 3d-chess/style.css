@@ -158,13 +158,26 @@ button:hover {
     pointer-events: none;
     overflow: hidden;
 }
-.coord-label {
-    font-family: 'Cinzel', serif;
-    font-size: 0.62rem;
-    font-weight: 600;
-    color: rgba(201, 162, 39, 0.7);
-    letter-spacing: 1.5px;
-    user-select: none;
+
+/* ── Chess piece Unicode glyphs ── */
+.piece-sym {
+    font-size: 3.2rem;
+    line-height: 1;
     pointer-events: none;
-    text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+    user-select: none;
+    font-family: 'Apple Symbols', 'Segoe UI Symbol', 'Noto Sans Symbols2', sans-serif;
+    transform: translate(-50%, -50%);
+    display: block;
+}
+.piece-sym--w {
+    color: #ffffff;
+    -webkit-text-stroke: 2.5px #111111;
+    paint-order: stroke fill;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.85));
+}
+.piece-sym--b {
+    color: #111111;
+    -webkit-text-stroke: 1.5px #cccccc;
+    paint-order: stroke fill;
+    filter: drop-shadow(0 1px 3px rgba(255,255,255,0.25));
 }

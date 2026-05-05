@@ -74,106 +74,25 @@ const boardGroup = new THREE.Group();
 const pieceGroup = new THREE.Group();
 scene.add(boardGroup, pieceGroup);
 
-// ─── Procedural marble texture ────────────────────────────────────────────────
-function drawVein(ctx, w, h, color, lw, alpha) {
-    ctx.beginPath();
-    ctx.strokeStyle = color;
-    ctx.lineWidth   = lw;
-    ctx.globalAlpha = alpha;
-    ctx.lineCap     = 'round';
-    ctx.lineJoin    = 'round';
+// ─── Unicode piece glyphs (white set / black set) ─────────────────────────────
+const GLYPH = {
+    w: { k: '♔', q: '♕', r: '♖', b: '♗', n: '♘', p: '♙' },
+    b: { k: '♚', q: '♛', r: '♜', b: '♝', n: '♞', p: '♟' },
+};
 
-    // Start from a random point near an edge
-    let x = Math.random() * w;
-    let y = Math.random() < 0.5 ? 0 : h;
-    ctx.moveTo(x, y);
-
-    const steps = 3 + Math.floor(Math.random() * 4);
-    for (let i = 0; i < steps; i++) {
-        const nx  = x + (Math.random() - 0.42) * w * 0.55;
-        const ny  = y + (Math.random() - 0.42) * h * 0.55;
-        const cpx = (x + nx) / 2 + (Math.random() - 0.5) * 100;
-        const cpy = (y + ny) / 2 + (Math.random() - 0.5) * 100;
-        ctx.quadraticCurveTo(cpx, cpy, nx, ny);
-        x = nx; y = ny;
-    }
-    ctx.stroke();
-    ctx.globalAlpha = 1;
-}
-
-function makeMarbleTex(baseCss, vein1, vein2, w = 512, h = 512) {
-    const cv  = document.createElement('canvas');
-    cv.width  = w; cv.height = h;
-    const ctx = cv.getContext('2d');
-
-    // Base fill
-    ctx.fillStyle = baseCss;
-    ctx.fillRect(0, 0, w, h);
-
-    // Subtle gradient overlay for depth
-    const g = ctx.createLinearGradient(0, 0, w, h);
-    g.addColorStop(0,   'rgba(255,255,255,0.06)');
-    g.addColorStop(0.5, 'rgba(0,0,0,0.04)');
-    g.addColorStop(1,   'rgba(255,255,255,0.04)');
-    ctx.fillStyle = g;
-    ctx.fillRect(0, 0, w, h);
-
-    // Primary veins
-    for (let i = 0; i < 7;  i++) drawVein(ctx, w, h, vein1, 1.6 + Math.random(), 0.18 + Math.random() * 0.14);
-    // Fine veins
-    for (let i = 0; i < 18; i++) drawVein(ctx, w, h, vein2, 0.4 + Math.random() * 0.9, 0.06 + Math.random() * 0.09);
-
-    const tex = new THREE.CanvasTexture(cv);
-    tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
-    return tex;
-}
-
-// Walnut wood (light squares and board frame)
-const walnutTex = makeWoodTex('#7a4f2e', '#523520', '#9a6840');
-
-// ─── Procedural wood texture ───────────────────────────────────────────────────
-function drawGrainLine(ctx, w, h, color, alpha) {
-    const y = Math.random() * h;
-    ctx.beginPath();
-    ctx.strokeStyle = color;
-    ctx.lineWidth = 0.5 + Math.random() * 1.4;
-    ctx.globalAlpha = alpha;
-    ctx.moveTo(0, y);
-    let x = 0, cy = y;
-    while (x < w) {
-        const sx = 20 + Math.random() * 40;
-        const sy = (Math.random() - 0.5) * 4;
-        ctx.quadraticCurveTo(x + sx / 2, cy + sy * 2, x + sx, cy + sy);
-        x += sx; cy += sy;
-    }
-    ctx.stroke();
-    ctx.globalAlpha = 1;
-}
-
-function makeWoodTex(baseCss, darkGrain, lightGrain, w = 256, h = 512) {
-    const cv = document.createElement('canvas');
-    cv.width = w; cv.height = h;
-    const ctx = cv.getContext('2d');
-    ctx.fillStyle = baseCss;
-    ctx.fillRect(0, 0, w, h);
-    const g = ctx.createRadialGradient(w / 2, h * 0.3, 0, w / 2, h * 0.3, w * 0.8);
-    g.addColorStop(0, 'rgba(255,255,255,0.10)');
-    g.addColorStop(1, 'rgba(0,0,0,0.12)');
-    ctx.fillStyle = g;
-    ctx.fillRect(0, 0, w, h);
-    for (let i = 0; i < 30; i++) drawGrainLine(ctx, w, h, darkGrain, 0.18 + Math.random() * 0.14);
-    for (let i = 0; i < 15; i++) drawGrainLine(ctx, w, h, lightGrain, 0.06 + Math.random() * 0.08);
-    const tex = new THREE.CanvasTexture(cv);
-    tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
-    tex.repeat.set(1, 2);
-    return tex;
-}
+// Cylinder [topRadius, bottomRadius, height] per piece type
+const PIECE_DIMS = {
+    p: [0.13, 0.20, 0.36],
+    n: [0.12, 0.19, 0.46],
+    b: [0.11, 0.19, 0.52],
+    r: [0.15, 0.21, 0.42],
+    q: [0.12, 0.20, 0.58],
+    k: [0.12, 0.20, 0.64],
+};
 
 // ─── Shared piece materials ───────────────────────────────────────────────────
-// White: frosted crystal glass  |  Black: polished ebony resin
-const W_MAT    = new THREE.MeshPhysicalMaterial({ color: 0xd0ecf2, roughness: 0.04, metalness: 0, clearcoat: 1.0, clearcoatRoughness: 0.02, transparent: true, opacity: 0.72 });
-const B_MAT    = new THREE.MeshStandardMaterial({ color: 0x080808, roughness: 0.10, metalness: 0.08 });
-const GOLD_MAT = new THREE.MeshStandardMaterial({ color: 0xc9a227, roughness: 0.28, metalness: 0.85, emissive: 0x7a5800, emissiveIntensity: 0.06 });
+const W_MAT = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.35, metalness: 0.0 });
+const B_MAT = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.28, metalness: 0.05 });
 
 // ─── Highlight colors ─────────────────────────────────────────────────────────
 const C = {
@@ -183,32 +102,38 @@ const C = {
 };
 
 // ─── Board ────────────────────────────────────────────────────────────────────
+// Dark squares: tournament green  |  Light squares: near-white
+const DARK_COL  = 0x2E5B3E;
+const LIGHT_COL = 0xF0F0F0;
+
 function createBoard() {
-    // Walnut pedestal base
-    const pedMat = new THREE.MeshStandardMaterial({ map: walnutTex, color: 0x6b4226, roughness: 0.65, metalness: 0.02 });
+    // Dark ebony border + pedestal
+    const pedMat   = new THREE.MeshStandardMaterial({ color: 0x1a120b, roughness: 0.88, metalness: 0.02 });
+    const frameMat = new THREE.MeshStandardMaterial({ color: 0x221810, roughness: 0.82, metalness: 0.02 });
+
     const ped = new THREE.Mesh(new THREE.BoxGeometry(10.6, 0.4, 10.6), pedMat);
     ped.position.y = -0.25;
     ped.receiveShadow = true;
     boardGroup.add(ped);
 
-    // Walnut frame
-    const frameMat = new THREE.MeshStandardMaterial({ map: walnutTex, color: 0x7a5030, roughness: 0.60, metalness: 0.02 });
     const frame = new THREE.Mesh(new THREE.BoxGeometry(10.0, 0.18, 10.0), frameMat);
     frame.position.y = -0.02;
     frame.receiveShadow = true;
     boardGroup.add(frame);
 
-    // 64 tiles — teal resin (dark) + walnut wood (light), each owns its material for highlighting
+    // 64 tiles — each gets its own material instance for independent highlighting
     for (let r = 0; r < 8; r++) {
         for (let f = 0; f < 8; f++) {
-            const isDark  = (r + f) % 2 === 0;
-            const geo     = new THREE.BoxGeometry(0.96, 0.20, 0.96);
-            const mat     = isDark
-                ? new THREE.MeshStandardMaterial({ color: 0x00c4b0, roughness: 0.04, metalness: 0.0 })
-                : new THREE.MeshStandardMaterial({ map: walnutTex, roughness: 0.62, metalness: 0 });
-            const baseColor = isDark ? 0x00c4b0 : 0xffffff;
-            const tile    = new THREE.Mesh(geo, mat);
-            const square  = String.fromCharCode(97 + f) + (r + 1);
+            const isDark    = (r + f) % 2 === 0;
+            const baseColor = isDark ? DARK_COL : LIGHT_COL;
+            const geo  = new THREE.BoxGeometry(0.96, 0.18, 0.96);
+            const mat  = new THREE.MeshStandardMaterial({
+                color:     baseColor,
+                roughness: isDark ? 0.88 : 0.82,
+                metalness: 0,
+            });
+            const tile = new THREE.Mesh(geo, mat);
+            const square = String.fromCharCode(97 + f) + (r + 1);
             tile.userData = { square, isDark, baseColor };
             tile.position.set(f - 3.5, 0, (7 - r) - 3.5);
             tile.receiveShadow = true;
@@ -218,181 +143,38 @@ function createBoard() {
     }
 }
 
-// ─── Piece profiles (LatheGeometry — same math as a woodworking lathe) ────────
-// Each entry is an array of [radius, height] pairs traced from base to top.
-function v2(r, y) { return new THREE.Vector2(r, y); }
-const SEGS = 32; // radial segments — higher = smoother
+// Pieces sit 0.12 above y=0 so they clear the tile surface
+const BASE_Y = 0.12;
 
-const PROFILES = {
-    p: [ // Pawn — round dome head on tapered column
-        v2(0, 0),      v2(0.24, 0),    v2(0.28, 0.042), v2(0.26, 0.085),
-        v2(0.17, 0.12),v2(0.12, 0.23), v2(0.11, 0.31),  v2(0.12, 0.38),
-        v2(0.18, 0.47),v2(0.20, 0.53), v2(0.19, 0.60),  v2(0.13, 0.67),
-        v2(0.03, 0.70),v2(0, 0.70),
-    ],
-    r: [ // Rook body (battlements added as separate geometry)
-        v2(0.00,0.00), v2(0.26,0.00), v2(0.31,0.03), v2(0.29,0.07),
-        v2(0.22,0.12), v2(0.19,0.20), v2(0.18,0.35), v2(0.17,0.50),
-        v2(0.18,0.56), v2(0.20,0.60), v2(0.23,0.65), v2(0.24,0.80),
-    ],
-    n: [ // Knight base (head added separately)
-        v2(0, 0),      v2(0.26, 0),    v2(0.30, 0.042), v2(0.28, 0.085),
-        v2(0.20, 0.14),v2(0.15, 0.36), v2(0.13, 0.52),
-    ],
-    b: [ // Bishop — tall tapered mitre
-        v2(0.00,0.00), v2(0.26,0.00), v2(0.30,0.03), v2(0.28,0.07),
-        v2(0.19,0.12), v2(0.14,0.24), v2(0.11,0.36), v2(0.09,0.48),
-        v2(0.10,0.58), v2(0.13,0.66), v2(0.14,0.73), v2(0.12,0.80),
-        v2(0.09,0.89), v2(0.06,0.99), v2(0.04,1.07), v2(0.00,1.10),
-    ],
-    q: [ // Queen — wide waist, flared crown
-        v2(0.00,0.00), v2(0.28,0.00), v2(0.33,0.03), v2(0.31,0.07),
-        v2(0.22,0.12), v2(0.16,0.28), v2(0.12,0.42), v2(0.10,0.55),
-        v2(0.14,0.65), v2(0.20,0.72), v2(0.23,0.78), v2(0.21,0.86),
-        v2(0.16,0.94), v2(0.11,1.01), v2(0.00,1.06),
-    ],
-    k: [ // King — tallest, receives cross ornament
-        v2(0.00,0.00), v2(0.30,0.00), v2(0.35,0.03), v2(0.33,0.07),
-        v2(0.24,0.12), v2(0.17,0.30), v2(0.13,0.46), v2(0.11,0.60),
-        v2(0.16,0.70), v2(0.22,0.78), v2(0.25,0.86), v2(0.23,0.96),
-        v2(0.17,1.06), v2(0.13,1.14),
-    ],
-};
-
-// Pieces sit 0.10 above y=0 so they clear the tile surface (tile top ≈ 0.07)
-const BASE_Y = 0.10;
-
+// ─── Pieces: cylinder base + Unicode glyph via CSS2DRenderer ─────────────────
 function createPieceMesh(type, color) {
     const isWhite = color === 'w';
     const mat     = isWhite ? W_MAT : B_MAT;
     const group   = new THREE.Group();
 
-    function mesh(geo, m) {
-        const o = new THREE.Mesh(geo, m || mat);
-        o.castShadow = true;
-        return o;
-    }
+    const [rt, rb, h] = PIECE_DIMS[type] || [0.13, 0.19, 0.44];
 
-    switch (type) {
+    // 3D cylinder gives each piece a physical presence and casts shadows
+    const body = new THREE.Mesh(new THREE.CylinderGeometry(rt, rb, h, 20), mat);
+    body.position.y = BASE_Y + h / 2;
+    body.castShadow  = true;
+    group.add(body);
 
-        case 'p': {
-            const body = mesh(new THREE.LatheGeometry(PROFILES.p, SEGS));
-            body.position.y = BASE_Y;
-            group.add(body);
-            break;
-        }
+    // Thin base disc so pieces sit flush on the tile
+    const disc = new THREE.Mesh(new THREE.CylinderGeometry(rb + 0.02, rb + 0.02, 0.04, 20), mat);
+    disc.position.y = BASE_Y + 0.02;
+    disc.castShadow  = true;
+    group.add(disc);
 
-        case 'b': {
-            const body = mesh(new THREE.LatheGeometry(PROFILES.b, SEGS));
-            body.position.y = BASE_Y;
-            // Small gold band on bishop's mitre
-            const band = mesh(new THREE.TorusGeometry(0.12, 0.025, 8, 24), GOLD_MAT);
-            band.rotation.x = Math.PI / 2;
-            band.position.y = BASE_Y + 0.66;
-            group.add(body, band);
-            break;
-        }
-
-        case 'r': {
-            const body = mesh(new THREE.LatheGeometry(PROFILES.r, SEGS));
-            body.position.y = BASE_Y;
-            group.add(body);
-            // Four battlements at compass points
-            const topY    = BASE_Y + 0.80;
-            const bW = 0.13, bH = 0.16;
-            [[-0.10, -0.10], [0.10, -0.10], [-0.10, 0.10], [0.10, 0.10]].forEach(([dx, dz]) => {
-                const t = mesh(new THREE.BoxGeometry(bW, bH, bW));
-                t.position.set(dx, topY + bH / 2, dz);
-                group.add(t);
-            });
-            // Gold rim between shaft and battlements
-            const rim = mesh(new THREE.TorusGeometry(0.22, 0.02, 8, 24), GOLD_MAT);
-            rim.rotation.x = Math.PI / 2;
-            rim.position.y = BASE_Y + 0.63;
-            group.add(rim);
-            break;
-        }
-
-        case 'n': {
-            // Classical lathe base
-            const base = mesh(new THREE.LatheGeometry(PROFILES.n, SEGS));
-            base.position.y = BASE_Y;
-            group.add(base);
-            // Horse head built from tapered boxes
-            const neckY  = BASE_Y + 0.52;
-            const neck   = mesh(new THREE.BoxGeometry(0.20, 0.30, 0.16));
-            const snout  = mesh(new THREE.BoxGeometry(0.24, 0.16, 0.14));
-            const poll   = mesh(new THREE.BoxGeometry(0.16, 0.10, 0.10));  // top of head
-            neck.position.set(0,     neckY + 0.14, 0.02);
-            snout.position.set(0.05, neckY + 0.22, 0.06);
-            poll.position.set(0,     neckY + 0.30, -0.03);
-            neck.rotation.x   = -0.22;
-            snout.rotation.x  = -0.28;
-            group.add(base, neck, snout, poll);
-            break;
-        }
-
-        case 'q': {
-            const body = mesh(new THREE.LatheGeometry(PROFILES.q, SEGS));
-            body.position.y = BASE_Y;
-            // Gold crown ring
-            const crown = mesh(new THREE.TorusGeometry(0.175, 0.042, 8, 28), GOLD_MAT);
-            crown.rotation.x = Math.PI / 2;
-            crown.position.y = BASE_Y + 1.06;
-            // Crown orb
-            const orb = mesh(new THREE.SphereGeometry(0.075, 16, 12), GOLD_MAT);
-            orb.position.y = BASE_Y + 1.06 + 0.12;
-            group.add(body, crown, orb);
-            break;
-        }
-
-        case 'k': {
-            const body = mesh(new THREE.LatheGeometry(PROFILES.k, SEGS));
-            body.position.y = BASE_Y;
-            // Gold cross on top
-            const crossY = BASE_Y + 1.13 + 0.15;
-            const cv = mesh(new THREE.BoxGeometry(0.08, 0.30, 0.08), GOLD_MAT);
-            const ch = mesh(new THREE.BoxGeometry(0.26, 0.08, 0.08), GOLD_MAT);
-            cv.position.y = crossY;
-            ch.position.y = crossY + 0.06;
-            // Base cross in piece color slightly larger for depth
-            const cvB = mesh(new THREE.BoxGeometry(0.10, 0.32, 0.10));
-            const chB = mesh(new THREE.BoxGeometry(0.28, 0.10, 0.10));
-            cvB.position.y = crossY;
-            chB.position.y = crossY + 0.06;
-            group.add(body, cvB, chB, cv, ch);
-            break;
-        }
-    }
+    // Unicode glyph label — always faces the camera, immediately recognizable
+    const div = document.createElement('div');
+    div.className   = `piece-sym piece-sym--${color}`;
+    div.textContent = GLYPH[color][type];
+    const label = new THREE.CSS2DObject(div);
+    label.position.set(0, BASE_Y + h + 0.22, 0);
+    group.add(label);
 
     return group;
-}
-
-// ─── Coordinate labels ────────────────────────────────────────────────────────
-function createLabels() {
-    const files = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
-    files.forEach((file, i) => {
-        const x = i - 3.5;
-        [3.9, -3.9].forEach(z => {
-            const div = document.createElement('div');
-            div.className = 'coord-label';
-            div.textContent = file;
-            const lbl = new THREE.CSS2DObject(div);
-            lbl.position.set(x, 0.08, z);
-            scene.add(lbl);
-        });
-    });
-    for (let rank = 1; rank <= 8; rank++) {
-        const z = (8 - rank) - 3.5;
-        [-3.9, 3.9].forEach(x => {
-            const div = document.createElement('div');
-            div.className = 'coord-label';
-            div.textContent = String(rank);
-            const lbl = new THREE.CSS2DObject(div);
-            lbl.position.set(x, 0.08, z);
-            scene.add(lbl);
-        });
-    }
 }
 
 // ─── Board ↔ Engine Sync ──────────────────────────────────────────────────────
