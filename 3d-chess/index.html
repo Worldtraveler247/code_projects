@@ -34,10 +34,16 @@
     <div id="canvas-container"></div>
 
     <script>
-        // Firebase disabled — wire up a real Firebase project to enable async multiplayer.
-        // See comments in app.js and database.rules.json for setup steps.
-        // const firebaseConfig = { apiKey: "...", authDomain: "...", databaseURL: "...", projectId: "...", storageBucket: "...", messagingSenderId: "...", appId: "..." };
-        // firebase.initializeApp(firebaseConfig);
+        const firebaseConfig = {
+            apiKey:            "AIzaSyB32tq3zgAGSmaBWk-7U6MELbuY6CHgRZg",
+            authDomain:        "d-chess-2144c.firebaseapp.com",
+            databaseURL:       "https://d-chess-2144c-default-rtdb.firebaseio.com",
+            projectId:         "d-chess-2144c",
+            storageBucket:     "d-chess-2144c.firebasestorage.app",
+            messagingSenderId: "1072084230845",
+            appId:             "1:1072084230845:web:25980b63f706f2fc9d4dd4"
+        };
+        firebase.initializeApp(firebaseConfig);
     </script>
     <script src="app.js"></script>
 </body>
