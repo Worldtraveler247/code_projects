@@ -30,7 +30,7 @@ origin-trace/
 ├── index.html          6-card role selection grid
 ├── role.html           Per-role detail page (SVG tree + mobile accordion)
 ├── map.html            Career Atlas — 7-family IT landscape overview
-├── style.css           All styles; mirrors App Hub design tokens
+├── style.css           All styles; mirrors App Portfolio design tokens
 ├── js/
 │   ├── main.js         Landing page: fetches roles.json, renders cards, particles
 │   ├── tree.js         role.html: SVG tree renderer + mobile accordion
@@ -154,7 +154,7 @@ At viewport widths below 600px, the SVG tree is hidden and an HTML accordion rep
 
 ## Design Tokens
 
-Inherited from the App Hub (`../style.css` tokens):
+Inherited from the App Portfolio (`../style.css` tokens):
 
 | Token      | Value     |
 |------------|-----------|
