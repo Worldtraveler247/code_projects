@@ -534,9 +534,11 @@ document.getElementById('name-black').addEventListener('input', () => onNameInpu
 window.addEventListener('click', onCanvasClick);
 
 // Touch tap detection — distinguish tap from orbit drag
+// No target check: raycaster returns null for off-board taps so it is safe
+// to call pickSquare for any single-finger lift anywhere on screen.
 let touchStart = null;
 window.addEventListener('touchstart', (e) => {
-    if (e.target !== renderer.domElement || e.touches.length !== 1) return;
+    if (e.touches.length !== 1) { touchStart = null; return; }
     touchStart = { x: e.touches[0].clientX, y: e.touches[0].clientY };
 }, { passive: true });
 window.addEventListener('touchend', (e) => {
@@ -545,7 +547,7 @@ window.addEventListener('touchend', (e) => {
     const dx = t.clientX - touchStart.x;
     const dy = t.clientY - touchStart.y;
     touchStart = null;
-    if (Math.sqrt(dx * dx + dy * dy) > 8) return; // swipe = orbit, ignore
+    if (Math.sqrt(dx * dx + dy * dy) > 10) return; // drag = orbit, ignore
     lastTouchFired = Date.now();
     const sq = pickSquare(t.clientX, t.clientY);
     if (sq) handleSquareClick(sq);
