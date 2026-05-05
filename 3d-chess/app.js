@@ -365,22 +365,29 @@ function sync3DWithEngine() {
 }
 
 // ─── Status ───────────────────────────────────────────────────────────────────
+function playerName(color) {
+    const id = color === 'w' ? 'name-white' : 'name-black';
+    return document.getElementById(id).value.trim() || (color === 'w' ? 'White' : 'Black');
+}
+
 function updateStatus() {
-    const turn = game.turn() === 'w' ? 'White' : 'Black';
+    const turn    = game.turn();
+    const name    = playerName(turn);
+    const oppName = playerName(turn === 'w' ? 'b' : 'w');
     statusEl.className = '';
 
     if (game.in_checkmate()) {
-        statusEl.textContent = (turn === 'White' ? 'Black' : 'White') + ' wins — checkmate';
+        statusEl.textContent = oppName + ' wins — checkmate';
         statusEl.className   = 'gameover';
     } else if (game.in_draw()) {
         statusEl.textContent = 'Draw';
         statusEl.className   = 'gameover';
     } else if (game.in_check()) {
-        statusEl.textContent = turn + ' is in check';
+        statusEl.textContent = name + ' is in check';
         statusEl.className   = 'check';
-        highlightKing(game.turn());
+        highlightKing(turn);
     } else {
-        statusEl.textContent = turn + "'s Turn";
+        statusEl.textContent = name + "'s Turn";
     }
 }
 
@@ -487,7 +494,14 @@ function initFirebaseAuth() {
 }
 function saveToFirebase() {
     if (!firebaseReady()) return;
-    firebase.database().ref('current_match').set({ fen: game.fen(), timestamp: Date.now() });
+    const wName = document.getElementById('name-white').value.trim();
+    const bName = document.getElementById('name-black').value.trim();
+    firebase.database().ref('current_match').set({
+        fen: game.fen(),
+        nameWhite: wName,
+        nameBlack: bName,
+        timestamp: Date.now(),
+    });
 }
 function loadFromFirebase() {
     if (typeof firebase === 'undefined' || firebase.apps.length === 0) return;
@@ -496,9 +510,17 @@ function loadFromFirebase() {
         if (!user) return;
         firebase.database().ref('current_match').on('value', snap => {
             const data = snap.val();
-            if (data && data.fen && data.fen !== game.fen()) {
+            if (!data) return;
+            // Populate name fields from remote if local is blank
+            const wEl = document.getElementById('name-white');
+            const bEl = document.getElementById('name-black');
+            if (!wEl.value.trim() && data.nameWhite) wEl.value = data.nameWhite;
+            if (!bEl.value.trim() && data.nameBlack) bEl.value = data.nameBlack;
+            if (data.fen && data.fen !== game.fen()) {
                 game.load(data.fen);
                 sync3DWithEngine();
+            } else {
+                updateStatus();
             }
         });
     });
@@ -516,6 +538,8 @@ function animate() {
 }
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
+document.getElementById('name-white').addEventListener('input', updateStatus);
+document.getElementById('name-black').addEventListener('input', updateStatus);
 window.addEventListener('click', onCanvasClick);
 window.addEventListener('resize', () => {
     camera.aspect = window.innerWidth / window.innerHeight;
