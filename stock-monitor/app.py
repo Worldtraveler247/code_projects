@@ -7,6 +7,7 @@ Buy alert : price >5 % below 20-day SMA  OR  RSI(14) < 30
 import time
 from datetime import datetime
 
+import altair as alt
 import pandas as pd
 import streamlit as st
 import yfinance as yf
@@ -66,6 +67,24 @@ COMPANY = {
     "AAPL":    "Apple Inc",
     "BTC-USD": "Bitcoin / USD",
 }
+
+REVENUE_DATA = [
+    {"ticker": "NVDA",  "name": "NVIDIA Corp",          "fy2026": 215.9, "fy2027": 367.7, "yoy": 70.0, "notes": "FY ends Jan; FY26 already reported. Blackwell/Rubin demand visibility through 2027."},
+    {"ticker": "MSFT",  "name": "Microsoft Corp",        "fy2026": 330.0, "fy2027": 385.0, "yoy": 17.0, "notes": "FY ends Jun. Management guided double-digit growth for FY2027."},
+    {"ticker": "AAPL",  "name": "Apple Inc",             "fy2026": 465.0, "fy2027": 497.5, "yoy":  7.0, "notes": "FY ends Sep. iPhone 17 cycle reaccelerated growth."},
+    {"ticker": "GOOGL", "name": "Alphabet Inc",          "fy2026": 465.0, "fy2027": 540.0, "yoy": 16.0, "notes": "Cloud margin guided to 27.9% in 2027."},
+    {"ticker": "AMZN",  "name": "Amazon.com Inc",        "fy2026": 807.0, "fy2027": 901.0, "yoy": 12.0, "notes": "AWS growth accelerating; Q1 2026 +17% YoY."},
+    {"ticker": "META",  "name": "Meta Platforms",        "fy2026": 250.0, "fy2027": 290.0, "yoy": 16.0, "notes": "Capex ramp $125–145B for 2026."},
+    {"ticker": "BRK.B", "name": "Berkshire Hathaway",   "fy2026": 392.5, "fy2027": 417.5, "yoy":  5.0, "notes": "Insurance + railway + energy mix; tracks GDP growth."},
+    {"ticker": "TSLA",  "name": "Tesla Inc",             "fy2026": 105.0, "fy2027": 130.0, "yoy": 20.0, "notes": "Wide estimate range; Robotaxi monetization key for 2027."},
+    {"ticker": "AVGO",  "name": "Broadcom Inc",          "fy2026":  80.0, "fy2027": 115.0, "yoy": 44.0, "notes": "FY ends Oct/Nov. CEO: AI chip revenue target $100B+ in 2027."},
+    {"ticker": "LLY",   "name": "Eli Lilly & Co",        "fy2026":  85.3, "fy2027":  94.9, "yoy": 11.0, "notes": "GLP-1 / oral obesity pill ramp drives 2027."},
+    {"ticker": "JPM",   "name": "JPMorgan Chase",        "fy2026": 194.0, "fy2027": 202.5, "yoy":  4.0, "notes": "Fees + NII; growth depends on rate path."},
+    {"ticker": "WMT",   "name": "Walmart Inc",           "fy2026": 725.0, "fy2027": 756.0, "yoy":  4.0, "notes": "FY ends Jan. Company guides 3.5–4.5% sales growth."},
+    {"ticker": "V",     "name": "Visa Inc",              "fy2026":  42.0, "fy2027":  46.0, "yoy": 10.0, "notes": "Network volume + cross-border recovery."},
+    {"ticker": "XOM",   "name": "ExxonMobil Corp",       "fy2026": 352.5, "fy2027": 365.0, "yoy":  3.0, "notes": "Highly oil-price sensitive; 2026 guidance cautious."},
+    {"ticker": "UNH",   "name": "UnitedHealth Group",    "fy2026": 439.0, "fy2027": 470.0, "yoy":  7.0, "notes": "2027 reaccelerates after V28 Medicare coding transition."},
+]
 
 SMA_WIN = 20
 RSI_WIN = 14
@@ -289,7 +308,7 @@ st.caption(f"Last updated: {datetime.now().strftime('%B %d, %Y  %I:%M:%S %p')}")
 st.markdown("---")
 
 # ── Main Tabs ──────────────────────────────────────────────────────────────────
-tab_market, tab_ipo = st.tabs(["📊 Market Overview", "🚀 IPO Watch List"])
+tab_market, tab_ipo, tab_rev = st.tabs(["📊 Market Overview", "🚀 IPO Watch List", "📈 2026–2027 Revenue Projections"])
 
 with tab_market:
     # ── Price metric cards ─────────────────────────────────────────────────────────
@@ -464,6 +483,103 @@ with tab_ipo:
         """)
 
     st.warning("⚠️ **Risk Warning:** Private equity is highly illiquid and high-risk. Valuations are speculative.")
+
+with tab_rev:
+    st.markdown("### 2026–2027 Revenue Projections — Top 15 US Stocks")
+
+    rev_df = pd.DataFrame([
+        {
+            "Ticker":       r["ticker"],
+            "Company":      r["name"],
+            "FY2026 ($B)":  r["fy2026"],
+            "FY2027 ($B)":  r["fy2027"],
+            "YoY Growth %": r["yoy"],
+            "Notes":        r["notes"],
+        }
+        for r in REVENUE_DATA
+    ])
+
+    # ── Grouped horizontal bar chart ───────────────────────────────────────────
+    ticker_order = rev_df.sort_values("FY2027 ($B)", ascending=False)["Ticker"].tolist()
+
+    rev_long = rev_df.melt(
+        id_vars=["Ticker", "Company"],
+        value_vars=["FY2026 ($B)", "FY2027 ($B)"],
+        var_name="Year",
+        value_name="Revenue ($B)",
+    )
+
+    chart = (
+        alt.Chart(rev_long)
+        .mark_bar()
+        .encode(
+            x=alt.X("Revenue ($B):Q", title="Revenue (USD Billions)"),
+            y=alt.Y("Ticker:N", sort=ticker_order, title=None),
+            yOffset=alt.YOffset("Year:N", sort=["FY2026 ($B)", "FY2027 ($B)"]),
+            color=alt.Color(
+                "Year:N",
+                scale=alt.Scale(
+                    domain=["FY2026 ($B)", "FY2027 ($B)"],
+                    range=["#4a6fa5", "#4af7ff"],
+                ),
+                legend=alt.Legend(orient="top", title=None),
+            ),
+            tooltip=[
+                alt.Tooltip("Company:N"),
+                alt.Tooltip("Year:N"),
+                alt.Tooltip("Revenue ($B):Q", format=",.1f"),
+            ],
+        )
+        .properties(height=520)
+    )
+    st.altair_chart(chart, use_container_width=True)
+
+    st.markdown("")
+
+    # ── Detail table ───────────────────────────────────────────────────────────
+    def yoy_style(v):
+        if v >= 30:  return "color: #4af7ff; font-weight: 700"
+        if v >= 15:  return "color: #00e676; font-weight: 600"
+        if v >= 10:  return "color: #fb923c"
+        return "color: #6b7280"
+
+    styled_rev = (
+        rev_df.style
+        .map(yoy_style, subset=["YoY Growth %"])
+        .format({
+            "FY2026 ($B)":  "${:,.1f}B",
+            "FY2027 ($B)":  "${:,.1f}B",
+            "YoY Growth %": "{:+.0f}%",
+        })
+        .hide(axis="index")
+        .set_table_styles([
+            {"selector": "thead th", "props": [
+                ("background-color", "#0f0f1e"),
+                ("color", "#6b7280"),
+                ("font-size", ".70rem"),
+                ("letter-spacing", "1.5px"),
+                ("text-transform", "uppercase"),
+                ("padding", "10px 14px"),
+                ("border-bottom", "1px solid rgba(255,255,255,0.07)"),
+            ]},
+            {"selector": "tbody td", "props": [
+                ("padding", "10px 14px"),
+                ("border-bottom", "1px solid rgba(255,255,255,0.035)"),
+                ("font-size", ".88rem"),
+            ]},
+            {"selector": "table", "props": [
+                ("width", "100%"),
+                ("border-collapse", "collapse"),
+            ]},
+        ])
+    )
+
+    st.dataframe(styled_rev, use_container_width=True, height=len(REVENUE_DATA) * 52 + 46)
+
+    st.caption(
+        "Estimates blend analyst consensus with company guidance as of early May 2026. "
+        "Fiscal years vary by company."
+    )
 
 # ── Auto-refresh countdown ─────────────────────────────────────────────────────
 if auto_refresh:
