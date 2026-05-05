@@ -55,6 +55,8 @@ st.markdown("""
 
 # ── Constants ──────────────────────────────────────────────────────────────────
 TICKERS = ("^VIX", "VOO", "SPY", "QQQ", "MSFT", "LLY", "NVDA", "AAPL", "BTC-USD")
+TICKERS_HEALTHCARE = ("UNH", "LLY", "JNJ", "ABBV")
+TICKERS_ENERGY     = ("XOM", "CVX", "COP", "EOG")
 
 COMPANY = {
     "^VIX":    "CBOE Volatility Index",
@@ -66,6 +68,12 @@ COMPANY = {
     "NVDA":    "NVIDIA Corp",
     "AAPL":    "Apple Inc",
     "BTC-USD": "Bitcoin / USD",
+    "UNH":  "UnitedHealth Group",
+    "JNJ":  "Johnson & Johnson",
+    "ABBV": "AbbVie Inc",
+    "CVX":  "Chevron Corp",
+    "COP":  "ConocoPhillips",
+    "EOG":  "EOG Resources",
 }
 
 REVENUE_DATA = [
@@ -261,59 +269,28 @@ def make_styled_table(rows: list[dict]) -> "pd.io.formats.style.Styler":
         ])
     )
 
-# ── Fetch & annotate ───────────────────────────────────────────────────────────
-st.markdown("# 📈 Stock Monitor")
+# ── Module-level history loader ────────────────────────────────────────────────
+@st.cache_data(ttl=300, show_spinner=False)
+def load_history(t: str) -> pd.DataFrame:
+    hist = yf.Ticker(t).history(period="1mo")[["Close"]]
+    hist.index = hist.index.tz_localize(None)
+    hist.columns = ["Price"]
+    hist[f"SMA {SMA_WIN}"] = hist["Price"].rolling(SMA_WIN).mean()
+    return hist.dropna()
 
-# ── VIX Header & Significance ──────────────────────────────────────────────────
-try:
-    vix_ticker = yf.Ticker("^VIX")
-    vix_data = vix_ticker.history(period="2d")
-    if not vix_data.empty and len(vix_data) >= 2:
-        current_vix = vix_data["Close"].iloc[-1]
-        prev_vix = vix_data["Close"].iloc[-2]
-        vix_delta = ((current_vix - prev_vix) / prev_vix) * 100
-        
-        st.markdown(f"""
-        <div style="background: rgba(255, 75, 75, 0.2); border-left: 5px solid #ff4b4b; padding: 20px; border-radius: 10px; margin-bottom: 25px;">
-            <h1 style="margin: 0; color: #d32f2f; font-size: 3rem;">VIX: {current_vix:.2f} <span style="font-size: 1.5rem;">({vix_delta:+.2f}%)</span></h1>
-            <p style="font-size: 1.1rem; margin-top: 10px; line-height: 1.6; color: #1a1a1a; font-weight: 500;">
-                The <b>CBOE Volatility Index (VIX)</b>, known as the "Fear Gauge," measures the market's expectation of 30-day forward-looking volatility. 
-                A rising VIX typically signals increased market fear and potential downward pressure on stocks, while a falling VIX suggests stability and confidence.
-            </p>
-            <a href="https://www.investopedia.com/terms/v/vix.asp" target="_blank" style="color: #0056b3; text-decoration: underline; font-weight: bold;">
-                📚 Learn more about the VIX on Investopedia →
-            </a>
-        </div>
-        """, unsafe_allow_html=True)
-except Exception:
-    pass
 
-ticker_display = ' · '.join(t if t != "BTC-USD" else "₿ BTC" for t in TICKERS if t != "^VIX")
-st.caption(
-    f"Watchlist: **{ticker_display}**  "
-    f"|  Buy alert: price **>{sma_drop:.0f}%** below SMA-{SMA_WIN}  "
-    f"or  RSI(14) < **{rsi_level}**"
-)
+# ── Reusable sector tab renderer ───────────────────────────────────────────────
+def render_sector_tab(tickers: tuple, key: str) -> None:
+    with st.spinner("Fetching market data…"):
+        raw = load_market_data(tickers)
 
-with st.spinner("Fetching market data…"):
-    raw = load_market_data(TICKERS)
+    if not raw:
+        st.error("No data returned. Check your internet connection and try again.")
+        return
 
-if not raw:
-    st.error("No data returned. Check your internet connection and try again.")
-    st.stop()
+    raw = annotate_signals(raw, sma_drop, rsi_level)
 
-raw = annotate_signals(raw, sma_drop, rsi_level)
-
-st.caption(f"Last updated: {datetime.now().strftime('%B %d, %Y  %I:%M:%S %p')}")
-st.markdown("---")
-
-# ── Main Tabs ──────────────────────────────────────────────────────────────────
-tab_market, tab_ipo, tab_rev = st.tabs(["📊 Market Overview", "🚀 IPO Watch List", "📈 2026–2027 Revenue Projections"])
-
-with tab_market:
-    # ── Price metric cards ─────────────────────────────────────────────────────────
-    # Sort raw data to ensure VIX is first if present
-    sorted_raw = sorted(raw, key=lambda x: x['ticker'] != '^VIX')
+    sorted_raw = sorted(raw, key=lambda x: x["ticker"] != "^VIX")
     cols = st.columns(len(sorted_raw))
     for col, r in zip(cols, sorted_raw):
         with col:
@@ -325,9 +302,7 @@ with tab_market:
 
     st.markdown("")
 
-    # ── Buy alert banner ───────────────────────────────────────────────────────────
     buy_rows = [r for r in raw if r["buy"]]
-
     if buy_rows:
         n     = len(buy_rows)
         lines = "".join(
@@ -344,7 +319,6 @@ with tab_market:
     else:
         st.success("No buy alerts — all tickers are within thresholds.", icon="✅")
 
-    # ── Main overview table ────────────────────────────────────────────────────────
     st.markdown("### Overview")
     st.dataframe(
         make_styled_table(raw),
@@ -354,7 +328,6 @@ with tab_market:
 
     st.markdown("")
 
-    # ── Daily summary cards ────────────────────────────────────────────────────────
     st.markdown("### 📋 Daily Summary")
     c_gain, c_loss, c_buy = st.columns(3)
 
@@ -401,29 +374,210 @@ with tab_market:
         else:
             st.caption("No alerts triggered")
 
-    # ── Price history chart ────────────────────────────────────────────────────────
     st.markdown("")
     with st.expander("📉 30-Day Price History + SMA", expanded=False):
         ticker_sel = st.selectbox(
             "Select ticker",
             options=[r["ticker"] for r in raw],
-            key="chart_sel",
+            key=f"chart_sel_{key}",
         )
-
-        @st.cache_data(ttl=300, show_spinner=False)
-        def load_history(t: str) -> pd.DataFrame:
-            hist = yf.Ticker(t).history(period="1mo")[["Close"]]
-            hist.index = hist.index.tz_localize(None)
-            hist.columns = ["Price"]
-            hist[f"SMA {SMA_WIN}"] = hist["Price"].rolling(SMA_WIN).mean()
-            return hist.dropna()
-
         chart_data = load_history(ticker_sel)
         st.line_chart(chart_data, use_container_width=True, height=280)
         st.caption(
             f"Green line = {ticker_sel} close · Orange line = {SMA_WIN}-day SMA. "
             f"Buy alert triggers when price drops >{sma_drop:.0f}% below SMA."
         )
+
+
+# ── Fetch & annotate ───────────────────────────────────────────────────────────
+st.markdown("# 📈 Stock Monitor")
+
+# ── VIX Header & Significance ──────────────────────────────────────────────────
+try:
+    vix_ticker = yf.Ticker("^VIX")
+    vix_data = vix_ticker.history(period="2d")
+    if not vix_data.empty and len(vix_data) >= 2:
+        current_vix = vix_data["Close"].iloc[-1]
+        prev_vix = vix_data["Close"].iloc[-2]
+        vix_delta = ((current_vix - prev_vix) / prev_vix) * 100
+        
+        st.markdown(f"""
+        <div style="background: rgba(255, 75, 75, 0.2); border-left: 5px solid #ff4b4b; padding: 20px; border-radius: 10px; margin-bottom: 25px;">
+            <h1 style="margin: 0; color: #d32f2f; font-size: 3rem;">VIX: {current_vix:.2f} <span style="font-size: 1.5rem;">({vix_delta:+.2f}%)</span></h1>
+            <p style="font-size: 1.1rem; margin-top: 10px; line-height: 1.6; color: #1a1a1a; font-weight: 500;">
+                The <b>CBOE Volatility Index (VIX)</b>, known as the "Fear Gauge," measures the market's expectation of 30-day forward-looking volatility. 
+                A rising VIX typically signals increased market fear and potential downward pressure on stocks, while a falling VIX suggests stability and confidence.
+            </p>
+            <a href="https://www.investopedia.com/terms/v/vix.asp" target="_blank" style="color: #0056b3; text-decoration: underline; font-weight: bold;">
+                📚 Learn more about the VIX on Investopedia →
+            </a>
+        </div>
+        """, unsafe_allow_html=True)
+except Exception:
+    pass
+
+ticker_display = ' · '.join(t if t != "BTC-USD" else "₿ BTC" for t in TICKERS if t != "^VIX")
+st.caption(
+    f"Watchlist: **{ticker_display}**  "
+    f"|  Buy alert: price **>{sma_drop:.0f}%** below SMA-{SMA_WIN}  "
+    f"or  RSI(14) < **{rsi_level}**"
+)
+
+with st.spinner("Fetching market data…"):
+    raw = load_market_data(TICKERS)
+
+if not raw:
+    st.error("No data returned. Check your internet connection and try again.")
+    st.stop()
+
+st.caption(f"Last updated: {datetime.now().strftime('%B %d, %Y  %I:%M:%S %p')}")
+st.markdown("---")
+
+# ── Main Tabs ──────────────────────────────────────────────────────────────────
+tab_market, tab_ipo, tab_ai, tab_health, tab_energy, tab_rev = st.tabs([
+    "📊 Market Overview",
+    "🚀 IPO Watch List",
+    "🤖 AI Race",
+    "🏥 Health Care",
+    "⚡ Energy",
+    "📈 2026–2027 Revenue Projections",
+])
+
+with tab_market:
+    render_sector_tab(TICKERS, key="market")
+
+with tab_ai:
+    st.markdown("# 🤖 The AI Race — 2026")
+
+    st.markdown("""
+## What is Agentic AI?
+
+**Agentic AI** refers to AI systems that don't just respond to questions — they *take action*.
+Instead of a chatbot that answers "How do I send an email?", an agentic AI *writes* the email,
+sends it, follows up, and updates your calendar — without you touching a keyboard at each step.
+
+The agent plans multi-step tasks, executes them across different tools and apps, and adapts when
+things go wrong. This shift from *conversation* to *action* is the defining milestone of 2026 AI.
+""")
+
+    st.markdown("""
+---
+## The 2026 AI Race: What Companies Are Building
+
+The "AI Race" has evolved significantly. In 2023 and 2024, the race was about who could build the
+smartest "chatbot." By 2026, the focus has shifted from mere conversation to **agency and infrastructure**.
+
+The goal is no longer just to answer questions, but to **do work**. Here is a breakdown of what
+companies are currently racing to achieve:
+
+### 1. The Shift to "Agentic" AI
+
+The biggest milestone in 2026 is the move from chatbots to **AI Agents**.
+
+- **The Goal:** Instead of you asking an AI to "write an email," you tell the AI to "plan a 3-day
+  marketing campaign, coordinate with the design team, and set up the launch meeting."
+- **The Race:** Companies like Microsoft, Google, and OpenAI are racing to build systems that can
+  execute multi-step tasks across different apps (e.g., browsing the web, editing a spreadsheet,
+  and sending a Slack message) without human intervention at every step.
+
+### 2. Physical and Multimodal Integration
+
+The race is moving beyond the screen.
+
+- **The Goal:** AI that can see, hear, and interact with the physical world in real time. This
+  includes "Medical Imaging Copilots" that help doctors diagnose in real-time and "Robotic
+  Navigation Platforms" for more autonomous factories.
+- **The Race:** Major tech firms are competing to make multimodality (the ability to process text,
+  image, video, and audio simultaneously) the standard for every device, from your phone to
+  industrial robots.
+
+### 3. Sovereign AI and "Patriotic Tech"
+
+As AI becomes critical to national security and economic power, the race has a heavy geopolitical layer.
+
+- **The Goal:** Countries (and the companies within them) are racing to build "Sovereign AI" — AI
+  models trained on local data, hosted on local servers, and aligned with local laws and culture.
+- **The Race:** There is a massive "compute" arms race. The U.S. and China are competing for
+  dominance in high-end chips and data center capacity. In 2026 alone, U.S. cloud providers are
+  projected to spend over **$600 billion** on AI infrastructure.
+
+### 4. Reaching the "Jagged Frontier"
+
+Researchers refer to the current state of AI as a **"Jagged Frontier."**
+
+- **The Gap:** AI models can now pass PhD-level science exams and win gold medals at the
+  International Mathematical Olympiad, yet they still struggle with simple physical logic, like
+  reliably telling time on an analog clock.
+- **The Race:** Companies are racing to bridge these gaps so AI can be trusted with high-stakes
+  tasks, like autonomous scientific discovery in chemistry and biology.
+
+### 5. From "Experiment" to "ROI"
+
+The "hype" phase is ending. Investors are no longer impressed by a company just "using AI."
+
+- **The Goal:** **Monetization.** Companies are racing to prove that AI actually increases profit
+  margins or reduces costs.
+- **The Race:** There is a push toward "Intelligent Ops," where AI is used to self-heal code
+  repositories, automate complex supply chains, and handle customer service so efficiently that it
+  moves from a cost center to a value driver.
+
+---
+
+### Summary of the "Leaderboard" (2026 Context)
+
+- **The Infrastructure Kings:** NVIDIA and TSMC (providing the "shovels" for the gold mine).
+- **The Software Titans:** Microsoft, Google, and Anthropic (racing for the most capable "Agents").
+- **The New Entrants:** Companies like **CoreWeave** and specialized AI-cloud providers that are
+  building the physical "superfactories" of intelligence.
+""")
+
+    st.divider()
+
+    st.markdown("## ⚙️ The GPU Race: Why Chips Are the Foundation of AI")
+
+    st.markdown("""
+GPUs (Graphics Processing Units) were originally designed for rendering video games — but their
+architecture turned out to be perfect for AI. Unlike CPUs (which have a few very fast cores), GPUs
+have **thousands of smaller cores** that run calculations in parallel.
+
+Training a neural network is essentially billions of matrix multiplications happening simultaneously —
+exactly what GPUs do best. A single frontier model training run can require **tens of thousands of
+GPUs running for months**. Inference (running the model to answer your questions) also requires
+massive GPU clusters at scale.
+
+In 2026, U.S. cloud providers alone are projected to spend over **$600 billion** on AI
+infrastructure — the majority going to GPUs and the data centers that house them.
+Whoever controls the chips controls the race.
+""")
+
+    gpu_data = [
+        {
+            "Company":        "NVIDIA",
+            "Ticker":         "NVDA",
+            "Role":           "GPU Designer",
+            "Why It Matters": "Dominant H100/B200 AI GPUs; ~80% datacenter AI market share. CUDA ecosystem creates deep developer lock-in.",
+        },
+        {
+            "Company":        "AMD",
+            "Ticker":         "AMD",
+            "Role":           "GPU Designer",
+            "Why It Matters": "MI300X/MI325X challenger to NVIDIA. Only credible alternative at scale for AI training workloads.",
+        },
+        {
+            "Company":        "Broadcom",
+            "Ticker":         "AVGO",
+            "Role":           "AI ASIC Designer",
+            "Why It Matters": "Designs custom AI accelerator chips for Google, Meta, and ByteDance. CEO targets $100B+ AI revenue by 2027.",
+        },
+        {
+            "Company":        "TSMC",
+            "Ticker":         "TSM",
+            "Role":           "Chip Manufacturer",
+            "Why It Matters": "Manufactures GPUs for NVIDIA and AMD. Controls the world's most advanced chip fabrication. No TSMC = no frontier AI.",
+        },
+    ]
+
+    st.table(pd.DataFrame(gpu_data))
 
 with tab_ipo:
     st.markdown("### 🚀 IPO Watch List")
@@ -483,6 +637,14 @@ with tab_ipo:
         """)
 
     st.warning("⚠️ **Risk Warning:** Private equity is highly illiquid and high-risk. Valuations are speculative.")
+
+with tab_health:
+    st.markdown("## 🏥 Health Care — Top 4 US Stocks")
+    render_sector_tab(TICKERS_HEALTHCARE, key="health")
+
+with tab_energy:
+    st.markdown("## ⚡ Energy — Top 4 US Stocks")
+    render_sector_tab(TICKERS_ENERGY, key="energy")
 
 with tab_rev:
     st.markdown("### 2026–2027 Revenue Projections — Top 15 US Stocks")
