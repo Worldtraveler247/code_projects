@@ -65,20 +65,35 @@ const FAMILIES = [
 const TIERS     = ['entry', 'mid', 'senior'];
 const TIER_DISP = { entry: 'ENTRY', mid: 'MID', senior: 'SENIOR' };
 
-// ── Banner ────────────────────────────────────────────────────────────────────
+// ── Legend (replaces old warning banner) ──────────────────────────────────────
 function buildBanner() {
   const banner = document.getElementById('atlas-banner');
   if (!banner) return;
 
-  const strong = document.createElement('strong');
-  strong.textContent = 'Heads up:';
-  banner.appendChild(strong);
+  // Researched item
+  const resIcon = document.createElement('span');
+  resIcon.className = 'legend-dot researched';
+  resIcon.setAttribute('aria-hidden', 'true');
+  banner.appendChild(resIcon);
 
-  const rest = document.createTextNode(
-    ' Only the 6 highlighted roles (cyan border + ✓ Researched) have cited salary, cert, and timeline data. ' +
-    'Everything else is orientation context for the landscape — not career advice.'
-  );
-  banner.appendChild(rest);
+  const resLabel = document.createTextNode(' Researched — full salary, cert, and timeline data  ');
+  banner.appendChild(resLabel);
+
+  // Divider
+  const sep = document.createElement('span');
+  sep.className = 'legend-sep';
+  sep.setAttribute('aria-hidden', 'true');
+  sep.textContent = '·';
+  banner.appendChild(sep);
+
+  // Coming soon item
+  const pendIcon = document.createElement('span');
+  pendIcon.className = 'legend-dot pending';
+  pendIcon.setAttribute('aria-hidden', 'true');
+  banner.appendChild(pendIcon);
+
+  const pendLabel = document.createTextNode(' Coming soon — shows full landscape scope');
+  banner.appendChild(pendLabel);
 }
 
 // ── Main grid ─────────────────────────────────────────────────────────────────
@@ -124,9 +139,10 @@ function buildAtlas() {
 
       if (roles.length === 0 && tier === 'entry' && f.name === 'AI / ML') {
         const note = document.createElement('span');
-        note.className = 'atlas-pill';
+        note.className = 'atlas-pill inert';
         note.style.fontStyle = 'italic';
-        note.textContent = 'No direct entry — reachable via other tracks';
+        note.title = 'Coming soon — not yet researched';
+        note.textContent = '· No direct entry — reachable via other tracks';
         cell.appendChild(note);
       } else {
         roles.forEach(role => {
@@ -140,8 +156,9 @@ function buildAtlas() {
             cell.appendChild(a);
           } else {
             const span = document.createElement('span');
-            span.className = 'atlas-pill';
-            span.textContent = role;
+            span.className = 'atlas-pill inert';
+            span.title = 'Coming soon — not yet researched';
+            span.textContent = '· ' + role;
             cell.appendChild(span);
           }
         });

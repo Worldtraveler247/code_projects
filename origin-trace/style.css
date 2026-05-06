@@ -752,10 +752,14 @@ main { position: relative; z-index: 1; }
   z-index: 2;
   background: rgba(123, 47, 255, 0.1);
   border-bottom: 1px solid rgba(123, 47, 255, 0.28);
-  padding: 14px 24px;
-  font-size: 0.8rem;
-  color: var(--text);
-  text-align: center;
+  padding: 10px 24px;
+  font-size: 0.78rem;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  flex-wrap: wrap;
   line-height: 1.55;
 }
 .atlas-banner strong { color: var(--cyan); }
@@ -857,6 +861,35 @@ main { position: relative; z-index: 1; }
   box-shadow: 0 0 20px rgba(74, 247, 255, 0.3);
 }
 .atlas-pill.researched::after { content: ' ✓'; font-size: 0.58rem; color: var(--cyan); }
+
+/* Inert pill — not yet researched, intentionally muted */
+.atlas-pill.inert {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px dashed rgba(255, 255, 255, 0.1);
+  color: rgba(160, 170, 190, 0.55);
+  cursor: default;
+}
+
+/* Legend dots in the atlas banner */
+.legend-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  vertical-align: middle;
+}
+.legend-dot.researched {
+  background: var(--cyan);
+  box-shadow: 0 0 6px rgba(74, 247, 255, 0.6);
+}
+.legend-dot.pending {
+  background: transparent;
+  border: 1px dashed rgba(255, 255, 255, 0.3);
+}
+.legend-sep {
+  color: var(--muted);
+  margin: 0 6px;
+}
 
 .bridge-section {
   margin-top: 40px;

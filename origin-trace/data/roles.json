@@ -158,7 +158,7 @@
         "Associate's degree or equivalent; bachelor's preferred",
         "Experience with monitoring tools (PRTG, SolarWinds, Nagios, or Zabbix) is a strong plus"
       ],
-      "track": "networking",
+      "track": "operations",
       "next_moves": [
         {
           "slug": "junior-network-admin",

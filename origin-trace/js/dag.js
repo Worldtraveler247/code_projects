@@ -133,8 +133,11 @@ function renderDAG(roleMap) {
     const cx  = mx + (x2 - x1) * 0.05;
     const cy  = my;
 
+    const pathD = 'M ' + x1 + ' ' + y1 + ' Q ' + cx + ' ' + cy + ' ' + x2 + ' ' + y2;
+
+    // Visible dashed stroke
     const path = svgEl('path');
-    path.setAttribute('d', 'M ' + x1 + ' ' + y1 + ' Q ' + cx + ' ' + cy + ' ' + x2 + ' ' + y2);
+    path.setAttribute('d', pathD);
     path.setAttribute('fill', 'none');
     path.setAttribute('stroke', srcColor);
     path.setAttribute('stroke-width', '1.5');
@@ -142,6 +145,40 @@ function renderDAG(roleMap) {
     path.setAttribute('stroke-dasharray', '5 4');
     path.setAttribute('marker-end', 'url(#arrow-' + markerName + ')');
     svg.appendChild(path);
+
+    // Look up the transition rationale from roles.json next_moves
+    const fromRole  = roleMap[edge.from];
+    const whyText   = fromRole && fromRole.next_moves
+      ? (fromRole.next_moves.find(m => m.slug === edge.to) || {}).why || ''
+      : '';
+    const fromTitle = fromRole ? fromRole.title : edge.from;
+    const toRole    = roleMap[edge.to];
+    const toTitle   = toRole ? toRole.title : edge.to;
+
+    // Fat invisible hit target on the same curve for easier hover
+    const hitPath = svgEl('path');
+    hitPath.setAttribute('d', pathD);
+    hitPath.setAttribute('fill', 'none');
+    hitPath.setAttribute('stroke', 'transparent');
+    hitPath.setAttribute('stroke-width', '18');
+    hitPath.setAttribute('cursor', 'crosshair');
+    hitPath.setAttribute('aria-label', fromTitle + ' → ' + toTitle + ': ' + whyText);
+
+    if (whyText) {
+      const tooltipData = {
+        title: fromTitle + ' → ' + toTitle,
+        body:  whyText
+      };
+      hitPath.addEventListener('mouseenter', () => Tooltip.show(hitPath, tooltipData));
+      hitPath.addEventListener('mouseleave', () => Tooltip.hide());
+      // Touch / mobile: tap to toggle
+      hitPath.addEventListener('click', e => {
+        e.stopPropagation();
+        Tooltip.show(hitPath, tooltipData);
+      });
+    }
+
+    svg.appendChild(hitPath);
   });
 
   // Nodes
@@ -258,36 +295,4 @@ function svgEl(tag) {
   return document.createElementNS('http://www.w3.org/2000/svg', tag);
 }
 
-// ── Particles ─────────────────────────────────────────────────────────────────
-function initParticles() {
-  const bg = document.getElementById('bg-canvas');
-  if (!bg) return;
-  const bx = bg.getContext('2d');
-  let W2, H2, pts;
-  function init() {
-    W2 = bg.width  = window.innerWidth;
-    H2 = bg.height = window.innerHeight;
-    pts = Array.from({length: 60}, () => ({
-      x: Math.random()*W2, y: Math.random()*H2,
-      r: Math.random()*1.2+0.2,
-      vx: (Math.random()-0.5)*0.18,
-      vy: (Math.random()-0.5)*0.18,
-      a: Math.random()*0.5+0.08
-    }));
-  }
-  function draw() {
-    bx.clearRect(0,0,W2,H2);
-    pts.forEach(p => {
-      p.x+=p.vx; p.y+=p.vy;
-      if(p.x<0)p.x=W2; if(p.x>W2)p.x=0;
-      if(p.y<0)p.y=H2; if(p.y>H2)p.y=0;
-      bx.beginPath();
-      bx.arc(p.x,p.y,p.r,0,Math.PI*2);
-      bx.fillStyle='rgba(74,247,255,'+(p.a*0.38)+')';
-      bx.fill();
-    });
-    requestAnimationFrame(draw);
-  }
-  init(); draw();
-  window.addEventListener('resize', init);
-}
+// Particles handled by shared js/particles.js loaded before this file.

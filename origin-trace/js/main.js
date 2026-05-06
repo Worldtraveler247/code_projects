@@ -1,44 +1,7 @@
 /**
- * main.js — Landing page: role grid, search, filter, particles.
+ * main.js — Landing page: role grid, search, filter.
+ * Particles are handled by the shared js/particles.js loaded before this file.
  */
-
-// ── Particle background ──────────────────────────────────────────────────────
-function initParticles() {
-  const bg = document.getElementById('bg-canvas');
-  if (!bg) return;
-  const bx = bg.getContext('2d');
-  let W, H, pts;
-
-  function init() {
-    W = bg.width  = window.innerWidth;
-    H = bg.height = window.innerHeight;
-    pts = Array.from({length: 100}, () => ({
-      x:  Math.random() * W,
-      y:  Math.random() * H,
-      r:  Math.random() * 1.4 + 0.2,
-      vx: (Math.random() - 0.5) * 0.2,
-      vy: (Math.random() - 0.5) * 0.2,
-      a:  Math.random() * 0.65 + 0.08
-    }));
-  }
-
-  function draw() {
-    bx.clearRect(0, 0, W, H);
-    pts.forEach(p => {
-      p.x += p.vx; p.y += p.vy;
-      if (p.x < 0) p.x = W; if (p.x > W) p.x = 0;
-      if (p.y < 0) p.y = H; if (p.y > H) p.y = 0;
-      bx.beginPath();
-      bx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-      bx.fillStyle = 'rgba(74,247,255,' + (p.a * 0.45) + ')';
-      bx.fill();
-    });
-    requestAnimationFrame(draw);
-  }
-
-  init(); draw();
-  window.addEventListener('resize', init);
-}
 
 // ── Card gradient palette ────────────────────────────────────────────────────
 const CARD_GRADIENTS = {
