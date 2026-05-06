@@ -6,7 +6,12 @@
     <title>My Personal Dashboard</title>
     <link rel="stylesheet" href="style.css">
 </head>
+<style>
+  .back-to-hub{position:fixed;top:12px;left:12px;z-index:9999;background:rgba(7,1,15,0.82);border:1px solid rgba(74,247,255,0.25);color:#4af7ff;font-family:system-ui,sans-serif;font-size:0.78rem;font-weight:600;letter-spacing:0.06em;padding:6px 12px;border-radius:6px;text-decoration:none;backdrop-filter:blur(8px);transition:background 0.15s,border-color 0.15s;}
+  .back-to-hub:hover{background:rgba(74,247,255,0.12);border-color:rgba(74,247,255,0.55);}
+</style>
 <body>
+<a href="../index.html" class="back-to-hub">&#8592; Back to Hub</a>
     <div class="container">
         <h1 id="greeting">Hello!</h1>
         <div id="clock">00:00:00</div>

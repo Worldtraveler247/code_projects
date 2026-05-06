@@ -746,20 +746,6 @@ main { position: relative; z-index: 1; }
 #tooltip strong { color: var(--cyan); display: block; margin-bottom: 5px; }
 #tooltip a { color: var(--cyan); font-size: 0.72rem; }
 
-/* verify_before_publish badge */
-.vbp-badge {
-  display: inline-block;
-  background: rgba(255, 200, 0, 0.1);
-  border: 1px solid rgba(255, 200, 0, 0.35);
-  border-radius: 4px;
-  padding: 1px 7px;
-  font-size: 0.6rem;
-  color: #ffc800;
-  letter-spacing: 0.5px;
-  margin-left: 6px;
-  vertical-align: middle;
-}
-
 /* ── Career Atlas (map.html) ── */
 .atlas-banner {
   position: relative;
