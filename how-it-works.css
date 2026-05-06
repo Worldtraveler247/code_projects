@@ -1,0 +1,164 @@
+/* how-it-works.css — shared styles for all "How It's Built" breakdown pages */
+/* Imported by every app's how-it-works.html; nested apps use ../../how-it-works.css */
+
+:root {
+  --bg: #06060f;
+  --cyan: #4af7ff;
+  --text: #e2e8f0;
+  --muted: #6b7a99;
+  --surface: rgba(255,255,255,0.04);
+  --border: rgba(255,255,255,0.08);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Inter', sans-serif;
+  font-size: 16px;
+  line-height: 1.7;
+  padding: 80px 20px 60px;
+}
+
+.hiw-page { max-width: 820px; margin: 0 auto; }
+
+/* ── Header ── */
+.hiw-header { text-align: center; margin-bottom: 52px; }
+.hiw-icon { font-size: 3rem; margin-bottom: 12px; }
+.hiw-header h1 {
+  font-family: 'Orbitron', sans-serif;
+  font-size: clamp(1.5rem, 4vw, 2.2rem);
+  font-weight: 800;
+  background: linear-gradient(135deg, var(--cyan), #a78bfa);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 10px;
+}
+.hiw-tagline { color: var(--muted); font-size: .95rem; }
+
+/* ── Sections ── */
+.hiw-section {
+  margin-bottom: 52px;
+  padding-bottom: 52px;
+  border-bottom: 1px solid var(--border);
+}
+.hiw-section:last-child { border-bottom: none; }
+.hiw-section h2 {
+  font-family: 'Orbitron', sans-serif;
+  font-size: .85rem;
+  font-weight: 600;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--cyan);
+  margin-bottom: 20px;
+}
+
+/* ── Tech Stack badges ── */
+.hiw-badges { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; }
+.hiw-badge {
+  background: rgba(74,247,255,0.08);
+  border: 1px solid var(--cyan);
+  color: var(--cyan);
+  border-radius: 6px;
+  padding: 4px 12px;
+  font-size: .8rem;
+  font-weight: 600;
+  letter-spacing: .04em;
+}
+
+.hiw-caption-list { list-style: none; display: flex; flex-direction: column; gap: 6px; }
+.hiw-caption-list li { color: var(--muted); font-size: .9rem; }
+.hiw-caption-list li strong { color: var(--text); }
+
+/* ── File blocks ── */
+.hiw-file-block {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 24px;
+  margin-bottom: 20px;
+}
+.hiw-file-block h3 { font-size: 1rem; font-weight: 600; margin-bottom: 10px; color: var(--text); }
+.hiw-file-block h3 code {
+  font-family: 'Fira Code', monospace;
+  color: var(--cyan);
+  font-size: .95rem;
+}
+.hiw-file-block p { color: var(--muted); font-size: .9rem; margin-bottom: 16px; }
+
+/* ── Code blocks ── */
+.hiw-code {
+  background: #0a0a18;
+  border: 1px solid rgba(74,247,255,0.15);
+  border-radius: 8px;
+  padding: 16px;
+  overflow-x: auto;
+  font-family: 'Fira Code', monospace;
+  font-size: .82rem;
+  line-height: 1.65;
+  color: #c9d1e0;
+  white-space: pre;
+}
+
+/* ── File map ── */
+.hiw-file-map {
+  background: #0a0a18;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 20px;
+  font-family: 'Fira Code', monospace;
+  font-size: .82rem;
+  line-height: 1.8;
+  color: #c9d1e0;
+  overflow-x: auto;
+  white-space: pre;
+}
+
+/* ── Replicate steps ── */
+.hiw-steps {
+  padding-left: 0;
+  list-style: none;
+  counter-reset: steps;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.hiw-steps li {
+  counter-increment: steps;
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+}
+.hiw-steps li::before {
+  content: counter(steps);
+  min-width: 28px;
+  height: 28px;
+  background: rgba(74,247,255,0.1);
+  border: 1px solid var(--cyan);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: .75rem;
+  font-weight: 700;
+  color: var(--cyan);
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.hiw-steps li a { color: var(--cyan); }
+.hiw-steps li code {
+  font-family: 'Fira Code', monospace;
+  background: rgba(74,247,255,0.08);
+  border-radius: 4px;
+  padding: 1px 6px;
+  font-size: .85em;
+  color: var(--cyan);
+}
+
+/* ── Responsive ── */
+@media (max-width: 600px) {
+  body { padding: 70px 16px 40px; }
+  .hiw-file-block { padding: 16px; }
+}

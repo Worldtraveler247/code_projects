@@ -218,6 +218,7 @@ main { position: relative; z-index: 1; }
     outline: 2px solid var(--cyan);
     outline-offset: 2px;
 }
+.action-btn--build { color: var(--cyan); }
 
 /* ── Card visual area ── */
 .card-visual {
