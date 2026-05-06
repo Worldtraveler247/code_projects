@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>How It's Built — Origin Trace | Eddie's App Hub</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Inter:wght@400;500;600&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../how-it-works.css">
+</head>
+<body>
+<a href="../index.html" style="position:fixed;top:12px;left:12px;z-index:9999;background:rgba(10,10,20,0.85);backdrop-filter:blur(6px);color:#4af7ff;border:1px solid #4af7ff;border-radius:20px;padding:6px 14px;font-family:sans-serif;font-size:13px;text-decoration:none;font-weight:600;">← App Hub</a>
+
+<div class="hiw-page">
+
+  <header class="hiw-header">
+    <div class="hiw-icon">🗺️</div>
+    <h1>Origin Trace — How It's Built</h1>
+    <p class="hiw-tagline">IT career trajectory catalog: 6 entry-level role paths, BLS salary data, cert costs, and an SVG career DAG.</p>
+  </header>
+
+  <section class="hiw-section">
+    <h2>Overview</h2>
+    <p>
+      Origin Trace is a static multi-page app that maps six entry-level IT career starting points — Help Desk, NOC Technician, Cloud Support, GRC Analyst, SOC Analyst, and Junior Network Admin — for people with a degree and Network+/Security+ who are breaking into tech. Each role has a detailed page with BLS salary data, required certifications with real costs, a timeline to first job, and a DAG (directed acyclic graph) showing which roles lead to which over a 3–5 year career arc. All data lives in a single <code>roles.json</code> file that the frontend fetches and renders dynamically.
+    </p>
+  </section>
+
+  <section class="hiw-section">
+    <h2>Tech Stack</h2>
+    <div class="hiw-badges">
+      <span class="hiw-badge">HTML</span>
+      <span class="hiw-badge">CSS</span>
+      <span class="hiw-badge">JavaScript</span>
+      <span class="hiw-badge">JSON</span>
+      <span class="hiw-badge">SVG</span>
+    </div>
+    <ul class="hiw-caption-list">
+      <li><strong>HTML</strong> — four page templates: landing grid, role detail, career atlas map, SVG DAG viewer</li>
+      <li><strong>CSS</strong> — dark card grid, role-card hover animations, responsive layout</li>
+      <li><strong>JavaScript</strong> — <code>fetch('data/roles.json')</code> and dynamic card/content rendering, URL parameter routing</li>
+      <li><strong>JSON</strong> — single source of truth for all role data: titles, taglines, salaries, certs, next_moves edges</li>
+      <li><strong>SVG</strong> — the career DAG rendered as SVG paths with arrow markers; nodes are role names, edges are career transitions</li>
+    </ul>
+  </section>
+
+  <section class="hiw-section">
+    <h2>How Each Part Works</h2>
+
+    <div class="hiw-file-block">
+      <h3><code>js/main.js</code> — fetch and render role grid</h3>
+      <p>
+        The landing page fetches <code>data/roles.json</code> on load, then loops over the roles array to build a card for each role. Each card is a plain <code>&lt;a&gt;</code> element pointing to <code>role.html?role=slug</code>. Filter chip clicks filter the visible cards by the <code>data-track</code> attribute without re-fetching the JSON.
+      </p>
+      <pre class="hiw-code">async function renderGrid() {
+  const grid = document.getElementById('role-grid');
+  let data;
+  try {
+    const res = await fetch('data/roles.json');
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    data = await res.json();
+  } catch (err) {
+    // Show an error message in the grid if fetch fails
+    const msg = document.createElement('p');
+    msg.textContent = 'Could not load role data. Make sure data/roles.json is present.';
+    grid.appendChild(msg);
+    return;
+  }
+
+  // Build one card per role — DOM creation, no innerHTML template strings
+  data.roles.forEach((role, idx) => {
+    const grad = CARD_GRADIENTS[role.slug] || { a: '#0a1520', b: '#0d2030' };
+    grid.appendChild(buildCard(role, grad, idx));
+  });
+
+  setupScrollReveal();
+}
+
+function buildCard(role, grad) {
+  const a = document.createElement('a');
+  a.className = 'role-card';
+  // URL parameter routing: role.html reads ?role=slug via URLSearchParams
+  a.href = 'role.html?role=' + encodeURIComponent(role.slug);
+  a.dataset.track = role.track || 'all'; // used by filter chip JS
+  // ... attach visual and body children
+  return a;
+}</pre>
+    </div>
+
+    <div class="hiw-file-block">
+      <h3><code>role.html</code> — URL parameter routing</h3>
+      <p>
+        The role detail page is a single HTML file that reads which role to display from the URL query string using <code>new URLSearchParams(window.location.search).get('role')</code>. It then fetches <code>roles.json</code>, finds the matching entry, and populates the page. This means there are no per-role HTML files to maintain — just one template and one data file.
+      </p>
+      <pre class="hiw-code">// role.html inline script (simplified)
+const params = new URLSearchParams(window.location.search);
+const slug   = params.get('role');  // e.g. "soc-analyst"
+
+fetch('data/roles.json')
+  .then(r => r.json())
+  .then(data => {
+    const role = data.roles.find(r => r.slug === slug);
+    if (!role) { document.title = '404'; return; }
+
+    document.title = role.title + ' — Origin Trace';
+    document.getElementById('role-title').textContent = role.title;
+    document.getElementById('role-tagline').textContent = role.tagline;
+    // populate salary, certs, timeline sections...
+  });</pre>
+    </div>
+
+    <div class="hiw-file-block">
+      <h3><code>js/dag.js</code> — SVG career DAG</h3>
+      <p>
+        The DAG view reads <code>next_moves</code> arrays from <code>roles.json</code> to build directed edges. Each role is a node; each <code>next_moves</code> entry is an edge. Nodes are positioned on a grid, then SVG <code>&lt;line&gt;</code> elements with <code>&lt;marker&gt;</code> arrowheads connect them. The entire graph is generated in JS and inserted into an SVG element.
+      </p>
+      <pre class="hiw-code">// Simplified DAG rendering (from js/dag.js)
+// roles.json has: { "slug": "help-desk", "next_moves": ["noc-technician", "cloud-support"] }
+
+function renderDAG(roles) {
+  const svg = document.getElementById('dag-svg');
+  const positions = layoutNodes(roles);  // assign x,y grid positions
+
+  // Draw edges first (so they appear behind nodes)
+  roles.forEach(role => {
+    (role.next_moves || []).forEach(targetSlug => {
+      const from = positions[role.slug];
+      const to   = positions[targetSlug];
+      if (!from || !to) return;
+
+      const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+      line.setAttribute('x1', from.x);
+      line.setAttribute('y1', from.y);
+      line.setAttribute('x2', to.x);
+      line.setAttribute('y2', to.y);
+      line.setAttribute('marker-end', 'url(#arrow)');  // arrowhead marker
+      line.setAttribute('stroke', '#4af7ff');
+      svg.appendChild(line);
+    });
+  });
+}</pre>
+    </div>
+
+  </section>
+
+  <section class="hiw-section">
+    <h2>File Map</h2>
+    <pre class="hiw-file-map">origin-trace/
+├── index.html        ← landing page: role grid, search input, filter chips
+├── role.html         ← role detail page: reads ?role= param, renders from JSON
+├── map.html          ← career atlas: 7-family IT taxonomy overview
+├── dag.html          ← SVG directed graph: all roles and career transition edges
+├── style.css         ← dark card grid, role-card hover effects, responsive layout
+├── data/
+│   └── roles.json    ← all role data: titles, salaries, certs, next_moves edges
+├── js/
+│   ├── main.js       ← landing page: fetch, card builder, filter chip logic
+│   ├── atlas.js      ← career atlas page rendering
+│   ├── dag.js        ← SVG DAG node layout and edge drawing
+│   ├── tree.js       ← per-role career tree rendering
+│   ├── tooltip.js    ← shared tooltip component
+│   └── particles.js  ← shared particle background animation
+└── tools/            ← data validation and update scripts (not deployed)</pre>
+  </section>
+
+  <section class="hiw-section">
+    <h2>Replicate It Yourself</h2>
+    <ol class="hiw-steps">
+      <li>
+        <span>
+          <strong>Design your JSON schema.</strong> Decide what each role entry needs: <code>slug</code>, <code>title</code>, <code>tagline</code>, <code>track</code>, <code>icon</code>, salary data, cert list, and <code>next_moves: [slugs]</code>. A flat array of role objects is all you need.
+        </span>
+      </li>
+      <li>
+        <span>
+          <strong>Build the landing page with a fetch + render loop.</strong> <code>fetch('data/roles.json').then(r =&gt; r.json()).then(data =&gt; data.roles.forEach(buildCard))</code>. Set <code>data-track</code> attributes on cards for filter chip filtering.
+          Reference: <a href="https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API" target="_blank" rel="noopener">MDN Fetch API</a>.
+        </span>
+      </li>
+      <li>
+        <span>
+          <strong>Add URL-parameter routing for the detail page.</strong> Use <code>new URLSearchParams(window.location.search).get('role')</code> to get the slug, then find the matching role in the JSON.
+          Reference: <a href="https://developer.mozilla.org/en-US/docs/Web/API/URLSearchParams" target="_blank" rel="noopener">MDN URLSearchParams</a>.
+        </span>
+      </li>
+      <li>
+        <span>
+          <strong>Add filter chips.</strong> Each chip has a <code>data-track</code> attribute. On click, use <code>document.querySelectorAll('.role-card')</code> and set <code>display: none</code> on cards whose <code>dataset.track</code> doesn't match.
+        </span>
+      </li>
+      <li>
+        <span>
+          <strong>Render the SVG DAG.</strong> Use <code>document.createElementNS('http://www.w3.org/2000/svg', 'line')</code> to draw edges. Define an SVG <code>&lt;marker&gt;</code> with a triangle path for the arrowhead. Layout nodes on a grid by hand or with a simple force-directed algorithm.
+          Reference: <a href="https://developer.mozilla.org/en-US/docs/Web/SVG/Element/marker" target="_blank" rel="noopener">MDN SVG marker element</a>.
+        </span>
+      </li>
+      <li>
+        <span>
+          <strong>Deploy to GitHub Pages.</strong> Push to <code>main</code>, go to repo Settings &rarr; Pages &rarr; Source: <em>Deploy from branch</em> &rarr; <code>main / (root)</code>.
+          Reference: <a href="https://docs.github.com/en/pages/getting-started-with-github-pages" target="_blank" rel="noopener">GitHub Pages docs</a>.
+        </span>
+      </li>
+    </ol>
+  </section>
+
+</div>
+</body>
+</html>
