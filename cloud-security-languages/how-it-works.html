@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>How It's Built — Cloud Security Languages | Eddie's App Hub</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Inter:wght@400;500;600&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../how-it-works.css">
+</head>
+<body>
+<a href="../index.html" style="position:fixed;top:12px;left:12px;z-index:9999;background:rgba(10,10,20,0.85);backdrop-filter:blur(6px);color:#4af7ff;border:1px solid #4af7ff;border-radius:20px;padding:6px 14px;font-family:sans-serif;font-size:13px;text-decoration:none;font-weight:600;">← App Hub</a>
+
+<div class="hiw-page">
+
+  <header class="hiw-header">
+    <div class="hiw-icon">🐹</div>
+    <h1>Cloud Security Languages — How It's Built</h1>
+    <p class="hiw-tagline">A multi-page learning hub for Go, Python, and Bash — runnable code examples, primary-source references, no JS framework.</p>
+  </header>
+
+  <section class="hiw-section">
+    <h2>Overview</h2>
+    <p>
+      Cloud Security Languages is a static multi-page learning resource that teaches the three languages cloud security engineers use most: Go, Python, and Bash. Each language has its own deep-dive page with concept explanations, runnable code blocks, copy-to-clipboard buttons, a nav breadcrumb back to the hub, and references to official primary sources (go.dev, docs.python.org, GNU bash manual). All pages share a single CSS file and a small shared JS file. There is no framework, no build step, and no server.
+    </p>
+  </section>
+
+  <section class="hiw-section">
+    <h2>Tech Stack</h2>
+    <div class="hiw-badges">
+      <span class="hiw-badge">HTML</span>
+      <span class="hiw-badge">CSS</span>
+      <span class="hiw-badge">JavaScript</span>
+    </div>
+    <ul class="hiw-caption-list">
+      <li><strong>HTML</strong> — hub index with language cards, per-language content pages with sectioned lessons</li>
+      <li><strong>CSS</strong> — shared <code>cloud-langs.css</code> with dark theme, code block styling, nav breadcrumb, badge chips</li>
+      <li><strong>JavaScript</strong> — shared <code>js/copy.js</code> for copy-to-clipboard on code blocks; no other JS needed</li>
+    </ul>
+  </section>
+
+  <section class="hiw-section">
+    <h2>How Each Part Works</h2>
+
+    <div class="hiw-file-block">
+      <h3><code>index.html</code> — hub with language cards</h3>
+      <p>
+        The landing page shows three language cards (Go, Python, Bash). Each card links to its sub-page. Python and Bash are marked "coming soon" with a CSS class that grays them out. The hub also shows a tagline explaining who this series is for — cloud security learners studying their first compiled and scripting languages.
+      </p>
+      <pre class="hiw-code">&lt;!-- Hub card structure — one per language --&gt;
+&lt;a href="go/index.html" class="lang-card" data-lang="go"&gt;
+  &lt;div class="lang-card-icon"&gt;🐹&lt;/div&gt;
+  &lt;h3&gt;Go&lt;/h3&gt;
+  &lt;p&gt;Compiled, concurrent, and purpose-built for cloud tooling.
+     Start here if this is your first non-scripting language.&lt;/p&gt;
+  &lt;span class="lang-card-cta"&gt;Start Lesson →&lt;/span&gt;
+&lt;/a&gt;
+
+&lt;!-- Coming-soon cards get a CSS class that grays them and disables pointer events --&gt;
+&lt;a href="python/index.html" class="lang-card coming-soon" data-lang="python"&gt;
+  &lt;div class="lang-card-badge"&gt;Coming Soon&lt;/div&gt;
+  &lt;div class="lang-card-icon"&gt;🐍&lt;/div&gt;
+  &lt;h3&gt;Python&lt;/h3&gt;
+  ...
+&lt;/a&gt;</pre>
+    </div>
+
+    <div class="hiw-file-block">
+      <h3><code>go/index.html</code> — per-language content structure</h3>
+      <p>
+        Each language page is a long-form document with a table of contents, concept sections with <code>&lt;h2 id="..."&gt;</code> anchors, and code blocks inside <code>&lt;pre&gt;&lt;code&gt;</code> elements. A sticky nav breadcrumb at the top links back to the hub and shows the current language. The page links to official docs for every claim it makes about the language.
+      </p>
+      <pre class="hiw-code">&lt;!-- Navigation breadcrumb (sticky) --&gt;
+&lt;nav class="lang-nav"&gt;
+  &lt;div class="lang-nav-inner"&gt;
+    &lt;a href="../index.html" class="lang-nav-brand"&gt;
+      &lt;span class="brand-dot"&gt;&lt;/span&gt;Cloud Security Languages
+    &lt;/a&gt;
+    &lt;div class="lang-nav-links"&gt;
+      &lt;a href="../go/index.html" class="lang-nav-link" data-lang="go"&gt;Go&lt;/a&gt;
+      &lt;a href="../python/index.html" class="lang-nav-link coming-soon"&gt;Python&lt;/a&gt;
+      &lt;a href="../bash/index.html" class="lang-nav-link coming-soon"&gt;Bash&lt;/a&gt;
+    &lt;/div&gt;
+  &lt;/div&gt;
+&lt;/nav&gt;
+
+&lt;!-- Each concept section has an id for TOC anchor links --&gt;
+&lt;section id="anatomy"&gt;
+  &lt;h2&gt;Anatomy of a Go program&lt;/h2&gt;
+  &lt;p&gt;Every Go program begins with a package declaration...&lt;/p&gt;
+  &lt;pre&gt;&lt;code class="language-go"&gt;package main
+
+import "fmt"
+
+func main() {
+    fmt.Println("Hello, cloud security!")
+}&lt;/code&gt;&lt;/pre&gt;
+&lt;/section&gt;</pre>
+    </div>
+
+    <div class="hiw-file-block">
+      <h3><code>js/</code> — shared copy-to-clipboard</h3>
+      <p>
+        A small shared JS file adds a "Copy" button to every <code>&lt;pre&gt;&lt;code&gt;</code> block on the page. When clicked, it reads the code block's text content, writes it to the clipboard via <code>navigator.clipboard.writeText()</code>, and shows brief "Copied!" feedback. The button is inserted by JS so code still reads cleanly without it when JS is disabled.
+      </p>
+      <pre class="hiw-code">// Shared copy-to-clipboard (simplified from js/ shared file)
+document.querySelectorAll('pre code').forEach(block => {
+  const btn = document.createElement('button');
+  btn.className = 'copy-btn';
+  btn.textContent = 'Copy';
+
+  btn.addEventListener('click', async () => {
+    try {
+      await navigator.clipboard.writeText(block.textContent);
+      btn.textContent = 'Copied!';
+      setTimeout(() => { btn.textContent = 'Copy'; }, 1500);
+    } catch (err) {
+      btn.textContent = 'Failed';
+    }
+  });
+
+  // Insert the button as the first child of the pre element
+  block.parentElement.insertBefore(btn, block);
+});</pre>
+    </div>
+
+  </section>
+
+  <section class="hiw-section">
+    <h2>File Map</h2>
+    <pre class="hiw-file-map">cloud-security-languages/
+├── index.html          ← hub: three language cards (Go live, Python/Bash coming soon)
+├── css/
+│   └── cloud-langs.css ← shared styles: dark theme, code blocks, nav breadcrumb, badges
+├── js/
+│   └── (shared JS)     ← copy-to-clipboard, any shared interactive behavior
+├── go/
+│   └── index.html      ← full Go lesson: TOC, concept sections, runnable code, official refs
+├── python/
+│   └── index.html      ← Python lesson (in progress)
+└── bash/
+    └── index.html      ← Bash lesson (in progress)</pre>
+  </section>
+
+  <section class="hiw-section">
+    <h2>Replicate It Yourself</h2>
+    <ol class="hiw-steps">
+      <li>
+        <span>
+          <strong>Create a hub index with sub-page links.</strong> Start with <code>index.html</code> listing your languages or topics as cards. Link each card to <code>language/index.html</code> using relative paths. Mark incomplete pages with a "coming soon" CSS class.
+        </span>
+      </li>
+      <li>
+        <span>
+          <strong>Write per-language content pages.</strong> Each is a long HTML document with <code>&lt;section id="concept-name"&gt;</code> blocks. Use <code>&lt;pre&gt;&lt;code&gt;</code> for all code samples. Add a table of contents with <code>&lt;a href="#concept-name"&gt;</code> links at the top.
+        </span>
+      </li>
+      <li>
+        <span>
+          <strong>Link official docs for every claim.</strong> Every time you say "Go has X feature," link to the relevant section of go.dev, docs.python.org, or the GNU bash manual. This builds credibility and gives readers a path to go deeper.
+          Reference: <a href="https://go.dev/doc/" target="_blank" rel="noopener">go.dev docs</a>, <a href="https://docs.python.org/3/" target="_blank" rel="noopener">Python docs</a>, <a href="https://www.gnu.org/software/bash/manual/" target="_blank" rel="noopener">GNU Bash Manual</a>.
+        </span>
+      </li>
+      <li>
+        <span>
+          <strong>Add copy-to-clipboard with <code>navigator.clipboard</code>.</strong> Query all <code>pre code</code> elements, create a button per block, and call <code>navigator.clipboard.writeText(block.textContent)</code> on click. Show "Copied!" feedback with a <code>setTimeout</code> reset.
+          Reference: <a href="https://developer.mozilla.org/en-US/docs/Web/API/Clipboard/writeText" target="_blank" rel="noopener">MDN Clipboard.writeText</a>.
+        </span>
+      </li>
+      <li>
+        <span>
+          <strong>Share CSS across all pages via relative path.</strong> In each sub-page: <code>&lt;link rel="stylesheet" href="../css/shared.css"&gt;</code>. This means one file change updates all pages' styling.
+        </span>
+      </li>
+      <li>
+        <span>
+          <strong>Deploy to GitHub Pages.</strong> Push to <code>main</code>, go to repo Settings &rarr; Pages &rarr; Source: <em>Deploy from branch</em> &rarr; <code>main / (root)</code>.
+          Reference: <a href="https://docs.github.com/en/pages/getting-started-with-github-pages" target="_blank" rel="noopener">GitHub Pages docs</a>.
+        </span>
+      </li>
+    </ol>
+  </section>
+
+</div>
+</body>
+</html>
