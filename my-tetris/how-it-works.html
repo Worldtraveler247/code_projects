@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>How It's Built — Tetris | Eddie's App Hub</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Inter:wght@400;500;600&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../how-it-works.css">
+</head>
+<body>
+<a href="../index.html" style="position:fixed;top:12px;left:12px;z-index:9999;background:rgba(10,10,20,0.85);backdrop-filter:blur(6px);color:#4af7ff;border:1px solid #4af7ff;border-radius:20px;padding:6px 14px;font-family:sans-serif;font-size:13px;text-decoration:none;font-weight:600;">← App Hub</a>
+
+<div class="hiw-page">
+
+  <header class="hiw-header">
+    <div class="hiw-icon">🕹️</div>
+    <h1>Tetris — How It's Built</h1>
+    <p class="hiw-tagline">Classic block-stacking in pure JavaScript and Canvas — no libraries, no framework.</p>
+  </header>
+
+  <section class="hiw-section">
+    <h2>Overview</h2>
+    <p>
+      This is a fully featured Tetris clone built with vanilla JavaScript and the HTML5 Canvas API. It includes all seven standard tetrominoes with neon gradient colors, ghost piece preview, particle burst effects when rows clear, a "Next piece" canvas, DAS/ARR keyboard repeat (the standard speed settings used in competitive Tetris), mobile touch buttons, and a game-over overlay. Everything runs in a single <code>requestAnimationFrame</code> loop with no external libraries.
+    </p>
+  </section>
+
+  <section class="hiw-section">
+    <h2>Tech Stack</h2>
+    <div class="hiw-badges">
+      <span class="hiw-badge">HTML</span>
+      <span class="hiw-badge">CSS</span>
+      <span class="hiw-badge">JavaScript</span>
+      <span class="hiw-badge">Canvas API</span>
+    </div>
+    <ul class="hiw-caption-list">
+      <li><strong>HTML</strong> — two <code>&lt;canvas&gt;</code> elements: the main board and the "Next" preview pane</li>
+      <li><strong>CSS</strong> — dark background, layout, mobile button positioning</li>
+      <li><strong>JavaScript</strong> — all game logic: piece spawning, collision, rotation, row clearing, scoring, animation loop</li>
+      <li><strong>Canvas API</strong> — every cell, ghost piece, particle, and popup is drawn with <code>ctx.fillRect</code> and <code>ctx.arc</code>; no DOM elements inside the game area</li>
+    </ul>
+  </section>
+
+  <section class="hiw-section">
+    <h2>How Each Part Works</h2>
+
+    <div class="hiw-file-block">
+      <h3><code>tetris.js</code> — SHAPES and the board</h3>
+      <p>
+        Every tetromino is a 2D array of integers. The integer value is an index into the <code>PAL</code> (palette) array, so each piece carries its own color. The board (<code>arena</code>) is a 20×10 grid of zeroes; when a piece lands, its integers are copied into the arena via <code>merge()</code>.
+      </p>
+      <pre class="hiw-code">// Each shape is a 2D matrix. The non-zero values are color indices into PAL[].
+const SHAPES = {
+    T: [[0,1,0],[1,1,1],[0,0,0]],  // 1 = purple
+    O: [[2,2],[2,2]],               // 2 = yellow
+    L: [[0,3,0],[0,3,0],[0,3,3]],  // 3 = orange
+    J: [[0,4,0],[0,4,0],[4,4,0]],  // 4 = blue
+    I: [[0,5,0,0],[0,5,0,0],[0,5,0,0],[0,5,0,0]],  // 5 = cyan
+    S: [[0,6,6],[6,6,0],[0,0,0]],  // 6 = green
+    Z: [[7,7,0],[0,7,7],[0,0,0]],  // 7 = red
+};
+
+// The board: 20 rows × 10 columns, all zeroes at start
+function makeArena() {
+    return Array.from({ length: ROWS }, () => new Array(COLS).fill(0));
+}</pre>
+    </div>
+
+    <div class="hiw-file-block">
+      <h3><code>tetris.js</code> — collision detection</h3>
+      <p>
+        <code>collide()</code> walks every cell of the active piece matrix. For each non-zero cell, it checks whether the destination cell on the board (arena) is already occupied or out of bounds. This one function is used for gravity drops, left/right movement, and rotation wall-kicks.
+      </p>
+      <pre class="hiw-code">function collide(ar, pl) {
+    const { matrix: m, pos: o } = pl;
+    for (let y = 0; y < m.length; y++) {
+        for (let x = 0; x < m[y].length; x++) {
+            if (!m[y][x]) continue;            // skip empty cells in the matrix
+            const ny = y + o.y, nx = x + o.x; // translate to board coordinates
+            if (ny >= ROWS || nx < 0 || nx >= COLS) return true; // out of bounds
+            if (ar[ny]?.[nx]) return true;     // cell already occupied
+        }
+    }
+    return false;
+}</pre>
+    </div>
+
+    <div class="hiw-file-block">
+      <h3><code>tetris.js</code> — row clearing (sweep)</h3>
+      <p>
+        After a piece lands, <code>sweep()</code> scans every row from bottom to top. A full row (every cell non-zero) is collected. After a brief flash animation, those rows are spliced out of the arena array and new empty rows are prepended at the top. Points follow the Tetris scoring table: 100/300/500/800 multiplied by the current level.
+      </p>
+      <pre class="hiw-code">function sweep() {
+    const found = [];
+    for (let y = ROWS - 1; y >= 0; y--) {
+        if (arena[y].every(v => v !== 0)) found.push(y); // full row
+    }
+    if (!found.length) return;
+
+    flashRows = found;   // triggers white-flash animation in the draw loop
+    setTimeout(() => {
+        // Remove full rows (sorted descending so indices stay valid)
+        found.slice().sort((a, b) => b - a).forEach(y => {
+            arena.splice(y, 1);               // remove the full row
+            arena.unshift(new Array(COLS).fill(0)); // add empty row at top
+        });
+        // Score: [0, 100, 300, 500, 800][rowsCleared] × level
+        const pts = [0, 100, 300, 500, 800][found.length] * player.level;
+        player.score += pts;
+        player.lines += found.length;
+        player.level  = Math.floor(player.lines / 10) + 1;
+        flashRows = [];
+        updateHUD();
+    }, 280); // 280ms flash window
+}</pre>
+    </div>
+
+    <div class="hiw-file-block">
+      <h3><code>tetris.js</code> — main game loop</h3>
+      <p>
+        The loop receives a <code>time</code> timestamp from <code>requestAnimationFrame</code>. It computes the delta since the last frame, advances the drop counter, and calls all draw functions. Gravity speed increases with level: <code>dropInterval()</code> returns <code>max(60ms, 1000ms - level×90ms)</code>.
+      </p>
+      <pre class="hiw-code">function loop(time = 0) {
+    const dt = time - lastTime;  // milliseconds since last frame
+    lastTime = time;
+    flashTimer += dt;
+
+    if (!gameOver) {
+        dropCounter += dt;
+        // When enough time has passed (based on level), drop the piece one row
+        if (flashRows.length === 0 && dropCounter > dropInterval()) playerDrop();
+
+        // Update particles (they drift and fade each frame)
+        particles = particles.filter(p => {
+            p.x += p.vx; p.y += p.vy; p.vy += 0.14; p.life -= p.decay;
+            return p.life > 0;
+        });
+    }
+
+    drawBoard();
+    drawArena();
+    if (!gameOver) { drawPlayer(); drawParticles(); drawPopups(); }
+    else drawGameOver();
+
+    requestAnimationFrame(loop);  // schedule the next frame
+}</pre>
+    </div>
+
+  </section>
+
+  <section class="hiw-section">
+    <h2>File Map</h2>
+    <pre class="hiw-file-map">my-tetris/
+├── index.html   ← two canvas elements (main board + next-piece preview), mobile touch buttons
+├── style.css    ← layout, dark background, mobile button styling
+└── tetris.js    ← all game logic: SHAPES, PAL, arena, collision, rotation, sweep, draw loop</pre>
+  </section>
+
+  <section class="hiw-section">
+    <h2>Replicate It Yourself</h2>
+    <ol class="hiw-steps">
+      <li>
+        <span>
+          <strong>Set up two canvas elements.</strong> One for the board (260×520 for a 10×20 grid at 26px per cell), one small canvas for the next-piece preview. Get 2D contexts on both.
+          Reference: <a href="https://developer.mozilla.org/en-US/docs/Web/API/Canvas_API/Tutorial" target="_blank" rel="noopener">MDN Canvas tutorial</a>.
+        </span>
+      </li>
+      <li>
+        <span>
+          <strong>Define SHAPES as nested arrays.</strong> Each piece is a 2D array of integers (0 = empty, 1-7 = color index). Store a color palette array <code>PAL</code> where index matches the integer so <code>drawCell</code> can look up colors without any conditionals.
+        </span>
+      </li>
+      <li>
+        <span>
+          <strong>Write <code>collide(arena, player)</code>.</strong> Walk every cell of the piece matrix. Translate each cell to board coordinates using <code>pos.x</code> and <code>pos.y</code>. Return <code>true</code> if any cell is out of bounds or lands on a non-zero board cell.
+        </span>
+      </li>
+      <li>
+        <span>
+          <strong>Implement gravity with <code>dropCounter</code>.</strong> Each frame, add <code>dt</code> (milliseconds since last frame) to a counter. When the counter exceeds <code>dropInterval()</code>, call <code>playerDrop()</code> and reset the counter. This decouples speed from frame rate.
+        </span>
+      </li>
+      <li>
+        <span>
+          <strong>Implement row clearing.</strong> After a piece merges, scan every row. If <code>row.every(v => v !== 0)</code>, collect it. After a brief flash, <code>splice</code> those rows out and <code>unshift</code> empty rows at the top.
+        </span>
+      </li>
+      <li>
+        <span>
+          <strong>Deploy to GitHub Pages.</strong> Push to <code>main</code>, go to repo Settings &rarr; Pages &rarr; Source: <em>Deploy from branch</em> &rarr; <code>main / (root)</code>.
+          Reference: <a href="https://docs.github.com/en/pages/getting-started-with-github-pages" target="_blank" rel="noopener">GitHub Pages docs</a>.
+        </span>
+      </li>
+    </ol>
+  </section>
+
+</div>
+</body>
+</html>
