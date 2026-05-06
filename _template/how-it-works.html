@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- TODO: fill in app name -->
+  <title>How It's Built — [App Name] | Eddie's App Hub</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Inter:wght@400;500;600&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+  <!-- For apps one level deep: ../how-it-works.css -->
+  <!-- For apps two levels deep (e.g. aws-series/ec2/): ../../how-it-works.css -->
+  <link rel="stylesheet" href="../how-it-works.css">
+</head>
+<body>
+<a href="../index.html" style="position:fixed;top:12px;left:12px;z-index:9999;background:rgba(10,10,20,0.85);backdrop-filter:blur(6px);color:#4af7ff;border:1px solid #4af7ff;border-radius:20px;padding:6px 14px;font-family:sans-serif;font-size:13px;text-decoration:none;font-weight:600;">← App Hub</a>
+
+<div class="hiw-page">
+
+  <!-- ── 1. Header ── -->
+  <header class="hiw-header">
+    <!-- TODO: fill in emoji icon -->
+    <div class="hiw-icon">🛠️</div>
+    <!-- TODO: fill in app name -->
+    <h1>[App Name] — How It's Built</h1>
+    <!-- TODO: fill in one-line tagline -->
+    <p class="hiw-tagline">[One-line tagline — what the app does in plain English]</p>
+  </header>
+
+  <!-- ── 2. Overview ── -->
+  <section class="hiw-section">
+    <h2>Overview</h2>
+    <!-- TODO: 2-3 sentences. What it does, who it's for, what problem it solves. No jargon. -->
+    <p>
+      [Describe what the app does in 2-3 plain-English sentences. Who would use this?
+      What problem does it solve? Why does it exist?]
+    </p>
+  </section>
+
+  <!-- ── 3. Tech Stack ── -->
+  <section class="hiw-section">
+    <h2>Tech Stack</h2>
+    <!-- TODO: add one badge per technology -->
+    <div class="hiw-badges">
+      <span class="hiw-badge">HTML</span>
+      <span class="hiw-badge">CSS</span>
+      <span class="hiw-badge">JavaScript</span>
+      <!-- <span class="hiw-badge">Canvas API</span> -->
+      <!-- <span class="hiw-badge">Firebase</span> -->
+    </div>
+    <!-- TODO: one line per technology explaining its specific role in THIS app -->
+    <ul class="hiw-caption-list">
+      <li><strong>HTML</strong> — [what HTML does in this app]</li>
+      <li><strong>CSS</strong> — [what CSS does in this app]</li>
+      <li><strong>JavaScript</strong> — [what JS does in this app]</li>
+    </ul>
+  </section>
+
+  <!-- ── 4. How Each Part Works ── -->
+  <section class="hiw-section">
+    <h2>How Each Part Works</h2>
+
+    <!-- TODO: one hiw-file-block per key file -->
+    <div class="hiw-file-block">
+      <h3><code>index.html</code></h3>
+      <p>[Plain-English description of what this file does and why it exists.]</p>
+      <!-- TODO: paste the shortest real code snippet that shows the core idea; add // comments -->
+      <pre class="hiw-code">// TODO: real annotated snippet from index.html
+&lt;!-- example placeholder --&gt;</pre>
+    </div>
+
+    <div class="hiw-file-block">
+      <h3><code>app.js</code></h3>
+      <p>[Plain-English description of what this file does and why it exists.]</p>
+      <pre class="hiw-code">// TODO: real annotated snippet from app.js</pre>
+    </div>
+
+    <div class="hiw-file-block">
+      <h3><code>style.css</code></h3>
+      <p>[Plain-English description of what this file does and why it exists.]</p>
+      <pre class="hiw-code">/* TODO: real annotated snippet from style.css */</pre>
+    </div>
+
+  </section>
+
+  <!-- ── 5. File Map ── -->
+  <section class="hiw-section">
+    <h2>File Map</h2>
+    <!-- TODO: replace with real directory tree + one-line comments -->
+    <pre class="hiw-file-map">app-name/
+├── index.html      ← [what this file does]
+├── style.css       ← [what this file does]
+└── app.js          ← [what this file does]</pre>
+  </section>
+
+  <!-- ── 6. Replicate It Yourself ── -->
+  <section class="hiw-section">
+    <h2>Replicate It Yourself</h2>
+    <!-- TODO: numbered steps to build from scratch, with official doc links -->
+    <ol class="hiw-steps">
+      <li>
+        <span>
+          [Step 1: create the HTML skeleton.] Start with a <code>&lt;canvas&gt;</code> element
+          (or whatever the key structure is). Reference:
+          <a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Element/canvas" target="_blank" rel="noopener">MDN Canvas</a>.
+        </span>
+      </li>
+      <li>
+        <span>
+          [Step 2: add the core JS logic.] [Describe what to write, what it does, and why.]
+        </span>
+      </li>
+      <li>
+        <span>
+          [Step 3: style it.] Use CSS custom properties for colors so you can theme it easily.
+          Reference: <a href="https://developer.mozilla.org/en-US/docs/Web/CSS/Using_CSS_custom_properties" target="_blank" rel="noopener">MDN CSS Custom Properties</a>.
+        </span>
+      </li>
+      <li>
+        <span>
+          Deploy to GitHub Pages: push to <code>main</code>, then go to repo Settings &rarr; Pages &rarr;
+          Source: <em>Deploy from branch</em> &rarr; <code>main / (root)</code>.
+          Reference: <a href="https://docs.github.com/en/pages/getting-started-with-github-pages" target="_blank" rel="noopener">GitHub Pages docs</a>.
+        </span>
+      </li>
+    </ol>
+  </section>
+
+</div>
+</body>
+</html>
