@@ -129,6 +129,26 @@
           "branch_rationale": {}
         }
       ],
+      "jobs_las_vegas": [
+        {
+          "title": "Search: Help Desk Technician (entry level)",
+          "company": "Multiple employers — Indeed",
+          "url": "https://www.indeed.com/q-help-desk-technician-l-las-vegas,-nv-jobs.html",
+          "source": "Indeed"
+        },
+        {
+          "title": "Search: IT Help Desk (entry level)",
+          "company": "Multiple employers — Indeed",
+          "url": "https://www.indeed.com/q-entry-level-it-help-desk-l-las-vegas,-nv-jobs.html",
+          "source": "Indeed"
+        },
+        {
+          "title": "Search: Help Desk / IT Support roles",
+          "company": "Multiple employers — LinkedIn",
+          "url": "https://www.linkedin.com/jobs/helpdesk-jobs-las-vegas-metropolitan-area",
+          "source": "LinkedIn"
+        }
+      ],
       "node_positions": {
         "entry":  {"x": 280, "y": 100},
         "mid":    {"x": 280, "y": 340},
@@ -257,6 +277,26 @@
           "typical_time_in_tier": "3–6 years",
           "branches_into": [],
           "branch_rationale": {}
+        }
+      ],
+      "jobs_las_vegas": [
+        {
+          "title": "Search: NOC Technician",
+          "company": "Multiple employers — Indeed",
+          "url": "https://www.indeed.com/q-noc-technician-l-las-vegas,-nv-jobs.html",
+          "source": "Indeed"
+        },
+        {
+          "title": "Search: Network Operations Technician",
+          "company": "Multiple employers — Indeed",
+          "url": "https://www.indeed.com/q-network-operations-technician-l-las-vegas,-nv-jobs.html",
+          "source": "Indeed"
+        },
+        {
+          "title": "Search: NOC / Network Operations roles",
+          "company": "Multiple employers — LinkedIn",
+          "url": "https://www.linkedin.com/jobs/noc-jobs-las-vegas",
+          "source": "LinkedIn"
         }
       ],
       "node_positions": {
@@ -395,6 +435,26 @@
           "branch_rationale": {}
         }
       ],
+      "jobs_las_vegas": [
+        {
+          "title": "Search: Cloud Support / Cloud Operations (entry level)",
+          "company": "Multiple employers — Indeed",
+          "url": "https://www.indeed.com/q-Cloud-Support-l-Las-Vegas,-NV-jobs.html",
+          "source": "Indeed"
+        },
+        {
+          "title": "Search: Cloud Computing roles",
+          "company": "Multiple employers — LinkedIn",
+          "url": "https://www.linkedin.com/jobs/cloud-computing-jobs-las-vegas-nv",
+          "source": "LinkedIn"
+        },
+        {
+          "title": "Search: Cloud Engineer (entry level)",
+          "company": "Multiple employers — Indeed",
+          "url": "https://www.indeed.com/q-cloud-engineer-l-las-vegas,-nv-jobs.html",
+          "source": "Indeed"
+        }
+      ],
       "node_positions": {
         "entry":  {"x": 280, "y": 100},
         "mid":    {"x": 280, "y": 340},
@@ -516,6 +576,26 @@
           "typical_time_in_tier": "3–6 years",
           "branches_into": [],
           "branch_rationale": {}
+        }
+      ],
+      "jobs_las_vegas": [
+        {
+          "title": "Analyst — InfoSec GRC",
+          "company": "Wynn Resorts",
+          "url": "https://jobs.smartrecruiters.com/WynnResorts/744000114752877-analyst-infosec-grc",
+          "source": "SmartRecruiters"
+        },
+        {
+          "title": "Search: GRC Analyst / Compliance Analyst",
+          "company": "Multiple employers — Indeed",
+          "url": "https://www.indeed.com/q-grc-analyst-l-n-las-vegas,-nv-jobs.html",
+          "source": "Indeed"
+        },
+        {
+          "title": "Search: Governance Risk Compliance roles",
+          "company": "Multiple employers — LinkedIn",
+          "url": "https://www.linkedin.com/jobs/governance-risk-compliance-jobs-las-vegas-nv",
+          "source": "LinkedIn"
         }
       ],
       "node_positions": {
@@ -654,6 +734,26 @@
           "branch_rationale": {}
         }
       ],
+      "jobs_las_vegas": [
+        {
+          "title": "Search: SOC Analyst / Security Analyst (entry level)",
+          "company": "Multiple employers — Indeed",
+          "url": "https://www.indeed.com/q-soc-analyst-entry-level-l-las-vegas,-nv-jobs.html",
+          "source": "Indeed"
+        },
+        {
+          "title": "Search: Cybersecurity Analyst (entry level)",
+          "company": "Multiple employers — Indeed",
+          "url": "https://www.indeed.com/q-cyber-security-entry-level-l-las-vegas,-nv-jobs.html",
+          "source": "Indeed"
+        },
+        {
+          "title": "Search: SOC / Cyber Security Analyst roles",
+          "company": "Multiple employers — LinkedIn",
+          "url": "https://www.linkedin.com/jobs/security-analyst-jobs-las-vegas-nv",
+          "source": "LinkedIn"
+        }
+      ],
       "node_positions": {
         "entry":  {"x": 280, "y": 100},
         "mid":    {"x": 280, "y": 340},
@@ -780,6 +880,26 @@
           "typical_time_in_tier": "3–6 years",
           "branches_into": [],
           "branch_rationale": {}
+        }
+      ],
+      "jobs_las_vegas": [
+        {
+          "title": "Search: Junior Network Administrator",
+          "company": "Multiple employers — Indeed",
+          "url": "https://www.indeed.com/q-network-administrator-l-las-vegas,-nv-jobs.html",
+          "source": "Indeed"
+        },
+        {
+          "title": "Search: Network Technician (entry level)",
+          "company": "Multiple employers — Indeed",
+          "url": "https://www.indeed.com/q-network-technician-l-las-vegas,-nv-jobs.html",
+          "source": "Indeed"
+        },
+        {
+          "title": "Search: Network Engineer (entry level)",
+          "company": "Multiple employers — Indeed",
+          "url": "https://www.indeed.com/q-network-engineer-entry-level-l-las-vegas,-nv-jobs.html",
+          "source": "Indeed"
         }
       ],
       "node_positions": {

@@ -48,6 +48,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   renderSVGTree(role);
   renderAccordion(role);
   renderNextMoves(role, roleMap);
+  renderLVJobs(role);
 });
 
 // ── Header ────────────────────────────────────────────────────────────────────
@@ -184,6 +185,49 @@ function renderNextMoves(role, roleMap) {
     card.appendChild(nmArrow);
     card.appendChild(nmTitle);
     card.appendChild(nmWhy);
+    grid.appendChild(card);
+  });
+
+  section.style.display = '';
+}
+
+// ── Las Vegas Jobs ────────────────────────────────────────────────────────────
+function renderLVJobs(role) {
+  if (!role.jobs_las_vegas || !role.jobs_las_vegas.length) return;
+
+  const section = document.getElementById('lv-jobs');
+  const grid    = document.getElementById('lv-jobs-grid');
+  if (!section || !grid) return;
+
+  role.jobs_las_vegas.forEach(job => {
+    const card = document.createElement('a');
+    card.className = 'lv-job-card';
+    card.href      = job.url;
+    card.target    = '_blank';
+    card.rel       = 'noopener noreferrer';
+    card.setAttribute('aria-label', job.title + ' at ' + job.company + ' — opens job board in new tab');
+
+    const sourceEl = document.createElement('span');
+    sourceEl.className   = 'lv-job-source';
+    sourceEl.textContent = job.source;
+
+    const titleEl = document.createElement('div');
+    titleEl.className   = 'lv-job-title';
+    titleEl.textContent = job.title;
+
+    const companyEl = document.createElement('div');
+    companyEl.className   = 'lv-job-company';
+    companyEl.textContent = job.company;
+
+    const applyEl = document.createElement('div');
+    applyEl.className   = 'lv-job-apply';
+    // Individual listings say "Apply →"; search-result links say "Search results →"
+    applyEl.textContent = job.title.startsWith('Search:') ? 'Search results →' : 'Apply →';
+
+    card.appendChild(sourceEl);
+    card.appendChild(titleEl);
+    card.appendChild(companyEl);
+    card.appendChild(applyEl);
     grid.appendChild(card);
   });
 
