@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>How It's Built — Real Estate Crash Indicator | Eddie's App Hub</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Inter:wght@400;500;600&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../how-it-works.css">
+</head>
+<body>
+<a href="../index.html" style="position:fixed;top:12px;left:12px;z-index:9999;background:rgba(10,10,20,0.85);backdrop-filter:blur(6px);color:#4af7ff;border:1px solid #4af7ff;border-radius:20px;padding:6px 14px;font-family:sans-serif;font-size:13px;text-decoration:none;font-weight:600;">← App Hub</a>
+
+<div class="hiw-page">
+
+  <header class="hiw-header">
+    <div class="hiw-icon">📉</div>
+    <h1>Real Estate Crash Indicator — How It's Built</h1>
+    <p class="hiw-tagline">14 FRED economic indicators, z-scored against 20-year history, averaged into a composite risk gauge.</p>
+  </header>
+
+  <section class="hiw-section">
+    <h2>Overview</h2>
+    <p>
+      The Real Estate Crash Indicator is a static dashboard that visualizes housing market stress using 14 indicators sourced from the Federal Reserve Economic Data (FRED) database — things like the Case-Shiller home price index, the Fed Funds rate, mortgage rates, delinquency rates, and the unemployment rate. Each indicator is z-scored against its 20-year history to make different units comparable, then averaged into a single 0–100 composite risk score that rotates a semicircle gauge needle. The pre-fetched data lives in a static JSON file; no API calls happen at page load.
+    </p>
+  </section>
+
+  <section class="hiw-section">
+    <h2>Tech Stack</h2>
+    <div class="hiw-badges">
+      <span class="hiw-badge">HTML</span>
+      <span class="hiw-badge">CSS</span>
+      <span class="hiw-badge">JavaScript</span>
+      <span class="hiw-badge">FRED API</span>
+      <span class="hiw-badge">Canvas API</span>
+      <span class="hiw-badge">JSON</span>
+    </div>
+    <ul class="hiw-caption-list">
+      <li><strong>HTML</strong> — gauge canvas, indicator grid, detail modal, featured-rates strip</li>
+      <li><strong>CSS</strong> — dark card grid, risk-level color coding, modal overlay</li>
+      <li><strong>JavaScript</strong> — z-score math, gauge drawing, sparkline rendering, indicator cards, modal</li>
+      <li><strong>FRED API</strong> — used offline to download CSV history for each indicator; data is stored in <code>data.json</code></li>
+      <li><strong>Canvas API</strong> — the semicircle gauge and per-card sparkline history charts</li>
+      <li><strong>JSON</strong> — pre-fetched, pre-computed indicator data stored statically so the page loads with no network calls</li>
+    </ul>
+  </section>
+
+  <section class="hiw-section">
+    <h2>How Each Part Works</h2>
+
+    <div class="hiw-file-block">
+      <h3><code>data.json</code> — pre-computed indicator data</h3>
+      <p>
+        Each indicator entry contains the raw historical values, the pre-computed z-score, a risk score (0–100 mapped from the z-score), and the percentile rank. Computing this offline (in a script or spreadsheet) and baking it into JSON means the page has zero load-time API dependencies and no rate limit exposure.
+      </p>
+      <pre class="hiw-code">// Each indicator in data.json looks like this:
+{
+  "id": "mortgage_rate",
+  "name": "30-Year Fixed Mortgage Rate",
+  "current": 6.82,
+  "currentDate": "2025-04-01",
+  "unit": "%",
+  "zScore": 1.24,       // how many standard deviations above the 20-yr mean
+  "riskScore": 62,      // mapped to 0-100 for the gauge
+  "percentile": 78,     // where current value ranks in 20-yr history
+  "description": "...",
+  "history": [          // array of { date, value } for the sparkline
+    { "date": "2005-01-01", "value": 5.77 },
+    // ...
+  ]
+}</pre>
+    </div>
+
+    <div class="hiw-file-block">
+      <h3><code>app.js</code> — composite gauge drawing</h3>
+      <p>
+        The composite score (average of all indicator risk scores) controls the gauge needle. The gauge is a Canvas semicircle arc from π to 2π (left to right). The needle angle is computed as <code>π + (score / 100) × π</code>. The five colored background bands (green through red) give context for where the needle falls.
+      </p>
+      <pre class="hiw-code">function drawGauge(score) {
+    const ctx = document.getElementById('gauge').getContext('2d');
+    const cx = 175, cy = 170 * 0.92; // center of semicircle
+    const radius = 130;
+
+    // Five faint background color bands (green → yellow → orange → red)
+    const bands = [
+        { start: Math.PI,        end: Math.PI * 1.25, color: '#34d399' }, // low
+        { start: Math.PI * 1.25, end: Math.PI * 1.45, color: '#a3e635' },
+        { start: Math.PI * 1.45, end: Math.PI * 1.65, color: '#facc15' }, // moderate
+        { start: Math.PI * 1.65, end: Math.PI * 1.80, color: '#fb923c' },
+        { start: Math.PI * 1.80, end: Math.PI * 2,    color: '#ef4444' }, // critical
+    ];
+    bands.forEach(b => {
+        ctx.beginPath();
+        ctx.strokeStyle = b.color;
+        ctx.globalAlpha = 0.18;
+        ctx.lineWidth = 16;
+        ctx.arc(cx, cy, radius, b.start, b.end);
+        ctx.stroke();
+    });
+
+    // Active filled arc from 0 to score
+    const target = Math.PI + (score / 100) * Math.PI;
+    ctx.globalAlpha = 1;
+    ctx.strokeStyle = levelColor(score); // color matches risk level
+    ctx.arc(cx, cy, radius, Math.PI, target);
+    ctx.stroke();
+
+    // Needle line from center to arc edge
+    const nx = cx + Math.cos(target) * (radius - 4);
+    const ny = cy + Math.sin(target) * (radius - 4);
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.lineTo(nx, ny);
+    ctx.stroke();
+}</pre>
+    </div>
+
+    <div class="hiw-file-block">
+      <h3><code>app.js</code> — risk level mapping</h3>
+      <p>
+        Two simple helper functions convert a 0–100 score to a color and label. These are called throughout the app — on the gauge, on indicator cards, and in the detail modal — to keep all risk coloring consistent.
+      </p>
+      <pre class="hiw-code">function levelLabel(score) {
+    if (score == null) return 'Unknown';
+    if (score >= 80)   return 'Critical';
+    if (score >= 65)   return 'High';
+    if (score >= 45)   return 'Moderate';
+    if (score >= 25)   return 'Low';
+    return 'Minimal';
+}
+
+function levelColor(score) {
+    if (score == null) return '#5a607a';
+    if (score >= 80)   return '#ef4444';  // red
+    if (score >= 65)   return '#fb923c';  // orange
+    if (score >= 45)   return '#facc15';  // yellow
+    if (score >= 25)   return '#a3e635';  // lime
+    return '#34d399';                     // green
+}</pre>
+    </div>
+
+  </section>
+
+  <section class="hiw-section">
+    <h2>File Map</h2>
+    <pre class="hiw-file-map">real-estate-risk/
+├── index.html              ← gauge canvas, featured-rates strip, indicator grid, modal
+├── style.css               ← dark card grid, risk color classes, modal overlay styling
+├── app.js                  ← drawGauge, indicator cards, sparklines, modal, z-score display
+├── data.json               ← pre-fetched FRED data: history arrays, z-scores, risk scores
+└── indicators-content.js   ← long-form description text for each indicator's modal panel</pre>
+  </section>
+
+  <section class="hiw-section">
+    <h2>Replicate It Yourself</h2>
+    <ol class="hiw-steps">
+      <li>
+        <span>
+          <strong>Choose your indicators.</strong> Pick economic time series from <a href="https://fred.stlouisfed.org/" target="_blank" rel="noopener">FRED (Federal Reserve Economic Data)</a>. Good candidates for housing risk: Case-Shiller HPI, 30-yr mortgage rate, NAHB homebuilder sentiment, delinquency rate, foreclosure starts.
+        </span>
+      </li>
+      <li>
+        <span>
+          <strong>Download CSVs and compute z-scores.</strong> For each indicator, download the CSV. Compute <code>mean</code> and <code>stdDev</code> over your lookback window. The z-score for each observation is <code>(value - mean) / stdDev</code>. A z-score of +2 means 2 standard deviations above normal — historically elevated.
+        </span>
+      </li>
+      <li>
+        <span>
+          <strong>Map z-scores to a 0–100 risk scale.</strong> A simple linear mapping: clamp z-scores to the range [-2, +3], then scale to 0–100. Store the results in <code>data.json</code> alongside the history array for sparklines.
+        </span>
+      </li>
+      <li>
+        <span>
+          <strong>Draw the semicircle gauge with Canvas.</strong> Use <code>ctx.arc(cx, cy, radius, Math.PI, angle)</code> where <code>angle = Math.PI + (score/100) * Math.PI</code>. Draw a line from center to arc edge as the needle.
+          Reference: <a href="https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/arc" target="_blank" rel="noopener">MDN ctx.arc</a>.
+        </span>
+      </li>
+      <li>
+        <span>
+          <strong>Render sparklines.</strong> For each indicator card, draw a small canvas with a polyline of historical values. Normalize the y-axis to the min/max of that indicator's history.
+        </span>
+      </li>
+      <li>
+        <span>
+          <strong>Deploy to GitHub Pages.</strong> The data is static JSON so there are no server-side requirements. Push to <code>main</code>, go to repo Settings &rarr; Pages &rarr; Source: <em>Deploy from branch</em> &rarr; <code>main / (root)</code>.
+          Reference: <a href="https://docs.github.com/en/pages/getting-started-with-github-pages" target="_blank" rel="noopener">GitHub Pages docs</a>.
+        </span>
+      </li>
+    </ol>
+  </section>
+
+</div>
+</body>
+</html>

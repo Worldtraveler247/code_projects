@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>How It's Built — Async 3D Chess | Eddie's App Hub</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Inter:wght@400;500;600&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../how-it-works.css">
+</head>
+<body>
+<a href="../index.html" style="position:fixed;top:12px;left:12px;z-index:9999;background:rgba(10,10,20,0.85);backdrop-filter:blur(6px);color:#4af7ff;border:1px solid #4af7ff;border-radius:20px;padding:6px 14px;font-family:sans-serif;font-size:13px;text-decoration:none;font-weight:600;">← App Hub</a>
+
+<div class="hiw-page">
+
+  <header class="hiw-header">
+    <div class="hiw-icon">♟️</div>
+    <h1>Async 3D Chess — How It's Built</h1>
+    <p class="hiw-tagline">Fully playable chess with a 3D board, Firebase real-time sync, and orbit camera controls.</p>
+  </header>
+
+  <section class="hiw-section">
+    <h2>Overview</h2>
+    <p>
+      Async 3D Chess is a multiplayer chess game where two players can play asynchronously — they don't need to be online at the same time. The 3D board and Staunton-style pieces are rendered with Three.js entirely in the browser. chess.js handles move validation and game state so illegal moves are rejected client-side. Firebase Realtime Database stores the current board position as a FEN string; both browsers subscribe to the same database reference and update their 3D board whenever the other player moves. Players can orbit the camera, flip the board perspective, and enter their names persistently.
+    </p>
+  </section>
+
+  <section class="hiw-section">
+    <h2>Tech Stack</h2>
+    <div class="hiw-badges">
+      <span class="hiw-badge">HTML</span>
+      <span class="hiw-badge">CSS</span>
+      <span class="hiw-badge">JavaScript</span>
+      <span class="hiw-badge">Three.js</span>
+      <span class="hiw-badge">chess.js</span>
+      <span class="hiw-badge">Firebase Realtime Database</span>
+    </div>
+    <ul class="hiw-caption-list">
+      <li><strong>HTML</strong> — the Three.js canvas container, UI side panel with player names and move log</li>
+      <li><strong>CSS</strong> — dark panel layout, mobile-responsive side panel collapse</li>
+      <li><strong>JavaScript</strong> — Three.js scene setup, raycasting for click-to-move, Firebase listener, game logic</li>
+      <li><strong>Three.js</strong> — 3D renderer, camera, lighting, Staunton piece geometry (LatheGeometry), OrbitControls</li>
+      <li><strong>chess.js</strong> — move validation, FEN parsing, check/checkmate detection; no rendering</li>
+      <li><strong>Firebase Realtime Database</strong> — stores board FEN string; the <code>onValue</code> listener pushes updates to both browsers in real time</li>
+    </ul>
+  </section>
+
+  <section class="hiw-section">
+    <h2>How Each Part Works</h2>
+
+    <div class="hiw-file-block">
+      <h3><code>app.js</code> — Three.js scene initialization</h3>
+      <p>
+        At startup, the script creates a Three.js scene, perspective camera, WebGL renderer, and three-point studio lighting. OrbitControls are attached to the renderer's DOM element so the user can orbit, zoom, and pan with mouse or touch. The renderer is appended to a <code>&lt;div id="canvas-container"&gt;</code> and resizes with the window.
+      </p>
+      <pre class="hiw-code">// Scene, camera, renderer — the three required Three.js objects
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x08080c);
+scene.fog = new THREE.FogExp2(0x08080c, 0.016); // subtle depth fog
+
+const camera = new THREE.PerspectiveCamera(
+    44,                                      // field of view (degrees)
+    window.innerWidth / window.innerHeight,  // aspect ratio
+    0.1,                                     // near clip plane
+    100                                      // far clip plane
+);
+camera.position.set(0, 10, 11); // above and behind the board
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+// OrbitControls: lets the user rotate/zoom the camera with mouse or touch
+const controls = new THREE.OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;  // smooth inertia
+controls.dampingFactor = 0.07;
+controls.maxDistance = 22;
+controls.maxPolarAngle = Math.PI / 2.05; // prevent going below the board</pre>
+    </div>
+
+    <div class="hiw-file-block">
+      <h3><code>app.js</code> — Firebase real-time sync</h3>
+      <p>
+        After anonymous sign-in, <code>loadFromFirebase()</code> attaches a <code>firebase.database().ref('current_match').on('value', ...)</code> listener. This listener fires immediately with the current state and again whenever any client writes to that reference. When a player makes a move, <code>saveToFirebase()</code> writes the new FEN string, which triggers the other player's listener.
+      </p>
+      <pre class="hiw-code">function loadFromFirebase() {
+    if (typeof firebase === 'undefined' || firebase.apps.length === 0) return;
+
+    firebase.auth().onAuthStateChanged(user => {
+        if (!user) return;
+
+        // .on('value', ...) fires immediately AND on every future change
+        firebase.database().ref('current_match').on('value', snap => {
+            const data = snap.val();
+            if (!data) return;
+
+            if (data.fen && data.fen !== game.fen()) {
+                // Other player moved — load their position into chess.js
+                game.load(data.fen);
+                sync3DWithEngine();  // rebuild 3D piece meshes to match new FEN
+            } else {
+                updateStatus();      // same position — just refresh check/turn display
+            }
+        });
+    });
+}
+
+function saveToFirebase() {
+    if (!firebaseReady()) return;
+    firebase.database().ref('current_match').set({
+        fen:       game.fen(),       // chess.js board state as FEN string
+        nameWhite: document.getElementById('name-white').value.trim(),
+        nameBlack: document.getElementById('name-black').value.trim(),
+        timestamp: Date.now(),
+    });
+}</pre>
+    </div>
+
+    <div class="hiw-file-block">
+      <h3><code>app.js</code> — click-to-move with raycasting</h3>
+      <p>
+        Three.js uses a <code>Raycaster</code> to translate a mouse click (2D screen coordinates) into a 3D ray that intersects the board tiles. Each tile mesh has a <code>userData.square</code> string like <code>"e4"</code>. The first intersected tile with a square name is passed to <code>handleSquareClick()</code>, which delegates move validation to chess.js.
+      </p>
+      <pre class="hiw-code">const raycaster = new THREE.Raycaster();
+const mouse     = new THREE.Vector2();
+
+function pickSquare(clientX, clientY) {
+    // Convert screen pixels to normalized device coordinates (-1 to +1)
+    mouse.x =  (clientX / window.innerWidth)  * 2 - 1;
+    mouse.y = -(clientY / window.innerHeight) * 2 + 1;
+
+    raycaster.setFromCamera(mouse, camera);
+
+    // Check which board tiles the ray intersects
+    const hits = raycaster.intersectObjects(boardGroup.children, false);
+    const hit  = hits.find(i => i.object.userData.square); // find first tile with a square name
+    return hit ? hit.object.userData.square : null;        // returns "e4" or null
+}
+
+function handleSquareClick(square) {
+    if (!selectedSquare) {
+        const piece = game.get(square);
+        if (piece && piece.color === game.turn()) {
+            selectedSquare = square;
+            highlightLegalMoves(square); // gold highlight on selected, green on legal moves
+        }
+        return;
+    }
+    // Second click — try to make the move
+    const move = game.move({ from: selectedSquare, to: square, promotion: 'q' });
+    if (move) {
+        selectedSquare = null;
+        sync3DWithEngine();
+        saveToFirebase(); // broadcast to the other player
+    }
+}</pre>
+    </div>
+
+  </section>
+
+  <section class="hiw-section">
+    <h2>File Map</h2>
+    <pre class="hiw-file-map">3d-chess/
+├── index.html             ← canvas container, side panel (player names, move log, buttons)
+├── style.css              ← dark layout, side panel positioning, mobile collapse
+├── app.js                 ← Three.js scene, board/piece geometry, Firebase sync, raycasting
+└── database.rules.json    ← Firebase Realtime Database security rules (read/write for all)</pre>
+  </section>
+
+  <section class="hiw-section">
+    <h2>Replicate It Yourself</h2>
+    <ol class="hiw-steps">
+      <li>
+        <span>
+          <strong>Create a Firebase project.</strong> Go to <a href="https://console.firebase.google.com/" target="_blank" rel="noopener">Firebase Console</a>, create a project, add a web app, and enable Realtime Database (start in test mode for development). Copy the SDK config object.
+        </span>
+      </li>
+      <li>
+        <span>
+          <strong>Load Three.js and chess.js via CDN.</strong> In your HTML, add script tags for <code>three.min.js</code>, <code>OrbitControls.js</code>, and <code>chess.min.js</code> before your app script.
+          Reference: <a href="https://threejs.org/docs/" target="_blank" rel="noopener">Three.js docs</a>, <a href="https://github.com/jhlywa/chess.js" target="_blank" rel="noopener">chess.js GitHub</a>.
+        </span>
+      </li>
+      <li>
+        <span>
+          <strong>Build the board with BoxGeometry tiles.</strong> Create 64 <code>THREE.BoxGeometry(0.96, 0.18, 0.96)</code> meshes, position them in an 8×8 grid, and give each a <code>userData.square = "e4"</code> string for raycasting identification.
+        </span>
+      </li>
+      <li>
+        <span>
+          <strong>Use LatheGeometry for piece shapes.</strong> Define the profile of each Staunton piece as an array of <code>[radius, height]</code> control points. Pass them to <code>new THREE.LatheGeometry(points, 48)</code> to get a rotationally symmetric mesh.
+          Reference: <a href="https://threejs.org/docs/#api/en/geometries/LatheGeometry" target="_blank" rel="noopener">Three.js LatheGeometry</a>.
+        </span>
+      </li>
+      <li>
+        <span>
+          <strong>Wire Firebase sync.</strong> On move, call <code>firebase.database().ref('current_match').set({ fen: game.fen() })</code>. In <code>loadFromFirebase()</code>, attach <code>.on('value', snap =&gt; { game.load(snap.val().fen); rebuildPieces(); })</code>.
+          Reference: <a href="https://firebase.google.com/docs/database/web/read-and-write" target="_blank" rel="noopener">Firebase Realtime Database — Read and Write</a>.
+        </span>
+      </li>
+      <li>
+        <span>
+          <strong>Deploy to GitHub Pages</strong> (static files). The Firebase Spark (free) plan covers hobby use. Go to repo Settings &rarr; Pages &rarr; Source: <em>Deploy from branch</em> &rarr; <code>main / (root)</code>.
+          Reference: <a href="https://docs.github.com/en/pages/getting-started-with-github-pages" target="_blank" rel="noopener">GitHub Pages docs</a>.
+        </span>
+      </li>
+    </ol>
+  </section>
+
+</div>
+</body>
+</html>
