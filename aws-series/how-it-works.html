@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AWS in Practice — How It's Built</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Inter:wght@400;500;600&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../how-it-works.css">
+</head>
+<body>
+  <a href="../index.html" style="position:fixed;top:12px;left:12px;z-index:9999;background:rgba(10,10,20,0.85);backdrop-filter:blur(6px);color:#4af7ff;border:1px solid #4af7ff;border-radius:20px;padding:6px 14px;font-family:sans-serif;font-size:13px;text-decoration:none;font-weight:600;">← App Hub</a>
+  <div class="hiw-page">
+
+    <header class="hiw-header">
+      <div class="hiw-icon">☁️</div>
+      <h1>AWS in Practice — How It's Built</h1>
+      <p class="hiw-tagline">A 10-service static reference site: honest docs, runnable tutorials, three tracks side-by-side — Console, CLI, and Terraform.</p>
+    </header>
+
+    <!-- Overview -->
+    <section class="hiw-section">
+      <h2>Overview</h2>
+      <p>AWS in Practice is a static educational site hosted on GitHub Pages. Each of the 10 service pages follows the same layout: a plain-English overview of what the service does and who uses it, followed by a hands-on tutorial written in three parallel tracks so you can compare how the same operation looks in the AWS Console, the CLI, and Terraform. There is no backend, no build step — every page is hand-authored HTML/CSS/JS loaded directly by the browser. The goal is to give early-career cloud engineers a trustworthy, security-first reference that does not hide the tradeoffs.</p>
+    </section>
+
+    <!-- Tech Stack -->
+    <section class="hiw-section">
+      <h2>Tech Stack</h2>
+      <div class="hiw-badges">
+        <span class="hiw-badge">HTML</span>
+        <span class="hiw-badge">CSS</span>
+        <span class="hiw-badge">JavaScript</span>
+        <span class="hiw-badge">AWS</span>
+        <span class="hiw-badge">Terraform</span>
+        <span class="hiw-badge">GitHub Pages</span>
+      </div>
+      <ul class="hiw-caption-list">
+        <li><strong>HTML</strong> — every page is a standalone document; semantic structure (nav, main, section, figure) makes the content outline clear without JavaScript.</li>
+        <li><strong>CSS</strong> — a single shared stylesheet (<code>aws-hub.css</code>) drives the dark-navy theme, AWS-orange accents, service card grid, code blocks, and callout boxes across the whole series.</li>
+        <li><strong>JavaScript</strong> — <code>nav.js</code> handles three tasks: highlighting the active service in the top nav, attaching copy-to-clipboard buttons on every code block, and a scroll-reveal effect via IntersectionObserver.</li>
+        <li><strong>AWS</strong> — all CLI commands, policy JSON, and console steps come from real AWS documentation and are written to work against free-tier accounts.</li>
+        <li><strong>Terraform</strong> — HCL blocks in the tutorial pages reference the official Terraform AWS provider registry, so readers can paste them directly into a working configuration.</li>
+        <li><strong>GitHub Pages</strong> — zero-config static hosting; a push to main deploys in under a minute with no build pipeline required.</li>
+      </ul>
+    </section>
+
+    <!-- How Each Part Works -->
+    <section class="hiw-section">
+      <h2>How Each Part Works</h2>
+
+      <div class="hiw-file-block">
+        <h3><code>aws-series/index.html</code> — Hub landing page</h3>
+        <p>The hub is a single HTML file containing a 10-card service grid. Each card is an anchor element linking to the matching service subdirectory, with an icon, title, one-sentence description, and colored category tags. No JavaScript is needed to navigate — the browser follows standard links. The "How to use this series" section and prerequisites checklist live on this same page.</p>
+        <pre class="hiw-code">&lt;a href="ec2/index.html" class="svc-card reveal"&gt;
+  &lt;div class="svc-icon"&gt;🖥️&lt;/div&gt;
+  &lt;h3&gt;EC2&lt;/h3&gt;
+  &lt;p&gt;Elastic Compute Cloud — virtual servers you rent by the
+  second. The original AWS service and still the workhorse.&lt;/p&gt;
+  &lt;div class="svc-tags"&gt;
+    &lt;span class="svc-tag compute"&gt;Compute&lt;/span&gt;
+    &lt;span class="svc-tag"&gt;Foundational&lt;/span&gt;
+  &lt;/div&gt;
+&lt;/a&gt;</pre>
+      </div>
+
+      <div class="hiw-file-block">
+        <h3><code>ec2/index.html</code> — Service overview page</h3>
+        <p>Each service has an overview page and a separate tutorial page. The overview explains the service in plain English: what it is, who actually uses it, and honest tradeoffs versus alternatives. A small inline SVG serves as hero art — no external images to load. The page shares the same top nav as the hub via an identical HTML snippet and is styled identically by <code>aws-hub.css</code>.</p>
+      </div>
+
+      <div class="hiw-file-block">
+        <h3><code>iam/tutorial.html</code> — Three-track tutorial layout</h3>
+        <p>Tutorial pages use three labeled sections — Track A (Console), Track B (CLI), Track C (Terraform) — separated by visually distinct pill badges. Each track is a standard HTML section with an anchor ID so readers can link directly to the track they need. Code samples sit inside <code>.code-block &gt; pre</code> elements; <code>nav.js</code> attaches a Copy button to each one at runtime. The scroll-reveal uses IntersectionObserver: <code>.reveal</code> elements get a <code>visible</code> class when they enter the viewport, triggering a CSS fade-in.</p>
+        <pre class="hiw-code">// nav.js — copy-to-clipboard attached to every .code-block pre
+document.querySelectorAll('.code-block').forEach((block) =&gt; {
+  const pre = block.querySelector('pre');
+  if (!pre) return;
+  const btn = document.createElement('button');
+  btn.className = 'copy-btn';
+  btn.textContent = 'Copy';
+  btn.addEventListener('click', async () =&gt; {
+    try {
+      await navigator.clipboard.writeText(pre.innerText);
+      btn.textContent = 'Copied';
+      btn.classList.add('copied');
+      setTimeout(() =&gt; {
+        btn.textContent = 'Copy';
+        btn.classList.remove('copied');
+      }, 1600);
+    } catch {
+      // Fallback: select text so the user can copy manually
+      const range = document.createRange();
+      range.selectNodeContents(pre);
+      window.getSelection().removeAllRanges();
+      window.getSelection().addRange(range);
+      btn.textContent = 'Select all';
+    }
+  });
+  block.appendChild(btn);
+});
+
+// Scroll-reveal via IntersectionObserver
+const io = new IntersectionObserver(
+  (entries) =&gt; entries.forEach((e) =&gt; {
+    if (e.isIntersecting) {
+      e.target.classList.add('visible');
+      io.unobserve(e.target);
+    }
+  }),
+  { threshold: 0.12 }
+);
+document.querySelectorAll('.reveal').forEach((el) =&gt; io.observe(el));</pre>
+      </div>
+
+      <div class="hiw-file-block">
+        <h3><code>css/aws-hub.css</code> — Shared stylesheet</h3>
+        <p>One CSS file drives the entire series. It defines CSS custom properties for the AWS-orange brand color, navy backgrounds, and border tokens, then styles the nav, hero section, service card grid, CSS counter-increment step numbers, track-pill badges, callout boxes, and code blocks. Every page in the series references this file at <code>../css/aws-hub.css</code> (or <code>css/aws-hub.css</code> from the hub root).</p>
+      </div>
+
+      <div class="hiw-file-block">
+        <h3><code>js/nav.js</code> — Shared client-side helper</h3>
+        <p>A 65-line IIFE loaded by every page. It reads <code>document.body.dataset.svc</code> (e.g., <code>data-svc="ec2"</code> set on <code>&lt;body&gt;</code>) and adds an <code>active</code> class to the matching nav link — giving each service its own highlighted nav entry without any framework. Copy-to-clipboard and scroll-reveal run on the same load, keeping the interaction budget to one script file per page.</p>
+      </div>
+    </section>
+
+    <!-- File Map -->
+    <section class="hiw-section">
+      <h2>File Map</h2>
+      <pre class="hiw-file-map">aws-series/
+├── index.html              # Hub landing — 10-card service grid
+├── css/
+│   └── aws-hub.css         # Shared dark-navy stylesheet for the whole series
+├── js/
+│   └── nav.js              # Nav highlight + copy buttons + scroll-reveal
+├── ec2/
+│   ├── index.html          # EC2 overview (what / who / tradeoffs)
+│   └── tutorial.html       # Hands-on tutorial: Console / CLI / Terraform
+├── vpc/
+│   ├── index.html
+│   └── tutorial.html
+├── dynamodb/
+│   ├── index.html
+│   └── tutorial.html
+├── api-gateway/
+│   ├── index.html
+│   └── tutorial.html
+├── s3/
+│   ├── index.html
+│   └── tutorial.html
+├── iam/
+│   ├── index.html
+│   └── tutorial.html       # Least-privilege Lambda role — most complete tutorial
+├── lambda/
+│   ├── index.html
+│   └── tutorial.html
+├── kms/                    # Coming soon
+├── cloudfront/             # Coming soon
+└── basic-audit/            # Coming soon — capstone audit workflow</pre>
+    </section>
+
+    <!-- Replicate It Yourself -->
+    <section class="hiw-section">
+      <h2>Replicate It Yourself</h2>
+      <ol class="hiw-steps">
+        <li>Create a GitHub repo and enable Pages from the main branch. No build step — Pages serves HTML files directly at <code>https://&lt;user&gt;.github.io/&lt;repo&gt;/</code>.</li>
+        <li>Create a shared <code>css/theme.css</code> with CSS custom properties for your brand colors and a <code>js/nav.js</code> for shared interactivity. Reference them from every page using relative paths.</li>
+        <li>Build the hub <code>index.html</code> as a grid of anchor cards — one per service — each linking to <code>service-name/index.html</code>.</li>
+        <li>For each service, create an overview page and a tutorial page. Set <code>data-svc="service-name"</code> on <code>&lt;body&gt;</code> so the shared nav script can highlight the active entry.</li>
+        <li>Write tutorial content in three parallel sections (Console, CLI, Terraform). Source CLI flags from <code>aws help &lt;command&gt;</code> and Terraform blocks from <a href="https://registry.terraform.io/providers/hashicorp/aws/latest/docs" target="_blank" rel="noopener">registry.terraform.io</a>.</li>
+        <li>Wrap code samples in <code>&lt;div class="code-block"&gt;&lt;pre&gt;...&lt;/pre&gt;&lt;/div&gt;</code>. The shared <code>nav.js</code> will auto-attach a Copy button to every one on page load.</li>
+        <li>Push to main. GitHub Pages deploys within ~60 seconds. Verify with <code>curl -I https://&lt;user&gt;.github.io/&lt;repo&gt;/aws-series/</code>.</li>
+      </ol>
+    </section>
+
+  </div>
+</body>
+</html>

@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Stock Monitor — How It's Built</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Inter:wght@400;500;600&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../how-it-works.css">
+</head>
+<body>
+  <a href="../index.html" style="position:fixed;top:12px;left:12px;z-index:9999;background:rgba(10,10,20,0.85);backdrop-filter:blur(6px);color:#4af7ff;border:1px solid #4af7ff;border-radius:20px;padding:6px 14px;font-family:sans-serif;font-size:13px;text-decoration:none;font-weight:600;">← App Hub</a>
+  <div class="hiw-page">
+
+    <header class="hiw-header">
+      <div class="hiw-icon">📈</div>
+      <h1>Stock Monitor — How It's Built</h1>
+      <p class="hiw-tagline">A live Streamlit dashboard that fetches Yahoo Finance data, computes SMA and RSI, and surfaces buy alerts — all in a single Python file.</p>
+    </header>
+
+    <!-- Overview -->
+    <section class="hiw-section">
+      <h2>Overview</h2>
+      <p>Stock Monitor is a Streamlit web app written in about 750 lines of Python. It pulls live OHLCV data from Yahoo Finance via yfinance, computes two technical indicators (20-day simple moving average and 14-period RSI), and flags tickers that meet configurable buy-alert thresholds. The dashboard is organized into tabs for market sectors, an IPO watch list, an AI race tracker, and 2026–2027 revenue projections. Streamlit handles all the UI — widgets, layout, and re-renders — so there is no HTML, no JavaScript, and no separate frontend. The entire app is one file: <code>app.py</code>.</p>
+    </section>
+
+    <!-- Tech Stack -->
+    <section class="hiw-section">
+      <h2>Tech Stack</h2>
+      <div class="hiw-badges">
+        <span class="hiw-badge">Python</span>
+        <span class="hiw-badge">Streamlit</span>
+        <span class="hiw-badge">yfinance</span>
+        <span class="hiw-badge">Pandas</span>
+        <span class="hiw-badge">Altair</span>
+      </div>
+      <ul class="hiw-caption-list">
+        <li><strong>Python 3.12+</strong> — the only runtime; type hints on every function make the data flow easier to follow and catch type errors before they reach the UI.</li>
+        <li><strong>Streamlit</strong> — turns Python functions into interactive web components. Call <code>st.metric()</code>, <code>st.dataframe()</code>, or <code>st.altair_chart()</code> and Streamlit handles the DOM. Running <code>streamlit run app.py</code> is the entire deploy command locally.</li>
+        <li><strong>yfinance</strong> — a thin wrapper around Yahoo Finance's unofficial API. <code>yf.Ticker(symbol).history(period="3mo")</code> returns a Pandas DataFrame of OHLCV rows with no API key required.</li>
+        <li><strong>Pandas</strong> — used for all the indicator math: <code>rolling().mean()</code> for SMA, <code>diff()</code> and <code>ewm()</code> for Wilder's RSI, and <code>melt()</code> to reshape the revenue projection table for charting.</li>
+        <li><strong>Altair</strong> — a declarative charting library built on Vega-Lite. Used for the grouped horizontal bar chart in the revenue projections tab; <code>st.altair_chart()</code> renders it inside Streamlit.</li>
+      </ul>
+    </section>
+
+    <!-- How Each Part Works -->
+    <section class="hiw-section">
+      <h2>How Each Part Works</h2>
+
+      <div class="hiw-file-block">
+        <h3><code>app.py</code> — Data fetch with yfinance + SMA/RSI</h3>
+        <p>The core data loader is a cached function that iterates over the ticker watchlist. For each ticker it calls <code>yf.Ticker(t).history(period="3mo")</code> to get three months of daily closes, then computes the 20-day SMA with Pandas <code>rolling().mean()</code> and the RSI with a Wilder-smoothed exponential average. The <code>@st.cache_data(ttl=300)</code> decorator stores the result for 5 minutes so the app does not hammer the Yahoo Finance API on every UI interaction.</p>
+        <pre class="hiw-code">@st.cache_data(ttl=300, show_spinner=False)
+def load_market_data(tickers: tuple) -> list[dict]:
+    """Fetch OHLCV history for each ticker and compute SMA / RSI metrics."""
+    rows = []
+    for t in tickers:
+        try:
+            hist = yf.Ticker(t).history(period="3mo")
+            if hist.empty or len(hist) &lt; SMA_WIN + RSI_WIN + 2:
+                continue
+            c     = hist["Close"]
+            price = float(c.iloc[-1])
+            prev  = float(c.iloc[-2])
+            sma   = float(c.rolling(SMA_WIN).mean().iloc[-1])
+            rsi   = calc_rsi(c, RSI_WIN)
+            rows.append({
+                "ticker":  t,
+                "name":    COMPANY.get(t, t),
+                "price":   price,
+                "day_chg": (price - prev) / prev * 100,
+                "sma20":   sma,
+                "vs_sma":  (price - sma) / sma * 100,
+                "rsi":     rsi,
+                "_hist":   hist,
+            })
+        except Exception:
+            pass
+    return rows</pre>
+      </div>
+
+      <div class="hiw-file-block">
+        <h3><code>app.py</code> — Price metric cards with st.metric()</h3>
+        <p>After fetching data, the app renders one metric card per ticker using <code>st.metric()</code>. Streamlit lays out the cards in columns automatically when you call <code>st.columns(n)</code> and iterate over the result. The <code>delta</code> parameter makes Streamlit color the day-change value green or red automatically.</p>
+        <pre class="hiw-code">cols = st.columns(len(sorted_raw))
+for col, r in zip(cols, sorted_raw):
+    with col:
+        st.metric(
+            label=r["ticker"],
+            value=f"${r['price']:,.2f}" if r["ticker"] != "^VIX" else f"{r['price']:.2f}",
+            delta=f"{r['day_chg']:+.2f}%",
+        )</pre>
+      </div>
+
+      <div class="hiw-file-block">
+        <h3><code>app.py</code> — Wilder's RSI calculation</h3>
+        <p>RSI is computed with exponential moving averages rather than simple averages, matching the Wilder smoothing method used by most trading platforms. <code>clip(lower=0)</code> isolates gains, <code>clip(upper=0)</code> isolates losses (negated), then <code>ewm(alpha=1/period)</code> applies the decay. The final value is the classic <code>100 - 100 / (1 + RS)</code> formula.</p>
+        <pre class="hiw-code">def calc_rsi(close: pd.Series, period: int = 14) -> float:
+    """Wilder's smoothed RSI — returns the most-recent value."""
+    d  = close.diff()
+    ag = d.clip(lower=0).ewm(alpha=1 / period, adjust=False, min_periods=period).mean()
+    al = (-d.clip(upper=0)).ewm(alpha=1 / period, adjust=False, min_periods=period).mean()
+    rs = ag / al
+    return float((100 - 100 / (1 + rs)).iloc[-1])</pre>
+      </div>
+
+      <div class="hiw-file-block">
+        <h3><code>app.py</code> — Buy alert logic</h3>
+        <p>Alert thresholds are set by two sidebar sliders and evaluated in <code>annotate_signals()</code>. A ticker triggers a buy alert if its current price is more than <em>N</em>% below its 20-day SMA OR its RSI is below the oversold threshold. Both conditions are stored per-row so the UI can explain exactly which rule fired.</p>
+      </div>
+
+      <div class="hiw-file-block">
+        <h3><code>requirements.txt</code> — Dependencies</h3>
+        <p>Four runtime packages. No framework beyond Streamlit, no database, no backend server.</p>
+        <pre class="hiw-code">streamlit>=1.32.0
+yfinance>=0.2.40
+pandas>=2.1.0
+numpy>=1.24.0</pre>
+      </div>
+    </section>
+
+    <!-- File Map -->
+    <section class="hiw-section">
+      <h2>File Map</h2>
+      <pre class="hiw-file-map">stock-monitor/
+├── app.py            # Entire Streamlit app — data fetch, indicators, UI
+└── requirements.txt  # Runtime dependencies (streamlit, yfinance, pandas, numpy)</pre>
+    </section>
+
+    <!-- Replicate It Yourself -->
+    <section class="hiw-section">
+      <h2>Replicate It Yourself</h2>
+      <ol class="hiw-steps">
+        <li>Install dependencies: <code>pip install streamlit yfinance pandas altair</code></li>
+        <li>Fetch data with yfinance: <code>hist = yf.Ticker("AAPL").history(period="3mo")</code> — the result is a Pandas DataFrame of OHLCV rows indexed by date.</li>
+        <li>Compute the 20-day SMA: <code>hist["Close"].rolling(20).mean()</code> — Pandas handles the windowed average; the first 19 rows will be NaN until enough data accumulates.</li>
+        <li>Implement RSI using Wilder's smoothing: compute daily deltas with <code>diff()</code>, separate gains and losses with <code>clip()</code>, apply <code>ewm(alpha=1/14)</code> to each, then apply <code>100 - 100 / (1 + RS)</code>.</li>
+        <li>Add a buy-signal boolean column: <code>price &lt; sma * (1 - threshold)</code> or <code>rsi &lt; 30</code>.</li>
+        <li>Render metric cards: <code>st.columns(n)</code> + <code>st.metric(label, value, delta)</code> for each ticker. Add <code>st.altair_chart()</code> for the revenue bar chart.</li>
+        <li>Deploy for free on <a href="https://streamlit.io/cloud" target="_blank" rel="noopener">Streamlit Community Cloud</a>: connect your GitHub repo, point it at <code>app.py</code>, and it runs at a public URL within minutes.</li>
+      </ol>
+    </section>
+
+  </div>
+</body>
+</html>
