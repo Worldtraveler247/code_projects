@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>How It's Built — Galactic Guardian | Eddie's App Hub</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Inter:wght@400;500;600&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../how-it-works.css">
+</head>
+<body>
+<a href="../index.html" style="position:fixed;top:12px;left:12px;z-index:9999;background:rgba(10,10,20,0.85);backdrop-filter:blur(6px);color:#4af7ff;border:1px solid #4af7ff;border-radius:20px;padding:6px 14px;font-family:sans-serif;font-size:13px;text-decoration:none;font-weight:600;">← App Hub</a>
+
+<div class="hiw-page">
+
+  <header class="hiw-header">
+    <div class="hiw-icon">🚀</div>
+    <h1>Galactic Guardian — How It's Built</h1>
+    <p class="hiw-tagline">Neon space shooter with enemy waves, particle effects, and mobile joystick controls.</p>
+  </header>
+
+  <section class="hiw-section">
+    <h2>Overview</h2>
+    <p>
+      Galactic Guardian is a horizontal space shooter built entirely with vanilla JavaScript and the HTML5 Canvas API. The player controls a spacecraft that fires projectiles at advancing enemy waves. As enemies die they drop power-ups that alter fire behavior. A boss enemy spawns at score milestones. On mobile, a virtual joystick and fire button replace keyboard controls. Everything — entities, projectiles, particles, stars, UI — is drawn by a single <code>requestAnimationFrame</code> loop.
+    </p>
+  </section>
+
+  <section class="hiw-section">
+    <h2>Tech Stack</h2>
+    <div class="hiw-badges">
+      <span class="hiw-badge">HTML</span>
+      <span class="hiw-badge">CSS</span>
+      <span class="hiw-badge">JavaScript</span>
+      <span class="hiw-badge">Canvas API</span>
+    </div>
+    <ul class="hiw-caption-list">
+      <li><strong>HTML</strong> — a single <code>&lt;canvas&gt;</code> element plus mobile control overlays</li>
+      <li><strong>CSS</strong> — fullscreen layout, mobile joystick/button positioning</li>
+      <li><strong>JavaScript</strong> — all game logic: class-based entities, game loop, spawn schedules, input handling</li>
+      <li><strong>Canvas API</strong> — every visual element is drawn with 2D context calls; no DOM sprites</li>
+    </ul>
+  </section>
+
+  <section class="hiw-section">
+    <h2>How Each Part Works</h2>
+
+    <div class="hiw-file-block">
+      <h3><code>game.js</code> — entity classes</h3>
+      <p>
+        The game uses a class-based entity model. Each entity type (Player, Enemy, Boss, Projectile, PowerUp, Particle, Star) is a class with <code>update(deltaTime)</code> and <code>draw()</code> methods. The main loop calls <code>update</code> and <code>draw</code> on all active entities each frame.
+      </p>
+      <pre class="hiw-code">class Player {
+    constructor() {
+        this.x = 50;
+        this.y = CANVAS_HEIGHT / 2 - 20;
+        this.width = 60;
+        this.height = 40;
+        this.speed = 6;
+        this.health = 100;
+        this.shotDelay = 180;  // ms between shots
+        this.powerUpType = null;
+        this.powerUpTimer = 0;
+    }
+
+    update(deltaTime) {
+        // Arrow keys OR joystick vector both move the player
+        if (KEYS['ArrowUp'] || KEYS['KeyW']) this.y -= this.speed;
+        if (KEYS['ArrowDown'] || KEYS['KeyS']) this.y += this.speed;
+        this.x += joystickVector.x * this.speed;
+        this.y += joystickVector.y * this.speed;
+
+        // Clamp to canvas bounds
+        this.x = Math.max(0, Math.min(CANVAS_WIDTH - this.width, this.x));
+        this.y = Math.max(0, Math.min(CANVAS_HEIGHT - this.height, this.y));
+
+        // Auto-fire on Space or fire button
+        if (KEYS['Space'] && Date.now() - this.lastShot > this.shotDelay) {
+            this.shoot();
+            this.lastShot = Date.now();
+        }
+    }
+}</pre>
+    </div>
+
+    <div class="hiw-file-block">
+      <h3><code>game.js</code> — requestAnimationFrame loop</h3>
+      <p>
+        The game loop receives a high-resolution timestamp from the browser. It computes <code>deltaTime</code> (time since last frame) and passes it to every entity's <code>update</code> method so physics are frame-rate independent. After all updates, it draws everything in z-order (stars first, entities last, UI on top).
+      </p>
+      <pre class="hiw-code">function gameLoop(timestamp) {
+    const deltaTime = timestamp - lastTime;  // ms since last frame
+    lastTime = timestamp;
+
+    ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+
+    if (gameState === 'PLAYING') {
+        // Update all entities — each manages its own position/lifetime
+        stars.forEach(s => s.update());
+        particles = particles.filter(p => { p.update(); return p.life > 0; });
+        if (player) player.update(deltaTime);
+        enemies.forEach(e => e.update(deltaTime));
+        projectiles.forEach(p => p.update());
+        powerUps.forEach(p => p.update());
+
+        checkCollisions();  // O(n×m) sweep — workable at game entity counts
+        spawnEnemies(deltaTime);
+    }
+
+    // Draw everything (back to front)
+    stars.forEach(s => s.draw());
+    particles.forEach(p => p.draw());
+    powerUps.forEach(p => p.draw());
+    projectiles.forEach(p => p.draw());
+    enemies.forEach(e => e.draw());
+    if (player) player.draw();
+    drawHUD();
+
+    requestAnimationFrame(gameLoop);
+}</pre>
+    </div>
+
+    <div class="hiw-file-block">
+      <h3><code>game.js</code> — mobile joystick</h3>
+      <p>
+        On touch devices, a virtual joystick div appears. Touch events track the finger's position relative to the joystick center, clamp the displacement to a maximum radius, then compute a normalized <code>joystickVector {x, y}</code> that the player's <code>update()</code> reads instead of keyboard state. This vector is reset to <code>{0, 0}</code> on <code>touchend</code>.
+      </p>
+      <pre class="hiw-code">function updateJoystick(touch) {
+    const centerX = joystickBaseRect.left + joystickBaseRect.width / 2;
+    const centerY = joystickBaseRect.top + joystickBaseRect.height / 2;
+    let dx = touch.clientX - centerX;
+    let dy = touch.clientY - centerY;
+
+    const distance = Math.hypot(dx, dy);
+    const maxDistance = joystickBaseRect.width / 2;
+
+    // Clamp displacement to the joystick radius
+    if (distance > maxDistance) {
+        dx = (dx / distance) * maxDistance;
+        dy = (dy / distance) * maxDistance;
+    }
+
+    // Normalize to -1..1 so the player moves at full speed at the joystick edge
+    joystickVector.x = dx / maxDistance;
+    joystickVector.y = dy / maxDistance;
+
+    // Move the knob visually
+    joystickKnob.style.left = `calc(50% + ${dx}px)`;
+    joystickKnob.style.top  = `calc(50% + ${dy}px)`;
+}</pre>
+    </div>
+
+  </section>
+
+  <section class="hiw-section">
+    <h2>File Map</h2>
+    <pre class="hiw-file-map">space-shooter/
+├── index.html   ← canvas, start/game-over overlays, mobile joystick and fire button divs
+├── style.css    ← fullscreen layout, joystick centering, HUD font, mobile button styling
+└── game.js      ← entity classes, game loop, collision, spawn schedule, input handling</pre>
+  </section>
+
+  <section class="hiw-section">
+    <h2>Replicate It Yourself</h2>
+    <ol class="hiw-steps">
+      <li>
+        <span>
+          <strong>Create a fullscreen canvas.</strong> Set <code>canvas.width = 900; canvas.height = 600</code> and style it with <code>display:block; margin:0 auto</code>.
+          Reference: <a href="https://developer.mozilla.org/en-US/docs/Web/API/Canvas_API" target="_blank" rel="noopener">MDN Canvas API</a>.
+        </span>
+      </li>
+      <li>
+        <span>
+          <strong>Model entities as classes.</strong> Each entity has <code>x, y, width, height</code> and <code>update(dt)</code> / <code>draw()</code> methods. Store them in arrays: <code>enemies = [], projectiles = [], particles = []</code>.
+        </span>
+      </li>
+      <li>
+        <span>
+          <strong>Run the game loop with <code>requestAnimationFrame</code>.</strong> Compute <code>deltaTime = timestamp - lastTime</code> each frame and pass it to entity updates so movement is frame-rate independent.
+          Reference: <a href="https://developer.mozilla.org/en-US/docs/Web/API/window/requestAnimationFrame" target="_blank" rel="noopener">MDN requestAnimationFrame</a>.
+        </span>
+      </li>
+      <li>
+        <span>
+          <strong>Add touch controls.</strong> Detect <code>'ontouchstart' in window</code> to show the joystick overlay. On <code>touchstart</code>, record the base position. On <code>touchmove</code>, compute the displacement vector and normalize it to -1..1. Pass this vector to the player's <code>update()</code> alongside keyboard state.
+        </span>
+      </li>
+      <li>
+        <span>
+          <strong>Check collisions.</strong> For each projectile, loop over each enemy and test <code>Math.hypot(proj.x - enemy.x, proj.y - enemy.y) &lt; proj.r + enemy.r</code>. Spawn particles at the impact point and remove both entities.
+        </span>
+      </li>
+      <li>
+        <span>
+          <strong>Deploy to GitHub Pages.</strong> Push to <code>main</code>, go to repo Settings &rarr; Pages &rarr; Source: <em>Deploy from branch</em> &rarr; <code>main / (root)</code>.
+          Reference: <a href="https://docs.github.com/en/pages/getting-started-with-github-pages" target="_blank" rel="noopener">GitHub Pages docs</a>.
+        </span>
+      </li>
+    </ol>
+  </section>
+
+</div>
+</body>
+</html>

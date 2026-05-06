@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>How It's Built — Galactic Runner | Eddie's App Hub</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Inter:wght@400;500;600&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../how-it-works.css">
+</head>
+<body>
+<a href="../index.html" style="position:fixed;top:12px;left:12px;z-index:9999;background:rgba(10,10,20,0.85);backdrop-filter:blur(6px);color:#4af7ff;border:1px solid #4af7ff;border-radius:20px;padding:6px 14px;font-family:sans-serif;font-size:13px;text-decoration:none;font-weight:600;">← App Hub</a>
+
+<div class="hiw-page">
+
+  <header class="hiw-header">
+    <div class="hiw-icon">🌌</div>
+    <h1>Galactic Runner — How It's Built</h1>
+    <p class="hiw-tagline">Twilight side-scrolling platformer with parallax mountains, gravity physics, and neon platforms.</p>
+  </header>
+
+  <section class="hiw-section">
+    <h2>Overview</h2>
+    <p>
+      Galactic Runner is a horizontal platformer built in pure JavaScript and Canvas. The player runs through two procedurally themed stages, jumping between floating neon platforms while avoiding patrol and flying enemies. The background uses a three-layer parallax effect — stars, back mountains, front mountains — each scrolling at a different rate to create depth. Gravity and jump physics are implemented from scratch with per-frame velocity accumulation. Mobile players get a pointer-based joystick and jump button.
+    </p>
+  </section>
+
+  <section class="hiw-section">
+    <h2>Tech Stack</h2>
+    <div class="hiw-badges">
+      <span class="hiw-badge">HTML</span>
+      <span class="hiw-badge">CSS</span>
+      <span class="hiw-badge">JavaScript</span>
+      <span class="hiw-badge">Canvas API</span>
+    </div>
+    <ul class="hiw-caption-list">
+      <li><strong>HTML</strong> — one <code>&lt;canvas&gt;</code> element, mobile control overlays, HUD divs</li>
+      <li><strong>CSS</strong> — responsive canvas scaling, joystick and jump button layout</li>
+      <li><strong>JavaScript</strong> — gravity physics, parallax scrolling, platform collision, enemy AI, coin collection</li>
+      <li><strong>Canvas API</strong> — all rendering: backgrounds, platforms, player, enemies, particles, HUD</li>
+    </ul>
+  </section>
+
+  <section class="hiw-section">
+    <h2>How Each Part Works</h2>
+
+    <div class="hiw-file-block">
+      <h3><code>game.js</code> — gravity and jump physics</h3>
+      <p>
+        The player has a vertical velocity <code>vy</code>. Every frame, <code>GRAVITY</code> (0.55 px/frame²) is added to <code>vy</code>, pulling the player down. On jump, <code>vy</code> is set to a large negative value (upward). When the player's feet touch a platform, <code>vy</code> is zeroed and <code>grounded</code> is set to true. This simple model produces believable arcing jumps.
+      </p>
+      <pre class="hiw-code">const GRAVITY  = 0.55;  // px added to vy every frame
+const FRICTION = 0.82;  // horizontal slowdown when no key held
+
+// Inside the player update loop each frame:
+player.vy += GRAVITY;         // gravity accumulates downward velocity
+player.y  += player.vy;      // apply velocity to position
+player.vx *= FRICTION;        // friction decelerates horizontal movement
+player.x  += player.vx;
+
+// jump() is called on Space / ArrowUp / jump button press:
+function jump() {
+    if (!player.jumping && player.grounded) {
+        player.jumping = true;
+        player.grounded = false;
+        player.vy = -player.speed * 2.9;  // large negative vy = upward launch
+    }
+}</pre>
+    </div>
+
+    <div class="hiw-file-block">
+      <h3><code>game.js</code> — parallax background layers</h3>
+      <p>
+        Three background layers — stars, back mountains, front mountains — each have a scroll speed proportional to their "distance." Stars scroll at 12%, back mountains at 20%, front mountains at 35% of the camera speed. Each layer is drawn translated by <code>-cameraX × speed</code>, creating the illusion of depth without 3D rendering.
+      </p>
+      <pre class="hiw-code">// Camera follows the player: cameraX = player.x - canvas.width * 0.25
+// Parallax: each layer moves at a fraction of the camera speed
+
+function drawStars(cameraX) {
+    stars.forEach(s => {
+        // Stars at 12% speed appear very far away
+        const sx = ((s.x - cameraX * 0.12) % WORLD_W + WORLD_W) % WORLD_W;
+        ctx.beginPath();
+        ctx.arc(sx, s.y, s.r, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(255,255,255,${0.3 + 0.5 * Math.sin(t * s.speed + s.phase)})`;
+        ctx.fill();
+    });
+}
+
+function drawMtnBack(cameraX) {
+    mtnBack.forEach(m => {
+        // Back mountains at 20% speed — closer than stars
+        const mx = ((m.x - cameraX * 0.20) % WORLD_W + WORLD_W) % WORLD_W;
+        ctx.beginPath();
+        ctx.moveTo(mx, canvas.height);
+        ctx.lineTo(mx + 60, canvas.height - m.h);
+        ctx.lineTo(mx + 120, canvas.height);
+        ctx.fillStyle = stage.mtnBackCol;
+        ctx.fill();
+    });
+}</pre>
+    </div>
+
+    <div class="hiw-file-block">
+      <h3><code>game.js</code> — platform collision</h3>
+      <p>
+        Platform collision uses an AABB (axis-aligned bounding box) overlap test. The key insight is checking the previous Y position to determine which face the player hit — only landing on the top of a platform sets <code>grounded</code>, preventing the player from sticking to the side or bottom.
+      </p>
+      <pre class="hiw-code">function overlap(ax, ay, aw, ah, bx, by, bw, bh) {
+    return ax < bx + bw && ax + aw > bx && ay < by + bh && ay + ah > by;
+}
+
+stage.platforms.forEach(plat => {
+    if (overlap(player.x, player.y, player.w, player.h,
+                plat.x, plat.y, plat.w, plat.h)) {
+        // Only land on top if player was above the platform last frame
+        // (prevY + player.h <= plat.y) means feet were above the platform top
+        if (player.vy >= 0 && prevY + player.h <= plat.y + 4) {
+            player.y      = plat.y - player.h;  // snap feet to platform top
+            player.vy     = 0;
+            player.jumping  = false;
+            player.grounded = true;
+        }
+    }
+});</pre>
+    </div>
+
+  </section>
+
+  <section class="hiw-section">
+    <h2>File Map</h2>
+    <pre class="hiw-file-map">mario-style/
+├── index.html   ← canvas, HUD divs, mobile joystick zone and jump button
+├── style.css    ← responsive canvas scaling, mobile control layout
+└── game.js      ← all game code: STAGE_DATA, physics, parallax, collision, draw, input</pre>
+  </section>
+
+  <section class="hiw-section">
+    <h2>Replicate It Yourself</h2>
+    <ol class="hiw-steps">
+      <li>
+        <span>
+          <strong>Create a canvas and a responsive resize function.</strong> Set a fixed logical size (e.g., 480×310) and use CSS to scale it to the viewport with <code>canvas.style.width</code>. Call <code>fitCanvas()</code> on <code>window.resize</code>.
+          Reference: <a href="https://developer.mozilla.org/en-US/docs/Web/API/Canvas_API" target="_blank" rel="noopener">MDN Canvas API</a>.
+        </span>
+      </li>
+      <li>
+        <span>
+          <strong>Build the player object with <code>vy</code>.</strong> Start with <code>player = { x, y, vx: 0, vy: 0, grounded: false }</code>. Each frame: <code>vy += GRAVITY</code>, <code>y += vy</code>. For jump: if <code>grounded</code>, set <code>vy = -jumpStrength</code>.
+        </span>
+      </li>
+      <li>
+        <span>
+          <strong>Implement three parallax background layers.</strong> Store stars, back mountains, and front mountains in separate arrays. Draw each at <code>x - cameraX × layerSpeed</code>, using modulo wrapping to tile infinitely.
+        </span>
+      </li>
+      <li>
+        <span>
+          <strong>Draw back-to-front.</strong> Render in this order: sky gradient, stars, back mountains, front mountains, platforms, coins, enemies, player, HUD. This prevents foreground elements from being covered by background layers.
+        </span>
+      </li>
+      <li>
+        <span>
+          <strong>Add platform collision with face detection.</strong> Track the player's Y position from the previous frame. In the overlap test, only set <code>grounded = true</code> and snap Y if the player was above the platform top in the previous frame.
+        </span>
+      </li>
+      <li>
+        <span>
+          <strong>Deploy to GitHub Pages.</strong> Push to <code>main</code>, go to repo Settings &rarr; Pages &rarr; Source: <em>Deploy from branch</em> &rarr; <code>main / (root)</code>.
+          Reference: <a href="https://docs.github.com/en/pages/getting-started-with-github-pages" target="_blank" rel="noopener">GitHub Pages docs</a>.
+        </span>
+      </li>
+    </ol>
+  </section>
+
+</div>
+</body>
+</html>
