@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>How It's Built — Dashboard | Eddie's App Hub</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Inter:wght@400;500;600&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../how-it-works.css">
+</head>
+<body>
+<a href="../index.html" style="position:fixed;top:12px;left:12px;z-index:9999;background:rgba(10,10,20,0.85);backdrop-filter:blur(6px);color:#4af7ff;border:1px solid #4af7ff;border-radius:20px;padding:6px 14px;font-family:sans-serif;font-size:13px;text-decoration:none;font-weight:600;">← App Hub</a>
+
+<div class="hiw-page">
+
+  <header class="hiw-header">
+    <div class="hiw-icon">📊</div>
+    <h1>Dashboard — How It's Built</h1>
+    <p class="hiw-tagline">Live clock, real-time weather via Open-Meteo, and a background color switcher — no API key required.</p>
+  </header>
+
+  <section class="hiw-section">
+    <h2>Overview</h2>
+    <p>
+      The Dashboard is a browser-based productivity widget that shows a live digital clock with a time-of-day greeting, and pulls the current weather for the user's GPS location using the Open-Meteo API — a completely free weather API that requires no signup or API key. A background color button cycles through four dark gradient themes. The entire app is three files and no build step.
+    </p>
+  </section>
+
+  <section class="hiw-section">
+    <h2>Tech Stack</h2>
+    <div class="hiw-badges">
+      <span class="hiw-badge">HTML</span>
+      <span class="hiw-badge">CSS</span>
+      <span class="hiw-badge">JavaScript</span>
+      <span class="hiw-badge">Open-Meteo API</span>
+      <span class="hiw-badge">Geolocation API</span>
+    </div>
+    <ul class="hiw-caption-list">
+      <li><strong>HTML</strong> — semantic layout: clock display, greeting text, weather card, color-change button</li>
+      <li><strong>CSS</strong> — dark gradient background, centered card layout, clock font styling</li>
+      <li><strong>JavaScript</strong> — clock interval, geolocation request, Open-Meteo fetch, WMO weather code mapping</li>
+      <li><strong>Open-Meteo API</strong> — free, no-key weather API that returns current conditions given latitude/longitude</li>
+      <li><strong>Geolocation API</strong> — browser API that asks the user to share their location, returning lat/lon coordinates</li>
+    </ul>
+  </section>
+
+  <section class="hiw-section">
+    <h2>How Each Part Works</h2>
+
+    <div class="hiw-file-block">
+      <h3><code>script.js</code> — clock and greeting</h3>
+      <p>
+        <code>updateClock()</code> creates a new <code>Date</code> object every second, formats hours/minutes/seconds with zero-padding, and updates the DOM. It also sets a greeting string based on the hour — morning, afternoon, or evening. <code>setInterval(updateClock, 1000)</code> starts the loop, and <code>updateClock()</code> is called immediately so the clock shows the right time before the first tick.
+      </p>
+      <pre class="hiw-code">function updateClock() {
+    const now     = new Date();
+    const hours   = String(now.getHours()).padStart(2, '0');   // "09"
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    const seconds = String(now.getSeconds()).padStart(2, '0');
+
+    document.getElementById('clock').textContent = `${hours}:${minutes}:${seconds}`;
+
+    // Greeting changes based on hour of day
+    const greetingElement = document.getElementById('greeting');
+    if (hours < 12)      greetingElement.textContent = "Good Morning!";
+    else if (hours < 18) greetingElement.textContent = "Good Afternoon!";
+    else                 greetingElement.textContent = "Good Evening!";
+}
+
+setInterval(updateClock, 1000);
+updateClock();  // call immediately — don't wait 1s for first display</pre>
+    </div>
+
+    <div class="hiw-file-block">
+      <h3><code>script.js</code> — geolocation + Open-Meteo fetch</h3>
+      <p>
+        <code>fetchWeather()</code> first asks the browser for the user's GPS coordinates via <code>navigator.geolocation.getCurrentPosition()</code>. Inside the success callback, it builds an Open-Meteo URL with those coordinates and calls <code>fetch()</code>. The response JSON contains a <code>current_weather</code> object with temperature and a WMO weather code that maps to a human-readable description.
+      </p>
+      <pre class="hiw-code">async function fetchWeather() {
+    if (!navigator.geolocation) {
+        document.getElementById('weather-loading').textContent = "Geolocation not supported";
+        return;
+    }
+
+    navigator.geolocation.getCurrentPosition(async (position) => {
+        const { latitude, longitude } = position.coords;
+        try {
+            // Open-Meteo: free, no API key, no account needed
+            const url = `https://api.open-meteo.com/v1/forecast`
+                      + `?latitude=${latitude}&longitude=${longitude}`
+                      + `&current_weather=true`;
+            const response = await fetch(url);
+            const data     = await response.json();
+
+            const weather = data.current_weather;
+            document.getElementById('temp').textContent = Math.round(weather.temperature);
+            document.getElementById('weather-desc').textContent =
+                getWeatherDescription(weather.weathercode); // WMO code → text
+
+            document.getElementById('weather-loading').classList.add('hidden');
+            document.getElementById('weather-info').classList.remove('hidden');
+        } catch (error) {
+            document.getElementById('weather-loading').textContent = "Error loading weather";
+        }
+    }, (error) => {
+        document.getElementById('weather-loading').textContent = "Location access denied";
+    });
+}
+
+fetchWeather(); // call on page load</pre>
+    </div>
+
+    <div class="hiw-file-block">
+      <h3><code>script.js</code> — WMO weather code mapping</h3>
+      <p>
+        The Open-Meteo API returns a WMO (World Meteorological Organization) numeric code for current conditions. <code>getWeatherDescription()</code> maps those codes to plain-English strings. This avoids the need for a weather icon library while still giving useful descriptions.
+      </p>
+      <pre class="hiw-code">function getWeatherDescription(code) {
+    const descriptions = {
+        0:  "Clear sky",
+        1: "Mainly clear", 2: "Partly cloudy", 3: "Overcast",
+        45: "Fog",         48: "Depositing rime fog",
+        51: "Light drizzle", 53: "Moderate drizzle", 55: "Dense drizzle",
+        61: "Slight rain",   63: "Moderate rain",    65: "Heavy rain",
+        71: "Slight snow",   73: "Moderate snow",    75: "Heavy snow",
+        95: "Thunderstorm"
+    };
+    return descriptions[code] || "Variable conditions";
+}</pre>
+    </div>
+
+  </section>
+
+  <section class="hiw-section">
+    <h2>File Map</h2>
+    <pre class="hiw-file-map">my-dashboard/
+├── index.html   ← semantic layout: clock, greeting, weather card, color-change button
+├── style.css    ← dark gradient background, card layout, clock font sizing
+└── script.js    ← updateClock, fetchWeather, getWeatherDescription, changeColor</pre>
+  </section>
+
+  <section class="hiw-section">
+    <h2>Replicate It Yourself</h2>
+    <ol class="hiw-steps">
+      <li>
+        <span>
+          <strong>Build the HTML structure.</strong> You need at minimum: a <code>&lt;span id="clock"&gt;</code>, a <code>&lt;p id="greeting"&gt;</code>, and a weather section with a loading state and a hidden info state that shows once the fetch resolves.
+        </span>
+      </li>
+      <li>
+        <span>
+          <strong>Add the clock.</strong> In JS, call <code>new Date()</code> and format <code>getHours()</code>, <code>getMinutes()</code>, <code>getSeconds()</code> with <code>String.padStart(2, '0')</code>. Wrap this in a function and call it with <code>setInterval(fn, 1000)</code>.
+          Reference: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date" target="_blank" rel="noopener">MDN Date</a>.
+        </span>
+      </li>
+      <li>
+        <span>
+          <strong>Request location.</strong> Call <code>navigator.geolocation.getCurrentPosition(successCallback, errorCallback)</code>. The success callback receives a <code>position</code> object with <code>coords.latitude</code> and <code>coords.longitude</code>.
+          Reference: <a href="https://developer.mozilla.org/en-US/docs/Web/API/Geolocation_API" target="_blank" rel="noopener">MDN Geolocation API</a>.
+        </span>
+      </li>
+      <li>
+        <span>
+          <strong>Call Open-Meteo.</strong> Inside the success callback, <code>fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true`)</code> and <code>.then(r =&gt; r.json())</code>. No API key needed.
+          Reference: <a href="https://open-meteo.com/en/docs" target="_blank" rel="noopener">Open-Meteo API docs</a>.
+        </span>
+      </li>
+      <li>
+        <span>
+          <strong>Map WMO weather codes to text.</strong> Build a simple <code>{ code: "description" }</code> object and look up <code>data.current_weather.weathercode</code> in it. Handle missing codes with a fallback string.
+          Reference: <a href="https://open-meteo.com/en/docs#weathervariables" target="_blank" rel="noopener">WMO weather interpretation codes</a>.
+        </span>
+      </li>
+      <li>
+        <span>
+          <strong>Deploy to GitHub Pages.</strong> Push to <code>main</code>, go to repo Settings &rarr; Pages &rarr; Source: <em>Deploy from branch</em> &rarr; <code>main / (root)</code>.
+          Reference: <a href="https://docs.github.com/en/pages/getting-started-with-github-pages" target="_blank" rel="noopener">GitHub Pages docs</a>.
+        </span>
+      </li>
+    </ol>
+  </section>
+
+</div>
+</body>
+</html>
