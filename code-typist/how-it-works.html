@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>How It's Built — Code Typist | Eddie's App Hub</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Inter:wght@400;500;600&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../how-it-works.css">
+</head>
+<body>
+<a href="../index.html" style="position:fixed;top:12px;left:12px;z-index:9999;background:rgba(10,10,20,0.85);backdrop-filter:blur(6px);color:#4af7ff;border:1px solid #4af7ff;border-radius:20px;padding:6px 14px;font-family:sans-serif;font-size:13px;text-decoration:none;font-weight:600;">← App Hub</a>
+
+<div class="hiw-page">
+
+  <header class="hiw-header">
+    <div class="hiw-icon">⌨️</div>
+    <h1>Code Typist — How It's Built</h1>
+    <p class="hiw-tagline">A typing tutor for Go, Python, and Bash — with a live on-screen keyboard and finger hints.</p>
+  </header>
+
+  <section class="hiw-section">
+    <h2>Overview</h2>
+    <p>
+      Code Typist is a browser-based typing tutor that trains you on real, idiomatic code snippets in Go, Python, and Bash — the three languages most useful for cloud security work. As you type, the on-screen keyboard lights up the next target key in cyan and neon line-art hand diagrams highlight which finger to use, so you build proper touch-typing habits while learning syntax at the same time. There is no backend, no build step, and no dependencies beyond the browser.
+    </p>
+  </section>
+
+  <section class="hiw-section">
+    <h2>Tech Stack</h2>
+    <div class="hiw-badges">
+      <span class="hiw-badge">HTML</span>
+      <span class="hiw-badge">CSS</span>
+      <span class="hiw-badge">JavaScript</span>
+      <span class="hiw-badge">SVG</span>
+    </div>
+    <ul class="hiw-caption-list">
+      <li><strong>HTML</strong> — structures the keyboard grid, the snippet display area, the stats bar, and the SVG hand diagrams</li>
+      <li><strong>CSS</strong> — dark neon theme, CSS Grid for the key layout, transition animations for key press feedback</li>
+      <li><strong>JavaScript</strong> — all game logic: keydown event handling, cursor tracking, WPM/accuracy math, finger-hint mapping</li>
+      <li><strong>SVG</strong> — the left and right hand diagrams are inline SVG; JS toggles <code>.active</code> on individual finger groups</li>
+    </ul>
+  </section>
+
+  <section class="hiw-section">
+    <h2>How Each Part Works</h2>
+
+    <div class="hiw-file-block">
+      <h3><code>snippets.js</code></h3>
+      <p>
+        Defines a single global object <code>SNIPPETS</code> with three keys — <code>go</code>, <code>python</code>, <code>bash</code> — each holding an array of snippet objects. Every snippet has a <code>title</code> and a <code>code</code> string. The file is loaded before <code>app.js</code> so the game engine can call <code>SNIPPETS[lang]</code> immediately.
+      </p>
+      <pre class="hiw-code">// Each entry is a { title, code } object.
+// Tabs are replaced with 4-space indent so the browser
+// doesn't intercept Tab keypresses mid-snippet.
+const SNIPPETS = {
+  go: [
+    {
+      title: "HTTP hello server",
+      code: `package main
+
+import (
+    "fmt"
+    "net/http"
+)
+
+func handler(w http.ResponseWriter, r *http.Request) {
+    fmt.Fprintf(w, "Hello, %s!", r.URL.Path[1:])
+}
+
+func main() {
+    http.HandleFunc("/", handler)
+    http.ListenAndServe(":8080", nil)
+}`,
+    },
+    // ... 9 more Go snippets, 10 Python, 10 Bash
+  ],
+};</pre>
+    </div>
+
+    <div class="hiw-file-block">
+      <h3><code>app.js</code> — keydown handler</h3>
+      <p>
+        The heart of the app. A single <code>keydown</code> listener on <code>document</code> compares <code>e.key</code> (the character produced) against <code>state.snippet[state.pos]</code> (the expected character). On a correct keystroke, the cursor advances; on wrong, an error is counted and the wrong character turns red. Backspace can correct one wrong character without advancing the cursor.
+      </p>
+      <pre class="hiw-code">function handleKey(e) {
+  // Ignore pure modifier keys — they don't produce characters
+  if (e.key === 'Shift' || e.key === 'Control' || e.key === 'Alt' || e.key === 'Meta') return;
+  if (state.pos >= state.snippet.length) return;
+
+  startTimer();                   // starts clock on first real keypress
+
+  const expected = state.snippet[state.pos];
+  let typed = e.key;
+  if (typed === 'Enter') typed = '\n'; // normalize Enter → newline
+
+  if (typed.length === 1) {       // single printable character
+    if (typed === expected) {
+      flashKey(e.code, true);     // green flash on the key element
+      state.pos += 1;             // advance cursor
+      state.wrongChar = false;
+      if (state.pos >= state.snippet.length) { complete(); return; }
+      renderSnippet();
+      highlightTarget();          // light up the NEXT key on the keyboard
+      updateStats();
+    } else {
+      flashKey(e.code, false);    // red flash
+      state.errors += 1;
+      state.wrongChar = true;
+      renderSnippet();
+      updateStats();
+    }
+  }
+}
+
+document.addEventListener('keydown', handleKey);</pre>
+    </div>
+
+    <div class="hiw-file-block">
+      <h3><code>app.js</code> — charToKey map and finger hints</h3>
+      <p>
+        At startup, the KEYBOARD layout array is walked to build <code>charToKey</code> — a map from every producible character to the key code and finger label that types it. When <code>highlightTarget()</code> is called, it looks up the next character in this map and adds the <code>.target</code> class to the matching key element and the <code>.active</code> class to the matching finger group in the SVG hand.
+      </p>
+      <pre class="hiw-code">// charToKey is built by walking the KEYBOARD layout once at startup.
+// Each entry looks like: charToKey['A'] = { code: 'KeyA', finger: 'lp', needsShift: true }
+const charToKey = {};
+for (const row of KEYBOARD) {
+  for (const key of row) {
+    if (key.label && key.label.length === 1)
+      charToKey[key.label] = { code: key.code, finger: key.finger, needsShift: false };
+    if (key.shifted)
+      charToKey[key.shifted] = { code: key.code, finger: key.finger, needsShift: true };
+  }
+}
+
+function highlightTarget() {
+  document.querySelectorAll('.key.target').forEach(k => k.classList.remove('target'));
+  const ch = state.snippet[state.pos];
+  const mapping = charToKey[ch];
+  if (!mapping) return;
+
+  // Light up the key on the on-screen keyboard
+  (keyEls[mapping.code] || []).forEach(k => k.classList.add('target'));
+
+  // If shift is needed, light the opposite-hand shift key
+  if (mapping.needsShift) {
+    const shiftCode = mapping.finger.startsWith('l') ? 'ShiftRight' : 'ShiftLeft';
+    (keyEls[shiftCode] || []).forEach(k => k.classList.add('target'));
+  }
+
+  // Light the correct finger on the SVG hand diagram
+  const hand = mapping.finger.startsWith('l') || mapping.finger === 'thumb'
+    ? leftHand : rightHand;
+  const fingerEl = hand.querySelector(`[data-finger="${mapping.finger}"]`);
+  if (fingerEl) fingerEl.classList.add('active');
+}</pre>
+    </div>
+
+    <div class="hiw-file-block">
+      <h3><code>index.html</code> — hand SVG structure</h3>
+      <p>
+        Each hand is an inline SVG with <code>&lt;g data-finger="..."&gt;</code> groups for each finger. JS selects these groups by the <code>data-finger</code> attribute and toggles the <code>.active</code> class. CSS then applies the neon highlight to the fingertip circle and stem path inside that group.
+      </p>
+      <pre class="hiw-code">&lt;svg class="hand left-hand" id="left-hand" viewBox="0 0 200 130"&gt;
+  &lt;path class="palm" d="M30 110 Q22 80 30 55 Q42 38 60 36 L150 36 ..."/&gt;
+
+  &lt;!-- Each finger is a &lt;g&gt; with data-finger attribute --&gt;
+  &lt;!-- JS does: hand.querySelector('[data-finger="lp"]').classList.add('active') --&gt;
+  &lt;g class="finger" data-finger="lp"&gt;
+    &lt;path class="finger-stem" d="M40 55 L36 18"/&gt;
+    &lt;circle class="fingertip" cx="36" cy="14" r="6"/&gt;
+    &lt;text class="finger-label" x="36" y="6"&gt;P&lt;/text&gt;
+  &lt;/g&gt;
+
+  &lt;!-- ring, middle, index, thumb ... --&gt;
+&lt;/svg&gt;</pre>
+    </div>
+
+  </section>
+
+  <section class="hiw-section">
+    <h2>File Map</h2>
+    <pre class="hiw-file-map">code-typist/
+├── index.html      ← page structure: stats bar, snippet display, SVG hands, keyboard section
+├── style.css       ← dark neon theme, CSS Grid keyboard layout, .target/.active/.done states
+├── app.js          ← game engine: KEYBOARD layout, charToKey map, keydown handler, WPM calc
+└── snippets.js     ← SNIPPETS object with 30 real code strings (10 per language)</pre>
+  </section>
+
+  <section class="hiw-section">
+    <h2>Replicate It Yourself</h2>
+    <ol class="hiw-steps">
+      <li>
+        <span>
+          <strong>Structure the page.</strong> Create an <code>index.html</code> with a <code>&lt;pre id="snippet"&gt;</code> for the text display, a hidden <code>&lt;input&gt;</code> to capture focus on mobile, and a <code>&lt;section id="keyboard"&gt;</code> that JS will populate with key divs.
+          Reference: <a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Element/pre" target="_blank" rel="noopener">MDN pre element</a>.
+        </span>
+      </li>
+      <li>
+        <span>
+          <strong>Define snippets as a plain JS array.</strong> In <code>snippets.js</code>, create <code>const SNIPPETS = { go: [...], python: [...], bash: [...] }</code>. Each entry is <code>{ title: "...", code: "..." }</code>. Use template literals for multiline code. Replace tab characters with 4 spaces so the browser doesn't swallow Tab keypresses.
+        </span>
+      </li>
+      <li>
+        <span>
+          <strong>Build the keydown compare loop.</strong> In <code>app.js</code>, listen for <code>document.addEventListener('keydown', handler)</code>. Compare <code>e.key</code> against the expected character at the current cursor position. Advance the cursor on correct, increment errors on wrong, allow Backspace to undo one mistake.
+          Reference: <a href="https://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent/key" target="_blank" rel="noopener">MDN KeyboardEvent.key</a>.
+        </span>
+      </li>
+      <li>
+        <span>
+          <strong>Build the keyboard grid.</strong> Define a <code>KEYBOARD</code> array of rows; each key is <code>{ label, code, shifted, finger, width? }</code>. Loop over it in JS and call <code>document.createElement('div')</code> for each key, storing references in a <code>keyEls</code> map keyed by <code>event.code</code> so you can highlight them instantly.
+          Reference: <a href="https://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent/code" target="_blank" rel="noopener">MDN KeyboardEvent.code</a>.
+        </span>
+      </li>
+      <li>
+        <span>
+          <strong>Add finger hints.</strong> Walk the keyboard layout once to build a <code>charToKey</code> map. When the cursor advances, look up the next character and add <code>.target</code> to the key element and <code>.active</code> to the matching <code>[data-finger]</code> group in your SVG hand diagram.
+        </span>
+      </li>
+      <li>
+        <span>
+          <strong>Deploy to GitHub Pages.</strong> Push to <code>main</code>, then go to repo Settings &rarr; Pages &rarr; Source: <em>Deploy from branch</em> &rarr; <code>main / (root)</code>.
+          Reference: <a href="https://docs.github.com/en/pages/getting-started-with-github-pages" target="_blank" rel="noopener">GitHub Pages docs</a>.
+        </span>
+      </li>
+    </ol>
+  </section>
+
+</div>
+</body>
+</html>
