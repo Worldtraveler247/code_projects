@@ -1,0 +1,367 @@
+{
+  "track": "ai-ml",
+  "last_updated": "2025-05",
+  "salary_baseline": "2025 national median; gov figures reflect OPM 2025 base pay + Rest of US locality",
+  "levels": [
+    {
+      "id": "l1",
+      "title": "ML Engineer I / Data Scientist I",
+      "years_exp": "0–2",
+      "civ": {
+        "salary_min": 105000,
+        "salary_max": 145000,
+        "example_roles": [
+          "ML Engineer I",
+          "Data Scientist I",
+          "AI/ML Associate",
+          "Junior Research Engineer"
+        ],
+        "example_orgs": [
+          "Scale AI",
+          "Snorkel AI",
+          "Google",
+          "Microsoft",
+          "Amazon",
+          "Palantir",
+          "AI/ML startups"
+        ]
+      },
+      "gov": {
+        "salary_min": 49000,
+        "salary_max": 73000,
+        "gs_range": "GS-7 to GS-9",
+        "clearance": "Public Trust or Secret",
+        "example_roles": [
+          "Data Scientist I",
+          "AI/ML Associate",
+          "Junior Data Analyst",
+          "Research Engineer"
+        ],
+        "example_orgs": [
+          "DoD CDAO",
+          "DHS",
+          "NIST",
+          "NSF",
+          "NASA",
+          "Intelligence Community IT offices"
+        ]
+      },
+      "skills": [
+        "Python (NumPy, pandas, scikit-learn)",
+        "Jupyter notebooks",
+        "SQL",
+        "Basic model training (classification, regression)",
+        "Data preprocessing and feature scaling",
+        "REST API consumption",
+        "Git version control",
+        "Prompt engineering basics (LLM APIs)"
+      ],
+      "certs": [
+        "AWS Cloud Practitioner",
+        "Google Associate Cloud Engineer",
+        "TensorFlow Developer Certificate"
+      ],
+      "next_steps": "Move from notebook-based experimentation to reproducible ML pipelines; gain exposure to model evaluation metrics and MLflow tracking; target containerized environments.",
+      "milestone": "Can independently train, evaluate, and iterate on baseline ML models; comfortable consuming LLM APIs and doing exploratory data analysis end-to-end."
+    },
+    {
+      "id": "l2",
+      "title": "ML Engineer II / AI Platform Engineer",
+      "years_exp": "2–4",
+      "civ": {
+        "salary_min": 105000,
+        "salary_max": 175000,
+        "example_roles": [
+          "ML Engineer II",
+          "AI Platform Engineer",
+          "NLP Engineer",
+          "Computer Vision Engineer"
+        ],
+        "example_orgs": [
+          "Google DeepMind",
+          "Hugging Face",
+          "Cohere",
+          "Databricks",
+          "Weights & Biases",
+          "OpenAI",
+          "Microsoft"
+        ]
+      },
+      "gov": {
+        "salary_min": 60000,
+        "salary_max": 98000,
+        "gs_range": "GS-9 to GS-11",
+        "clearance": "Secret",
+        "example_roles": [
+          "AI/ML Engineer",
+          "Data Scientist",
+          "NLP Engineer",
+          "Applied Research Engineer"
+        ],
+        "example_orgs": [
+          "DoD CDAO",
+          "DHS",
+          "NSA",
+          "DARPA AI programs",
+          "DIA (Defense Intelligence Agency)",
+          "NIST"
+        ]
+      },
+      "skills": [
+        "PyTorch and TensorFlow model development",
+        "MLflow experiment tracking",
+        "Hugging Face Transformers",
+        "Feature engineering",
+        "Model evaluation metrics (AUC, F1, BLEU, ROUGE)",
+        "Containerized ML (Docker + Kubernetes basics)",
+        "MLOps basics (CI/CD for models)",
+        "Vector databases (Pinecone, Weaviate, ChromaDB)",
+        "RAG pipeline construction"
+      ],
+      "certs": [
+        "AWS Machine Learning Specialty",
+        "GCP Professional Machine Learning Engineer",
+        "Azure AI Engineer Associate"
+      ],
+      "next_steps": "Learn model serving infrastructure; begin contributing to shared ML platform components; deepen MLOps practices and CI/CD for model retraining pipelines.",
+      "milestone": "Owns full model development lifecycle from data ingestion to deployment; can build and deploy a RAG pipeline and tune transformer-based models independently."
+    },
+    {
+      "id": "l3",
+      "title": "Senior ML Engineer / AI Security Researcher",
+      "years_exp": "4–6",
+      "civ": {
+        "salary_min": 140000,
+        "salary_max": 190000,
+        "example_roles": [
+          "Senior ML Engineer",
+          "AI Security Researcher",
+          "MLOps Engineer",
+          "Applied AI Engineer"
+        ],
+        "example_orgs": [
+          "Google",
+          "Meta AI",
+          "Microsoft Research",
+          "Anthropic",
+          "OpenAI",
+          "Two Sigma",
+          "D.E. Shaw"
+        ]
+      },
+      "gov": {
+        "salary_min": 82000,
+        "salary_max": 120000,
+        "gs_range": "GS-11 to GS-12",
+        "clearance": "Top Secret or TS/SCI",
+        "example_roles": [
+          "Senior Data Scientist",
+          "AI Security Researcher",
+          "MLOps Engineer",
+          "Applied AI Engineer"
+        ],
+        "example_orgs": [
+          "NSA AI Security Center",
+          "DARPA AI programs",
+          "DoD CDAO",
+          "NIST AI Risk Management",
+          "In-Q-Tel portfolio companies"
+        ]
+      },
+      "skills": [
+        "LLM fine-tuning (LoRA, PEFT)",
+        "Model serving at scale (TorchServe, Triton Inference Server)",
+        "Adversarial ML (model evasion, data poisoning detection)",
+        "AI red teaming",
+        "ML pipeline orchestration (Kubeflow, Airflow)",
+        "Model cards and responsible AI documentation",
+        "GPU cluster management",
+        "Distributed training (PyTorch DDP)"
+      ],
+      "certs": [
+        "AWS Machine Learning Specialty",
+        "GCP Professional Machine Learning Engineer",
+        "NVIDIA Deep Learning Institute certification"
+      ],
+      "next_steps": "Lead AI security reviews and adversarial robustness testing; contribute to AI governance documentation; mentor junior ML engineers and begin cross-team architectural influence.",
+      "milestone": "Can architect and secure an end-to-end ML system under adversarial conditions; leads AI red team exercises and fine-tunes large models for specialized tasks."
+    },
+    {
+      "id": "l4",
+      "title": "Senior ML Engineer / AI Architecture Lead",
+      "years_exp": "6–10",
+      "civ": {
+        "salary_min": 185000,
+        "salary_max": 350000,
+        "example_roles": [
+          "Senior ML Engineer",
+          "Staff AI Engineer",
+          "AI Architecture Lead",
+          "Principal Data Scientist"
+        ],
+        "example_orgs": [
+          "Google",
+          "OpenAI",
+          "Anthropic",
+          "Meta",
+          "Microsoft",
+          "NVIDIA",
+          "Databricks"
+        ]
+      },
+      "gov": {
+        "salary_min": 116000,
+        "salary_max": 153000,
+        "gs_range": "GS-12 to GS-13",
+        "clearance": "TS/SCI",
+        "example_roles": [
+          "AI Architecture Lead",
+          "Principal Data Scientist",
+          "AI Program Manager",
+          "Senior AI Security Engineer"
+        ],
+        "example_orgs": [
+          "NSA AI Security Center",
+          "DoD CDAO",
+          "DARPA AI programs",
+          "NIST AI Risk Management",
+          "DHS Science and Technology Directorate"
+        ]
+      },
+      "skills": [
+        "Foundation model architecture design",
+        "RLHF and RLAIF implementation",
+        "AI governance frameworks (NIST AI RMF, EU AI Act compliance)",
+        "Multi-modal model development",
+        "AI system security architecture",
+        "Model provenance and SBOM for AI",
+        "Inference optimization (quantization, pruning, distillation)",
+        "Enterprise MLOps platform design"
+      ],
+      "certs": [
+        "AWS Machine Learning Specialty",
+        "GCP Professional Machine Learning Engineer",
+        "CDMP"
+      ],
+      "next_steps": "Drive org-wide AI architecture standards; own model governance and compliance programs; influence product roadmap through AI capability strategy.",
+      "milestone": "Sets architectural direction for AI systems across multiple teams; owns model governance from provenance to retirement; leads enterprise-wide responsible AI compliance."
+    },
+    {
+      "id": "l5",
+      "title": "Staff / Principal ML Engineer",
+      "years_exp": "10–15",
+      "civ": {
+        "salary_min": 240000,
+        "salary_max": 350000,
+        "example_roles": [
+          "Principal ML Engineer",
+          "Distinguished AI Researcher",
+          "Staff Research Scientist",
+          "Head of AI Platform"
+        ],
+        "example_orgs": [
+          "Google DeepMind",
+          "OpenAI Research",
+          "Anthropic",
+          "Meta FAIR",
+          "Microsoft Research",
+          "top-tier AI-focused startups"
+        ]
+      },
+      "gov": {
+        "salary_min": 136000,
+        "salary_max": 191000,
+        "gs_range": "GS-14 to GS-15",
+        "clearance": "TS/SCI",
+        "example_roles": [
+          "Senior Technical Advisor (AI)",
+          "Distinguished Research Scientist",
+          "AI Program Executive",
+          "Chief Data Scientist"
+        ],
+        "example_orgs": [
+          "NSA AI Security Center",
+          "DARPA AI programs",
+          "DoD CDAO",
+          "White House OSTP AI policy",
+          "Intelligence Community AI programs"
+        ]
+      },
+      "skills": [
+        "Novel architecture research",
+        "AI safety and alignment techniques",
+        "Enterprise AI risk program design",
+        "Regulatory standard authorship (NIST contributions)",
+        "ML infrastructure at hyperscale (1000+ GPU clusters)",
+        "AI red team program leadership",
+        "Synthetic data generation programs",
+        "Multi-agent system design"
+      ],
+      "certs": [
+        "NVIDIA AI Enterprise"
+      ],
+      "next_steps": "Publish original research; represent organization in standards bodies (NIST, ISO); build and lead AI safety or platform teams of 10–30+ engineers.",
+      "milestone": "Recognized industry authority; research contributions shape model safety standards; owns hyperscale ML infrastructure decisions and AI risk programs across the enterprise."
+    },
+    {
+      "id": "l6",
+      "title": "Distinguished AI Research Scientist / VP of AI",
+      "years_exp": "15+",
+      "civ": {
+        "salary_min": 300000,
+        "salary_max": 600000,
+        "example_roles": [
+          "VP of AI",
+          "Chief AI Officer",
+          "Distinguished Research Scientist",
+          "AI Fellow",
+          "AI Lab Director"
+        ],
+        "example_orgs": [
+          "Google",
+          "OpenAI",
+          "Anthropic",
+          "Microsoft",
+          "NVIDIA",
+          "sovereign AI programs"
+        ]
+      },
+      "gov": {
+        "salary_min": 150000,
+        "salary_max": 226000,
+        "gs_range": "SES",
+        "clearance": "TS/SCI with Polygraph",
+        "example_roles": [
+          "DARPA Program Manager (AI)",
+          "Chief AI Officer",
+          "Senior Intelligence Officer (AI)",
+          "National AI Policy Executive"
+        ],
+        "example_orgs": [
+          "DARPA",
+          "NSA AI Security Center",
+          "DoD CDAO",
+          "White House OSTP",
+          "Intelligence Community AI programs",
+          "Office of the Director of National Intelligence"
+        ]
+      },
+      "skills": [
+        "National AI strategy input",
+        "Board-level AI risk governance",
+        "$50M+ AI program ownership",
+        "International AI safety standards participation",
+        "AI ethics policy frameworks",
+        "Acquisition authority for AI systems",
+        "Talent organization building (100+ person teams)",
+        "Cutting-edge research publication"
+      ],
+      "certs": [
+        "CISSP",
+        "CISM"
+      ],
+      "next_steps": "Shape national and international AI policy; represent organization at congressional and regulatory hearings; build next-generation AI safety research programs.",
+      "milestone": "Organizational and national-level authority on AI; drives policy, standards, and frontier research; accountable for AI ethics and safety at the highest institutional level."
+    }
+  ]
+}

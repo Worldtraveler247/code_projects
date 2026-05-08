@@ -1,0 +1,208 @@
+{
+  "track": "cloud-security",
+  "last_updated": "2025-05",
+  "salary_baseline": "2025 national median; gov figures reflect OPM 2025 base pay + Rest of US locality",
+  "levels": [
+    {
+      "id": "l1",
+      "title": "Cloud Security Analyst I",
+      "years_exp": "0–2",
+      "civ": {
+        "salary_min": 65000,
+        "salary_max": 90000,
+        "example_roles": ["SOC Analyst I", "Jr. Cloud Security Engineer", "Security Operations Analyst"],
+        "example_orgs": ["Optum", "Leidos", "SAIC", "Deloitte", "ManTech"]
+      },
+      "gov": {
+        "salary_min": 46000,
+        "salary_max": 73000,
+        "gs_range": "GS-7 to GS-9",
+        "clearance": "Secret",
+        "example_roles": ["Cybersecurity Specialist (Entry)", "IT Security Analyst (Entry)", "Information System Security Officer (Entry)"],
+        "example_orgs": ["CISA", "DHS", "DoD CYBERCOM", "Army Cyber Command"]
+      },
+      "skills": [
+        "AWS IAM fundamentals",
+        "SIEM basics (Splunk or Microsoft Sentinel)",
+        "CloudTrail log review",
+        "Security monitoring and alerting",
+        "Python scripting for automation",
+        "Linux command line (RHCSA-level)",
+        "OWASP Top 10 awareness",
+        "Vulnerability scanning basics (Nessus/Qualys)"
+      ],
+      "certs": ["CompTIA Security+", "AWS Cloud Practitioner"],
+      "next_steps": "Get hands-on with AWS labs — IAM policy analysis, S3 bucket auditing, and GuardDuty. Earn AWS SAA to prove cloud-native fluency.",
+      "milestone": "First security-adjacent job, internship, or lab-verified portfolio project."
+    },
+    {
+      "id": "l2",
+      "title": "Cloud Security Analyst II / Jr. Cloud Security Engineer",
+      "years_exp": "2–4",
+      "civ": {
+        "salary_min": 85000,
+        "salary_max": 115000,
+        "example_roles": ["Cloud Security Analyst II", "Jr. Cloud Security Engineer", "Security Engineer I", "DevSecOps Analyst"],
+        "example_orgs": ["Palo Alto Networks", "CrowdStrike", "Booz Allen Hamilton", "Accenture Federal", "IBM Security"]
+      },
+      "gov": {
+        "salary_min": 57000,
+        "salary_max": 98000,
+        "gs_range": "GS-9 to GS-11",
+        "clearance": "Secret (TS preferred)",
+        "example_roles": ["Cybersecurity Specialist", "Cloud Security Engineer (Junior)", "ISSO"],
+        "example_orgs": ["CISA", "NSA", "DHS OCIO", "DISA", "Air Force Cyber"]
+      },
+      "skills": [
+        "AWS Security Hub and GuardDuty configuration",
+        "IAM policy authoring and least-privilege enforcement",
+        "Terraform basics for IaC provisioning",
+        "S3 bucket policy and ACL hardening",
+        "CSPM tools (Prisma Cloud or Wiz basics)",
+        "Container image scanning (Trivy or Grype)",
+        "Security automation with Python and boto3",
+        "Incident triage and escalation workflows",
+        "CIS Benchmarks and NIST 800-53 mapping"
+      ],
+      "certs": ["AWS Solutions Architect Associate", "CompTIA CySA+", "AZ-500 (Microsoft Azure Security)"],
+      "next_steps": "Own a real automation project end-to-end — auto-remediation of S3 public access or IAM credential aging. Start touching IaC security scanning (tfsec, Checkov).",
+      "milestone": "Deployed security automation or CSPM integration that reduced findings in a real environment."
+    },
+    {
+      "id": "l3",
+      "title": "Cloud Security Engineer",
+      "years_exp": "4–6",
+      "civ": {
+        "salary_min": 110000,
+        "salary_max": 150000,
+        "example_roles": ["Cloud Security Engineer", "Application Security Engineer", "DevSecOps Engineer", "Security Platform Engineer"],
+        "example_orgs": ["AWS", "Google Cloud", "Microsoft", "Mandiant", "Rapid7", "Capital One", "JPMorgan Chase"]
+      },
+      "gov": {
+        "salary_min": 82000,
+        "salary_max": 120000,
+        "gs_range": "GS-11 to GS-12",
+        "clearance": "Top Secret / SCI",
+        "example_roles": ["Cloud Security Engineer", "Cybersecurity Engineer", "Senior ISSO", "Security Architect (Mid)"],
+        "example_orgs": ["NSA", "CIA", "DoD CYBERCOM", "DISA", "FBI Cyber Division"]
+      },
+      "skills": [
+        "Threat modeling with STRIDE",
+        "IaC security scanning (Checkov, tfsec, Semgrep)",
+        "AWS Security Specialty service suite (Macie, Inspector, Detective)",
+        "Kubernetes security and KSPM (kube-bench, Falco)",
+        "Container security hardening and runtime monitoring",
+        "SBOM generation and software supply chain security",
+        "Zero-trust architecture design",
+        "Service control policies (SCPs) and AWS Organizations",
+        "Secrets management (HashiCorp Vault, AWS Secrets Manager)",
+        "SAST/DAST integration into CI/CD pipelines"
+      ],
+      "certs": ["AWS Security Specialty", "CCSP (ISC2)", "CISSP"],
+      "next_steps": "Lead a threat model for a production workload. Build a full CSPM-to-SIEM pipeline. Pursue CISSP to unlock leadership roles.",
+      "milestone": "Owns one or more security workstreams independently — from design through implementation and monitoring."
+    },
+    {
+      "id": "l4",
+      "title": "Senior Cloud Security Engineer",
+      "years_exp": "6–10",
+      "civ": {
+        "salary_min": 145000,
+        "salary_max": 190000,
+        "example_roles": ["Senior Cloud Security Engineer", "Senior AppSec Engineer", "Cloud Security Architect", "Principal Security Engineer"],
+        "example_orgs": ["AWS", "Google", "Microsoft Azure", "Palo Alto Networks", "CrowdStrike", "Netflix", "Stripe"]
+      },
+      "gov": {
+        "salary_min": 116000,
+        "salary_max": 150000,
+        "gs_range": "GS-12 to GS-13",
+        "clearance": "Top Secret / SCI",
+        "example_roles": ["Senior Cloud Security Engineer", "Cybersecurity Architect", "Senior ISSM", "Security Technical Lead"],
+        "example_orgs": ["NSA", "CIA", "CISA", "DoD CYBERCOM", "DISA", "NGA"]
+      },
+      "skills": [
+        "Security architecture design for multi-account AWS environments",
+        "AWS Control Tower and Landing Zone governance",
+        "Advanced IAM — permission boundaries, ABAC, cross-account roles",
+        "Cloud-native SIEM tuning and detection engineering",
+        "Red team / purple team collaboration and adversary emulation (MITRE ATT&CK Cloud)",
+        "Compliance automation (FedRAMP, SOC 2, PCI-DSS)",
+        "Data security — encryption key management, KMS, data classification",
+        "API security and OAuth/OIDC threat patterns",
+        "Mentoring junior engineers and running security design reviews",
+        "Risk communication to non-technical stakeholders"
+      ],
+      "certs": ["CISSP", "AWS Security Specialty", "CISM (optional path)"],
+      "next_steps": "Design and present a security reference architecture for a new product. Lead a purple team exercise. Begin contributing to org-level security standards docs.",
+      "milestone": "Technical lead on a cross-team security initiative — delivered on time, measurable risk reduction."
+    },
+    {
+      "id": "l5",
+      "title": "Staff / Principal Cloud Security Engineer",
+      "years_exp": "10–15",
+      "civ": {
+        "salary_min": 185000,
+        "salary_max": 240000,
+        "example_roles": ["Staff Security Engineer", "Principal Cloud Security Engineer", "Security Architect (Principal)", "Distinguished Engineer Track"],
+        "example_orgs": ["AWS", "Google", "Cloudflare", "Meta", "Apple", "Palantir", "Booz Allen Hamilton (Technical Fellow track)"]
+      },
+      "gov": {
+        "salary_min": 136000,
+        "salary_max": 176000,
+        "gs_range": "GS-14 to GS-15",
+        "clearance": "Top Secret / SCI with CI Poly",
+        "example_roles": ["Technical Director (Cyber)", "Principal Security Engineer", "Senior Cybersecurity Architect", "Cybersecurity Technical Advisor (Senior)"],
+        "example_orgs": ["NSA", "CIA", "CYBERCOM J2/J6", "DHS CISA leadership", "DISA Architecture"]
+      },
+      "skills": [
+        "Enterprise security strategy and program design",
+        "Cross-org security standards authorship (security policy, architecture ADRs)",
+        "Advanced threat intelligence integration and operationalization",
+        "CSPM and CNAPP program ownership across multiple BUs",
+        "Supply chain security — SLSA framework, sigstore, in-toto",
+        "AI/ML workload security (model poisoning, data exfiltration, LLM threat modeling)",
+        "Security economics — cost/risk tradeoff framing for C-suite",
+        "Executive-level risk reporting and board-level security briefings",
+        "Hiring, growing, and retaining security talent",
+        "Open source security tooling contribution or industry publication"
+      ],
+      "certs": ["CISSP", "CISM", "AWS Security Specialty", "Google Professional Cloud Security Engineer"],
+      "next_steps": "Define the 3-year security roadmap for an org or business unit. Speak at a conference (re:Inforce, BSides, DEF CON). Evaluate the CISO-track vs. technical fellow track.",
+      "milestone": "Recognized as the internal authority on cloud security — other teams seek your review before shipping."
+    },
+    {
+      "id": "l6",
+      "title": "Distinguished Engineer / CISO-Track Executive",
+      "years_exp": "15+",
+      "civ": {
+        "salary_min": 220000,
+        "salary_max": 400000,
+        "example_roles": ["CISO", "VP of Security Engineering", "Distinguished Security Engineer", "Security Fellow", "Chief Architect (Security)"],
+        "example_orgs": ["AWS", "Google", "Microsoft", "Palo Alto Networks", "CrowdStrike", "Salesforce", "Goldman Sachs", "JPMorgan Chase"]
+      },
+      "gov": {
+        "salary_min": 150000,
+        "salary_max": 226000,
+        "gs_range": "SES (Senior Executive Service)",
+        "clearance": "Top Secret / SCI with Full Scope Poly",
+        "example_roles": ["Senior Executive (Cyber)", "Deputy CISO", "Director of Cybersecurity", "Assistant Director (Cyber Operations)"],
+        "example_orgs": ["CISA", "NSA", "CYBERCOM", "Office of the National Cyber Director", "FBI Cyber Division", "CIA CTO Office"]
+      },
+      "skills": [
+        "Security organizational design and headcount planning",
+        "M&A security due diligence",
+        "Regulatory and legislative engagement (CISA, FTC, SEC)",
+        "Board and investor-level security governance",
+        "Zero-trust enterprise program leadership",
+        "Threat landscape strategic forecasting",
+        "Industry coalition leadership (ISACs, CISA advisories)",
+        "Post-incident congressional or regulatory testimony",
+        "Published security research or industry standards body participation (IETF, NIST NCCoE)",
+        "Security culture change management at scale"
+      ],
+      "certs": ["CISSP", "CISM", "Executive education programs (Harvard Kennedy School Cybersecurity, Carnegie Mellon CISO Executive)"],
+      "next_steps": "This is the destination, not a waypoint. Focus: strategic influence, talent pipeline, and defining what cloud security means for the next decade at your organization or industry-wide.",
+      "milestone": "Accountable for security posture of an entire organization or agency — reported at the board/Congress level."
+    }
+  ]
+}

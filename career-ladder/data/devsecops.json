@@ -1,0 +1,338 @@
+{
+  "track": "devsecops",
+  "last_updated": "2025-05",
+  "salary_baseline": "2025 national median; gov figures reflect OPM 2025 base pay + Rest of US locality (17.06%)",
+  "levels": [
+    {
+      "id": "l1",
+      "title": "DevSecOps Engineer I / Security Automation Analyst",
+      "years_exp": "0–2",
+      "civ": {
+        "salary_min": 68000,
+        "salary_max": 93000,
+        "example_roles": [
+          "DevSecOps Engineer I",
+          "Security Automation Analyst",
+          "Jr. Platform Security Engineer"
+        ],
+        "example_orgs": [
+          "HashiCorp",
+          "GitLab",
+          "GitHub",
+          "Snyk",
+          "Checkmarx",
+          "Mid-size tech companies"
+        ]
+      },
+      "gov": {
+        "salary_min": 46900,
+        "salary_max": 68200,
+        "gs_range": "GS-7 to GS-9",
+        "clearance": "Secret",
+        "example_roles": [
+          "IT Specialist (INFOSEC)",
+          "Cybersecurity Analyst",
+          "DevSecOps Apprentice"
+        ],
+        "example_orgs": [
+          "DISA",
+          "DoD DevSecOps programs",
+          "DHS CISA",
+          "Air Force Platform One"
+        ]
+      },
+      "skills": [
+        "CI/CD basics (GitHub Actions, Jenkins, GitLab CI)",
+        "Container basics (Docker/Podman)",
+        "SAST tools (Semgrep, SonarQube)",
+        "Dependency scanning (Dependabot, OWASP Dependency-Check)",
+        "Linux fundamentals",
+        "Python and Bash scripting"
+      ],
+      "certs": [
+        "Security+",
+        "AWS Cloud Practitioner"
+      ],
+      "next_steps": "Pick up CKA and wire real SAST/dependency gates into a personal CI pipeline; deploy at least one pipeline to a public GitHub repo as portfolio evidence.",
+      "milestone": "Ship a working CI/CD pipeline with SAST and dependency scanning gates integrated end-to-end."
+    },
+    {
+      "id": "l2",
+      "title": "DevSecOps Engineer II / Jr. Platform Security Engineer",
+      "years_exp": "2–4",
+      "civ": {
+        "salary_min": 88000,
+        "salary_max": 118000,
+        "example_roles": [
+          "DevSecOps Engineer II",
+          "Platform Security Engineer",
+          "Security Pipeline Engineer"
+        ],
+        "example_orgs": [
+          "Palo Alto Networks (Prisma Cloud)",
+          "Snyk",
+          "JFrog",
+          "Aqua Security",
+          "Anchore"
+        ]
+      },
+      "gov": {
+        "salary_min": 54700,
+        "salary_max": 84900,
+        "gs_range": "GS-9 to GS-11",
+        "clearance": "Secret",
+        "example_roles": [
+          "IT Specialist (INFOSEC)",
+          "Platform Security Analyst",
+          "Cloud Security Engineer"
+        ],
+        "example_orgs": [
+          "DISA",
+          "DoD Platform One",
+          "DHS CISA",
+          "Air Force Research Laboratory"
+        ]
+      },
+      "skills": [
+        "Kubernetes security (RBAC, network policies)",
+        "OPA/Gatekeeper policy enforcement",
+        "Secrets management (HashiCorp Vault, AWS Secrets Manager)",
+        "IaC security scanning (Checkov, Trivy IaC)",
+        "Container image scanning (Trivy, Grype)",
+        "DAST basics (OWASP ZAP, Burp Suite)",
+        "Artifact signing (Sigstore/cosign)"
+      ],
+      "certs": [
+        "CKA",
+        "CySA+",
+        "AWS Solutions Architect Associate"
+      ],
+      "next_steps": "Integrate image scanning and artifact signing into a GitOps repo; stand up Vault in a local Kubernetes cluster and wire secrets injection into a real app deployment.",
+      "milestone": "Own a full container security pipeline: image scanning, signing, admission control, and secrets rotation without touching a plain-text credential."
+    },
+    {
+      "id": "l3",
+      "title": "DevSecOps Engineer / Platform Security Architect",
+      "years_exp": "4–6",
+      "civ": {
+        "salary_min": 115000,
+        "salary_max": 155000,
+        "example_roles": [
+          "Platform Security Engineer",
+          "Platform Security Architect",
+          "Cloud Security Pipeline Lead"
+        ],
+        "example_orgs": [
+          "Google",
+          "Amazon",
+          "Stripe",
+          "Datadog",
+          "Cloudflare",
+          "Netflix"
+        ]
+      },
+      "gov": {
+        "salary_min": 73900,
+        "salary_max": 115200,
+        "gs_range": "GS-11 to GS-12",
+        "clearance": "Top Secret",
+        "example_roles": [
+          "Senior IT Specialist (INFOSEC)",
+          "Cloud Security Architect",
+          "Platform Security Lead"
+        ],
+        "example_orgs": [
+          "DoD Platform One (IL5/IL6)",
+          "DISA",
+          "Army Software Factory",
+          "NSA DevSecOps programs"
+        ]
+      },
+      "skills": [
+        "Full SDLC security ownership",
+        "SBOM generation (Syft, CycloneDX)",
+        "Supply chain security (SLSA framework)",
+        "Policy-as-code (OPA/Rego)",
+        "Service mesh security (Istio mTLS)",
+        "Runtime security (Falco, Tetragon)",
+        "Chaos engineering basics",
+        "GitOps security patterns"
+      ],
+      "certs": [
+        "CKS",
+        "AWS Security Specialty",
+        "CCSP"
+      ],
+      "next_steps": "Author SLSA-compliant build pipelines; contribute a policy library or open-source Rego ruleset; present a threat model for a distributed service at a team or community level.",
+      "milestone": "Deliver a measurable reduction in supply chain risk: signed artifacts, SBOM attestation, and SLSA Level 2+ for at least one production service."
+    },
+    {
+      "id": "l4",
+      "title": "Senior DevSecOps Engineer / Security Platform Lead",
+      "years_exp": "6–10",
+      "civ": {
+        "salary_min": 150000,
+        "salary_max": 195000,
+        "example_roles": [
+          "Senior DevSecOps Engineer",
+          "Security Platform Lead",
+          "Staff Platform Security Engineer"
+        ],
+        "example_orgs": [
+          "AWS",
+          "Google",
+          "Microsoft",
+          "Stripe",
+          "Cloudflare",
+          "Large fintech and healthtech companies"
+        ]
+      },
+      "gov": {
+        "salary_min": 88600,
+        "salary_max": 150000,
+        "gs_range": "GS-12 to GS-13",
+        "clearance": "Top Secret",
+        "example_roles": [
+          "Lead Platform Security Engineer",
+          "Senior Cybersecurity Architect",
+          "Cloud Security Technical Lead"
+        ],
+        "example_orgs": [
+          "DISA",
+          "NSA",
+          "DoD Platform One",
+          "Cyber Command"
+        ]
+      },
+      "skills": [
+        "Enterprise security platform design",
+        "Multi-cluster Kubernetes security",
+        "eBPF-based security tools (Tetragon, Cilium)",
+        "Zero-trust service mesh architecture",
+        "Automated compliance (FedRAMP, SOC 2, CMMC automation)",
+        "Threat modeling for distributed systems",
+        "Developer security education programs",
+        "Security toolchain roadmap ownership"
+      ],
+      "certs": [
+        "CKS",
+        "CISSP",
+        "AWS Security Specialty"
+      ],
+      "next_steps": "Lead a cross-team security platform initiative; publish internal security standards; drive measurable developer adoption of security tooling (not just deploy the tools).",
+      "milestone": "Design and ship an enterprise-wide security platform that reduces mean time to remediate CVEs across multiple engineering teams."
+    },
+    {
+      "id": "l5",
+      "title": "Staff / Principal DevSecOps Engineer",
+      "years_exp": "10–15",
+      "civ": {
+        "salary_min": 190000,
+        "salary_max": 245000,
+        "example_roles": [
+          "Principal DevSecOps Engineer",
+          "Distinguished Platform Security Architect",
+          "Staff Security Engineer"
+        ],
+        "example_orgs": [
+          "Google",
+          "Netflix",
+          "Stripe",
+          "Cloudflare",
+          "Major CNCF contributors"
+        ]
+      },
+      "gov": {
+        "salary_min": 155700,
+        "salary_max": 191900,
+        "gs_range": "GS-14 to GS-15",
+        "clearance": "TS/SCI",
+        "example_roles": [
+          "Principal Cybersecurity Engineer",
+          "Technical Director (Platform Security)",
+          "Senior Technical Advisor"
+        ],
+        "example_orgs": [
+          "NSA",
+          "DISA",
+          "CISA",
+          "DoD CIO",
+          "Intelligence Community"
+        ]
+      },
+      "skills": [
+        "Industry-standard security toolchain design",
+        "CNCF security working group contributions",
+        "Supply chain security standards (OpenSSF Scorecards, SLSA)",
+        "Enterprise developer experience security (platform engineering at scale)",
+        "Security debt reduction programs with measurable metrics",
+        "SRE and security convergence",
+        "eBPF kernel-level security instrumentation",
+        "Cross-industry standards influence and publication"
+      ],
+      "certs": [
+        "CISSP",
+        "CKS",
+        "CISM"
+      ],
+      "next_steps": "Contribute to or maintain an open-source CNCF security project; author a public security standard or whitepaper adopted by a major org; mentor L3/L4 engineers at scale.",
+      "milestone": "Be named as a technical driver behind an industry-adopted security standard or open-source project with measurable external adoption."
+    },
+    {
+      "id": "l6",
+      "title": "Distinguished DevSecOps Engineer / VP Platform Security",
+      "years_exp": "15+",
+      "civ": {
+        "salary_min": 225000,
+        "salary_max": 420000,
+        "example_roles": [
+          "VP Platform Security",
+          "Distinguished Engineer",
+          "Fellow",
+          "Head of Product Security"
+        ],
+        "example_orgs": [
+          "Google",
+          "Netflix",
+          "Microsoft",
+          "Major banks and fintechs",
+          "Venture-backed late-stage startups"
+        ]
+      },
+      "gov": {
+        "salary_min": 155700,
+        "salary_max": 226300,
+        "gs_range": "SES",
+        "clearance": "TS/SCI with Polygraph",
+        "example_roles": [
+          "Senior Executive (Cybersecurity)",
+          "Deputy Director (Platform Security)",
+          "Chief Architect (DevSecOps)"
+        ],
+        "example_orgs": [
+          "NIST",
+          "CISA leadership",
+          "DoD CIO",
+          "NSA",
+          "Defense Intelligence Agency"
+        ]
+      },
+      "skills": [
+        "Industry platform security standards authorship",
+        "Security culture transformation at organizational scale",
+        "Budget ownership for platform security ($5M+)",
+        "M&A technical due diligence for security posture",
+        "CISO and CTO advisory",
+        "Open source security ecosystem leadership",
+        "Regulatory influence and standards body participation",
+        "Board-level security risk communication"
+      ],
+      "certs": [
+        "CISSP",
+        "CISM"
+      ],
+      "next_steps": "This level is defined by impact, not credentials. Focus on industry influence: advisory board seats, published standards, open-source leadership, and cultivating the next generation of principal-level engineers.",
+      "milestone": "Lead a security transformation that is cited externally — by peers, standards bodies, or the industry press — as a model for platform security at scale."
+    }
+  ]
+}

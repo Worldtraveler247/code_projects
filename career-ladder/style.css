@@ -1,0 +1,444 @@
+/* ============================================================
+   Career Ladder — style.css
+   Career Ladder — full Phase 2 styles: layout, header, tabs, toggle, cards, responsive.
+   ============================================================ */
+
+/* --- Design tokens --- */
+:root {
+  --bg:          #07010f;
+  --cyan:        #4af7ff;
+  --purple:      #7b2fff;
+  --text:        #dde0f0;
+  --muted:       #5a607a;
+  --border:      rgba(74, 247, 255, 0.13);
+  --gold:       #ffc400;
+  --purple-tint-08: rgba(123, 47, 255, 0.08);
+  --purple-tint-20: rgba(123, 47, 255, 0.2);
+  --card-bg:     rgba(255, 255, 255, 0.03);
+  --card-radius: 10px;
+  --gap:         1.5rem;
+  --max-w:       860px;
+}
+
+/* --- Base reset --- */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: Inter, sans-serif;
+  font-size: 16px;
+  line-height: 1.6;
+  min-height: 100vh;
+  padding-top: 56px;
+}
+
+/* ============================================================
+   Phase 2 — Layout, Header, Tab Bar, Mode Toggle
+   ============================================================ */
+
+/* --- 1. Page layout --- */
+main {
+  max-width: var(--max-w);
+  margin: 0 auto;
+  padding: 2rem 1.5rem 4rem;
+}
+
+/* --- 2. Header --- */
+header {
+  text-align: center;
+  padding: 2.5rem 1rem 2rem;
+  max-width: var(--max-w);
+  margin: 0 auto;
+}
+
+.app-title {
+  font-family: 'Orbitron', sans-serif;
+  font-size: clamp(1.6rem, 4vw, 2.4rem);
+  font-weight: 800;
+  color: var(--cyan);
+  letter-spacing: 0.04em;
+  margin-bottom: 0.5rem;
+}
+
+.app-tagline {
+  color: var(--muted);
+  font-size: 0.95rem;
+  max-width: 58ch;
+  margin: 0 auto;
+  line-height: 1.5;
+}
+
+/* --- 3. Tab bar --- */
+.tab-bar {
+  display: flex;
+  gap: 0.25rem;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: var(--gap);
+  overflow-x: auto;          /* scrolls on mobile */
+  scrollbar-width: none;     /* Firefox */
+}
+.tab-bar::-webkit-scrollbar { display: none; }
+
+.tab {
+  flex-shrink: 0;
+  background: transparent;
+  border: none;
+  border-bottom: 3px solid transparent;
+  color: var(--muted);
+  font-family: Inter, sans-serif;
+  font-size: 0.9rem;
+  font-weight: 500;
+  padding: 0.75rem 1.25rem;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+  white-space: nowrap;
+}
+
+.tab:hover {
+  color: var(--text);
+}
+
+.tab[aria-selected="true"],
+.tab.active {
+  color: var(--cyan);
+  border-bottom-color: var(--cyan);
+  font-weight: 600;
+}
+
+/* --- 4. Mode toggle (Civ / Gov pill) --- */
+.mode-toggle {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: var(--gap);
+}
+
+.mode-btn {
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  color: var(--muted);
+  font-family: Inter, sans-serif;
+  font-size: 0.85rem;
+  font-weight: 500;
+  padding: 0.4rem 1rem;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.mode-btn:hover {
+  border-color: var(--cyan);
+  color: var(--text);
+}
+
+.mode-btn[aria-pressed="true"],
+.mode-btn.active {
+  background: var(--cyan);
+  border-color: var(--cyan);
+  color: #07010f;             /* dark text on cyan bg */
+  font-weight: 600;
+}
+
+/* --- Back button (matches origin-trace inline style; class hook for Phase 2 overrides) --- */
+.back-btn {
+  position: fixed;
+  top: 12px;
+  left: 12px;
+  z-index: 9999;
+  background: rgba(10, 10, 20, 0.85);
+  backdrop-filter: blur(6px);
+  color: var(--cyan);
+  border: 1px solid var(--cyan);
+  border-radius: 20px;
+  padding: 6px 14px;
+  font-family: Inter, sans-serif;
+  font-size: 13px;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.back-btn:hover {
+  background: rgba(10, 10, 20, 0.95);
+  color: var(--text);
+}
+
+.back-btn:focus-visible {
+  outline: 2px solid var(--cyan);
+  outline-offset: 2px;
+}
+
+/* ============================================================
+   Phase 2, Task 2 — Cards, Salary Bar, Chips, Callout
+   ============================================================ */
+
+/* --- 5. Ladder container + vertical connector line --- */
+#ladder-container {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap);
+}
+
+#ladder-container::before {
+  content: '';
+  position: absolute;
+  left: 1.25rem;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--border);
+  border-radius: 1px;
+}
+
+/* --- 6. Level card --- */
+.level-card {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--cyan);
+  border-radius: var(--card-radius);
+  padding: 1.5rem 1.5rem 1.5rem 2rem;
+  position: relative;
+  transition: border-color 0.2s;
+}
+
+.level-card:hover {
+  border-color: rgba(74, 247, 255, 0.35);
+  border-left: 3px solid var(--cyan);
+}
+
+/* Dot on the left connector line */
+.level-card::before {
+  content: '';
+  position: absolute;
+  left: -1.25rem;
+  top: 1.75rem;
+  width: 10px;
+  height: 10px;
+  background: var(--cyan);
+  border-radius: 50%;
+  border: 2px solid var(--bg);
+}
+
+/* --- 7. Card header --- */
+.level-card__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+
+.level-card__title {
+  font-family: 'Orbitron', sans-serif;
+  font-size: clamp(0.9rem, 2.5vw, 1.1rem);
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1.3;
+}
+
+.level-card__years-badge {
+  flex-shrink: 0;
+  background: rgba(74, 247, 255, 0.1);
+  color: var(--cyan);
+  border: 1px solid rgba(74, 247, 255, 0.25);
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  padding: 0.2rem 0.65rem;
+  white-space: nowrap;
+}
+
+/* --- 8. Salary bar --- */
+.salary-bar {
+  position: relative;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.07);
+  border-radius: 3px;
+  margin-bottom: 0.5rem;
+  /* overflow: visible lets the fill's rounded ends extend slightly past the track */
+  overflow: visible;
+}
+
+.salary-bar__fill {
+  position: absolute;
+  height: 100%;
+  background: var(--cyan);
+  border-radius: 3px;
+  opacity: 0.85;
+}
+
+.salary-bar__label {
+  display: block;
+  font-size: 0.78rem;
+  color: var(--muted);
+  margin-top: 0.35rem;
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- 9. Gov meta (GS range + clearance) --- */
+.level-card__gov-meta {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+  padding: 0.5rem 0.75rem;
+  background: var(--purple-tint-08);
+  border: 1px solid var(--purple-tint-20);
+  border-radius: 6px;
+}
+
+.level-card__gs-range,
+.level-card__clearance {
+  font-size: 0.8rem;
+  color: var(--text);
+}
+
+.level-card__gs-range::before { content: '📋 '; }
+.level-card__clearance::before { content: '🔐 '; }
+
+/* --- 10. Card sections (skills, certs, roles/orgs) --- */
+.level-card__section {
+  margin-top: 1rem;
+}
+
+.level-card__section-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--muted);
+  margin-bottom: 0.4rem;
+}
+
+.chip-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.chip {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  color: var(--text);
+  font-size: 0.76rem;
+  padding: 0.2rem 0.55rem;
+  font-family: 'Fira Code', monospace;
+}
+
+.chip--cert {
+  border-color: rgba(255, 196, 0, 0.4);
+  color: var(--gold);
+  background: rgba(255, 196, 0, 0.07);
+}
+
+.level-card__example-roles {
+  font-size: 0.85rem;
+  color: var(--text);
+  margin-bottom: 0.25rem;
+}
+
+.level-card__example-orgs {
+  font-size: 0.82rem;
+  color: var(--muted);
+  font-style: italic;
+}
+
+/* --- 11. Callout (next steps + milestone) --- */
+.level-callout {
+  margin-top: 1.25rem;
+  padding: 0.85rem 1rem;
+  background: rgba(74, 247, 255, 0.04);
+  border-left: 3px solid var(--cyan);
+  border-radius: 0 6px 6px 0;
+}
+
+.level-callout__next-steps {
+  font-size: 0.87rem;
+  color: var(--text);
+  margin-bottom: 0.35rem;
+  line-height: 1.5;
+}
+
+.level-callout__milestone {
+  font-size: 0.82rem;
+  color: var(--cyan);
+  font-weight: 500;
+}
+
+/* --- 12. Error and placeholder states --- */
+.placeholder-msg,
+.error-msg {
+  text-align: center;
+  padding: 3rem 1rem;
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+.error-msg {
+  color: #ff6b6b;
+}
+
+/* ============================================================
+   Responsive — 600px breakpoint
+   ============================================================ */
+@media (max-width: 600px) {
+
+  /* Main padding tightens on small screens */
+  main {
+    padding: 1rem 1rem 3rem;
+  }
+
+  /* Header shrinks */
+  header {
+    padding: 2rem 0.75rem 1.25rem;
+  }
+
+  /* Tab bar already scrolls (overflow-x: auto from desktop) — just tighten tab padding */
+  .tab {
+    padding: 0.65rem 0.9rem;
+    font-size: 0.82rem;
+  }
+
+  /* Toggle wraps if needed */
+  .mode-toggle {
+    flex-wrap: wrap;
+  }
+
+  /* Cards go full-width; reduce padding to reclaim space */
+  .level-card {
+    padding: 1.25rem 1rem 1.25rem 1.5rem;
+  }
+
+  /* Header row stacks title above badge when space is tight */
+  .level-card__header {
+    flex-direction: column;
+    gap: 0.4rem;
+  }
+
+  /* Gov meta stacks vertically */
+  .level-card__gov-meta {
+    flex-direction: column;
+    gap: 0.4rem;
+  }
+
+  /* Chip groups wrap tighter */
+  .chip-group {
+    gap: 0.25rem;
+  }
+
+  /* Connector line hidden — not enough margin on mobile */
+  #ladder-container::before {
+    display: none;
+  }
+
+  /* Dot marker hidden with the line */
+  .level-card::before {
+    display: none;
+  }
+}

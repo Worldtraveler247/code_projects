@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>How It's Built — Career Ladder | Eddie's App Hub</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Inter:wght@400;500;600&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../how-it-works.css">
+</head>
+<body>
+<a href="../index.html" style="position:fixed;top:12px;left:12px;z-index:9999;background:rgba(10,10,20,0.85);backdrop-filter:blur(6px);color:#4af7ff;border:1px solid #4af7ff;border-radius:20px;padding:6px 14px;font-family:sans-serif;font-size:13px;text-decoration:none;font-weight:600;">← App Hub</a>
+
+<div class="hiw-page">
+
+  <header class="hiw-header">
+    <div class="hiw-icon">🪜</div>
+    <h1>Career Ladder — How It's Built</h1>
+    <p class="hiw-tagline">Role-by-role progression maps for Cloud Security, Cybersecurity, DevSecOps, and AI-ML — civilian and government tracks with 2025 salary data.</p>
+  </header>
+
+  <section class="hiw-section">
+    <h2>Overview</h2>
+    <p>
+      Career Ladder is a zero-dependency static app that maps six progression levels (L1–L6) across four cybersecurity/tech disciplines. Each track lives in its own JSON file. A tab switcher drives lazy loading — tracks are fetched on first click and cached in a <code>Map</code> so subsequent visits are instant. A Civ/Gov toggle re-renders from the same cached data using 2025 OPM GS pay table salaries for government roles and realistic market comps for civilian roles. Everything renders via DOM construction — no <code>innerHTML</code>, no framework, no build step.
+    </p>
+  </section>
+
+  <section class="hiw-section">
+    <h2>Tech Stack</h2>
+    <div class="hiw-badges">
+      <span class="hiw-badge">HTML</span>
+      <span class="hiw-badge">CSS</span>
+      <span class="hiw-badge">JavaScript (ES Modules)</span>
+      <span class="hiw-badge">JSON</span>
+    </div>
+    <ul class="hiw-caption-list">
+      <li><strong>HTML</strong> — single page; ARIA tablist/tab/tabpanel pattern with roving tabindex and keyboard nav (ArrowLeft/ArrowRight)</li>
+      <li><strong>CSS</strong> — design token system (<code>:root</code> variables), CSS custom properties for card theming, responsive 600px breakpoint</li>
+      <li><strong>JavaScript (ES Modules)</strong> — three modules: <code>main.js</code> (tab/mode orchestration), <code>render.js</code> (DOM builder), <code>utils.js</code> (salary bar math, chip builder, hash routing)</li>
+      <li><strong>JSON</strong> — one file per track; each has a <code>levels[]</code> array with <code>civ</code> and <code>gov</code> sub-objects for dual-mode rendering</li>
+    </ul>
+  </section>
+
+  <section class="hiw-section">
+    <h2>How Each Part Works</h2>
+
+    <div class="hiw-file-block">
+      <h3><code>js/main.js</code> — tab switching with cache and race guard</h3>
+      <p>
+        <code>switchToTrack()</code> sets an <code>inflightTrackId</code> before the async fetch. When the response arrives, it checks whether <code>inflightTrackId</code> still matches — if the user clicked a different tab while waiting, the stale response is discarded silently. Tracks are stored in a <code>Map</code> keyed by track ID; cache hits skip the network entirely.
+      </p>
+      <pre class="hiw-code">const trackCache = new Map();
+let inflightTrackId = null;
+
+async function switchToTrack(trackId) {
+  currentTrackId = trackId;
+  inflightTrackId = trackId;        // mark this fetch as current
+
+  activateTab(/* matching tab button */);
+
+  const data = await loadTrack(trackId);
+  if (inflightTrackId !== trackId) return; // superseded by a newer click
+  if (!data) return;                        // network error — already shown
+
+  renderTrack(data, currentMode);
+  trackToHash(trackId);             // push #cloud-security etc. to URL
+}
+
+async function loadTrack(trackId) {
+  if (trackCache.has(trackId)) return trackCache.get(trackId);
+
+  const response = await fetch(`data/${trackId}.json`);
+  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  const data = await response.json();
+  trackCache.set(trackId, data);    // cache forever for this session
+  return data;
+}</pre>
+    </div>
+
+    <div class="hiw-file-block">
+      <h3><code>js/render.js</code> — DOM construction, no innerHTML</h3>
+      <p>
+        <code>renderTrack(data, mode)</code> clears the container with <code>replaceChildren()</code> (no XSS risk vs. <code>innerHTML = ''</code>), then builds one <code>&lt;article class="level-card"&gt;</code> per level entry. The <code>mode</code> parameter (<code>'civ'</code> or <code>'gov'</code>) selects which sub-object to read for salary and role data. Gov mode appends an extra GS range + clearance block.
+      </p>
+      <pre class="hiw-code">export function renderTrack(data, mode) {
+  const container = document.getElementById('ladder-container');
+  container.replaceChildren();      // safe clear
+
+  for (const level of data.levels) {
+    const modeData = level[mode];   // level.civ or level.gov
+
+    const article = document.createElement('article');
+    article.className = 'level-card';
+
+    // salary bar: left% and width% computed from SALARY_SCALE=250_000
+    const { left, width } = salaryBarWidth(modeData.salary_min, modeData.salary_max);
+    const fill = document.createElement('span');
+    fill.className = 'salary-bar__fill';
+    fill.style.left = left;   // e.g. "26.0%"
+    fill.style.width = width; // e.g. "14.0%"
+
+    // gov-only block
+    if (mode === 'gov') {
+      const gsSpan = document.createElement('span');
+      gsSpan.textContent = `GS Range: ${modeData.gs_range}`;
+      // ...
+    }
+    // skills, certs as chip groups; next_steps + milestone in callout box
+  }
+}</pre>
+    </div>
+
+    <div class="hiw-file-block">
+      <h3><code>js/utils.js</code> — salary bar math and hash routing</h3>
+      <p>
+        <code>salaryBarWidth()</code> maps a salary range onto a percentage-width bar relative to a <code>SALARY_SCALE</code> of $250K. Both inputs are clamped to <code>[0, SALARY_SCALE]</code> before computing, so bad JSON can't produce negative widths or overflow. <code>hashToTrack()</code> reads <code>window.location.hash</code> and validates it against a private <code>VALID_TRACKS</code> allowlist to prevent arbitrary fetch paths from URL manipulation.
+      </p>
+      <pre class="hiw-code">export const SALARY_SCALE = 250_000;
+
+const VALID_TRACKS = new Set(['cloud-security','cybersecurity','devsecops','ai-ml']);
+
+export function salaryBarWidth(salary_min, salary_max, scale = SALARY_SCALE) {
+  const lo = Math.max(0, Math.min(salary_min, scale));
+  const hi = Math.max(0, Math.min(salary_max, scale));
+  return {
+    left:  `${((lo / scale) * 100).toFixed(1)}%`,
+    width: `${(((hi - lo) / scale) * 100).toFixed(1)}%`,
+  };
+}
+
+export function hashToTrack() {
+  const raw = window.location.hash.replace('#', '');
+  return VALID_TRACKS.has(raw) ? raw : 'cloud-security'; // default
+}</pre>
+    </div>
+
+    <div class="hiw-file-block">
+      <h3><code>data/*.json</code> — dual-mode schema</h3>
+      <p>
+        Each track file has a flat <code>levels[]</code> array. Every level carries both a <code>civ</code> and <code>gov</code> sub-object so the same JS can render either mode from the same cached payload. Government salaries are based on 2025 OPM GS pay tables with the Rest of U.S. locality adjustment (17.06%). L6 gov uses the SES ES-6 pay band ($155,700–$226,300).
+      </p>
+      <pre class="hiw-code">{
+  "track": "cloud-security",
+  "last_updated": "2025-05",
+  "levels": [
+    {
+      "id": "l1",
+      "title": "Cloud Security Engineer I",
+      "years_exp": "0–2",
+      "civ": {
+        "salary_min": 65000,
+        "salary_max": 90000,
+        "example_roles": ["Junior Cloud Security Analyst", "Cloud Security Associate"],
+        "example_orgs": ["Palo Alto Networks", "CrowdStrike", "AWS"]
+      },
+      "gov": {
+        "salary_min": 46000,
+        "salary_max": 73000,
+        "gs_range": "GS-7 to GS-9",
+        "clearance": "Secret",
+        "example_roles": ["IT Specialist (INFOSEC)", "Cybersecurity Analyst I"],
+        "example_orgs": ["DHS CISA", "DoD DISA", "NSA"]
+      },
+      "skills": ["AWS IAM", "Security Hub", "GuardDuty", "Python scripting"],
+      "certs": ["AWS Security Specialty", "CompTIA Security+"],
+      "next_steps": "Build IAM least-privilege policies; deploy GuardDuty in a personal AWS account.",
+      "milestone": "First cloud security job or internship secured."
+    }
+  ]
+}</pre>
+    </div>
+
+  </section>
+
+  <section class="hiw-section">
+    <h2>File Map</h2>
+    <pre class="hiw-file-map">career-ladder/
+├── index.html            ← single page: tablist, civ/gov toggle, ladder container
+├── style.css             ← design tokens, cards, salary bar, chips, callout, responsive
+├── how-it-works.html     ← this page
+├── data/
+│   ├── cloud-security.json   ← 6 levels: Cloud Security Engineer I–VI
+│   ├── cybersecurity.json    ← 6 levels: Analyst I → CISO
+│   ├── devsecops.json        ← 6 levels: DevSecOps Engineer I → VP Platform Security
+│   └── ai-ml.json            ← 6 levels: ML Engineer I → Distinguished AI Researcher
+└── js/
+    ├── main.js           ← tab switching, mode toggle, ARIA, keyboard nav, bootstrap
+    ├── render.js         ← DOM card builder (replaceChildren, no innerHTML)
+    └── utils.js          ← salaryBarWidth, buildChip, hashToTrack, trackToHash</pre>
+  </section>
+
+  <section class="hiw-section">
+    <h2>Replicate It Yourself</h2>
+    <ol class="hiw-steps">
+      <li>
+        <span>
+          <strong>Design a dual-mode JSON schema.</strong> Give every level two sub-objects (<code>civ</code> and <code>gov</code>) with matching fields. Store shared data (skills, certs, next_steps) at the level root so a mode switch is just swapping one sub-object reference.
+        </span>
+      </li>
+      <li>
+        <span>
+          <strong>Wire a tablist with ARIA and a Map cache.</strong> Use <code>role="tablist"</code>, <code>role="tab"</code> with <code>aria-selected</code>, and <code>role="tabpanel"</code> with <code>aria-labelledby</code>. Store fetched JSON in <code>new Map()</code> keyed by track ID. On tab click, check the Map before fetching.
+          Reference: <a href="https://www.w3.org/WAI/ARIA/apg/patterns/tabs/" target="_blank" rel="noopener">ARIA Tabs Pattern (W3C)</a>.
+        </span>
+      </li>
+      <li>
+        <span>
+          <strong>Guard against race conditions.</strong> Set an <code>inflightTrackId</code> variable before every fetch. After <code>await</code>, check it still matches before rendering — rapid tab clicks otherwise cause stale data to overwrite the current view.
+        </span>
+      </li>
+      <li>
+        <span>
+          <strong>Build cards with DOM APIs, not innerHTML.</strong> Use <code>document.createElement</code> and <code>container.replaceChildren()</code>. This eliminates the XSS surface you'd get from template-literal HTML strings, and the browser doesn't have to re-parse a string.
+          Reference: <a href="https://developer.mozilla.org/en-US/docs/Web/API/Element/replaceChildren" target="_blank" rel="noopener">MDN replaceChildren</a>.
+        </span>
+      </li>
+      <li>
+        <span>
+          <strong>Map salaries to a percentage bar.</strong> Pick a scale constant (e.g. <code>SALARY_SCALE = 250_000</code>). Compute <code>left = lo / scale * 100</code> and <code>width = (hi - lo) / scale * 100</code>. Clamp inputs first so no bad JSON value produces a negative or overflowing bar.
+        </span>
+      </li>
+      <li>
+        <span>
+          <strong>Add hash-based routing with an allowlist.</strong> Read <code>window.location.hash</code> for the initial track, but validate against a <code>Set</code> of known track IDs before using the value in a <code>fetch()</code> call. This prevents URL manipulation from driving arbitrary network requests.
+        </span>
+      </li>
+      <li>
+        <span>
+          <strong>Deploy to GitHub Pages.</strong> Push to <code>main</code>, go to repo Settings → Pages → Source: <em>Deploy from branch</em> → <code>main / (root)</code>. No build step, no bundler needed — ES modules load directly in the browser.
+          Reference: <a href="https://docs.github.com/en/pages/getting-started-with-github-pages" target="_blank" rel="noopener">GitHub Pages docs</a>.
+        </span>
+      </li>
+    </ol>
+  </section>
+
+</div>
+</body>
+</html>

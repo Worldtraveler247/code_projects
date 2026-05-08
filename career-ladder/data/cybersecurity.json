@@ -1,0 +1,358 @@
+{
+  "track": "cybersecurity",
+  "last_updated": "2025-05",
+  "salary_baseline": "2025 national median; gov figures reflect OPM 2025 base pay + Rest of US locality (17.06%)",
+  "levels": [
+    {
+      "id": "l1",
+      "title": "Cybersecurity Analyst I",
+      "years_exp": "0–2",
+      "civ": {
+        "salary_min": 62000,
+        "salary_max": 88000,
+        "example_roles": [
+          "SOC Analyst I",
+          "Security Analyst I",
+          "Junior Penetration Tester Trainee"
+        ],
+        "example_orgs": [
+          "CrowdStrike",
+          "Mandiant",
+          "IBM Security",
+          "Palo Alto Networks",
+          "Deloitte Cyber"
+        ]
+      },
+      "gov": {
+        "salary_min": 49900,
+        "salary_max": 79000,
+        "gs_range": "GS-7 to GS-9",
+        "clearance": "Secret",
+        "example_roles": [
+          "IT Security Specialist (GS-7/9)",
+          "Cybersecurity Analyst Trainee",
+          "SOC Analyst (contractor)"
+        ],
+        "example_orgs": [
+          "CISA",
+          "DHS",
+          "DoD",
+          "NSA (entry-level contractor)",
+          "FBI"
+        ]
+      },
+      "skills": [
+        "SIEM platforms (Splunk, QRadar)",
+        "Log analysis and correlation",
+        "Network packet analysis (Wireshark)",
+        "Vulnerability scanning (Nessus, OpenVAS)",
+        "Incident response basics (triage, escalation)",
+        "Python scripting for alert parsing and automation",
+        "TCP/IP fundamentals and OSI model",
+        "NIST Cybersecurity Framework basics"
+      ],
+      "certs": [
+        "CompTIA Security+",
+        "CompTIA CySA+"
+      ],
+      "next_steps": "Move from alert triage to alert investigation — write detection rules, document runbooks, and begin studying threat hunting fundamentals.",
+      "milestone": "Handle a full incident triage cycle solo: identify, contain, eradicate, and write the post-incident report without hand-holding."
+    },
+    {
+      "id": "l2",
+      "title": "Cybersecurity Analyst II / Junior Security Engineer",
+      "years_exp": "2–4",
+      "civ": {
+        "salary_min": 82000,
+        "salary_max": 112000,
+        "example_roles": [
+          "SOC Analyst II",
+          "Junior Penetration Tester",
+          "Threat Intelligence Analyst"
+        ],
+        "example_orgs": [
+          "Mandiant",
+          "CrowdStrike",
+          "Booz Allen Hamilton",
+          "Leidos",
+          "SAIC"
+        ]
+      },
+      "gov": {
+        "salary_min": 61000,
+        "salary_max": 96000,
+        "gs_range": "GS-9 to GS-11",
+        "clearance": "Secret",
+        "example_roles": [
+          "IT Security Specialist (GS-9/11)",
+          "Cyber Defense Analyst",
+          "Penetration Tester Trainee (contractor)"
+        ],
+        "example_orgs": [
+          "CISA",
+          "DHS",
+          "DoD Cyber Crime Center (DC3)",
+          "NSA (junior contractor)",
+          "Booz Allen Hamilton (federal)"
+        ]
+      },
+      "skills": [
+        "Threat hunting (hypothesis-driven, IOC-based)",
+        "Malware analysis basics (static and dynamic, sandbox detonation)",
+        "OSINT techniques and tooling (Maltego, SpiderFoot)",
+        "Penetration testing fundamentals (Metasploit, Burp Suite)",
+        "SOAR playbook authoring and tuning",
+        "Threat intel feeds and standards (MISP, STIX/TAXII)",
+        "MITRE ATT&CK framework navigation and mapping",
+        "Vulnerability management lifecycle",
+        "Scripting in Python and Bash for automation"
+      ],
+      "certs": [
+        "CompTIA CySA+",
+        "EC-Council CEH"
+      ],
+      "next_steps": "Build a full pentest lab (Metasploitable, DVWA, HackTheBox) and complete at least one end-to-end engagement report. Start OSCP prep.",
+      "milestone": "Conduct an independent vulnerability assessment on a scoped lab environment and deliver a professional written report with CVSS-scored findings."
+    },
+    {
+      "id": "l3",
+      "title": "Cybersecurity Engineer / Penetration Tester",
+      "years_exp": "4–6",
+      "civ": {
+        "salary_min": 105000,
+        "salary_max": 148000,
+        "example_roles": [
+          "Penetration Tester",
+          "Red Team Engineer",
+          "Detection Engineer",
+          "Security Operations Engineer"
+        ],
+        "example_orgs": [
+          "Rapid7",
+          "Recorded Future",
+          "Google Mandiant",
+          "Apple",
+          "Meta",
+          "Northrop Grumman"
+        ]
+      },
+      "gov": {
+        "salary_min": 73900,
+        "salary_max": 115000,
+        "gs_range": "GS-11 to GS-12",
+        "clearance": "Top Secret or TS/SCI",
+        "example_roles": [
+          "IT Security Specialist (GS-11/12)",
+          "Red Team Operator",
+          "Detection Engineer (contractor)"
+        ],
+        "example_orgs": [
+          "NSA",
+          "USCYBERCOM",
+          "DHS CISA Red Team",
+          "FBI Cyber Division",
+          "DoD Components"
+        ]
+      },
+      "skills": [
+        "Full penetration testing lifecycle (web app, network, cloud)",
+        "Red team TTPs mapped to MITRE ATT&CK",
+        "Detection engineering (Sigma rules, YARA signatures)",
+        "Threat modeling (STRIDE, PASTA, attack trees)",
+        "Exploit development basics (buffer overflows, shellcode)",
+        "Active Directory attack and defense (Kerberoasting, Pass-the-Hash, BloodHound)",
+        "Cloud security testing (AWS/Azure misconfig exploitation)",
+        "Security tool development in Python or Go",
+        "Purple team exercise planning and execution"
+      ],
+      "certs": [
+        "OSCP",
+        "GPEN",
+        "GWAPT"
+      ],
+      "next_steps": "Own a full red team engagement from scoping through debrief. Build a custom C2 implant or detection rule set and present findings to a blue team.",
+      "milestone": "Lead a full-scope internal red team operation, produce an executive summary and technical findings report, and run the purple team debrief."
+    },
+    {
+      "id": "l4",
+      "title": "Senior Cybersecurity Engineer / Security Architect",
+      "years_exp": "6–10",
+      "civ": {
+        "salary_min": 142000,
+        "salary_max": 188000,
+        "example_roles": [
+          "Senior Penetration Tester",
+          "Security Architect",
+          "Principal Detection Engineer",
+          "Blue Team Lead"
+        ],
+        "example_orgs": [
+          "Google",
+          "Microsoft",
+          "Amazon",
+          "CrowdStrike",
+          "Palo Alto Networks",
+          "MITRE Corporation"
+        ]
+      },
+      "gov": {
+        "salary_min": 88500,
+        "salary_max": 137000,
+        "gs_range": "GS-12 to GS-13",
+        "clearance": "TS/SCI",
+        "example_roles": [
+          "Senior IT Security Specialist (GS-12/13)",
+          "Security Architect (GS-13)",
+          "Red Team Lead (contractor)"
+        ],
+        "example_orgs": [
+          "NSA",
+          "USCYBERCOM",
+          "CISA",
+          "DIA",
+          "DoD Components"
+        ]
+      },
+      "skills": [
+        "Security architecture design and review (zero-trust, defense-in-depth)",
+        "Zero-trust network architecture implementation",
+        "Purple team program design and leadership",
+        "Reverse engineering (Ghidra, IDA Pro, x64dbg)",
+        "Advanced threat hunting (behavioral, TTP-based)",
+        "Threat intelligence program leadership (collection, analysis, dissemination)",
+        "SOAR platform engineering and integration",
+        "Enterprise IAM security architecture",
+        "Mentoring junior analysts and engineers",
+        "Technical writing for executive and board audiences"
+      ],
+      "certs": [
+        "OSCP",
+        "GXPN",
+        "CISSP",
+        "CISM"
+      ],
+      "next_steps": "Lead a team of mid-level engineers and own the security roadmap for a product line or business unit. Develop expertise in reverse engineering or advanced exploitation and pursue GXPN. Begin scoping an internal red team program.",
+      "milestone": "Design and defend a full enterprise security architecture — including zero-trust segmentation, detection strategy, and incident response plan — to a skeptical leadership audience."
+    },
+    {
+      "id": "l5",
+      "title": "Staff / Principal Cybersecurity Engineer",
+      "years_exp": "10–15",
+      "civ": {
+        "salary_min": 182000,
+        "salary_max": 238000,
+        "example_roles": [
+          "Principal Security Researcher",
+          "Staff Red Team Engineer",
+          "Distinguished Security Architect",
+          "Security Research Lead"
+        ],
+        "example_orgs": [
+          "Google Project Zero",
+          "Microsoft MSRC",
+          "Trail of Bits",
+          "CrowdStrike Intelligence",
+          "Palantir"
+        ]
+      },
+      "gov": {
+        "salary_min": 105000,
+        "salary_max": 191900,
+        "gs_range": "GS-14 to GS-15",
+        "clearance": "TS/SCI",
+        "example_roles": [
+          "Supervisory IT Security Specialist (GS-14/15)",
+          "Senior Security Researcher",
+          "Principal Red Team Operator"
+        ],
+        "example_orgs": [
+          "NSA Research",
+          "USCYBERCOM",
+          "CISA",
+          "DARPA",
+          "DoD Advanced Research"
+        ]
+      },
+      "skills": [
+        "Vulnerability research and 0-day discovery",
+        "Enterprise security program design (people, process, technology)",
+        "National and organizational cyber policy input",
+        "Security tool and platform development",
+        "Red team program leadership and roadmap ownership",
+        "Executive and board-level risk briefings",
+        "Cross-functional collaboration with legal, HR, and engineering leadership",
+        "External publication and conference-level research",
+        "Large-scale threat modeling across complex distributed systems"
+      ],
+      "certs": [
+        "CISSP",
+        "CISM",
+        "GREM",
+        "OSED"
+      ],
+      "next_steps": "Publish original security research, speak at a major conference (DEF CON, Black Hat), and establish an org-wide red team or vulnerability research function.",
+      "milestone": "Discover and responsibly disclose a novel vulnerability class or author a security framework adopted org-wide or industry-wide."
+    },
+    {
+      "id": "l6",
+      "title": "CISO / Distinguished Security Researcher",
+      "years_exp": "15+",
+      "civ": {
+        "salary_min": 215000,
+        "salary_max": 400000,
+        "example_roles": [
+          "Chief Information Security Officer (CISO)",
+          "VP of Security",
+          "Distinguished Security Researcher",
+          "Security Fellow"
+        ],
+        "example_orgs": [
+          "Any Fortune 500",
+          "Google",
+          "Microsoft",
+          "Amazon",
+          "CrowdStrike",
+          "Palo Alto Networks"
+        ]
+      },
+      "gov": {
+        "salary_min": 150000,
+        "salary_max": 226000,
+        "gs_range": "SES",
+        "clearance": "TS/SCI + Polygraph",
+        "example_roles": [
+          "Senior Executive (SES-1 to SES-6)",
+          "Chief Information Security Officer (agency)",
+          "Director of Cyber Operations"
+        ],
+        "example_orgs": [
+          "NSA",
+          "USCYBERCOM",
+          "CISA Leadership",
+          "DNI",
+          "FBI Cyber Division Leadership"
+        ]
+      },
+      "skills": [
+        "Board-level risk communication and cyber risk quantification",
+        "National cyber policy development and advocacy",
+        "M&A security due diligence and integration",
+        "Threat intelligence strategy and program ownership",
+        "Security culture transformation across large organizations",
+        "Budget ownership and P&L accountability ($10M+)",
+        "Regulatory compliance oversight (CMMC, FISMA, FedRAMP, SOC 2, PCI-DSS)",
+        "Crisis communications and breach response leadership",
+        "C-suite and board relationship management",
+        "Talent strategy, hiring, and team building at scale"
+      ],
+      "certs": [
+        "CISSP",
+        "CISM",
+        "CISA",
+        "NACD Directorship Certification"
+      ],
+      "next_steps": "Own the organization's full security posture and risk program. Shape industry standards. Sit on advisory boards or serve as a board director for security matters.",
+      "milestone": "Lead the organization through a major breach or regulatory audit with zero material harm — owning the response, communications, and remediation program end-to-end."
+    }
+  ]
+}

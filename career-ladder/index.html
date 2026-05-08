@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Career Ladder — Cloud Security &amp; DevSecOps Tracks</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Inter:wght@400;500;600&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- Back to App Hub -->
+  <a href="../index.html" class="back-btn">← App Hub</a>
+
+  <header>
+    <h1 class="app-title">Career Ladder</h1>
+    <p class="app-tagline">Role-by-role progression maps for Cloud Security, Cybersecurity, DevSecOps, and AI-ML — civilian and government tracks.</p>
+  </header>
+
+  <main>
+    <!-- Track Tab Bar -->
+    <div class="tab-bar" role="tablist" aria-label="Career tracks">
+      <button
+        id="tab-cloud-security"
+        role="tab"
+        aria-selected="true"
+        aria-controls="tab-panel"
+        data-track="cloud-security"
+        class="tab active"
+      >Cloud Security</button>
+      <button
+        id="tab-cybersecurity"
+        role="tab"
+        aria-selected="false"
+        aria-controls="tab-panel"
+        data-track="cybersecurity"
+        class="tab"
+      >Cybersecurity</button>
+      <button
+        id="tab-devsecops"
+        role="tab"
+        aria-selected="false"
+        aria-controls="tab-panel"
+        data-track="devsecops"
+        class="tab"
+      >DevSecOps</button>
+      <button
+        id="tab-ai-ml"
+        role="tab"
+        aria-selected="false"
+        aria-controls="tab-panel"
+        data-track="ai-ml"
+        class="tab"
+      >AI-ML</button>
+    </div>
+
+    <!-- Tab Panel -->
+    <div id="tab-panel" role="tabpanel" aria-labelledby="tab-cloud-security">
+      <!-- Civ / Gov Toggle -->
+      <div class="mode-toggle" role="group" aria-label="Employment sector">
+        <button
+          class="mode-btn active"
+          aria-pressed="true"
+          data-mode="civ"
+        >Civilian</button>
+        <button
+          class="mode-btn"
+          aria-pressed="false"
+          data-mode="gov"
+        >Government</button>
+      </div>
+
+      <!-- JS renders ladder cards here -->
+      <div id="ladder-container"></div>
+    </div>
+  </main>
+
+  <script src="js/main.js" type="module"></script>
+</body>
+</html>
