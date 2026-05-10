@@ -130,6 +130,78 @@ input[type="text"]:focus {
     color: #e8d8a0;
 }
 
+/* ── Player comment boxes ── */
+.player-comment-wrap {
+    position: relative;
+    margin: 4px 0 8px 17px; /* indent to align under name input */
+}
+
+.comment-label {
+    display: block;
+    font-size: 0.58rem;
+    color: #5a4820;
+    letter-spacing: 0.6px;
+    text-transform: uppercase;
+    font-family: 'Cinzel', serif;
+    margin-bottom: 4px;
+}
+
+.player-comment {
+    min-height: 38px;
+    max-height: 90px;
+    overflow-y: auto;
+    background: rgba(201, 162, 39, 0.03);
+    color: #8a7040;
+    border: 1px solid rgba(201, 162, 39, 0.13);
+    border-radius: 3px;
+    padding: 5px 8px;
+    font-family: 'Inter', system-ui;
+    font-size: 0.68rem;
+    line-height: 1.55;
+    letter-spacing: 0.3px;
+    outline: none;
+    transition: border-color 0.2s, color 0.2s, box-shadow 0.15s;
+    word-break: break-word;
+    white-space: pre-wrap;
+    cursor: text;
+}
+
+/* Placeholder via pseudo-element on empty contenteditable */
+.player-comment:empty::before {
+    content: attr(data-placeholder);
+    color: #2e2210;
+    pointer-events: none;
+}
+
+.player-comment:focus {
+    border-color: rgba(201, 162, 39, 0.38);
+    color: #c9a850;
+    box-shadow: 0 0 0 1px rgba(201, 162, 39, 0.06);
+}
+
+/* Flash the border gold on save */
+.player-comment.flash-saved {
+    border-color: rgba(201, 162, 39, 0.8);
+    box-shadow: 0 0 6px rgba(201, 162, 39, 0.2);
+}
+
+/* "saved" confirmation text */
+.comment-saved {
+    display: block;
+    font-size: 0.57rem;
+    color: #c9a227;
+    letter-spacing: 0.5px;
+    font-family: 'Inter', system-ui;
+    margin-top: 2px;
+    opacity: 0;
+    transition: opacity 0.25s ease;
+    pointer-events: none;
+    text-align: right;
+}
+.comment-saved.visible {
+    opacity: 1;
+}
+
 #status {
     font-size: 0.74rem;
     color: #a89060;

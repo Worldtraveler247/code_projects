@@ -19,8 +19,6 @@
 <body>
 <a href="../index.html" style="position:fixed;top:12px;left:12px;z-index:9999;background:rgba(10,10,20,0.85);backdrop-filter:blur(6px);color:#4af7ff;border:1px solid #4af7ff;border-radius:20px;padding:6px 14px;font-family:sans-serif;font-size:13px;text-decoration:none;font-weight:600;">← App Hub</a>
 
-    <a href="../index.html" class="back-link">← Portfolio</a>
-
     <div id="ui-container">
         <button id="panel-toggle" onclick="togglePanel()" title="Hide controls">✕</button>
         <div id="panel-content">
@@ -30,9 +28,31 @@
                     <span class="piece-dot white-dot"></span>
                     <input id="name-white" type="text" placeholder="White player" maxlength="24">
                 </div>
+                <div class="player-comment-wrap">
+                    <label class="comment-label">White's note to opponent:</label>
+                    <div
+                        id="comment-white"
+                        class="player-comment"
+                        contenteditable="true"
+                        data-player="white"
+                        data-placeholder="Leave a message…"
+                    ></div>
+                    <span class="comment-saved" id="saved-white">saved</span>
+                </div>
                 <div class="player-row">
                     <span class="piece-dot black-dot"></span>
                     <input id="name-black" type="text" placeholder="Black player" maxlength="24">
+                </div>
+                <div class="player-comment-wrap">
+                    <label class="comment-label">Black's note to opponent:</label>
+                    <div
+                        id="comment-black"
+                        class="player-comment"
+                        contenteditable="true"
+                        data-player="black"
+                        data-placeholder="Leave a message…"
+                    ></div>
+                    <span class="comment-saved" id="saved-black">saved</span>
                 </div>
             </div>
             <p id="status">White's Turn</p>

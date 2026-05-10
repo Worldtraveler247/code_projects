@@ -485,7 +485,7 @@ function saveToFirebase() {
     if (!firebaseReady()) return;
     const wName = document.getElementById('name-white').value.trim();
     const bName = document.getElementById('name-black').value.trim();
-    firebase.database().ref('current_match').set({
+    firebase.database().ref('current_match').update({
         fen: game.fen(),
         nameWhite: wName,
         nameBlack: bName,
@@ -517,8 +517,84 @@ function loadFromFirebase() {
             } else {
                 updateStatus();
             }
+            // Sync comments — only overwrite DOM if the element is not focused
+            // (avoids clobbering a visitor who is actively typing)
+            const cwEl = document.getElementById('comment-white');
+            const cbEl = document.getElementById('comment-black');
+            const comments = data.comments || {};
+            if (document.activeElement !== cwEl) {
+                const remote = comments.white || '';
+                if (cwEl.textContent !== remote) cwEl.textContent = remote;
+            }
+            if (document.activeElement !== cbEl) {
+                const remote = comments.black || '';
+                if (cbEl.textContent !== remote) cbEl.textContent = remote;
+            }
         });
     });
+}
+
+// ─── Comments ─────────────────────────────────────────────────────────────────
+const _commentTimers = { white: null, black: null };
+
+/** Flash the saved indicator and gold border on the given comment box. */
+function showSaved(player) {
+    const el    = document.getElementById('comment-' + player);
+    const badge = document.getElementById('saved-' + player);
+
+    el.classList.add('flash-saved');
+    badge.classList.add('visible');
+
+    setTimeout(() => {
+        el.classList.remove('flash-saved');
+    }, 600);
+    setTimeout(() => {
+        badge.classList.remove('visible');
+    }, 1800);
+}
+
+/**
+ * Write this player's comment to Firebase.
+ * Uses `update` so other fields in current_match are untouched.
+ * Gracefully no-ops if Firebase is not ready (auth still pending).
+ */
+function saveComment(player) {
+    const el   = document.getElementById('comment-' + player);
+    const text = el.textContent.trim();
+
+    if (!firebaseReady()) {
+        // Queue one retry once auth settles — covers the first-load race
+        // where a visitor types before anonymous auth completes.
+        const retryKey = '_commentRetry_' + player;
+        clearTimeout(window[retryKey]);
+        window[retryKey] = setTimeout(() => saveComment(player), 1200);
+        return;
+    }
+
+    firebase.database()
+        .ref('current_match/comments/' + player)
+        .set(text)
+        .then(() => showSaved(player))
+        .catch(e => console.warn('Comment save failed:', e.message));
+}
+
+function onCommentInput(player) {
+    clearTimeout(_commentTimers[player]);
+    _commentTimers[player] = setTimeout(() => saveComment(player), 700);
+}
+
+function onCommentBlur(player) {
+    // Cancel debounce timer and save immediately on blur
+    clearTimeout(_commentTimers[player]);
+    saveComment(player);
+}
+
+function onCommentKeydown(event, player) {
+    // Enter without Shift → save and blur (no newline)
+    if (event.key === 'Enter' && !event.shiftKey) {
+        event.preventDefault();
+        document.getElementById('comment-' + player).blur();
+    }
 }
 
 // ─── Animation ────────────────────────────────────────────────────────────────
@@ -531,6 +607,14 @@ function animate() {
 // ─── Init ─────────────────────────────────────────────────────────────────────
 document.getElementById('name-white').addEventListener('input', () => onNameInput('w'));
 document.getElementById('name-black').addEventListener('input', () => onNameInput('b'));
+
+// Comment boxes — inline editable, saved to Firebase
+['white', 'black'].forEach(player => {
+    const el = document.getElementById('comment-' + player);
+    el.addEventListener('input',   ()      => onCommentInput(player));
+    el.addEventListener('blur',    ()      => onCommentBlur(player));
+    el.addEventListener('keydown', (event) => onCommentKeydown(event, player));
+});
 window.addEventListener('click', onCanvasClick);
 
 // Touch tap detection — distinguish tap from orbit drag
