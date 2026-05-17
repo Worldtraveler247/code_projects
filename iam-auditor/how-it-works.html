@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>How It's Built — IAM Auditor | Eddie's App Hub</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Inter:wght@400;500;600&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../how-it-works.css">
+</head>
+<body>
+<a href="../index.html" style="position:fixed;top:12px;left:12px;z-index:9999;background:rgba(10,10,20,0.85);backdrop-filter:blur(6px);color:#4af7ff;border:1px solid #4af7ff;border-radius:20px;padding:6px 14px;font-family:sans-serif;font-size:13px;text-decoration:none;font-weight:600;">← App Hub</a>
+
+<div class="hiw-page">
+
+  <header class="hiw-header">
+    <div class="hiw-icon">🔍</div>
+    <h1>IAM Auditor — How It's Built</h1>
+    <p class="hiw-tagline">A Python CLI that audits AWS IAM for security risks and reports findings with CI-gate semantics.</p>
+  </header>
+
+  <section class="hiw-section">
+    <h2>Overview</h2>
+    <p>
+      IAM Auditor is a command-line tool that connects to your AWS account and checks for common IAM misconfigurations — starting with access keys that haven't been used in 90+ days. It outputs a human-readable table or JSON, exits with code <code>1</code> when findings exist (so a CI pipeline can gate on it), and never needs more than read-only IAM permissions. Built as a learning-in-public project while studying for AWS Security Specialty — each check maps to a real CIS Benchmark or AWS Well-Architected Framework control.
+    </p>
+  </section>
+
+  <section class="hiw-section">
+    <h2>Tech Stack</h2>
+    <div class="hiw-badges">
+      <span class="hiw-badge">Python 3.12</span>
+      <span class="hiw-badge">boto3</span>
+      <span class="hiw-badge">moto</span>
+      <span class="hiw-badge">pytest</span>
+      <span class="hiw-badge">ruff</span>
+      <span class="hiw-badge">mypy</span>
+      <span class="hiw-badge">hatchling</span>
+    </div>
+    <ul class="hiw-caption-list">
+      <li><strong>Python 3.12</strong> — match statements, better type inference, strict type hints throughout</li>
+      <li><strong>boto3</strong> — AWS SDK; calls <code>iam:ListUsers</code>, <code>iam:ListAccessKeys</code>, <code>iam:GetAccessKeyLastUsed</code></li>
+      <li><strong>moto</strong> — mocks the AWS IAM API in tests — no real account needed to run <code>pytest</code></li>
+      <li><strong>pytest</strong> — test runner; each check has unit tests against moto-mocked IAM responses</li>
+      <li><strong>ruff</strong> — linter and formatter in one tool; replaces flake8 + isort + black</li>
+      <li><strong>mypy (strict)</strong> — full static type checking; catches <code>None</code> dereferences before runtime</li>
+      <li><strong>hatchling</strong> — PEP 517 build backend; <code>pyproject.toml</code>-only, no setup.py</li>
+    </ul>
+  </section>
+
+  <section class="hiw-section">
+    <h2>Architecture</h2>
+    <p>
+      The design uses a <strong>Check ABC pattern</strong>: every security check is a class that implements one method, <code>run(iam_client) -&gt; Iterator[Finding]</code>. The CLI wires all registered checks to a reporter. Adding a new check means dropping one file — no changes to the runner.
+    </p>
+    <pre class="hiw-code"># The three-layer architecture:
+#   cli.py       → orchestrates: parse args → build checks → run → report
+#   checks/      → each file is one security control, yields Finding objects
+#   reporters/   → terminal (table) or JSON output
+
+# models.py — shared data contract
+from dataclasses import dataclass
+from enum import Enum
+
+class Severity(str, Enum):
+    HIGH   = "HIGH"
+    MEDIUM = "MEDIUM"
+    LOW    = "LOW"
+
+@dataclass(frozen=True)
+class Finding:
+    check_id:    str       # e.g. "IAM-001"
+    severity:    Severity
+    resource:    str       # ARN or human-readable identifier
+    message:     str       # one sentence: what's wrong
+    remediation: str       # one sentence: how to fix it</pre>
+  </section>
+
+  <section class="hiw-section">
+    <h2>How Each Part Works</h2>
+
+    <div class="hiw-file-block">
+      <h3><code>checks/base.py</code> — the Check interface</h3>
+      <p>
+        Every security check inherits from <code>Check</code> and implements <code>run()</code>. The CLI
+        discovers all registered checks by iterating a list — no magic plugin system needed at this
+        scale. Using an abstract base class means <code>mypy</code> enforces the contract at type-check
+        time, not at runtime.
+      </p>
+      <pre class="hiw-code">from abc import ABC, abstractmethod
+from collections.abc import Iterator
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from mypy_boto3_iam import IAMClient
+
+from iam_auditor.models import Finding
+
+class Check(ABC):
+    @abstractmethod
+    def run(self, iam_client: "IAMClient") -> Iterator[Finding]:
+        """Yield one Finding per policy violation found."""
+        ...</pre>
+    </div>
+
+    <div class="hiw-file-block">
+      <h3><code>checks/unused_access_keys.py</code> — IAM-001</h3>
+      <p>
+        Calls <code>ListUsers</code>, then for each user calls <code>ListAccessKeys</code> and
+        <code>GetAccessKeyLastUsed</code>. A key is flagged if it's Active and either was never used
+        or was last used more than <code>max_age_days</code> ago. The threshold is configurable so CI
+        pipelines can tighten it (e.g., 30 days for high-compliance environments).
+      </p>
+      <pre class="hiw-code">class UnusedAccessKeysCheck(Check):
+    def __init__(self, max_age_days: int = 90) -> None:
+        self.max_age_days = max_age_days
+
+    def run(self, iam_client: "IAMClient") -> Iterator[Finding]:
+        cutoff = datetime.now(tz=timezone.utc) - timedelta(days=self.max_age_days)
+        paginator = iam_client.get_paginator("list_users")
+
+        for page in paginator.paginate():
+            for user in page["Users"]:
+                keys = iam_client.list_access_keys(UserName=user["UserName"])
+                for key in keys["AccessKeyMetadata"]:
+                    if key["Status"] != "Active":
+                        continue  # inactive keys are already neutered
+                    last_used = iam_client.get_access_key_last_used(
+                        AccessKeyId=key["AccessKeyId"]
+                    )["AccessKeyLastUsed"].get("LastUsedDate")
+                    if last_used is None or last_used < cutoff:
+                        yield Finding(
+                            check_id="IAM-001",
+                            severity=Severity.HIGH,
+                            resource=user["Arn"],
+                            message=f"Access key {key['AccessKeyId']} unused for >{self.max_age_days} days",
+                            remediation="Deactivate or delete the key in IAM console or via aws iam delete-access-key",
+                        )</pre>
+    </div>
+
+    <div class="hiw-file-block">
+      <h3><code>cli.py</code> — entry point and wiring</h3>
+      <p>
+        Parses arguments with <code>argparse</code>, creates a <code>boto3</code> IAM client using the
+        named profile (or the default credential chain if none is given), runs every registered check,
+        and passes findings to the chosen reporter. Exit code is <code>0</code> for clean, <code>1</code>
+        for any findings — this is the CI gate hook.
+      </p>
+      <pre class="hiw-code">def main() -> None:
+    args = parse_args()
+    session = boto3.Session(profile_name=args.profile)
+    iam = session.client("iam")
+
+    checks: list[Check] = [
+        UnusedAccessKeysCheck(max_age_days=args.max_key_age_days),
+    ]
+
+    findings: list[Finding] = []
+    for check in checks:
+        findings.extend(check.run(iam))
+
+    reporter = JsonReporter() if args.format == "json" else TerminalReporter()
+    reporter.report(findings)
+
+    # Non-zero exit = CI pipeline fails on findings
+    raise SystemExit(1 if findings else 0)</pre>
+    </div>
+
+    <div class="hiw-file-block">
+      <h3><code>tests/</code> — moto-backed unit tests</h3>
+      <p>
+        Tests use the <code>@mock_aws</code> decorator from <code>moto</code>, which intercepts all
+        <code>boto3</code> calls and routes them to an in-memory IAM mock. This means no AWS account or
+        credentials are needed to run the test suite — critical for CI.
+      </p>
+      <pre class="hiw-code">from moto import mock_aws
+import boto3, pytest
+from iam_auditor.checks.unused_access_keys import UnusedAccessKeysCheck
+
+@mock_aws
+def test_flags_stale_key() -> None:
+    iam = boto3.client("iam", region_name="us-east-1")
+    iam.create_user(UserName="alice")
+    iam.create_access_key(UserName="alice")  # key is Active, never used
+
+    check = UnusedAccessKeysCheck(max_age_days=90)
+    findings = list(check.run(iam))
+
+    assert len(findings) == 1
+    assert findings[0].check_id == "IAM-001"
+    assert findings[0].severity.value == "HIGH"</pre>
+    </div>
+
+  </section>
+
+  <section class="hiw-section">
+    <h2>File Map</h2>
+    <pre class="hiw-file-map">iam-auditor/
+├── pyproject.toml              ← build config, deps, ruff/mypy/pytest settings
+├── README.md                   ← install, run, required IAM permissions, roadmap
+├── how-it-works.html           ← this page
+├── src/
+│   └── iam_auditor/
+│       ├── cli.py              ← argparse entry point, check runner, CI exit codes
+│       ├── models.py           ← Finding dataclass, Severity enum
+│       ├── checks/
+│       │   ├── base.py         ← Check ABC (abstract base class)
+│       │   └── unused_access_keys.py  ← IAM-001: keys unused 90+ days
+│       └── reporters/
+│           ├── terminal_reporter.py   ← human-readable table output
+│           └── json_reporter.py       ← machine-readable JSON for pipelines
+└── tests/
+    └── test_unused_access_keys.py     ← moto-mocked IAM tests</pre>
+  </section>
+
+  <section class="hiw-section">
+    <h2>Required IAM Permissions</h2>
+    <p>
+      The runtime principal only needs read-only access. The minimum least-privilege policy — no
+      <code>*</code> on actions, no write permissions:
+    </p>
+    <pre class="hiw-code">{
+  "Version": "2012-10-17",
+  "Statement": [{
+    "Effect": "Allow",
+    "Action": [
+      "iam:ListUsers",
+      "iam:ListAccessKeys",
+      "iam:GetAccessKeyLastUsed"
+    ],
+    "Resource": "*"  // IAM list/get operations require * resource
+  }]
+}</pre>
+    <p>The AWS-managed <code>SecurityAudit</code> or <code>ReadOnlyAccess</code> policies also satisfy this requirement.</p>
+  </section>
+
+  <section class="hiw-section">
+    <h2>Replicate It Yourself</h2>
+    <ol class="hiw-steps">
+      <li>
+        <span>
+          <strong>Scaffold with hatchling.</strong> Create <code>pyproject.toml</code> with <code>[build-system]</code> using <code>hatchling</code> and a <code>[project.scripts]</code> entry point. This gives you a proper <code>pip install -e .</code> CLI with no <code>setup.py</code>.
+          Reference: <a href="https://hatch.pypa.io/latest/config/build/" target="_blank" rel="noopener">Hatch build config docs</a>.
+        </span>
+      </li>
+      <li>
+        <span>
+          <strong>Define your data contract first.</strong> Write <code>models.py</code> with a <code>Finding</code> dataclass and <code>Severity</code> enum before writing any check. Every check returns these types — a stable contract means you can change reporters without touching checks.
+        </span>
+      </li>
+      <li>
+        <span>
+          <strong>Write the Check ABC.</strong> One abstract method: <code>run(iam_client) -&gt; Iterator[Finding]</code>. Use <code>Iterator</code> (not <code>list</code>) so checks stream findings without buffering — important when auditing large accounts with thousands of users.
+          Reference: <a href="https://docs.python.org/3/library/abc.html" target="_blank" rel="noopener">Python ABC docs</a>.
+        </span>
+      </li>
+      <li>
+        <span>
+          <strong>Use paginators, not plain API calls.</strong> IAM APIs are paginated. Always use <code>iam_client.get_paginator("list_users")</code> instead of <code>iam_client.list_users()</code> — a plain call silently truncates at 100 results.
+          Reference: <a href="https://boto3.amazonaws.com/v1/documentation/api/latest/guide/paginators.html" target="_blank" rel="noopener">boto3 paginators</a>.
+        </span>
+      </li>
+      <li>
+        <span>
+          <strong>Test with moto, not a real account.</strong> Add <code>moto[iam]</code> to dev dependencies and decorate tests with <code>@mock_aws</code>. Your CI pipeline can run the full test suite without AWS credentials.
+          Reference: <a href="https://docs.getmoto.org/en/latest/docs/services/iam.html" target="_blank" rel="noopener">moto IAM docs</a>.
+        </span>
+      </li>
+      <li>
+        <span>
+          <strong>Set a meaningful exit code.</strong> <code>raise SystemExit(1 if findings else 0)</code> in <code>main()</code>. This is the CI gate — any pipeline that runs <code>iam-auditor</code> as a step will fail the build when findings exist.
+        </span>
+      </li>
+    </ol>
+  </section>
+
+</div>
+</body>
+</html>

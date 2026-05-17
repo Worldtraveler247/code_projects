@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>How It's Built — JWT Decoder | Eddie's App Hub</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Inter:wght@400;500;600&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../how-it-works.css">
+</head>
+<body>
+<a href="../index.html" style="position:fixed;top:12px;left:12px;z-index:9999;background:rgba(10,10,20,0.85);backdrop-filter:blur(6px);color:#4af7ff;border:1px solid #4af7ff;border-radius:20px;padding:6px 14px;font-family:sans-serif;font-size:13px;text-decoration:none;font-weight:600;">← App Hub</a>
+
+<div class="hiw-page">
+
+  <header class="hiw-header">
+    <div class="hiw-icon">🔐</div>
+    <h1>JWT Decoder — How It's Built</h1>
+    <p class="hiw-tagline">Client-side JSON Web Token inspector: decodes header, payload, and signature, and flags common security vulnerabilities.</p>
+  </header>
+
+  <section class="hiw-section">
+    <h2>Overview</h2>
+    <p>
+      JWT Decoder is a single-page app that decodes JSON Web Tokens entirely in the browser — nothing is sent to a server. Paste a JWT and instantly see the decoded header and payload with syntax highlighting, a claims summary table (subject, issuer, expiry, etc.), and the raw Base64URL-encoded signature. It actively checks for three security issues: the <code>alg:none</code> attack, expired tokens, and symmetric HMAC algorithms that are weaker than asymmetric alternatives. Built to demonstrate that JWT authentication — which is used in AWS Cognito, API Gateway authorizers, and virtually every modern API — is not magic; the token structure is transparent and inspectable.
+    </p>
+  </section>
+
+  <section class="hiw-section">
+    <h2>Tech Stack</h2>
+    <div class="hiw-badges">
+      <span class="hiw-badge">HTML</span>
+      <span class="hiw-badge">CSS</span>
+      <span class="hiw-badge">JavaScript</span>
+      <span class="hiw-badge">Web Crypto / atob</span>
+    </div>
+    <ul class="hiw-caption-list">
+      <li><strong>HTML</strong> — semantic structure: textarea input, alert banner container, output panels for each JWT section</li>
+      <li><strong>CSS</strong> — dark card grid matching the App Hub palette; CSS custom properties for color-coding header/payload/signature</li>
+      <li><strong>JavaScript</strong> — Base64URL decoder, DOM-based JSON syntax renderer, security checks, all client-side with no external libraries</li>
+      <li><strong>atob()</strong> — the browser's built-in Base64 decoder; extended to handle Base64URL encoding (different alphabet, no padding)</li>
+    </ul>
+  </section>
+
+  <section class="hiw-section">
+    <h2>What is a JWT?</h2>
+    <p>
+      A JWT is three Base64URL-encoded JSON objects joined by dots: <code>header.payload.signature</code>. The header declares the algorithm; the payload carries claims (facts about the user or session); the signature proves the token hasn't been tampered with. The header and payload are <em>not encrypted</em> — anyone who has the token can read them. Only the signature requires the secret key to produce or verify.
+    </p>
+    <pre class="hiw-code">// A JWT looks like this — three dot-separated Base64URL segments
+eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9        // header
+.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkVkZGllIn0  // payload
+.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c       // signature
+
+// Decoded header:
+{ "alg": "HS256", "typ": "JWT" }
+
+// Decoded payload:
+{ "sub": "1234567890", "name": "Eddie", "iat": 1516239022 }</pre>
+  </section>
+
+  <section class="hiw-section">
+    <h2>How Each Part Works</h2>
+
+    <div class="hiw-file-block">
+      <h3>Base64URL decoding</h3>
+      <p>
+        JWTs use Base64URL (RFC 4648 §5), which swaps <code>+</code> for <code>-</code> and <code>/</code>
+        for <code>_</code>, and omits padding. The browser's <code>atob()</code> expects standard Base64,
+        so you must normalize first. Wrapping with <code>decodeURIComponent</code> plus
+        percent-encoding handles multi-byte UTF-8 characters in payloads (e.g., names with accents).
+      </p>
+      <pre class="hiw-code">function base64UrlDecode(str) {
+  // 1. Normalize: Base64URL → standard Base64
+  let s = str.replace(/-/g, '+').replace(/_/g, '/');
+  // 2. Restore padding (atob requires multiple-of-4 length)
+  while (s.length % 4 !== 0) s += '=';
+  try {
+    // 3. Decode bytes, then percent-encode each byte, then URI-decode the whole thing.
+    //    This is the standard trick for handling UTF-8 in atob() output.
+    return decodeURIComponent(
+      Array.from(atob(s))
+        .map(c => '%' + c.charCodeAt(0).toString(16).padStart(2, '0'))
+        .join('')
+    );
+  } catch (_) {
+    return null;  // malformed input — surface to user as an error
+  }
+}</pre>
+    </div>
+
+    <div class="hiw-file-block">
+      <h3>DOM-based JSON syntax highlighting (XSS-safe)</h3>
+      <p>
+        The payload comes from user input, so setting <code>innerHTML</code> with it would be an XSS
+        vulnerability. Instead, the highlighter walks the parsed JSON object and builds a tree of DOM
+        nodes — one <code>&lt;span&gt;</code> per token type, each set via <code>textContent</code>.
+        User data never touches the HTML parser.
+      </p>
+      <pre class="hiw-code">// Safe: build DOM nodes from the already-parsed object, never from the raw string.
+// Every leaf value is set with .textContent — cannot inject HTML.
+function renderJsonToNode(value, indent) {
+  const frag = document.createDocumentFragment();
+  const type = Array.isArray(value) ? 'array'
+             : value === null       ? 'null'
+             : typeof value;
+
+  if (type === 'string') {
+    const span = document.createElement('span');
+    span.className = 'js';  // CSS class for string color
+    span.textContent = JSON.stringify(value);  // re-serialize to add quotes safely
+    frag.appendChild(span);
+  } else if (type === 'number') {
+    const span = document.createElement('span');
+    span.className = 'jn';
+    span.textContent = String(value);
+    frag.appendChild(span);
+  }
+  // ... recurse for objects and arrays
+  return frag;
+}</pre>
+    </div>
+
+    <div class="hiw-file-block">
+      <h3>Security check: alg:none (CVE-2015-9235)</h3>
+      <p>
+        The most famous JWT vulnerability: an attacker modifies the header to set <code>"alg":"none"</code>,
+        strips the signature, and submits the token. Vulnerable libraries — including early versions of
+        <code>node-jsonwebtoken</code> — accepted unsigned tokens as valid because they trusted the
+        header's algorithm claim over their own configuration. The fix is simple: the server must
+        explicitly reject <code>alg:none</code> and never honor the algorithm specified in the token header.
+      </p>
+      <pre class="hiw-code">// Read the alg from the decoded header — not from user input string directly.
+// typeof check prevents prototype pollution attacks on header.alg.
+const alg = typeof header.alg === 'string' ? header.alg : '';
+
+if (alg.toLowerCase() === 'none' || alg === '') {
+  addAlert('danger', '⚠',
+    'Security risk: alg is "none". This token has no cryptographic signature. ' +
+    'Any server that accepts alg:none tokens is trivially forgeable.');
+}</pre>
+    </div>
+
+    <div class="hiw-file-block">
+      <h3>Security check: token expiry</h3>
+      <p>
+        The <code>exp</code> claim is a Unix timestamp (seconds since epoch). Comparing it against
+        <code>Date.now() / 1000</code> tells us if the token has expired. This is purely informational
+        in the decoder — real enforcement happens server-side. The check also flags <code>nbf</code>
+        (not-before), which is the lesser-known sibling claim that prevents a token from being used
+        before a specified time.
+      </p>
+      <pre class="hiw-code">const now = Math.floor(Date.now() / 1000);  // current time in Unix seconds
+
+// exp: token must be rejected after this timestamp
+if (typeof payload.exp === 'number' && now > payload.exp) {
+  const minsAgo = Math.round((now - payload.exp) / 60);
+  addAlert('warn', '⏰', `Token expired ${minsAgo} minutes ago.`);
+}
+
+// nbf: token must not be accepted before this timestamp
+if (typeof payload.nbf === 'number' && now < payload.nbf) {
+  addAlert('warn', '⏳', 'Token is not yet valid — nbf is in the future.');
+}</pre>
+    </div>
+
+  </section>
+
+  <section class="hiw-section">
+    <h2>File Map</h2>
+    <pre class="hiw-file-map">jwt-decoder/
+├── index.html          ← the entire app: HTML structure + inline CSS + inline JS
+└── how-it-works.html   ← this page</pre>
+    <p style="margin-top:12px;font-size:0.85rem;color:#8b949e;">
+      No build step, no dependencies, no node_modules. The whole app is one HTML file.
+      That's a deliberate choice: a portfolio tool that decodes tokens should itself be
+      as transparent and auditable as possible.
+    </p>
+  </section>
+
+  <section class="hiw-section">
+    <h2>JWT in the Wild — Where You'll See This</h2>
+    <ul class="hiw-caption-list">
+      <li><strong>AWS Cognito</strong> — issues JWTs (access, ID, refresh tokens) for user pools. Lambda authorizers validate them using the Cognito JWKS endpoint.</li>
+      <li><strong>API Gateway authorizers</strong> — Lambda authorizers receive the JWT from the <code>Authorization</code> header and return an IAM policy. The token's <code>sub</code> or custom claims drive authorization decisions.</li>
+      <li><strong>OIDC / IAM federation</strong> — AWS STS <code>AssumeRoleWithWebIdentity</code> exchanges an OIDC JWT for temporary AWS credentials. The JWT's <code>aud</code> and <code>iss</code> claims are validated by STS.</li>
+      <li><strong>Kubernetes service accounts</strong> — k8s mounts a projected service account token (a JWT) into every pod. Used by the AWS EKS Pod Identity and IRSA mechanisms.</li>
+    </ul>
+  </section>
+
+  <section class="hiw-section">
+    <h2>Replicate It Yourself</h2>
+    <ol class="hiw-steps">
+      <li>
+        <span>
+          <strong>Understand the wire format.</strong> Split the raw JWT string on <code>'.'</code> — you always get exactly 3 parts. Parts 0 and 1 are Base64URL-encoded JSON. Part 2 is the signature bytes (also Base64URL), which you display but cannot verify without the key.
+          Reference: <a href="https://datatracker.ietf.org/doc/html/rfc7519" target="_blank" rel="noopener">RFC 7519 — JSON Web Token</a>.
+        </span>
+      </li>
+      <li>
+        <span>
+          <strong>Write the Base64URL decoder.</strong> Swap <code>-</code>/<code>_</code> back to <code>+</code>/<code>/</code>, re-pad to a multiple of 4, then call <code>atob()</code>. Wrap with <code>decodeURIComponent</code> and percent-encoding to handle UTF-8.
+          Reference: <a href="https://developer.mozilla.org/en-US/docs/Web/API/atob" target="_blank" rel="noopener">MDN atob()</a>.
+        </span>
+      </li>
+      <li>
+        <span>
+          <strong>Never set innerHTML with decoded content.</strong> The payload is user-supplied. Build your JSON display using <code>document.createElement</code> + <code>textContent</code>. Every value from the token must go through textContent, never innerHTML.
+          Reference: <a href="https://cheatsheetseries.owasp.org/cheatsheets/DOM_based_XSS_Prevention_Cheat_Sheet.html" target="_blank" rel="noopener">OWASP DOM XSS Prevention Cheat Sheet</a>.
+        </span>
+      </li>
+      <li>
+        <span>
+          <strong>Check exp against Date.now().</strong> Convert <code>Date.now()</code> to Unix seconds by dividing by 1000. If <code>now &gt; payload.exp</code>, the token is expired. Always use <code>typeof payload.exp === 'number'</code> before comparing — <code>undefined &gt; n</code> is <code>false</code> in JS, which silently skips the check.
+        </span>
+      </li>
+      <li>
+        <span>
+          <strong>Flag alg:none.</strong> Read <code>header.alg</code> after parsing the decoded JSON — never from the raw Base64 string. Reject or warn if it equals <code>"none"</code> or is absent. This is the single most important JWT security check.
+          Reference: <a href="https://auth0.com/blog/critical-vulnerabilities-in-json-web-token-libraries/" target="_blank" rel="noopener">Auth0 — Critical vulnerabilities in JWT libraries (2015)</a>.
+        </span>
+      </li>
+      <li>
+        <span>
+          <strong>Deploy to GitHub Pages.</strong> Push to <code>main</code>, go to repo Settings &rarr; Pages &rarr; Source: <em>Deploy from branch</em> &rarr; <code>main / (root)</code>.
+          Reference: <a href="https://docs.github.com/en/pages/getting-started-with-github-pages" target="_blank" rel="noopener">GitHub Pages docs</a>.
+        </span>
+      </li>
+    </ol>
+  </section>
+
+</div>
+</body>
+</html>
