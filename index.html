@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self' https://formsubmit.co; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src https://formsubmit.co;">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' https://api.web3forms.com; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src https://api.web3forms.com;">
     <title>Eddie's App Portfolio</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -532,13 +532,11 @@
             <h2 class="section-label">Get In Touch</h2>
             <div class="contact-card reveal">
                 <p class="contact-intro">Open to opportunities, collaborations, and cybersecurity conversations.</p>
-                <form action="https://formsubmit.co/eddie.camacho@gmail.com" method="POST">
-                    <!-- Honeypot: hidden from real users, catches bots that fill every field -->
-                    <input type="text" name="_honey" style="display:none">
-                    <!-- Disable FormSubmit's built-in CAPTCHA for a cleaner UX -->
-                    <input type="hidden" name="_captcha" value="false">
-                    <input type="hidden" name="_subject" value="New Hub Message!">
-                    <input type="hidden" name="_next" value="https://worldtraveler247.github.io/code_projects/">
+                <form action="https://api.web3forms.com/submit" method="POST">
+                    <input type="hidden" name="access_key" value="dad3a828-7c9d-41a5-8735-9739b82a410c">
+                    <input type="hidden" name="subject" value="New Hub Message!">
+                    <input type="hidden" name="redirect" value="https://worldtraveler247.github.io/code_projects/">
+                    <input type="checkbox" name="botcheck" style="display:none">
                     <div class="form-row">
                         <div class="form-group">
                             <label for="name">Name</label>
