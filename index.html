@@ -3,16 +3,30 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self' https://api.web3forms.com; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src https://api.web3forms.com;">
+    <meta name="color-scheme" content="dark">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <meta name="description" content="Eddie Camacho's app portfolio — cloud security tools, DevSecOps projects, and interactive demos built in public.">
+    <meta property="og:title" content="Eddie's App Portfolio">
+    <meta property="og:description" content="Cloud security tools, DevSecOps projects, and interactive demos built in public.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://worldtraveler247.github.io/code_projects/">
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:title" content="Eddie's App Portfolio">
+    <meta name="twitter:description" content="Cloud security tools, DevSecOps projects, and interactive demos built in public.">
+    <link rel="canonical" href="https://worldtraveler247.github.io/code_projects/">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'self'; img-src 'self' data:; form-action https://api.web3forms.com;">
     <title>Eddie's App Portfolio</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
+    <script src="app.js" defer></script>
 </head>
 <body>
 
-    <canvas id="bg-canvas"></canvas>
+    <a href="#main-content" class="skip-nav">Skip to main content</a>
+
+    <canvas id="bg-canvas" aria-hidden="true"></canvas>
 
     <!-- Reusable icon defs -->
     <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -27,11 +41,29 @@
     <!-- Hero -->
     <header class="hero">
         <div class="hero-inner">
+            <div class="hero-eyebrow">EDDIE CAMACHO · DEVSECOPS ENGINEER</div>
             <h1>Eddie's <span class="grad">App Portfolio</span></h1>
+            <p class="hero-sub">Cloud security engineering, built in public.</p>
+            <div class="hero-stats">
+                <div class="stat">
+                    <span class="stat-num">16</span>
+                    <span class="stat-label">Projects</span>
+                </div>
+                <div class="stat-sep"></div>
+                <div class="stat">
+                    <span class="stat-num">5</span>
+                    <span class="stat-label">Categories</span>
+                </div>
+                <div class="stat-sep"></div>
+                <div class="stat">
+                    <span class="stat-num">2</span>
+                    <span class="stat-label">Security Tools</span>
+                </div>
+            </div>
         </div>
     </header>
 
-    <main>
+    <main id="main-content">
 
         <!-- Projects -->
         <section class="section">
@@ -45,11 +77,28 @@
                 <span class="hint-sep">·</span>
                 📖 how it's built
             </p>
+
+            <!-- Filter bar -->
+            <div class="filter-bar" role="group" aria-label="Filter projects by category">
+                <button class="filter-btn active" data-filter="all" aria-pressed="true">All</button>
+                <button class="filter-btn" data-filter="Security" aria-pressed="false">Security</button>
+                <button class="filter-btn" data-filter="Tool" aria-pressed="false">Tool</button>
+                <button class="filter-btn" data-filter="Education" aria-pressed="false">Education</button>
+                <button class="filter-btn" data-filter="Game" aria-pressed="false">Game</button>
+                <button class="filter-btn" data-filter="Portfolio" aria-pressed="false">Portfolio</button>
+                <div class="filter-search">
+                    <label for="card-search" class="sr-only">Search projects</label>
+                    <input type="search" id="card-search" placeholder="Search…" autocomplete="off" spellcheck="false">
+                </div>
+            </div>
+
+            <span id="filter-live" class="sr-only" aria-live="polite" aria-atomic="true"></span>
+
             <div class="grid">
 
                 <!-- Resume — featured wide card -->
-                <article class="card featured">
-                    <a href="https://worldtraveler247.github.io/resume/" class="card-link" target="_blank" rel="noopener">
+                <article class="card featured" data-tag="Portfolio">
+                    <a href="https://worldtraveler247.github.io/resume/" class="card-link" target="_blank" rel="noopener noreferrer">
                         <div class="card-visual" style="--a:#0d1b6e;--b:#1a3a8f;--c:#4a90e2">
                             <div class="orb orb1"></div>
                             <div class="orb orb2"></div>
@@ -63,22 +112,22 @@
                         </div>
                     </a>
                     <div class="card-actions">
-                        <a href="https://github.com/Worldtraveler247/resume" class="action-btn" target="_blank" rel="noopener" aria-label="View source on GitHub" title="View source on GitHub">
+                        <a href="https://github.com/Worldtraveler247/resume" class="action-btn" target="_blank" rel="noopener noreferrer" aria-label="View source on GitHub" title="View source on GitHub">
                             <svg width="16" height="16" aria-hidden="true"><use href="#icon-github"/></svg>
                             <span>Source</span>
                         </a>
-                        <a href="https://github1s.com/Worldtraveler247/resume" class="action-btn" target="_blank" rel="noopener" aria-label="Browse code in VS Code (github1s)" title="Browse code in VS Code (github1s)">
+                        <a href="https://github1s.com/Worldtraveler247/resume" class="action-btn" target="_blank" rel="noopener noreferrer" aria-label="Browse code in VS Code (github1s)" title="Browse code in VS Code (github1s)">
                             <svg width="16" height="16" aria-hidden="true"><use href="#icon-code"/></svg>
                             <span>VS Code</span>
                         </a>
-                        <a href="https://worldtraveler247.github.io/resume/how-it-works.html" class="action-btn action-btn--build" target="_blank" rel="noopener" aria-label="How this app is built" title="How It's Built">
+                        <a href="https://worldtraveler247.github.io/resume/how-it-works.html" class="action-btn action-btn--build" target="_blank" rel="noopener noreferrer" aria-label="How this app is built" title="How It's Built">
                             📖 <span>How It's Built</span>
                         </a>
                     </div>
                 </article>
 
-                <!-- Origin Trace — IT career trajectory catalog -->
-                <article class="card">
+                <!-- Origin Trace -->
+                <article class="card" data-tag="Education">
                     <a href="origin-trace/index.html" class="card-link">
                         <div class="card-visual" style="--a:#07010f;--b:#1a0a40;--c:#4af7ff">
                             <div class="orb orb1"></div>
@@ -93,23 +142,23 @@
                         </div>
                     </a>
                     <div class="card-actions">
-                        <a href="https://github.com/Worldtraveler247/code_projects/tree/main/origin-trace" class="action-btn" target="_blank" rel="noopener" aria-label="View source on GitHub" title="View source on GitHub">
+                        <a href="https://github.com/Worldtraveler247/code_projects/tree/main/origin-trace" class="action-btn" target="_blank" rel="noopener noreferrer" aria-label="View source on GitHub" title="View source on GitHub">
                             <svg width="16" height="16" aria-hidden="true"><use href="#icon-github"/></svg>
                             <span>Source</span>
                         </a>
-                        <a href="https://github1s.com/Worldtraveler247/code_projects/tree/main/origin-trace" class="action-btn" target="_blank" rel="noopener" aria-label="Browse code in VS Code (github1s)" title="Browse code in VS Code (github1s)">
+                        <a href="https://github1s.com/Worldtraveler247/code_projects/tree/main/origin-trace" class="action-btn" target="_blank" rel="noopener noreferrer" aria-label="Browse code in VS Code (github1s)" title="Browse code in VS Code (github1s)">
                             <svg width="16" height="16" aria-hidden="true"><use href="#icon-code"/></svg>
                             <span>VS Code</span>
                         </a>
-                        <a href="origin-trace/how-it-works.html" class="action-btn action-btn--build" target="_blank" rel="noopener" aria-label="How this app is built" title="How It's Built">
+                        <a href="origin-trace/how-it-works.html" class="action-btn action-btn--build" target="_blank" rel="noopener noreferrer" aria-label="How this app is built" title="How It's Built">
                             📖 <span>How It's Built</span>
                         </a>
                     </div>
                 </article>
 
-                <!-- DevSecOps Job Hub — find cleared roles -->
-                <article class="card">
-                    <a href="https://github.com/Worldtraveler247/devsecops-job-hub" class="card-link" target="_blank" rel="noopener">
+                <!-- DevSecOps Job Hub -->
+                <article class="card" data-tag="Tool">
+                    <a href="https://github.com/Worldtraveler247/devsecops-job-hub" class="card-link" target="_blank" rel="noopener noreferrer">
                         <div class="card-visual" style="--a:#0a0a2e;--b:#1a0a4a;--c:#ff8ac1">
                             <div class="orb orb1"></div>
                             <div class="orb orb2"></div>
@@ -123,22 +172,22 @@
                         </div>
                     </a>
                     <div class="card-actions">
-                        <a href="https://github.com/Worldtraveler247/devsecops-job-hub" class="action-btn" target="_blank" rel="noopener" aria-label="View source on GitHub" title="View source on GitHub">
+                        <a href="https://github.com/Worldtraveler247/devsecops-job-hub" class="action-btn" target="_blank" rel="noopener noreferrer" aria-label="View source on GitHub" title="View source on GitHub">
                             <svg width="16" height="16" aria-hidden="true"><use href="#icon-github"/></svg>
                             <span>Source</span>
                         </a>
-                        <a href="https://github1s.com/Worldtraveler247/devsecops-job-hub" class="action-btn" target="_blank" rel="noopener" aria-label="Browse code in VS Code (github1s)" title="Browse code in VS Code (github1s)">
+                        <a href="https://github1s.com/Worldtraveler247/devsecops-job-hub" class="action-btn" target="_blank" rel="noopener noreferrer" aria-label="Browse code in VS Code (github1s)" title="Browse code in VS Code (github1s)">
                             <svg width="16" height="16" aria-hidden="true"><use href="#icon-code"/></svg>
                             <span>VS Code</span>
                         </a>
-                        <a href="devsecops-job-hub/how-it-works.html" class="action-btn action-btn--build" target="_blank" rel="noopener" aria-label="How this app is built" title="How It's Built">
+                        <a href="devsecops-job-hub/how-it-works.html" class="action-btn action-btn--build" target="_blank" rel="noopener noreferrer" aria-label="How this app is built" title="How It's Built">
                             📖 <span>How It's Built</span>
                         </a>
                     </div>
                 </article>
 
-                <!-- AWS in Practice — 10-part series -->
-                <article class="card">
+                <!-- AWS in Practice -->
+                <article class="card" data-tag="Education">
                     <a href="aws-series/index.html" class="card-link">
                         <div class="card-visual" style="--a:#3d1f00;--b:#7a3d00;--c:#ff9900">
                             <div class="orb orb1"></div>
@@ -153,22 +202,22 @@
                         </div>
                     </a>
                     <div class="card-actions">
-                        <a href="https://github.com/Worldtraveler247/code_projects/tree/main/aws-series" class="action-btn" target="_blank" rel="noopener" aria-label="View source on GitHub" title="View source on GitHub">
+                        <a href="https://github.com/Worldtraveler247/code_projects/tree/main/aws-series" class="action-btn" target="_blank" rel="noopener noreferrer" aria-label="View source on GitHub" title="View source on GitHub">
                             <svg width="16" height="16" aria-hidden="true"><use href="#icon-github"/></svg>
                             <span>Source</span>
                         </a>
-                        <a href="https://github1s.com/Worldtraveler247/code_projects/tree/main/aws-series" class="action-btn" target="_blank" rel="noopener" aria-label="Browse code in VS Code (github1s)" title="Browse code in VS Code (github1s)">
+                        <a href="https://github1s.com/Worldtraveler247/code_projects/tree/main/aws-series" class="action-btn" target="_blank" rel="noopener noreferrer" aria-label="Browse code in VS Code (github1s)" title="Browse code in VS Code (github1s)">
                             <svg width="16" height="16" aria-hidden="true"><use href="#icon-code"/></svg>
                             <span>VS Code</span>
                         </a>
-                        <a href="aws-series/how-it-works.html" class="action-btn action-btn--build" target="_blank" rel="noopener" aria-label="How this app is built" title="How It's Built">
+                        <a href="aws-series/how-it-works.html" class="action-btn action-btn--build" target="_blank" rel="noopener noreferrer" aria-label="How this app is built" title="How It's Built">
                             📖 <span>How It's Built</span>
                         </a>
                     </div>
                 </article>
 
-                <!-- Code Typist — typing tutor for Go, Python, Bash -->
-                <article class="card">
+                <!-- Code Typist -->
+                <article class="card" data-tag="Education">
                     <a href="code-typist/index.html" class="card-link">
                         <div class="card-visual" style="--a:#1f0033;--b:#3d0066;--c:#e040fb">
                             <div class="orb orb1"></div>
@@ -183,22 +232,22 @@
                         </div>
                     </a>
                     <div class="card-actions">
-                        <a href="https://github.com/Worldtraveler247/code_projects/tree/main/code-typist" class="action-btn" target="_blank" rel="noopener" aria-label="View source on GitHub" title="View source on GitHub">
+                        <a href="https://github.com/Worldtraveler247/code_projects/tree/main/code-typist" class="action-btn" target="_blank" rel="noopener noreferrer" aria-label="View source on GitHub" title="View source on GitHub">
                             <svg width="16" height="16" aria-hidden="true"><use href="#icon-github"/></svg>
                             <span>Source</span>
                         </a>
-                        <a href="https://github1s.com/Worldtraveler247/code_projects/tree/main/code-typist" class="action-btn" target="_blank" rel="noopener" aria-label="Browse code in VS Code (github1s)" title="Browse code in VS Code (github1s)">
+                        <a href="https://github1s.com/Worldtraveler247/code_projects/tree/main/code-typist" class="action-btn" target="_blank" rel="noopener noreferrer" aria-label="Browse code in VS Code (github1s)" title="Browse code in VS Code (github1s)">
                             <svg width="16" height="16" aria-hidden="true"><use href="#icon-code"/></svg>
                             <span>VS Code</span>
                         </a>
-                        <a href="code-typist/how-it-works.html" class="action-btn action-btn--build" target="_blank" rel="noopener" aria-label="How this app is built" title="How It's Built">
+                        <a href="code-typist/how-it-works.html" class="action-btn action-btn--build" target="_blank" rel="noopener noreferrer" aria-label="How this app is built" title="How It's Built">
                             📖 <span>How It's Built</span>
                         </a>
                     </div>
                 </article>
 
-                <!-- Cloud Security Engineering Languages — 3-part series -->
-                <article class="card">
+                <!-- Cloud Security Languages -->
+                <article class="card" data-tag="Education">
                     <a href="cloud-security-languages/index.html" class="card-link">
                         <div class="card-visual" style="--a:#001a26;--b:#003d52;--c:#00add8">
                             <div class="orb orb1"></div>
@@ -213,22 +262,22 @@
                         </div>
                     </a>
                     <div class="card-actions">
-                        <a href="https://github.com/Worldtraveler247/code_projects/tree/main/cloud-security-languages" class="action-btn" target="_blank" rel="noopener" aria-label="View source on GitHub" title="View source on GitHub">
+                        <a href="https://github.com/Worldtraveler247/code_projects/tree/main/cloud-security-languages" class="action-btn" target="_blank" rel="noopener noreferrer" aria-label="View source on GitHub" title="View source on GitHub">
                             <svg width="16" height="16" aria-hidden="true"><use href="#icon-github"/></svg>
                             <span>Source</span>
                         </a>
-                        <a href="https://github1s.com/Worldtraveler247/code_projects/tree/main/cloud-security-languages" class="action-btn" target="_blank" rel="noopener" aria-label="Browse code in VS Code (github1s)" title="Browse code in VS Code (github1s)">
+                        <a href="https://github1s.com/Worldtraveler247/code_projects/tree/main/cloud-security-languages" class="action-btn" target="_blank" rel="noopener noreferrer" aria-label="Browse code in VS Code (github1s)" title="Browse code in VS Code (github1s)">
                             <svg width="16" height="16" aria-hidden="true"><use href="#icon-code"/></svg>
                             <span>VS Code</span>
                         </a>
-                        <a href="cloud-security-languages/how-it-works.html" class="action-btn action-btn--build" target="_blank" rel="noopener" aria-label="How this app is built" title="How It's Built">
+                        <a href="cloud-security-languages/how-it-works.html" class="action-btn action-btn--build" target="_blank" rel="noopener noreferrer" aria-label="How this app is built" title="How It's Built">
                             📖 <span>How It's Built</span>
                         </a>
                     </div>
                 </article>
 
-                <!-- Space Shooter -->
-                <article class="card">
+                <!-- Galactic Guardian -->
+                <article class="card" data-tag="Game">
                     <a href="space-shooter/index.html" class="card-link">
                         <div class="card-visual" style="--a:#003d4a;--b:#006478;--c:#00e5ff">
                             <div class="orb orb1"></div>
@@ -242,22 +291,22 @@
                         </div>
                     </a>
                     <div class="card-actions">
-                        <a href="https://github.com/Worldtraveler247/code_projects/tree/main/space-shooter" class="action-btn" target="_blank" rel="noopener" aria-label="View source on GitHub" title="View source on GitHub">
+                        <a href="https://github.com/Worldtraveler247/code_projects/tree/main/space-shooter" class="action-btn" target="_blank" rel="noopener noreferrer" aria-label="View source on GitHub" title="View source on GitHub">
                             <svg width="16" height="16" aria-hidden="true"><use href="#icon-github"/></svg>
                             <span>Source</span>
                         </a>
-                        <a href="https://github1s.com/Worldtraveler247/code_projects/tree/main/space-shooter" class="action-btn" target="_blank" rel="noopener" aria-label="Browse code in VS Code (github1s)" title="Browse code in VS Code (github1s)">
+                        <a href="https://github1s.com/Worldtraveler247/code_projects/tree/main/space-shooter" class="action-btn" target="_blank" rel="noopener noreferrer" aria-label="Browse code in VS Code (github1s)" title="Browse code in VS Code (github1s)">
                             <svg width="16" height="16" aria-hidden="true"><use href="#icon-code"/></svg>
                             <span>VS Code</span>
                         </a>
-                        <a href="space-shooter/how-it-works.html" class="action-btn action-btn--build" target="_blank" rel="noopener" aria-label="How this app is built" title="How It's Built">
+                        <a href="space-shooter/how-it-works.html" class="action-btn action-btn--build" target="_blank" rel="noopener noreferrer" aria-label="How this app is built" title="How It's Built">
                             📖 <span>How It's Built</span>
                         </a>
                     </div>
                 </article>
 
                 <!-- Galactic Runner -->
-                <article class="card">
+                <article class="card" data-tag="Game">
                     <a href="mario-style/index.html" class="card-link">
                         <div class="card-visual" style="--a:#2d0057;--b:#4a0080;--c:#bf80ff">
                             <div class="orb orb1"></div>
@@ -272,22 +321,22 @@
                         </div>
                     </a>
                     <div class="card-actions">
-                        <a href="https://github.com/Worldtraveler247/code_projects/tree/main/mario-style" class="action-btn" target="_blank" rel="noopener" aria-label="View source on GitHub" title="View source on GitHub">
+                        <a href="https://github.com/Worldtraveler247/code_projects/tree/main/mario-style" class="action-btn" target="_blank" rel="noopener noreferrer" aria-label="View source on GitHub" title="View source on GitHub">
                             <svg width="16" height="16" aria-hidden="true"><use href="#icon-github"/></svg>
                             <span>Source</span>
                         </a>
-                        <a href="https://github1s.com/Worldtraveler247/code_projects/tree/main/mario-style" class="action-btn" target="_blank" rel="noopener" aria-label="Browse code in VS Code (github1s)" title="Browse code in VS Code (github1s)">
+                        <a href="https://github1s.com/Worldtraveler247/code_projects/tree/main/mario-style" class="action-btn" target="_blank" rel="noopener noreferrer" aria-label="Browse code in VS Code (github1s)" title="Browse code in VS Code (github1s)">
                             <svg width="16" height="16" aria-hidden="true"><use href="#icon-code"/></svg>
                             <span>VS Code</span>
                         </a>
-                        <a href="mario-style/how-it-works.html" class="action-btn action-btn--build" target="_blank" rel="noopener" aria-label="How this app is built" title="How It's Built">
+                        <a href="mario-style/how-it-works.html" class="action-btn action-btn--build" target="_blank" rel="noopener noreferrer" aria-label="How this app is built" title="How It's Built">
                             📖 <span>How It's Built</span>
                         </a>
                     </div>
                 </article>
 
                 <!-- Dashboard -->
-                <article class="card">
+                <article class="card" data-tag="Tool">
                     <a href="my-dashboard/index.html" class="card-link">
                         <div class="card-visual" style="--a:#5c2000;--b:#8b3a00;--c:#ffab40">
                             <div class="orb orb1"></div>
@@ -301,22 +350,22 @@
                         </div>
                     </a>
                     <div class="card-actions">
-                        <a href="https://github.com/Worldtraveler247/code_projects/tree/main/my-dashboard" class="action-btn" target="_blank" rel="noopener" aria-label="View source on GitHub" title="View source on GitHub">
+                        <a href="https://github.com/Worldtraveler247/code_projects/tree/main/my-dashboard" class="action-btn" target="_blank" rel="noopener noreferrer" aria-label="View source on GitHub" title="View source on GitHub">
                             <svg width="16" height="16" aria-hidden="true"><use href="#icon-github"/></svg>
                             <span>Source</span>
                         </a>
-                        <a href="https://github1s.com/Worldtraveler247/code_projects/tree/main/my-dashboard" class="action-btn" target="_blank" rel="noopener" aria-label="Browse code in VS Code (github1s)" title="Browse code in VS Code (github1s)">
+                        <a href="https://github1s.com/Worldtraveler247/code_projects/tree/main/my-dashboard" class="action-btn" target="_blank" rel="noopener noreferrer" aria-label="Browse code in VS Code (github1s)" title="Browse code in VS Code (github1s)">
                             <svg width="16" height="16" aria-hidden="true"><use href="#icon-code"/></svg>
                             <span>VS Code</span>
                         </a>
-                        <a href="my-dashboard/how-it-works.html" class="action-btn action-btn--build" target="_blank" rel="noopener" aria-label="How this app is built" title="How It's Built">
+                        <a href="my-dashboard/how-it-works.html" class="action-btn action-btn--build" target="_blank" rel="noopener noreferrer" aria-label="How this app is built" title="How It's Built">
                             📖 <span>How It's Built</span>
                         </a>
                     </div>
                 </article>
 
                 <!-- Tetris -->
-                <article class="card">
+                <article class="card" data-tag="Game">
                     <a href="my-tetris/index.html" class="card-link">
                         <div class="card-visual" style="--a:#0a3d14;--b:#155a22;--c:#69f0ae">
                             <div class="orb orb1"></div>
@@ -330,23 +379,23 @@
                         </div>
                     </a>
                     <div class="card-actions">
-                        <a href="https://github.com/Worldtraveler247/code_projects/tree/main/my-tetris" class="action-btn" target="_blank" rel="noopener" aria-label="View source on GitHub" title="View source on GitHub">
+                        <a href="https://github.com/Worldtraveler247/code_projects/tree/main/my-tetris" class="action-btn" target="_blank" rel="noopener noreferrer" aria-label="View source on GitHub" title="View source on GitHub">
                             <svg width="16" height="16" aria-hidden="true"><use href="#icon-github"/></svg>
                             <span>Source</span>
                         </a>
-                        <a href="https://github1s.com/Worldtraveler247/code_projects/tree/main/my-tetris" class="action-btn" target="_blank" rel="noopener" aria-label="Browse code in VS Code (github1s)" title="Browse code in VS Code (github1s)">
+                        <a href="https://github1s.com/Worldtraveler247/code_projects/tree/main/my-tetris" class="action-btn" target="_blank" rel="noopener noreferrer" aria-label="Browse code in VS Code (github1s)" title="Browse code in VS Code (github1s)">
                             <svg width="16" height="16" aria-hidden="true"><use href="#icon-code"/></svg>
                             <span>VS Code</span>
                         </a>
-                        <a href="my-tetris/how-it-works.html" class="action-btn action-btn--build" target="_blank" rel="noopener" aria-label="How this app is built" title="How It's Built">
+                        <a href="my-tetris/how-it-works.html" class="action-btn action-btn--build" target="_blank" rel="noopener noreferrer" aria-label="How this app is built" title="How It's Built">
                             📖 <span>How It's Built</span>
                         </a>
                     </div>
                 </article>
 
                 <!-- Stock Monitor -->
-                <article class="card">
-                    <a href="https://codeprojects-x3djlxwwthbe5idjkaw2du.streamlit.app/" class="card-link" target="_blank" rel="noopener">
+                <article class="card" data-tag="Tool">
+                    <a href="https://codeprojects-x3djlxwwthbe5idjkaw2du.streamlit.app/" class="card-link" target="_blank" rel="noopener noreferrer">
                         <div class="card-visual" style="--a:#003322;--b:#005533;--c:#00e676">
                             <div class="orb orb1"></div>
                             <div class="orb orb2"></div>
@@ -360,22 +409,22 @@
                         </div>
                     </a>
                     <div class="card-actions">
-                        <a href="https://github.com/Worldtraveler247/code_projects/tree/main/stock-monitor" class="action-btn" target="_blank" rel="noopener" aria-label="View source on GitHub" title="View source on GitHub">
+                        <a href="https://github.com/Worldtraveler247/code_projects/tree/main/stock-monitor" class="action-btn" target="_blank" rel="noopener noreferrer" aria-label="View source on GitHub" title="View source on GitHub">
                             <svg width="16" height="16" aria-hidden="true"><use href="#icon-github"/></svg>
                             <span>Source</span>
                         </a>
-                        <a href="https://github1s.com/Worldtraveler247/code_projects/tree/main/stock-monitor" class="action-btn" target="_blank" rel="noopener" aria-label="Browse code in VS Code (github1s)" title="Browse code in VS Code (github1s)">
+                        <a href="https://github1s.com/Worldtraveler247/code_projects/tree/main/stock-monitor" class="action-btn" target="_blank" rel="noopener noreferrer" aria-label="Browse code in VS Code (github1s)" title="Browse code in VS Code (github1s)">
                             <svg width="16" height="16" aria-hidden="true"><use href="#icon-code"/></svg>
                             <span>VS Code</span>
                         </a>
-                        <a href="stock-monitor/how-it-works.html" class="action-btn action-btn--build" target="_blank" rel="noopener" aria-label="How this app is built" title="How It's Built">
+                        <a href="stock-monitor/how-it-works.html" class="action-btn action-btn--build" target="_blank" rel="noopener noreferrer" aria-label="How this app is built" title="How It's Built">
                             📖 <span>How It's Built</span>
                         </a>
                     </div>
                 </article>
 
                 <!-- Real Estate Crash Indicator -->
-                <article class="card">
+                <article class="card" data-tag="Tool">
                     <a href="real-estate-risk/index.html" class="card-link">
                         <div class="card-visual" style="--a:#0a1f3d;--b:#1a3a6e;--c:#fbbf24">
                             <div class="orb orb1"></div>
@@ -390,22 +439,22 @@
                         </div>
                     </a>
                     <div class="card-actions">
-                        <a href="https://github.com/Worldtraveler247/code_projects/tree/main/real-estate-risk" class="action-btn" target="_blank" rel="noopener" aria-label="View source on GitHub" title="View source on GitHub">
+                        <a href="https://github.com/Worldtraveler247/code_projects/tree/main/real-estate-risk" class="action-btn" target="_blank" rel="noopener noreferrer" aria-label="View source on GitHub" title="View source on GitHub">
                             <svg width="16" height="16" aria-hidden="true"><use href="#icon-github"/></svg>
                             <span>Source</span>
                         </a>
-                        <a href="https://github1s.com/Worldtraveler247/code_projects/tree/main/real-estate-risk" class="action-btn" target="_blank" rel="noopener" aria-label="Browse code in VS Code (github1s)" title="Browse code in VS Code (github1s)">
+                        <a href="https://github1s.com/Worldtraveler247/code_projects/tree/main/real-estate-risk" class="action-btn" target="_blank" rel="noopener noreferrer" aria-label="Browse code in VS Code (github1s)" title="Browse code in VS Code (github1s)">
                             <svg width="16" height="16" aria-hidden="true"><use href="#icon-code"/></svg>
                             <span>VS Code</span>
                         </a>
-                        <a href="real-estate-risk/how-it-works.html" class="action-btn action-btn--build" target="_blank" rel="noopener" aria-label="How this app is built" title="How It's Built">
+                        <a href="real-estate-risk/how-it-works.html" class="action-btn action-btn--build" target="_blank" rel="noopener noreferrer" aria-label="How this app is built" title="How It's Built">
                             📖 <span>How It's Built</span>
                         </a>
                     </div>
                 </article>
 
                 <!-- Async 3D Chess -->
-                <article class="card">
+                <article class="card" data-tag="Game">
                     <a href="3d-chess/index.html" class="card-link">
                         <div class="card-visual" style="--a:#1a1a2e;--b:#16213e;--c:#e94560">
                             <div class="orb orb1"></div>
@@ -420,23 +469,23 @@
                         </div>
                     </a>
                     <div class="card-actions">
-                        <a href="https://github.com/Worldtraveler247/code_projects/tree/main/3d-chess" class="action-btn" target="_blank" rel="noopener" aria-label="View source on GitHub" title="View source on GitHub">
+                        <a href="https://github.com/Worldtraveler247/code_projects/tree/main/3d-chess" class="action-btn" target="_blank" rel="noopener noreferrer" aria-label="View source on GitHub" title="View source on GitHub">
                             <svg width="16" height="16" aria-hidden="true"><use href="#icon-github"/></svg>
                             <span>Source</span>
                         </a>
-                        <a href="https://github1s.com/Worldtraveler247/code_projects/tree/main/3d-chess" class="action-btn" target="_blank" rel="noopener" aria-label="Browse code in VS Code (github1s)" title="Browse code in VS Code (github1s)">
+                        <a href="https://github1s.com/Worldtraveler247/code_projects/tree/main/3d-chess" class="action-btn" target="_blank" rel="noopener noreferrer" aria-label="Browse code in VS Code (github1s)" title="Browse code in VS Code (github1s)">
                             <svg width="16" height="16" aria-hidden="true"><use href="#icon-code"/></svg>
                             <span>VS Code</span>
                         </a>
-                        <a href="3d-chess/how-it-works.html" class="action-btn action-btn--build" target="_blank" rel="noopener" aria-label="How this app is built" title="How It's Built">
+                        <a href="3d-chess/how-it-works.html" class="action-btn action-btn--build" target="_blank" rel="noopener noreferrer" aria-label="How this app is built" title="How It's Built">
                             📖 <span>How It's Built</span>
                         </a>
                     </div>
                 </article>
 
-                <!-- IAM Auditor — AWS IAM security scanner -->
-                <article class="card">
-                    <a href="https://github.com/Worldtraveler247/code_projects/tree/main/iam-auditor" class="card-link" target="_blank" rel="noopener">
+                <!-- IAM Auditor -->
+                <article class="card" data-tag="Security">
+                    <a href="https://github.com/Worldtraveler247/code_projects/tree/main/iam-auditor" class="card-link" target="_blank" rel="noopener noreferrer">
                         <div class="card-visual" style="--a:#1a0a00;--b:#3d1f00;--c:#ff9900">
                             <div class="orb orb1"></div>
                             <div class="orb orb2"></div>
@@ -450,22 +499,22 @@
                         </div>
                     </a>
                     <div class="card-actions">
-                        <a href="https://github.com/Worldtraveler247/code_projects/tree/main/iam-auditor" class="action-btn" target="_blank" rel="noopener" aria-label="View source on GitHub" title="View source on GitHub">
+                        <a href="https://github.com/Worldtraveler247/code_projects/tree/main/iam-auditor" class="action-btn" target="_blank" rel="noopener noreferrer" aria-label="View source on GitHub" title="View source on GitHub">
                             <svg width="16" height="16" aria-hidden="true"><use href="#icon-github"/></svg>
                             <span>Source</span>
                         </a>
-                        <a href="https://github1s.com/Worldtraveler247/code_projects/tree/main/iam-auditor" class="action-btn" target="_blank" rel="noopener" aria-label="Browse code in VS Code (github1s)" title="Browse code in VS Code (github1s)">
+                        <a href="https://github1s.com/Worldtraveler247/code_projects/tree/main/iam-auditor" class="action-btn" target="_blank" rel="noopener noreferrer" aria-label="Browse code in VS Code (github1s)" title="Browse code in VS Code (github1s)">
                             <svg width="16" height="16" aria-hidden="true"><use href="#icon-code"/></svg>
                             <span>VS Code</span>
                         </a>
-                        <a href="iam-auditor/how-it-works.html" class="action-btn action-btn--build" target="_blank" rel="noopener" aria-label="How this app is built" title="How It's Built">
+                        <a href="iam-auditor/how-it-works.html" class="action-btn action-btn--build" target="_blank" rel="noopener noreferrer" aria-label="How this app is built" title="How It's Built">
                             📖 <span>How It's Built</span>
                         </a>
                     </div>
                 </article>
 
-                <!-- JWT Decoder — client-side token inspector -->
-                <article class="card">
+                <!-- JWT Decoder -->
+                <article class="card" data-tag="Security">
                     <a href="jwt-decoder/index.html" class="card-link">
                         <div class="card-visual" style="--a:#001a10;--b:#003322;--c:#00e676">
                             <div class="orb orb1"></div>
@@ -480,22 +529,22 @@
                         </div>
                     </a>
                     <div class="card-actions">
-                        <a href="https://github.com/Worldtraveler247/code_projects/tree/main/jwt-decoder" class="action-btn" target="_blank" rel="noopener" aria-label="View source on GitHub" title="View source on GitHub">
+                        <a href="https://github.com/Worldtraveler247/code_projects/tree/main/jwt-decoder" class="action-btn" target="_blank" rel="noopener noreferrer" aria-label="View source on GitHub" title="View source on GitHub">
                             <svg width="16" height="16" aria-hidden="true"><use href="#icon-github"/></svg>
                             <span>Source</span>
                         </a>
-                        <a href="https://github1s.com/Worldtraveler247/code_projects/tree/main/jwt-decoder" class="action-btn" target="_blank" rel="noopener" aria-label="Browse code in VS Code (github1s)" title="Browse code in VS Code (github1s)">
+                        <a href="https://github1s.com/Worldtraveler247/code_projects/tree/main/jwt-decoder" class="action-btn" target="_blank" rel="noopener noreferrer" aria-label="Browse code in VS Code (github1s)" title="Browse code in VS Code (github1s)">
                             <svg width="16" height="16" aria-hidden="true"><use href="#icon-code"/></svg>
                             <span>VS Code</span>
                         </a>
-                        <a href="jwt-decoder/how-it-works.html" class="action-btn action-btn--build" target="_blank" rel="noopener" aria-label="How this app is built" title="How It's Built">
+                        <a href="jwt-decoder/how-it-works.html" class="action-btn action-btn--build" target="_blank" rel="noopener noreferrer" aria-label="How this app is built" title="How It's Built">
                             📖 <span>How It's Built</span>
                         </a>
                     </div>
                 </article>
 
                 <!-- Career Ladder -->
-                <article class="card">
+                <article class="card" data-tag="Tool">
                     <a href="career-ladder/index.html" class="card-link">
                         <div class="card-visual" style="--a:#03051a;--b:#071030;--c:#4af7ff">
                             <div class="orb orb1"></div>
@@ -510,21 +559,23 @@
                         </div>
                     </a>
                     <div class="card-actions">
-                        <a href="https://github.com/Worldtraveler247/code_projects/tree/main/career-ladder" class="action-btn" target="_blank" rel="noopener" aria-label="View source on GitHub" title="View source on GitHub">
+                        <a href="https://github.com/Worldtraveler247/code_projects/tree/main/career-ladder" class="action-btn" target="_blank" rel="noopener noreferrer" aria-label="View source on GitHub" title="View source on GitHub">
                             <svg width="16" height="16" aria-hidden="true"><use href="#icon-github"/></svg>
                             <span>Source</span>
                         </a>
-                        <a href="https://github1s.com/Worldtraveler247/code_projects/tree/main/career-ladder" class="action-btn" target="_blank" rel="noopener" aria-label="Browse code in VS Code (github1s)" title="Browse code in VS Code (github1s)">
+                        <a href="https://github1s.com/Worldtraveler247/code_projects/tree/main/career-ladder" class="action-btn" target="_blank" rel="noopener noreferrer" aria-label="Browse code in VS Code (github1s)" title="Browse code in VS Code (github1s)">
                             <svg width="16" height="16" aria-hidden="true"><use href="#icon-code"/></svg>
                             <span>VS Code</span>
                         </a>
-                        <a href="career-ladder/how-it-works.html" class="action-btn action-btn--build" target="_blank" rel="noopener" aria-label="How this app is built" title="How It's Built">
+                        <a href="career-ladder/how-it-works.html" class="action-btn action-btn--build" target="_blank" rel="noopener noreferrer" aria-label="How this app is built" title="How It's Built">
                             📖 <span>How It's Built</span>
                         </a>
                     </div>
                 </article>
 
             </div>
+
+            <p id="no-results" hidden>No projects match your search.</p>
         </section>
 
         <!-- Contact -->
@@ -539,11 +590,11 @@
                     <div class="form-row">
                         <div class="form-group">
                             <label for="name">Name</label>
-                            <input type="text" id="name" name="name" placeholder="Your name" required>
+                            <input type="text" id="name" name="name" placeholder="Your name" required autocomplete="name">
                         </div>
                         <div class="form-group">
                             <label for="email">Email</label>
-                            <input type="email" id="email" name="email" placeholder="your@email.com" required>
+                            <input type="email" id="email" name="email" placeholder="your@email.com" required autocomplete="email">
                         </div>
                     </div>
                     <div class="form-group">
@@ -560,53 +611,6 @@
     <footer>
         <p class="copyright">Built by Eddie Camacho 2026</p>
     </footer>
-
-    <script>
-    // Particle background
-    const bg = document.getElementById('bg-canvas');
-    const bx = bg.getContext('2d');
-    let W, H, pts;
-    function initBg() {
-        W = bg.width  = window.innerWidth;
-        H = bg.height = window.innerHeight;
-        pts = Array.from({length: 90}, () => ({
-            x: Math.random() * W, y: Math.random() * H,
-            r: Math.random() * 1.3 + 0.2,
-            vx: (Math.random() - 0.5) * 0.22,
-            vy: (Math.random() - 0.5) * 0.22,
-            a: Math.random() * 0.7 + 0.1
-        }));
-    }
-    function animBg() {
-        bx.clearRect(0, 0, W, H);
-        pts.forEach(p => {
-            p.x += p.vx; p.y += p.vy;
-            if (p.x < 0) p.x = W; if (p.x > W) p.x = 0;
-            if (p.y < 0) p.y = H; if (p.y > H) p.y = 0;
-            bx.beginPath();
-            bx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-            bx.fillStyle = `rgba(74,247,255,${p.a * 0.5})`;
-            bx.fill();
-        });
-        requestAnimationFrame(animBg);
-    }
-    initBg(); animBg();
-    window.addEventListener('resize', initBg);
-
-    // Scroll-reveal
-    const io = new IntersectionObserver(entries => {
-        entries.forEach((e, i) => {
-            if (e.isIntersecting) {
-                setTimeout(() => e.target.classList.add('visible'), e.target.dataset.delay || 0);
-                io.unobserve(e.target);
-            }
-        });
-    }, { threshold: 0.12 });
-    document.querySelectorAll('.card, .reveal').forEach((el, i) => {
-        el.dataset.delay = i * 80;
-        io.observe(el);
-    });
-    </script>
 
 </body>
 </html>
