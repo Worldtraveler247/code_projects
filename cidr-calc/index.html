@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="dark">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <meta name="description" content="CIDR subnet calculator — network address, broadcast, host range, binary breakdown, and subnet splitter.">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'self';">
+    <title>CIDR Calculator · Eddie's Portfolio</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <script src="app.js" defer></script>
+    <style>
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --bg:     #07010f;
+            --cyan:   #4af7ff;
+            --purple: #7b2fff;
+            --green:  #00e676;
+            --amber:  #fbbf24;
+            --text:   #dde0f0;
+            --muted:  #5a607a;
+            --border: rgba(74,247,255,0.13);
+            --card:   rgba(255,255,255,0.025);
+            color-scheme: dark;
+        }
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'Inter', system-ui, sans-serif;
+            min-height: 100vh;
+        }
+
+        /* ── Nav ── */
+        .top-nav {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px 24px;
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            background: rgba(7,1,15,0.9);
+            backdrop-filter: blur(12px);
+            z-index: 10;
+        }
+        .nav-left { display: flex; align-items: center; gap: 12px; }
+        .back-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 7px 14px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--muted);
+            text-decoration: none;
+            font-size: 0.78rem;
+            font-weight: 500;
+            transition: color 0.2s, border-color 0.2s;
+        }
+        .back-btn:hover { color: var(--cyan); border-color: var(--cyan); }
+        .app-title {
+            font-family: 'Orbitron', system-ui;
+            font-size: 0.85rem;
+            color: var(--cyan);
+            letter-spacing: 2px;
+        }
+        .hiw-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 7px 14px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--cyan);
+            text-decoration: none;
+            font-size: 0.78rem;
+            font-weight: 500;
+            transition: background 0.2s, border-color 0.2s;
+        }
+        .hiw-btn:hover { background: rgba(74,247,255,0.07); border-color: var(--cyan); }
+
+        /* ── Main layout ── */
+        main { max-width: 900px; margin: 0 auto; padding: 40px 24px 80px; }
+
+        h1 {
+            font-family: 'Orbitron', system-ui;
+            font-size: clamp(1.6rem, 4vw, 2.4rem);
+            color: #fff;
+            letter-spacing: -0.5px;
+            margin-bottom: 6px;
+        }
+        .subtitle {
+            color: var(--muted);
+            font-size: 0.9rem;
+            margin-bottom: 36px;
+        }
+
+        /* ── Input section ── */
+        .input-wrap {
+            display: flex;
+            gap: 10px;
+            align-items: flex-start;
+            flex-wrap: wrap;
+            margin-bottom: 12px;
+        }
+        #cidr-input {
+            flex: 1;
+            min-width: 220px;
+            background: rgba(255,255,255,0.04);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 14px 18px;
+            color: var(--text);
+            font-family: 'Courier New', monospace;
+            font-size: 1.1rem;
+            letter-spacing: 1px;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        #cidr-input:focus {
+            outline: none;
+            border-color: var(--cyan);
+            box-shadow: 0 0 0 3px rgba(74,247,255,0.08);
+        }
+        #cidr-input.error { border-color: #ff4d4d; box-shadow: 0 0 0 3px rgba(255,77,77,0.1); }
+
+        #input-error {
+            font-size: 0.78rem;
+            color: #ff6b6b;
+            margin-bottom: 12px;
+        }
+
+        .presets {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 32px;
+        }
+        .preset-btn {
+            padding: 5px 12px;
+            background: transparent;
+            border: 1px solid rgba(255,255,255,0.09);
+            border-radius: 999px;
+            color: var(--muted);
+            font-family: 'Courier New', monospace;
+            font-size: 0.75rem;
+            cursor: pointer;
+            transition: color 0.2s, border-color 0.2s;
+            width: auto;
+        }
+        .preset-btn:hover { color: var(--cyan); border-color: var(--cyan); }
+
+        /* ── Results ── */
+        #results { display: flex; flex-direction: column; gap: 24px; }
+
+        /* Badges */
+        .badges { display: flex; flex-wrap: wrap; gap: 8px; }
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 5px 14px;
+            border-radius: 999px;
+            font-size: 0.72rem;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            border: 1px solid;
+        }
+        .badge-class  { color: var(--cyan);   border-color: rgba(74,247,255,0.3);  background: rgba(74,247,255,0.06);  }
+        .badge-rfc    { color: var(--green);  border-color: rgba(0,230,118,0.3);   background: rgba(0,230,118,0.06);   }
+        .badge-aws    { color: #ff9900;       border-color: rgba(255,153,0,0.3);   background: rgba(255,153,0,0.06);   }
+        .badge-aws-no { color: var(--muted);  border-color: rgba(90,96,122,0.3);   background: transparent;            }
+
+        /* Info table */
+        .info-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            overflow: hidden;
+        }
+        .info-row {
+            display: grid;
+            grid-template-columns: 180px 1fr auto;
+            align-items: center;
+            padding: 13px 20px;
+            border-bottom: 1px solid rgba(255,255,255,0.04);
+            gap: 12px;
+        }
+        .info-row:last-child { border-bottom: none; }
+        .info-label {
+            font-size: 0.72rem;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            color: var(--muted);
+        }
+        .info-value {
+            font-family: 'Courier New', monospace;
+            font-size: 0.95rem;
+            color: var(--text);
+            word-break: break-all;
+        }
+        .info-anno {
+            font-family: 'Courier New', monospace;
+            font-size: 0.8rem;
+            color: var(--muted);
+            margin-left: 10px;
+        }
+        .copy-btn {
+            padding: 4px 8px;
+            background: transparent;
+            border: 1px solid rgba(255,255,255,0.07);
+            border-radius: 5px;
+            color: var(--muted);
+            font-size: 0.75rem;
+            cursor: pointer;
+            transition: color 0.15s, border-color 0.15s;
+            width: auto;
+            flex-shrink: 0;
+        }
+        .copy-btn:hover { color: var(--cyan); border-color: var(--cyan); }
+
+        /* ── Binary breakdown ── */
+        .section-title {
+            font-family: 'Orbitron', system-ui;
+            font-size: 0.68rem;
+            letter-spacing: 4px;
+            text-transform: uppercase;
+            color: var(--cyan);
+            margin-bottom: 14px;
+        }
+        .bin-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 24px;
+            overflow-x: auto;
+        }
+        .bin-line {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            margin-bottom: 8px;
+        }
+        .bin-label {
+            font-family: 'Courier New', monospace;
+            font-size: 0.78rem;
+            color: var(--muted);
+            min-width: 60px;
+            flex-shrink: 0;
+        }
+        .bin-row { font-family: 'Courier New', monospace; font-size: 0.95rem; letter-spacing: 1px; }
+        .bin-dot { color: var(--muted); }
+        .bit-net  { color: var(--cyan); }
+        .bit-host { color: var(--purple); opacity: 0.7; }
+        .bin-legend {
+            margin-top: 14px;
+            font-size: 0.75rem;
+            color: var(--muted);
+            display: flex;
+            gap: 4px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        /* ── Subnet splitter ── */
+        .splitter-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 24px;
+        }
+        .splitter-controls {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+        }
+        .splitter-label { font-size: 0.85rem; color: var(--muted); }
+        .splitter-label span { color: var(--text); font-weight: 600; }
+        #split-prefix {
+            width: 80px;
+            padding: 7px 12px;
+            background: rgba(255,255,255,0.04);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text);
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            text-align: center;
+        }
+        #split-prefix:focus { outline: none; border-color: var(--cyan); }
+        .split-summary {
+            font-size: 0.85rem;
+            color: var(--cyan);
+            margin-bottom: 12px;
+            font-weight: 600;
+        }
+        .split-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 6px;
+        }
+        .split-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.05);
+            border-radius: 7px;
+            padding: 7px 12px;
+        }
+        .split-cidr  { font-family: 'Courier New', monospace; font-size: 0.82rem; color: var(--text); }
+        .split-hosts { font-size: 0.72rem; color: var(--muted); }
+        .split-more  { font-size: 0.78rem; color: var(--muted); padding: 8px 0 0; }
+        .split-err   { font-size: 0.82rem; color: #ff6b6b; }
+
+        /* ── Responsive ── */
+        @media (max-width: 600px) {
+            .info-row { grid-template-columns: 140px 1fr auto; }
+            .bin-row  { font-size: 0.8rem; letter-spacing: 0; }
+        }
+        @media (max-width: 480px) {
+            .info-row { grid-template-columns: 1fr auto; }
+            .info-label { grid-column: 1 / -1; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after { transition-duration: 0.01ms !important; }
+        }
+    </style>
+</head>
+<body>
+
+    <nav class="top-nav" aria-label="App navigation">
+        <div class="nav-left">
+            <a href="../index.html" class="back-btn" aria-label="Back to App Hub">← App Hub</a>
+            <span class="app-title">CIDR CALCULATOR</span>
+        </div>
+        <a href="how-it-works.html" class="hiw-btn" target="_blank" rel="noopener noreferrer" aria-label="How this app is built">
+            📖 How It's Built
+        </a>
+    </nav>
+
+    <main>
+        <h1>CIDR <span style="color:var(--cyan)">Calculator</span></h1>
+        <p class="subtitle">Subnet math, binary breakdown, and AWS VPC planning in one place.</p>
+
+        <div class="input-wrap">
+            <input
+                type="text"
+                id="cidr-input"
+                placeholder="192.168.1.0/24"
+                autocomplete="off"
+                spellcheck="false"
+                aria-label="Enter CIDR notation"
+            >
+        </div>
+        <p id="input-error" hidden aria-live="polite"></p>
+
+        <div class="presets" role="group" aria-label="Quick presets">
+            <button class="preset-btn" data-preset="10.0.0.0/8">10.0.0.0/8</button>
+            <button class="preset-btn" data-preset="172.16.0.0/12">172.16.0.0/12</button>
+            <button class="preset-btn" data-preset="192.168.0.0/16">192.168.0.0/16</button>
+            <button class="preset-btn" data-preset="10.0.0.0/16">10.0.0.0/16 (VPC)</button>
+            <button class="preset-btn" data-preset="10.0.1.0/24">10.0.1.0/24 (subnet)</button>
+            <button class="preset-btn" data-preset="192.168.1.0/24">192.168.1.0/24</button>
+            <button class="preset-btn" data-preset="0.0.0.0/0">0.0.0.0/0 (default route)</button>
+        </div>
+
+        <section id="results" hidden aria-label="CIDR calculation results">
+
+            <!-- Badges -->
+            <div class="badges" role="list" aria-label="Network properties">
+                <span class="badge badge-class" id="badge-class" role="listitem">Class A</span>
+                <span class="badge badge-rfc"  id="badge-private" role="listitem">✓ RFC 1918 Private</span>
+                <span class="badge badge-aws"  id="badge-awsvpc"  role="listitem">✓ AWS VPC Valid (/16–/28)</span>
+                <span class="badge badge-aws-no" id="badge-awsvpc-no" role="listitem">✗ Outside AWS VPC Range</span>
+            </div>
+
+            <!-- Info table -->
+            <div class="info-card" role="table" aria-label="Network details">
+                <div class="info-row">
+                    <span class="info-label">Network Address</span>
+                    <span class="info-value" id="r-net"></span>
+                    <button class="copy-btn" data-copy="r-net" title="Copy" aria-label="Copy network address">⎘</button>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Subnet Mask</span>
+                    <span class="info-value">
+                        <span id="r-mask"></span><span class="info-anno" id="r-mask-hex"></span>
+                    </span>
+                    <button class="copy-btn" data-copy="r-mask" title="Copy" aria-label="Copy subnet mask">⎘</button>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Wildcard Mask</span>
+                    <span class="info-value" id="r-wild"></span>
+                    <button class="copy-btn" data-copy="r-wild" title="Copy" aria-label="Copy wildcard mask">⎘</button>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Broadcast Address</span>
+                    <span class="info-value" id="r-bcast"></span>
+                    <button class="copy-btn" data-copy="r-bcast" title="Copy" aria-label="Copy broadcast address">⎘</button>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">First Usable Host</span>
+                    <span class="info-value" id="r-first"></span>
+                    <button class="copy-btn" data-copy="r-first" title="Copy" aria-label="Copy first host">⎘</button>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Last Usable Host</span>
+                    <span class="info-value" id="r-last"></span>
+                    <button class="copy-btn" data-copy="r-last" title="Copy" aria-label="Copy last host">⎘</button>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Total IPs</span>
+                    <span class="info-value" id="r-total"></span>
+                    <button class="copy-btn" data-copy="r-total" title="Copy" aria-label="Copy total IPs">⎘</button>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Usable Hosts</span>
+                    <span class="info-value" id="r-usable"></span>
+                    <button class="copy-btn" data-copy="r-usable" title="Copy" aria-label="Copy usable hosts">⎘</button>
+                </div>
+            </div>
+
+            <!-- Binary breakdown -->
+            <div>
+                <p class="section-title">Binary Breakdown</p>
+                <div class="bin-card">
+                    <div id="binary-wrap"></div>
+                </div>
+            </div>
+
+            <!-- Subnet splitter -->
+            <div>
+                <p class="section-title">Subnet Splitter</p>
+                <div class="splitter-card">
+                    <div class="splitter-controls">
+                        <label class="splitter-label" for="split-prefix">Split into <span>/</span></label>
+                        <input type="number" id="split-prefix" min="1" max="32" value="26" aria-label="Target prefix length">
+                        <span class="splitter-label">subnets</span>
+                    </div>
+                    <div id="split-output" aria-live="polite"></div>
+                </div>
+            </div>
+
+        </section>
+    </main>
+
+</body>
+</html>

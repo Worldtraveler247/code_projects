@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="dark">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'none';">
+    <title>How It's Built · CIDR Calculator</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../how-it-works.css">
+</head>
+<body>
+    <nav class="top-nav">
+        <a href="index.html" class="back-btn">← CIDR Calculator</a>
+        <a href="../index.html" class="back-btn">← App Hub</a>
+    </nav>
+
+    <main class="hiw-main">
+        <header class="hiw-header">
+            <div class="hiw-tag">HOW IT'S BUILT</div>
+            <h1>CIDR Calculator</h1>
+            <p class="hiw-lead">Client-side subnet math using bitwise arithmetic — the same operations a router performs when making forwarding decisions.</p>
+        </header>
+
+        <section class="hiw-section">
+            <h2>Why This Tool Exists</h2>
+            <p>Every AWS VPC, security group rule, NACL, and route table entry uses CIDR notation. When you write <code>10.0.1.0/24</code> as an ingress rule, you need to know that means 254 usable hosts from <code>10.0.1.1</code> to <code>10.0.1.254</code>. This tool makes that explicit and shows the underlying bit math.</p>
+        </section>
+
+        <section class="hiw-section">
+            <h2>The Core Math</h2>
+            <p>Every calculation reduces to four bitwise operations on 32-bit integers:</p>
+            <pre><code>// Convert dotted-decimal to 32-bit integer
+const ipInt = (a &lt;&lt; 24) | (b &lt;&lt; 16) | (c &lt;&lt; 8) | d;
+
+// Build the subnet mask from the prefix length
+const mask = prefix === 0 ? 0 : (0xFFFFFFFF &lt;&lt; (32 - prefix)) &gt;&gt;&gt; 0;
+
+// Network address — zero out host bits
+const network = (ipInt &amp; mask) &gt;&gt;&gt; 0;
+
+// Broadcast — set all host bits to 1
+const broadcast = (network | (~mask &gt;&gt;&gt; 0)) &gt;&gt;&gt; 0;</code></pre>
+            <p>The <code>&gt;&gt;&gt; 0</code> casts the result to an unsigned 32-bit integer. JavaScript's bitwise operators work on signed 32-bit integers, so without this cast, addresses above <code>127.255.255.255</code> produce negative numbers — a silent bug that breaks every calculation for the top half of the IPv4 space.</p>
+        </section>
+
+        <section class="hiw-section">
+            <h2>Host Count</h2>
+            <p>A <code>/prefix</code> block has <code>2^(32 - prefix)</code> total addresses. Subtract 2 for the network and broadcast addresses to get usable hosts. Edge cases:</p>
+            <ul class="hiw-list">
+                <li><strong>/31</strong> — RFC 3021 point-to-point links. Both addresses are usable (no broadcast). Common on router-to-router links.</li>
+                <li><strong>/32</strong> — Single host route. Used in AWS security groups to whitelist one specific IP.</li>
+                <li><strong>/0</strong> — The entire IPv4 space (4,294,967,296 addresses). Represents the default route in routing tables.</li>
+            </ul>
+        </section>
+
+        <section class="hiw-section">
+            <h2>RFC 1918 Detection</h2>
+            <p>Three private address ranges defined in RFC 1918 are never routed on the public internet. Detection is a bitmask comparison:</p>
+            <pre><code>function isPrivate(n) {
+    return ((n &amp; 0xFF000000) &gt;&gt;&gt; 0) === 0x0A000000   // 10.0.0.0/8
+        || ((n &amp; 0xFFF00000) &gt;&gt;&gt; 0) === 0xAC100000   // 172.16.0.0/12
+        || ((n &amp; 0xFFFF0000) &gt;&gt;&gt; 0) === 0xC0A80000;  // 192.168.0.0/16
+}</code></pre>
+            <p>AWS VPCs must use RFC 1918 space. If you try to create a VPC with a public IP range, the console rejects it.</p>
+        </section>
+
+        <section class="hiw-section">
+            <h2>AWS VPC CIDR Constraints</h2>
+            <p>AWS enforces hard limits on VPC CIDR blocks: minimum <code>/28</code> (16 addresses, 11 usable after AWS reserves 5 per subnet) and maximum <code>/16</code> (65,536 addresses). The calculator flags this range automatically — a /8 or /29 badge change is an immediate signal that the CIDR won't work as a VPC block without modification.</p>
+        </section>
+
+        <section class="hiw-section">
+            <h2>Subnet Splitter</h2>
+            <p>Given a parent block and a target prefix, the number of subnets is <code>2^(target - parent)</code>. Each subnet starts at an offset of <code>2^(32 - target)</code> addresses from the previous one:</p>
+            <pre><code>const count  = 2 ** (targetPrefix - parentPrefix);
+const size   = 2 ** (32 - targetPrefix);
+const subnets = Array.from({length: count}, (_, i) =>
+    toIP((netInt + i * size) &gt;&gt;&gt; 0) + '/' + targetPrefix
+);</code></pre>
+            <p>This is exactly how AWS auto-assigns subnets when you use the VPC wizard's "divide into subnets" feature.</p>
+        </section>
+
+        <section class="hiw-section">
+            <h2>Security</h2>
+            <ul class="hiw-list">
+                <li><strong>No innerHTML on user input.</strong> All dynamic content is built with <code>createElement</code> + <code>textContent</code>. User-supplied CIDR strings are parsed to integers before any DOM interaction — the string never reaches the DOM directly.</li>
+                <li><strong>No external requests.</strong> Everything runs client-side. The CSP blocks <code>connect-src</code> entirely.</li>
+                <li><strong>Input validation.</strong> Octet range (0–255) and prefix range (0–32) are validated before any calculation runs. Invalid input surfaces a plain-text error message, never HTML.</li>
+            </ul>
+        </section>
+
+        <section class="hiw-section">
+            <h2>Stack</h2>
+            <ul class="hiw-list">
+                <li>Vanilla JS — no libraries. The math is three bitwise operators; a library would add more complexity than it removes.</li>
+                <li>CSS custom properties for the shared color palette with the hub.</li>
+                <li>Sticky nav with <code>backdrop-filter: blur</code> so the title stays readable while scrolling through long subnet lists.</li>
+                <li><code>prefers-reduced-motion</code> disables all transitions.</li>
+            </ul>
+        </section>
+    </main>
+</body>
+</html>
