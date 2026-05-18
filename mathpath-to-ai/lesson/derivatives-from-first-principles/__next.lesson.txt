@@ -1,0 +1,5 @@
+1:"$Sreact.fragment"
+2:I[39756,["/code_projects/mathpath-to-ai/_next/static/chunks/0k5_kiczrn_mm.js","/code_projects/mathpath-to-ai/_next/static/chunks/0tv5-ef1nzyec.js","/code_projects/mathpath-to-ai/_next/static/chunks/10~9594msmm2j.js","/code_projects/mathpath-to-ai/_next/static/chunks/0_m05rhzhz69..js","/code_projects/mathpath-to-ai/_next/static/chunks/13tmk-pv-yzsy.js"],"default"]
+3:I[37457,["/code_projects/mathpath-to-ai/_next/static/chunks/0k5_kiczrn_mm.js","/code_projects/mathpath-to-ai/_next/static/chunks/0tv5-ef1nzyec.js","/code_projects/mathpath-to-ai/_next/static/chunks/10~9594msmm2j.js","/code_projects/mathpath-to-ai/_next/static/chunks/0_m05rhzhz69..js","/code_projects/mathpath-to-ai/_next/static/chunks/13tmk-pv-yzsy.js"],"default"]
+4:[]
+0:{"rsc":["$","$1","c",{"children":[null,["$","$L2",null,{"parallelRouterKey":"children","template":["$","$L3",null,{}]}]]}],"isPartial":false,"staleTime":300,"varyParams":"$W4","buildId":"IjW3BOLYQ5RP28FmNigEh"}
