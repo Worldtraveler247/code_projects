@@ -15,6 +15,8 @@ env/
 
 # Streamlit
 .streamlit/
+# Stock-monitor persisted watchlist (local-dev only — ephemeral on Streamlit Cloud)
+stock-monitor/watchlist.json
 
 # IDE / editor
 .vscode/

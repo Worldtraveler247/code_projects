@@ -18,8 +18,13 @@ body {
   font-family: 'Inter', sans-serif;
   font-size: 16px;
   line-height: 1.7;
+  /* Legacy .hiw-page layout needs top padding to clear the old fixed back-link.
+     New .hiw-main layout uses a sticky .top-nav instead — zero out body padding
+     so the nav sits flush at the top. */
   padding: 80px 20px 60px;
 }
+/* New-pattern pages (with sticky .top-nav + .hiw-main) need no body top-padding */
+body:has(.top-nav) { padding: 0; }
 
 .hiw-page { max-width: 820px; margin: 0 auto; }
 
@@ -157,8 +162,111 @@ body {
   color: var(--cyan);
 }
 
+/* ── Top nav (shared by all how-it-works and splash pages) ── */
+.top-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 24px;
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  background: rgba(6,6,15,0.92);
+  backdrop-filter: blur(12px);
+  z-index: 100;
+}
+.top-nav .nav-left { display: flex; align-items: center; gap: 12px; }
+
+.back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--muted);
+  text-decoration: none;
+  font-size: 0.78rem;
+  font-weight: 500;
+  transition: color 0.2s, border-color 0.2s;
+}
+.back-btn:hover { color: var(--cyan); border-color: var(--cyan); }
+
+.app-title {
+  font-family: 'Orbitron', system-ui, sans-serif;
+  font-size: 0.85rem;
+  color: var(--cyan);
+  letter-spacing: 2px;
+}
+
+.hiw-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--cyan);
+  text-decoration: none;
+  font-size: 0.78rem;
+  font-weight: 500;
+  transition: background 0.2s, border-color 0.2s;
+}
+.hiw-btn:hover { background: rgba(74,247,255,0.07); border-color: var(--cyan); }
+
+/* ── New-pattern main wrapper (replaces .hiw-page where body padding is removed) ── */
+.hiw-main {
+  max-width: 820px;
+  margin: 0 auto;
+  padding: 40px 24px 80px;
+}
+
+/* ── Tag pill above h1 ── */
+.hiw-tag {
+  display: inline-block;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--cyan);
+  border: 1px solid rgba(74,247,255,0.3);
+  border-radius: 999px;
+  padding: 3px 12px;
+  margin-bottom: 14px;
+}
+
+/* ── Lead paragraph under h1 in hiw-header ── */
+.hiw-lead {
+  color: var(--muted);
+  font-size: 0.95rem;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+/* ── Plain list used in How-It-Works prose sections ── */
+.hiw-list {
+  padding-left: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+.hiw-list li strong { color: var(--text); }
+.hiw-list li code {
+  font-family: 'Fira Code', monospace;
+  background: rgba(74,247,255,0.08);
+  border-radius: 4px;
+  padding: 1px 5px;
+  font-size: 0.85em;
+  color: var(--cyan);
+}
+
 /* ── Responsive ── */
 @media (max-width: 600px) {
-  body { padding: 70px 16px 40px; }
+  body { padding: 0 0 40px; }   /* nav is sticky; remove top padding so page doesn't gap */
+  .hiw-page  { padding: 0 16px 40px; }
+  .hiw-main  { padding: 24px 16px 40px; }
   .hiw-file-block { padding: 16px; }
+  .top-nav { padding: 12px 16px; }
 }

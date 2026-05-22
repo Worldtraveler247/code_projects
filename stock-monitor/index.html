@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="dark">
+  <meta name="description" content="Live buy alerts for VOO, SPY, QQQ, NVDA and more — RSI and SMA signals powered by Yahoo Finance.">
+  <title>Stock Monitor · Eddie's Portfolio</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg:     #07010f;
+      --cyan:   #4af7ff;
+      --purple: #7b2fff;
+      --green:  #00e676;
+      --amber:  #fbbf24;
+      --text:   #dde0f0;
+      --muted:  #5a607a;
+      --border: rgba(74,247,255,0.13);
+      --card:   rgba(255,255,255,0.025);
+      color-scheme: dark;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', system-ui, sans-serif;
+      min-height: 100vh;
+    }
+
+    /* ── Nav ── */
+    .top-nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 24px;
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      background: rgba(7,1,15,0.92);
+      backdrop-filter: blur(12px);
+      z-index: 10;
+    }
+    .nav-left { display: flex; align-items: center; gap: 12px; }
+    .back-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 14px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 0.78rem;
+      font-weight: 500;
+      transition: color 0.2s, border-color 0.2s;
+    }
+    .back-btn:hover { color: var(--cyan); border-color: var(--cyan); }
+    .app-title {
+      font-family: 'Orbitron', system-ui;
+      font-size: 0.85rem;
+      color: var(--cyan);
+      letter-spacing: 2px;
+    }
+    .hiw-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 14px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--cyan);
+      text-decoration: none;
+      font-size: 0.78rem;
+      font-weight: 500;
+      transition: background 0.2s, border-color 0.2s;
+    }
+    .hiw-btn:hover { background: rgba(74,247,255,0.07); border-color: var(--cyan); }
+
+    /* ── Hero ── */
+    main { max-width: 860px; margin: 0 auto; padding: 60px 24px 80px; }
+
+    .eyebrow {
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--cyan);
+      margin-bottom: 16px;
+    }
+
+    h1 {
+      font-family: 'Orbitron', system-ui;
+      font-size: clamp(2rem, 5vw, 3.2rem);
+      font-weight: 800;
+      line-height: 1.1;
+      margin-bottom: 20px;
+    }
+    h1 .grad {
+      background: linear-gradient(135deg, var(--cyan), var(--purple));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .hero-desc {
+      color: var(--muted);
+      font-size: 1.05rem;
+      line-height: 1.75;
+      max-width: 620px;
+      margin-bottom: 40px;
+    }
+
+    /* ── CTA button ── */
+    .launch-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 14px 28px;
+      background: linear-gradient(135deg, var(--cyan), var(--purple));
+      border-radius: 10px;
+      color: #07010f;
+      font-weight: 700;
+      font-size: 0.95rem;
+      text-decoration: none;
+      transition: opacity 0.2s, transform 0.15s;
+    }
+    .launch-btn:hover { opacity: 0.88; transform: translateY(-1px); }
+
+    /* ── Feature pills ── */
+    .features {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin: 48px 0 56px;
+    }
+    .feature-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 16px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      font-size: 0.82rem;
+      color: var(--text);
+    }
+    .feature-pill .dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .dot-cyan   { background: var(--cyan); }
+    .dot-green  { background: var(--green); }
+    .dot-purple { background: var(--purple); }
+    .dot-amber  { background: var(--amber); }
+
+    /* ── Info cards ── */
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 16px;
+      margin-bottom: 56px;
+    }
+    .info-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px 22px;
+    }
+    .info-card h3 {
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--cyan);
+      margin-bottom: 8px;
+    }
+    .info-card p {
+      font-size: 0.88rem;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    /* ── Disclaimer ── */
+    .disclaimer {
+      font-size: 0.75rem;
+      color: var(--muted);
+      border-top: 1px solid var(--border);
+      padding-top: 24px;
+      line-height: 1.6;
+    }
+    .disclaimer strong { color: var(--text); }
+
+    /* ── VIX badge (static — live value is inside the Streamlit app) ── */
+    .vix-note {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 14px;
+      background: rgba(123,47,255,0.12);
+      border: 1px solid rgba(123,47,255,0.3);
+      border-radius: 8px;
+      font-size: 0.78rem;
+      color: #c4b5fd;
+      margin-bottom: 32px;
+    }
+
+    @media (max-width: 540px) {
+      main { padding: 36px 16px 60px; }
+      .features { gap: 8px; }
+    }
+  </style>
+</head>
+<body>
+
+  <nav class="top-nav">
+    <div class="nav-left">
+      <a href="../index.html" class="back-btn">← App Hub</a>
+      <span class="app-title">STOCK MONITOR</span>
+    </div>
+    <a href="how-it-works.html" class="hiw-btn">📖 How It's Built</a>
+  </nav>
+
+  <main>
+    <p class="eyebrow">Live Market Dashboard</p>
+    <h1>Stock <span class="grad">Monitor</span></h1>
+    <p class="hero-desc">
+      Real-time buy alerts for VOO, SPY, QQQ, NVDA, AAPL, LLY, and BTC
+      powered by Yahoo Finance. Configurable SMA and RSI thresholds, VIX
+      regime badge, persistent watchlist, and optional Slack/ntfy webhook
+      notifications — all in a single Python file deployed on Streamlit Cloud.
+    </p>
+
+    <div class="vix-note">
+      ⚡ VIX regime, alert history, and webhook alerts are active in the live dashboard
+    </div>
+
+    <a
+      href="https://codeprojects-x3djlxwwthbe5idjkaw2du.streamlit.app/"
+      class="launch-btn"
+      target="_blank"
+      rel="noopener noreferrer"
+    >
+      Launch Dashboard →
+    </a>
+
+    <!-- Feature pills -->
+    <div class="features">
+      <span class="feature-pill"><span class="dot dot-cyan"></span>SMA-20 buy alerts</span>
+      <span class="feature-pill"><span class="dot dot-green"></span>RSI(14) oversold signals</span>
+      <span class="feature-pill"><span class="dot dot-amber"></span>VIX regime badge</span>
+      <span class="feature-pill"><span class="dot dot-purple"></span>Persistent watchlist</span>
+      <span class="feature-pill"><span class="dot dot-green"></span>Alert history log</span>
+      <span class="feature-pill"><span class="dot dot-cyan"></span>Slack / ntfy webhook</span>
+      <span class="feature-pill"><span class="dot dot-amber"></span>Sector tabs (Health, Energy)</span>
+      <span class="feature-pill"><span class="dot dot-purple"></span>2026–2027 revenue projections</span>
+      <span class="feature-pill"><span class="dot dot-green"></span>IPO watch list</span>
+      <span class="feature-pill"><span class="dot dot-cyan"></span>Auto-refresh countdown</span>
+    </div>
+
+    <!-- Info cards -->
+    <div class="cards">
+      <div class="info-card">
+        <h3>Data Source</h3>
+        <p>Yahoo Finance via <code>yfinance</code>. 3-month OHLCV history per ticker, cached for 5 minutes to avoid rate-limiting.</p>
+      </div>
+      <div class="info-card">
+        <h3>Buy Signal Logic</h3>
+        <p>Price &gt;N% below the 20-day SMA <em>or</em> RSI(14) below the oversold threshold. Both thresholds are tunable via sidebar sliders.</p>
+      </div>
+      <div class="info-card">
+        <h3>VIX Regime</h3>
+        <p>Calm &lt;15 · Elevated 15–25 · Fear &gt;25. The badge updates on every data refresh and drives contextual coloring across the dashboard.</p>
+      </div>
+      <div class="info-card">
+        <h3>Webhook Alerts</h3>
+        <p>POST JSON payload to Slack or ntfy when a signal fires. URL is read from <code>ALERT_WEBHOOK_URL</code> in Streamlit secrets — never hardcoded.</p>
+      </div>
+      <div class="info-card">
+        <h3>Stack</h3>
+        <p>Python 3.12 · Streamlit · yfinance · Pandas · Altair · requests. Deployed free on Streamlit Community Cloud.</p>
+      </div>
+      <div class="info-card">
+        <h3>Watchlist</h3>
+        <p>Custom tickers persist across page reloads via a local JSON sidecar file. On Streamlit Cloud the default watchlist is used on each cold start.</p>
+      </div>
+    </div>
+
+    <p class="disclaimer">
+      <strong>Not financial advice.</strong> This dashboard is a portfolio project demonstrating Python, Streamlit, and real-time data pipelines.
+      Technical indicators (SMA, RSI) are tools for exploring price patterns — they are not reliable predictors of future performance.
+      Do not make investment decisions based on this app.
+    </p>
+  </main>
+
+</body>
+</html>
