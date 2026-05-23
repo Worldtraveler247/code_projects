@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="dark">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'none';">
+    <title>How It's Built · Subnet Trainer</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../how-it-works.css">
+</head>
+<body>
+    <nav class="top-nav">
+        <a href="index.html" class="back-btn">← Subnet Trainer</a>
+        <a href="../index.html" class="back-btn">← App Hub</a>
+    </nav>
+
+    <main class="hiw-main">
+        <header class="hiw-header">
+            <div class="hiw-tag">HOW IT'S BUILT</div>
+            <h1>Subnet Trainer</h1>
+            <p class="hiw-lead">A teaching tool, not a calculator. It makes you compute an IP's network range yourself using the block-size (magic-number) method, shows the human arithmetic, then drills you for speed.</p>
+        </header>
+
+        <section class="hiw-section">
+            <h2>Why This Exists (and how it differs from the CIDR Calculator)</h2>
+            <p>The sibling <a href="../cidr-calc/index.html">CIDR Calculator</a> hands you the answer instantly via bitwise math. That's a reference tool. This is a <em>pedagogy</em> tool: it teaches the mental method an engineer uses to read a subnet boundary <strong>by inspection</strong> — at a whiteboard, in an interview, or staring at a firewall rule with no calculator open. The Calculator answers "what is it?"; the Trainer answers "how do I work it out, fast?"</p>
+        </section>
+
+        <section class="hiw-section">
+            <h2>The Block-Size Method</h2>
+            <p>The whole technique reduces to one observation: subnets repeat at a fixed interval — the <strong>block size</strong> — inside a single "interesting" octet. Find that interval and the rest is arithmetic.</p>
+            <ul class="hiw-list">
+                <li><strong>1. Block size</strong> = <code>256 − (subnet-mask octet value)</code>. A mask octet of 224 gives a block size of 32.</li>
+                <li><strong>2. Network</strong> = <code>⌊IP octet ÷ block⌋ × block</code>. For 247 with block 32: ⌊247/32⌋=7, ×32 = 224.</li>
+                <li><strong>3. Next network</strong> = <code>network + block</code>.</li>
+                <li><strong>4. Broadcast</strong> = <code>next network − 1</code>.</li>
+                <li><strong>5. First usable</strong> = <code>network + 1</code>.</li>
+                <li><strong>6. Last usable</strong> = <code>broadcast − 1</code>.</li>
+            </ul>
+            <p>The "interesting octet" is <code>⌊prefix ÷ 8⌋</code> — the octet where the mask transitions from ones to zeros.</p>
+        </section>
+
+        <section class="hiw-section">
+            <h2>The Edge Case That Breaks Naive Implementations</h2>
+            <p>When <code>prefix % 8 === 0</code> (i.e. /8, /16, /24), the mask lands exactly on an octet boundary. There is <em>no</em> partial octet — every octet is either fully locked (255) or fully free (0). A naive implementation that always looks for a "partial" mask octet falls apart here. This app treats it explicitly: the interesting octet's mask value is 0, so the block size is a full 256, the floor-division collapses to zero, and the network is simply "copy the locked octets, zero the free ones." The Learn view labels these as <strong>clean boundaries</strong> so the learner understands why there's no arithmetic to do.</p>
+        </section>
+
+        <section class="hiw-section">
+            <h2>Two Sources of Truth — and a Self-Check</h2>
+            <p>The drill needs an answer key, and the Learn view needs to show human arithmetic. Those are computed two different ways:</p>
+            <ul class="hiw-list">
+                <li><strong>Bitwise engine</strong> (<code>computeFacts</code>) — the authoritative answer, via the same <code>ip &amp; mask</code> operations a router uses. Adapted from the CIDR Calculator's engine.</li>
+                <li><strong>Block-size decomposition</strong> (<code>decompose</code>) — the human method, used only for the teaching display.</li>
+            </ul>
+            <p>If those two ever disagreed, the app would teach a method that doesn't match its own answers. So a <strong>load-time self-check</strong> runs nine known cases (including the worked examples and the clean-boundary cases) and compares both paths against expected results. A mismatch logs a loud <code>console.error</code>. This is the honest cost of copying the math from the Calculator instead of sharing one module: the duplication is documented, and it's guarded.</p>
+        </section>
+
+        <section class="hiw-section">
+            <h2>A Bug Fixed Along the Way: /31</h2>
+            <p>The Calculator computes first-usable as <code>network + 1</code> unconditionally for anything below /32. For a <strong>/31</strong> (RFC 3021 point-to-point link) that's wrong — both addresses are usable, so first-usable is the <em>network address itself</em>, not network+1. The Trainer fixes this (<code>prefix &gt;= 31 ? net : net + 1</code>) because its Advanced drill tier tests /31 directly, and a teaching tool cannot ship a wrong answer key.</p>
+        </section>
+
+        <section class="hiw-section">
+            <h2>Drill Design: Don't Punish a Right Answer</h2>
+            <p>The fastest way to destroy trust in a teaching tool is to mark a conceptually-correct answer wrong on a formatting technicality. Every answer is normalized before comparison — leading zeros, trailing whitespace, and case are stripped, and <code>192.168.050.224</code> compares equal to <code>192.168.50.224</code>. For /31 and /32, the broadcast field accepts <code>N/A</code>, <code>na</code>, <code>none</code>, or blank. Wrong answers reveal the full worked solution — the same grid and step cards from Learn mode — so a miss becomes a lesson, not just a red X.</p>
+        </section>
+
+        <section class="hiw-section">
+            <h2>Streak Persistence</h2>
+            <p>Best streak persists in <code>localStorage</code> under a namespaced key (<code>subnet-trainer:best</code>). Namespacing matters: every app on this hub shares one <code>github.io</code> origin, so an unprefixed key like <code>best</code> would collide with a neighbor. Reads and writes are wrapped in <code>try/catch</code> because private-browsing mode throws on <code>setItem</code>. No telemetry, no network — the CSP blocks <code>connect-src</code> entirely.</p>
+        </section>
+
+        <section class="hiw-section">
+            <h2>Security</h2>
+            <ul class="hiw-list">
+                <li><strong>No innerHTML.</strong> Every dynamic node — grid cells, step cards, feedback — is built with <code>createElement</code> + <code>textContent</code>. User input is parsed to integers before it ever touches the DOM.</li>
+                <li><strong>Strict CSP.</strong> <code>script-src 'self'</code> on the app, <code>'none'</code> on this page. No inline scripts, no external requests.</li>
+                <li><strong>Validated input.</strong> Octet range (0–255) and prefix range (0–32) are checked before any computation; invalid input surfaces a plain-text error.</li>
+            </ul>
+        </section>
+
+        <section class="hiw-section">
+            <h2>Stack</h2>
+            <ul class="hiw-list">
+                <li>Vanilla JS, no libraries, no build step — one <code>app.js</code> loaded with <code>defer</code>.</li>
+                <li>CSS custom properties shared with the hub palette; the boundary octet is ringed in amber to draw the eye to where the work happens.</li>
+                <li><code>prefers-reduced-motion</code> disables all transitions.</li>
+                <li>Two modes share one render path: the drill's "reveal solution" reuses the exact grid and step renderers from Learn mode.</li>
+            </ul>
+        </section>
+    </main>
+</body>
+</html>

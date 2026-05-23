@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="dark">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <meta name="description" content="Subnet Trainer — learn the block-size (magic-number) method to find any IP's network range by inspection, then drill it for speed.">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'self';">
+    <title>Subnet Trainer · Eddie's Portfolio</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <script src="app.js" defer></script>
+    <style>
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --bg:#07010f; --cyan:#4af7ff; --purple:#7b2fff; --green:#00e676;
+            --amber:#fbbf24; --red:#ff5c7c; --text:#dde0f0; --muted:#5a607a;
+            --border:rgba(74,247,255,0.13); --card:rgba(255,255,255,0.025);
+            color-scheme: dark;
+        }
+        body { background: var(--bg); color: var(--text); font-family: 'Inter', system-ui, sans-serif; min-height: 100vh; }
+        .skip { position:absolute; left:-999px; top:0; background:var(--cyan); color:#000; padding:8px 14px; border-radius:0 0 8px 0; z-index:50; }
+        .skip:focus { left:0; }
+
+        /* Nav */
+        .top-nav { display:flex; align-items:center; justify-content:space-between; padding:16px 24px; border-bottom:1px solid var(--border); position:sticky; top:0; background:rgba(7,1,15,0.9); backdrop-filter:blur(12px); z-index:10; }
+        .nav-left { display:flex; align-items:center; gap:12px; }
+        .back-btn, .hiw-btn { display:inline-flex; align-items:center; gap:6px; padding:7px 14px; border:1px solid var(--border); border-radius:8px; text-decoration:none; font-size:0.78rem; font-weight:500; transition:color .2s, border-color .2s, background .2s; }
+        .back-btn { color:var(--muted); }
+        .back-btn:hover { color:var(--cyan); border-color:var(--cyan); }
+        .hiw-btn { color:var(--cyan); }
+        .hiw-btn:hover { background:rgba(74,247,255,0.07); border-color:var(--cyan); }
+        .app-title { font-family:'Orbitron', system-ui; font-size:0.85rem; color:var(--cyan); letter-spacing:2px; }
+
+        main { max-width:920px; margin:0 auto; padding:40px 24px 80px; }
+        h1 { font-family:'Orbitron', system-ui; font-size:clamp(1.6rem,4vw,2.4rem); color:#fff; letter-spacing:-0.5px; margin-bottom:6px; }
+        .subtitle { color:var(--muted); font-size:0.9rem; margin-bottom:28px; }
+
+        /* Mode toggle */
+        .mode-row { display:flex; gap:8px; margin-bottom:32px; }
+        .mode-btn { padding:9px 22px; background:transparent; border:1px solid var(--border); border-radius:10px; color:var(--muted); font-family:'Orbitron',system-ui; font-size:0.72rem; letter-spacing:2px; cursor:pointer; transition:color .2s,border-color .2s,background .2s; }
+        .mode-btn[aria-pressed="true"] { color:var(--cyan); border-color:var(--cyan); background:rgba(74,247,255,0.07); }
+
+        /* Inputs */
+        .text-in { width:100%; background:rgba(255,255,255,0.04); border:1px solid var(--border); border-radius:10px; padding:14px 18px; color:var(--text); font-family:'Courier New',monospace; font-size:1.1rem; letter-spacing:1px; transition:border-color .2s, box-shadow .2s; }
+        .text-in:focus { outline:none; border-color:var(--cyan); box-shadow:0 0 0 3px rgba(74,247,255,0.08); }
+        .text-in.error { border-color:var(--red); box-shadow:0 0 0 3px rgba(255,92,124,0.12); }
+        #learn-error { font-size:0.78rem; color:var(--red); margin:10px 2px 0; }
+
+        .presets { display:flex; flex-wrap:wrap; gap:8px; margin:14px 0 30px; }
+        .preset-btn { padding:5px 12px; background:transparent; border:1px solid rgba(255,255,255,0.09); border-radius:999px; color:var(--muted); font-family:'Courier New',monospace; font-size:0.74rem; cursor:pointer; transition:color .2s,border-color .2s; }
+        .preset-btn:hover { color:var(--cyan); border-color:var(--cyan); }
+
+        .section-title { font-family:'Orbitron',system-ui; font-size:0.66rem; letter-spacing:4px; text-transform:uppercase; color:var(--cyan); margin:30px 0 14px; }
+
+        /* Place-value grid */
+        .grid-wrap { display:flex; align-items:flex-end; flex-wrap:nowrap; gap:4px; background:var(--card); border:1px solid var(--border); border-radius:16px; padding:22px; overflow-x:auto; }
+        .octet { flex:0 0 auto; }
+        .octet { display:flex; flex-direction:column; gap:5px; padding:6px; border-radius:8px; border:1px solid transparent; }
+        .octet--boundary { border-color:rgba(251,191,36,0.4); background:rgba(251,191,36,0.05); }
+        .place-row, .bit-row { display:flex; gap:3px; }
+        .place { width:22px; text-align:center; font-size:0.55rem; color:var(--muted); font-family:'Courier New',monospace; }
+        .bit { width:22px; text-align:center; font-family:'Courier New',monospace; font-size:1rem; font-weight:600; border-radius:4px; padding:2px 0; }
+        .bit-net { color:var(--cyan); background:rgba(74,247,255,0.08); }
+        .bit-host { color:var(--purple); background:rgba(123,47,255,0.08); }
+        .octet-val { text-align:center; font-family:'Courier New',monospace; font-size:0.82rem; color:var(--text); margin-top:3px; }
+        .octet-dot { align-self:center; color:var(--muted); font-size:1.2rem; padding-bottom:24px; }
+        .grid-legend { margin-top:14px; font-size:0.75rem; color:var(--muted); display:flex; align-items:center; flex-wrap:wrap; }
+        .lg-net { color:var(--cyan); } .lg-host { color:var(--purple); }
+
+        /* Steps */
+        .steps { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:10px; }
+        .step { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:14px 16px; }
+        .step-head { display:flex; align-items:center; gap:9px; margin-bottom:8px; }
+        .step-n { width:22px; height:22px; flex-shrink:0; display:inline-flex; align-items:center; justify-content:center; background:rgba(74,247,255,0.12); color:var(--cyan); border-radius:50%; font-size:0.72rem; font-weight:700; }
+        .step-label { font-size:0.78rem; font-weight:600; color:var(--text); letter-spacing:0.5px; }
+        .step-math { font-family:'Courier New',monospace; font-size:0.8rem; color:var(--muted); margin-bottom:6px; }
+        .step-result { font-family:'Courier New',monospace; font-size:0.95rem; color:var(--green); font-weight:600; word-break:break-all; }
+        .clean-note { grid-column:1/-1; font-size:0.82rem; color:var(--amber); background:rgba(251,191,36,0.06); border:1px solid rgba(251,191,36,0.2); border-radius:10px; padding:12px 14px; line-height:1.5; }
+
+        /* Answer table */
+        .answer-card { background:var(--card); border:1px solid var(--border); border-radius:16px; overflow:hidden; }
+        .answer-row { display:grid; grid-template-columns:170px 1fr; align-items:center; padding:12px 20px; border-bottom:1px solid rgba(255,255,255,0.04); gap:12px; }
+        .answer-row:last-child { border-bottom:none; }
+        .answer-key { font-size:0.72rem; letter-spacing:1px; text-transform:uppercase; color:var(--muted); }
+        .answer-val { font-family:'Courier New',monospace; font-size:0.95rem; color:var(--text); word-break:break-all; }
+
+        /* Cross-link */
+        .xlink { display:inline-flex; align-items:center; gap:8px; margin-top:24px; font-size:0.82rem; color:var(--muted); text-decoration:none; border:1px dashed var(--border); border-radius:10px; padding:10px 16px; transition:color .2s, border-color .2s; }
+        .xlink:hover { color:var(--cyan); border-color:var(--cyan); }
+
+        /* Drill */
+        .drill-scorebar { display:flex; gap:24px; margin-bottom:24px; }
+        .score { display:flex; flex-direction:column; }
+        .score-num { font-family:'Orbitron',system-ui; font-size:1.6rem; color:var(--cyan); }
+        .score-label { font-size:0.68rem; letter-spacing:1px; text-transform:uppercase; color:var(--muted); }
+        .diff-row { display:flex; gap:8px; margin-bottom:24px; }
+        .diff-btn { padding:6px 16px; background:transparent; border:1px solid var(--border); border-radius:999px; color:var(--muted); font-size:0.74rem; cursor:pointer; transition:color .2s,border-color .2s,background .2s; }
+        .diff-btn[aria-pressed="true"] { color:var(--amber); border-color:var(--amber); background:rgba(251,191,36,0.07); }
+        .q-card { background:var(--card); border:1px solid var(--border); border-radius:16px; padding:24px; }
+        .q-prompt { font-size:0.8rem; color:var(--muted); margin-bottom:8px; }
+        .q-cidr { font-family:'Orbitron',system-ui; font-size:clamp(1.4rem,5vw,2rem); color:#fff; letter-spacing:1px; margin-bottom:22px; }
+        .ans-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:14px; margin-bottom:20px; }
+        .ans-field label { display:block; font-size:0.7rem; letter-spacing:1px; text-transform:uppercase; color:var(--muted); margin-bottom:6px; }
+        .ans-field input { width:100%; background:rgba(255,255,255,0.04); border:1px solid var(--border); border-radius:9px; padding:10px 14px; color:var(--text); font-family:'Courier New',monospace; font-size:0.95rem; }
+        .ans-field input:focus { outline:none; border-color:var(--cyan); }
+        .ans-field input.ok { border-color:var(--green); color:var(--green); }
+        .ans-field input.bad { border-color:var(--red); color:var(--red); }
+        .drill-btns { display:flex; gap:10px; }
+        .btn { padding:11px 22px; border-radius:10px; font-size:0.85rem; font-weight:600; cursor:pointer; border:1px solid; transition:background .2s,border-color .2s,color .2s; }
+        .btn-primary { background:rgba(74,247,255,0.1); border-color:var(--cyan); color:var(--cyan); }
+        .btn-primary:hover { background:rgba(74,247,255,0.18); }
+        .btn-ghost { background:transparent; border-color:var(--border); color:var(--muted); }
+        .btn-ghost:hover { color:var(--text); border-color:var(--muted); }
+        #drill-feedback { margin-top:22px; }
+        .fb-ok { color:var(--green); font-weight:600; font-size:0.95rem; }
+        .fb-bad { color:var(--red); font-weight:600; font-size:0.95rem; margin-bottom:14px; }
+        .hint { font-size:0.78rem; color:var(--muted); margin-top:14px; line-height:1.5; }
+
+        @media (max-width:560px) { .answer-row { grid-template-columns:1fr; } .answer-key { margin-bottom:2px; } }
+        @media (prefers-reduced-motion: reduce) { *,*::before,*::after { transition-duration:0.01ms !important; } }
+    </style>
+</head>
+<body>
+    <a href="#main" class="skip">Skip to content</a>
+
+    <nav class="top-nav" aria-label="App navigation">
+        <div class="nav-left">
+            <a href="../index.html" class="back-btn" aria-label="Back to App Hub">← App Hub</a>
+            <span class="app-title">SUBNET TRAINER</span>
+        </div>
+        <a href="how-it-works.html" class="hiw-btn" target="_blank" rel="noopener noreferrer" aria-label="How this app is built">📖 How It's Built</a>
+    </nav>
+
+    <main id="main">
+        <h1>Subnet <span style="color:var(--cyan)">Trainer</span></h1>
+        <p class="subtitle">Learn the block-size method to find any IP's network range by inspection — then drill it until it's instinct.</p>
+
+        <div class="mode-row" role="group" aria-label="Mode">
+            <button class="mode-btn" data-mode="learn" aria-pressed="true">LEARN</button>
+            <button class="mode-btn" data-mode="drill" aria-pressed="false">DRILL</button>
+        </div>
+
+        <!-- ── LEARN MODE ── -->
+        <section id="learn-mode" aria-label="Learn mode">
+            <input type="text" id="learn-input" class="text-in" placeholder="192.168.50.247/27"
+                   autocomplete="off" spellcheck="false" aria-label="Enter an IP address in CIDR notation">
+            <p id="learn-error" hidden aria-live="polite"></p>
+
+            <div class="presets" role="group" aria-label="Worked examples">
+                <button class="preset-btn" data-preset="192.168.223.15/30">192.168.223.15/30</button>
+                <button class="preset-btn" data-preset="46.28.247.109/10">46.28.247.109/10</button>
+                <button class="preset-btn" data-preset="134.170.185.46/17">134.170.185.46/17</button>
+                <button class="preset-btn" data-preset="154.24.67.147/22">154.24.67.147/22</button>
+                <button class="preset-btn" data-preset="10.119.136.143/20">10.119.136.143/20</button>
+                <button class="preset-btn" data-preset="192.168.50.247/24">192.168.50.247/24 (clean)</button>
+                <button class="preset-btn" data-preset="10.0.0.4/31">10.0.0.4/31 (P2P)</button>
+            </div>
+
+            <div id="learn-results" aria-live="polite"></div>
+
+            <a href="../cidr-calc/index.html" class="xlink">🌐 Need the full answer instantly? Open the CIDR Calculator →</a>
+        </section>
+
+        <!-- ── DRILL MODE ── -->
+        <section id="drill-mode" aria-label="Drill mode" hidden>
+            <div class="drill-scorebar">
+                <div class="score"><span class="score-num" id="drill-streak">0</span><span class="score-label">Streak</span></div>
+                <div class="score"><span class="score-num" id="drill-best">0</span><span class="score-label">Best</span></div>
+            </div>
+
+            <div class="diff-row" role="group" aria-label="Difficulty">
+                <button class="diff-btn" data-diff="basic" aria-pressed="true">Basic /16–/30</button>
+                <button class="diff-btn" data-diff="advanced" aria-pressed="false">Advanced + /31 /32</button>
+            </div>
+
+            <div class="q-card">
+                <p class="q-prompt">Find the network, broadcast, and usable range for:</p>
+                <p class="q-cidr" id="drill-question" aria-live="polite">—</p>
+
+                <div class="ans-grid">
+                    <div class="ans-field"><label for="ans-network">Network</label><input id="ans-network" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" placeholder="x.x.x.x"></div>
+                    <div class="ans-field"><label for="ans-broadcast">Broadcast (or N/A)</label><input id="ans-broadcast" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" placeholder="x.x.x.x"></div>
+                    <div class="ans-field"><label for="ans-first">First usable</label><input id="ans-first" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" placeholder="x.x.x.x"></div>
+                    <div class="ans-field"><label for="ans-last">Last usable</label><input id="ans-last" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" placeholder="x.x.x.x"></div>
+                </div>
+
+                <div class="drill-btns">
+                    <button class="btn btn-primary" id="drill-check">Check answer</button>
+                    <button class="btn btn-ghost" id="drill-skip">Skip</button>
+                </div>
+                <p class="hint">Tip: for /31 and /32 there's no broadcast — type <strong>N/A</strong>. Press Enter to check or advance.</p>
+
+                <div id="drill-feedback" aria-live="polite"></div>
+            </div>
+        </section>
+    </main>
+</body>
+</html>

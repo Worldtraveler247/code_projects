@@ -32,7 +32,7 @@ function parseCIDR(input) {
         maskHex: '0x' + mask.toString(16).toUpperCase().padStart(8,'0'),
         wild:    toIP(~mask >>> 0),
         bcast:   toIP(bcast),
-        first:   toIP(prefix === 32 ? net : net + 1),
+        first:   toIP(prefix >= 31 ? net : net + 1),
         last:    toIP(prefix >= 31  ? bcast : bcast - 1),
         total,
         usable,
