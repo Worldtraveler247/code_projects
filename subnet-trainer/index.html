@@ -99,6 +99,8 @@
         .diff-row { display:flex; gap:8px; margin-bottom:24px; }
         .diff-btn { padding:6px 16px; background:transparent; border:1px solid var(--border); border-radius:999px; color:var(--muted); font-size:0.74rem; cursor:pointer; transition:color .2s,border-color .2s,background .2s; }
         .diff-btn[aria-pressed="true"] { color:var(--amber); border-color:var(--amber); background:rgba(251,191,36,0.07); }
+        .weak-line { font-size:0.78rem; color:var(--muted); margin:-8px 0 22px; }
+        .weak-line strong { color:var(--amber); font-family:'Courier New',monospace; font-weight:600; }
         .q-card { background:var(--card); border:1px solid var(--border); border-radius:16px; padding:24px; }
         .q-prompt { font-size:0.8rem; color:var(--muted); margin-bottom:8px; }
         .q-cidr { font-family:'Orbitron',system-ui; font-size:clamp(1.4rem,5vw,2rem); color:#fff; letter-spacing:1px; margin-bottom:22px; }
@@ -175,6 +177,8 @@
                 <button class="diff-btn" data-diff="basic" aria-pressed="true">Basic /16–/30</button>
                 <button class="diff-btn" data-diff="advanced" aria-pressed="false">Advanced + /31 /32</button>
             </div>
+
+            <p class="weak-line" id="drill-weak" aria-live="polite"></p>
 
             <div class="q-card">
                 <p class="q-prompt">Find the network, broadcast, and usable range for:</p>

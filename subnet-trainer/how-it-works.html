@@ -69,6 +69,11 @@
         </section>
 
         <section class="hiw-section">
+            <h2>Adaptive Drilling (Lightweight Spaced Repetition)</h2>
+            <p>Random drilling wastes reps on prefixes you've already mastered. Instead, the generator is <strong>weighted</strong>: each prefix carries a miss counter, and the chance of being asked is <code>1 + 2·misses</code>. Miss a /27 and it resurfaces more often; once you start getting it right, the counter <em>decays</em> (<code>missed = max(0, missed − 1)</code>) so a mastered prefix drifts back to baseline weight rather than haunting you forever. The "weak prefixes" line surfaces your current top three. It's not a full SM-2 scheduler — just enough adaptivity to spend your time where the error is, persisted in <code>localStorage</code> under <code>subnet-trainer:stats</code>.</p>
+        </section>
+
+        <section class="hiw-section">
             <h2>Streak Persistence</h2>
             <p>Best streak persists in <code>localStorage</code> under a namespaced key (<code>subnet-trainer:best</code>). Namespacing matters: every app on this hub shares one <code>github.io</code> origin, so an unprefixed key like <code>best</code> would collide with a neighbor. Reads and writes are wrapped in <code>try/catch</code> because private-browsing mode throws on <code>setItem</code>. No telemetry, no network — the CSP blocks <code>connect-src</code> entirely.</p>
         </section>

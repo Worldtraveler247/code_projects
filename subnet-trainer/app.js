@@ -13,6 +13,7 @@
 
 const PLACE_VALUES = [128, 64, 32, 16, 8, 4, 2, 1];
 const BEST_KEY = 'subnet-trainer:best';
+const STATS_KEY = 'subnet-trainer:stats';   // per-prefix miss tracking for adaptive drilling
 
 // ── Bit-math (authoritative answer engine) ──────────────────────────────────
 
@@ -284,6 +285,7 @@ const drillEls = {
     feedback: document.getElementById('drill-feedback'),
     streak: document.getElementById('drill-streak'),
     best: document.getElementById('drill-best'),
+    weak: document.getElementById('drill-weak'),
 };
 
 const drill = { facts: null, octs: null, prefix: null, streak: 0, startMs: 0, answered: false };
@@ -294,6 +296,38 @@ function readBest() {
 }
 function writeBest(v) {
     try { localStorage.setItem(BEST_KEY, String(v)); } catch { /* non-fatal */ }
+}
+
+// ── Adaptive drilling: bias question generation toward prefixes you miss ─────
+// Stats shape: { "<prefix>": { seen, missed } }. `missed` rises on a wrong
+// answer and decays on a correct one, so mastered prefixes drift back to
+// baseline weight while weak ones keep resurfacing — lightweight spaced rep.
+
+function loadStats() {
+    try { return JSON.parse(localStorage.getItem(STATS_KEY)) || {}; }
+    catch { return {}; }
+}
+function saveStats(s) {
+    try { localStorage.setItem(STATS_KEY, JSON.stringify(s)); } catch { /* non-fatal */ }
+}
+function recordResult(prefix, correct) {
+    const s = loadStats();
+    const e = s[prefix] || { seen: 0, missed: 0 };
+    e.seen += 1;
+    e.missed = correct ? Math.max(0, e.missed - 1) : e.missed + 1;
+    s[prefix] = e;
+    saveStats(s);
+}
+/** Weighted random over a pool: weight = 1 + 2·misses, so weak prefixes recur. */
+function weightedPick(pool, stats) {
+    const weights = pool.map(p => 1 + 2 * ((stats[p] && stats[p].missed) || 0));
+    const total = weights.reduce((a, b) => a + b, 0);
+    let r = Math.random() * total;
+    for (let i = 0; i < pool.length; i++) {
+        r -= weights[i];
+        if (r < 0) return pool[i];
+    }
+    return pool[pool.length - 1];
 }
 
 function difficulty() {
@@ -307,7 +341,7 @@ function randomQuestion() {
     const pool = tier === 'advanced'
         ? [9, 10, 13, 17, 19, 20, 21, 22, 23, 25, 26, 27, 28, 29, 30, 31, 32]
         : [16, 18, 19, 20, 22, 23, 24, 25, 26, 27, 28, 29, 30];
-    const prefix = pool[Math.floor(Math.random() * pool.length)];
+    const prefix = weightedPick(pool, loadStats());
     const octs = [
         Math.floor(Math.random() * 223) + 1,               // 1–223, avoid 0/multicast first octet
         Math.floor(Math.random() * 256),
@@ -357,6 +391,7 @@ function checkAnswer() {
     const allCorrect = results.every(Boolean);
     const elapsed = ((Date.now() - drill.startMs) / 1000).toFixed(1);
 
+    recordResult(drill.prefix, allCorrect);   // feeds adaptive weighting
     drill.answered = true;
     [drillEls.network, drillEls.broadcast, drillEls.first, drillEls.last].forEach(i => i.disabled = true);
 
@@ -380,6 +415,25 @@ function checkAnswer() {
 function updateScore() {
     drillEls.streak.textContent = String(drill.streak);
     drillEls.best.textContent = String(readBest());
+    updateWeak();
+}
+
+function updateWeak() {
+    const s = loadStats();
+    const weak = Object.keys(s)
+        .filter(p => s[p].missed > 0)
+        .sort((a, b) => s[b].missed - s[a].missed)
+        .slice(0, 3);
+    drillEls.weak.textContent = '';
+    if (weak.length === 0) {
+        drillEls.weak.appendChild(document.createTextNode('Adapting to your misses — no weak spots yet.'));
+        return;
+    }
+    drillEls.weak.appendChild(document.createTextNode('Resurfacing your weak prefixes: '));
+    weak.forEach((p, i) => {
+        drillEls.weak.appendChild(el('strong', null, '/' + p));
+        if (i < weak.length - 1) drillEls.weak.appendChild(document.createTextNode('  '));
+    });
 }
 
 drillEls.check.addEventListener('click', checkAnswer);

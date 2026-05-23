@@ -95,8 +95,22 @@
         .subtitle {
             color: var(--muted);
             font-size: 0.9rem;
-            margin-bottom: 36px;
+            margin-bottom: 16px;
         }
+        .xlink {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 32px;
+            font-size: 0.82rem;
+            color: var(--muted);
+            text-decoration: none;
+            border: 1px dashed var(--border);
+            border-radius: 10px;
+            padding: 9px 15px;
+            transition: color 0.2s, border-color 0.2s;
+        }
+        .xlink:hover { color: var(--cyan); border-color: var(--cyan); }
 
         /* ── Input section ── */
         .input-wrap {
@@ -346,6 +360,7 @@
     <main>
         <h1>CIDR <span style="color:var(--cyan)">Calculator</span></h1>
         <p class="subtitle">Subnet math, binary breakdown, and AWS VPC planning in one place.</p>
+        <a href="../subnet-trainer/index.html" class="xlink">🧮 New to subnetting? Learn the method in the Subnet Trainer →</a>
 
         <div class="input-wrap">
             <input
