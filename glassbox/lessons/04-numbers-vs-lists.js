@@ -1,0 +1,75 @@
+// glassbox/lessons/04-numbers-vs-lists.js
+export default {
+  id: "numbers-vs-lists",
+  title: "Numbers vs lists — why one shares and one doesn't",
+  code: [
+    "p = 1",
+    "q = p",
+    "q = q + 1",
+    "nums = [1]",
+    "more = nums",
+    "more.append(2)",
+  ],
+  steps: [
+    {
+      line: 0,
+      narration: "Pin the name `p` to the number 1.",
+      frames: [{ name: "globals", vars: { p: "#1" } }],
+      heap: { "#1": { type: "int", value: 1 } },
+      highlight: { vars: ["p"], objects: ["#1"] },
+      output: "",
+    },
+    {
+      line: 1,
+      narration: "`q = p` points `q` at the same 1 — just like sharing a list.",
+      frames: [{ name: "globals", vars: { p: "#1", q: "#1" } }],
+      heap: { "#1": { type: "int", value: 1 } },
+      highlight: { vars: ["q"], objects: ["#1"] },
+      output: "",
+    },
+    {
+      line: 2,
+      narration: "`q = q + 1` makes a NEW number 2 and re-points `q`. `p` still points at 1 — numbers can't be changed in place.",
+      frames: [{ name: "globals", vars: { p: "#1", q: "#2" } }],
+      heap: { "#1": { type: "int", value: 1 }, "#2": { type: "int", value: 2 } },
+      highlight: { vars: ["q"], objects: ["#2"] },
+      output: "",
+    },
+    {
+      line: 3,
+      narration: "Now a list: pin `nums` to `[1]`.",
+      frames: [{ name: "globals", vars: { p: "#1", q: "#2", nums: "#3" } }],
+      heap: {
+        "#1": { type: "int", value: 1 },
+        "#2": { type: "int", value: 2 },
+        "#3": { type: "list", value: [1] },
+      },
+      highlight: { vars: ["nums"], objects: ["#3"] },
+      output: "",
+    },
+    {
+      line: 4,
+      narration: "`more = nums` points `more` at the same list — exactly like `q = p` did.",
+      frames: [{ name: "globals", vars: { p: "#1", q: "#2", nums: "#3", more: "#3" } }],
+      heap: {
+        "#1": { type: "int", value: 1 },
+        "#2": { type: "int", value: 2 },
+        "#3": { type: "list", value: [1] },
+      },
+      highlight: { vars: ["more"], objects: ["#3"] },
+      output: "",
+    },
+    {
+      line: 5,
+      narration: "`more.append(2)` changes the SHARED list, so `nums` becomes `[1, 2]` too. Lists share changes; numbers didn't. That's the whole difference.",
+      frames: [{ name: "globals", vars: { p: "#1", q: "#2", nums: "#3", more: "#3" } }],
+      heap: {
+        "#1": { type: "int", value: 1 },
+        "#2": { type: "int", value: 2 },
+        "#3": { type: "list", value: [1, 2] },
+      },
+      highlight: { objects: ["#3"] },
+      output: "",
+    },
+  ],
+};
