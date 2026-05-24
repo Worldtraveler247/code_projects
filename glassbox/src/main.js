@@ -1,6 +1,7 @@
 // glassbox/src/main.js
 import { lessons } from "../lessons/index.js";
 import { initControls } from "./controls.js";
+import { clampStep } from "./state.js";
 import { loadProgress, saveProgress } from "./storage.js";
 
 const $ = (id) => document.getElementById(id);
@@ -62,5 +63,5 @@ function selectLesson(index, startStep) {
 buildRail();
 const saved = loadProgress();
 const startLesson = saved && saved.lessonIndex >= 0 && saved.lessonIndex < lessons.length ? saved.lessonIndex : 0;
-const startStep = saved ? saved.step : 0;
+const startStep = saved ? clampStep(saved.step, lessons[startLesson].steps.length) : 0;
 selectLesson(startLesson, startStep);

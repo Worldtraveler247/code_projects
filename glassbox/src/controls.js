@@ -55,9 +55,9 @@ export function initControls({ trace, startStep, els, buttons, onChange }) {
     else if (e.key === "ArrowLeft") dispatch({ type: "prev" });
   }
 
-  buttons.prev.addEventListener("click", () => { stopPlay(); dispatch({ type: "prev" }); });
-  buttons.next.addEventListener("click", () => { stopPlay(); dispatch({ type: "next" }); });
-  buttons.reset.addEventListener("click", () => { stopPlay(); dispatch({ type: "reset" }); });
+  buttons.prev.addEventListener("click", () => { if (timer !== null) stopPlay(); dispatch({ type: "prev" }); });
+  buttons.next.addEventListener("click", () => { if (timer !== null) stopPlay(); dispatch({ type: "next" }); });
+  buttons.reset.addEventListener("click", () => { if (timer !== null) stopPlay(); dispatch({ type: "reset" }); });
   buttons.play.addEventListener("click", togglePlay);
   window.addEventListener("keydown", onKey);
 
