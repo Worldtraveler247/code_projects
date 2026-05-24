@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Glassbox — see what your code does</title>
+  <meta name="description" content="A beginner's visual playground: watch Python names, arrows, and memory change one step at a time." />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="gb-header">
+    <h1>Glassbox</h1>
+    <p class="gb-subtitle">Watch what your code <em>actually</em> does — one step at a time.</p>
+    <nav class="gb-rail" id="lesson-rail" aria-label="Lessons"></nav>
+  </header>
+
+  <main class="gb-stage">
+    <section class="gb-panel gb-code" aria-label="Code">
+      <h2 class="gb-panel-title">Code</h2>
+      <ol class="gb-code-lines" id="code-lines"></ol>
+    </section>
+
+    <section class="gb-panel gb-memory" aria-label="Memory">
+      <h2 class="gb-panel-title">Memory</h2>
+      <div class="gb-memory-area" id="memory-area">
+        <svg class="gb-arrows" id="arrows-svg" aria-hidden="true">
+          <defs>
+            <marker id="arrowhead" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+              <path d="M0,0 L8,4 L0,8 Z" />
+            </marker>
+          </defs>
+        </svg>
+        <div class="gb-frames" id="frames"></div>
+        <div class="gb-heap" id="heap"></div>
+      </div>
+    </section>
+  </main>
+
+  <p class="gb-narration" id="narration" aria-live="polite"></p>
+  <pre class="gb-output" id="output" aria-label="Program output"></pre>
+
+  <div class="gb-controls" role="group" aria-label="Step controls">
+    <button id="btn-prev" type="button">◀ Prev</button>
+    <button id="btn-play" type="button">▶ Play</button>
+    <button id="btn-next" type="button">Next ▶</button>
+    <span class="gb-step-count" id="step-count" aria-live="polite"></span>
+    <button id="btn-reset" type="button">↺ Reset</button>
+  </div>
+
+  <footer class="gb-footer">
+    <a href="../index.html">← App Hub</a>
+    <a href="how-it-works.html">How it's built →</a>
+  </footer>
+
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>
