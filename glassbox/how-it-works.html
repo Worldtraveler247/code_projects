@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>How It's Built — Glassbox | Eddie's App Hub</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Inter:wght@400;500;600&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../how-it-works.css">
+</head>
+<body>
+<a href="../index.html" style="position:fixed;top:12px;left:12px;z-index:9999;background:rgba(10,10,20,0.85);backdrop-filter:blur(6px);color:#4af7ff;border:1px solid #4af7ff;border-radius:20px;padding:6px 14px;font-family:sans-serif;font-size:13px;text-decoration:none;font-weight:600;">← App Hub</a>
+
+<div class="hiw-page">
+
+  <!-- ── 1. Header ── -->
+  <header class="hiw-header">
+    <div class="hiw-icon">🔍</div>
+    <h1>Glassbox — How It's Built</h1>
+    <p class="hiw-tagline">A pure-static Python memory visualizer: authored traces, a pure layout engine, and zero dependencies.</p>
+  </header>
+
+  <!-- ── 2. Overview ── -->
+  <section class="hiw-section">
+    <h2>Overview</h2>
+    <p>
+      Glassbox is a beginner-focused tool that makes Python's memory model visible. It steps through four hand-authored
+      lessons — each a short snippet with narrated frames — showing how names point to values, how lists live on the
+      heap, and how two names can share one object. The goal is the "aha" moment when a student watches <code>b = a</code>
+      copy an arrow, not a list, and then sees both names reflect a mutation.
+    </p>
+    <p>
+      There is no Python interpreter, no build step, and no server. Lessons are authored as ES module trace objects
+      and validated at development time by a Node test suite. The app runs directly from <code>file://</code> via
+      native ES module imports in the browser.
+    </p>
+  </section>
+
+  <!-- ── 3. Tech Stack ── -->
+  <section class="hiw-section">
+    <h2>Tech Stack</h2>
+    <div class="hiw-badges">
+      <span class="hiw-badge">HTML</span>
+      <span class="hiw-badge">CSS</span>
+      <span class="hiw-badge">Vanilla JS (ES2022)</span>
+      <span class="hiw-badge">SVG</span>
+      <span class="hiw-badge">Node --test</span>
+    </div>
+    <ul class="hiw-caption-list">
+      <li><strong>HTML</strong> — static shell with two layout panels (Code, Memory), narration bar, controls, and a lesson rail <code>&lt;nav&gt;</code>. Semantic landmarks and <code>aria-live</code> regions for accessibility.</li>
+      <li><strong>CSS</strong> — custom-property dark theme, CSS Grid two-column stage, <code>prefers-reduced-motion</code> guard on pulse animation, responsive breakpoint at 720 px.</li>
+      <li><strong>Vanilla JS (ES2022)</strong> — ES modules throughout: pure engine (<code>formatValue</code>, <code>computeLayout</code>, <code>stepReducer</code>), DOM layer (<code>render.js</code>, <code>controls.js</code>, <code>main.js</code>), and authored lesson data.</li>
+      <li><strong>SVG</strong> — inline <code>&lt;svg&gt;</code> with <code>createElementNS</code> draws arrows from variable boxes to heap object boxes using measured <code>getBoundingClientRect</code> positions after each frame paint.</li>
+      <li><strong>Node --test</strong> — built-in Node.js test runner; 25 tests cover the four pure modules and validate all four real lessons through the author-time <code>validateTrace</code> guardrail.</li>
+    </ul>
+  </section>
+
+  <!-- ── 4. How Each Part Works ── -->
+  <section class="hiw-section">
+    <h2>How Each Part Works</h2>
+
+    <div class="hiw-file-block">
+      <h3><code>src/layout.js</code> — the pure engine</h3>
+      <p>
+        <code>computeLayout(step)</code> is the heart of Glassbox. It receives one execution step (a plain data
+        object with <code>frames</code>, <code>heap</code>, and <code>highlight</code>) and returns a structural
+        model — no pixel coordinates, no DOM. The three output arrays (<code>frames</code>, <code>objects</code>,
+        <code>arrows</code>) are consumed by the renderer.
+      </p>
+      <pre class="hiw-code">// Each arrow: { from: "globals.a", to: "#1", highlighted: false }
+// "from" matches the data-endpoint on a var box; "to" matches a heap box.
+const arrows = step.frames.flatMap((frame) =>
+  Object.entries(frame.vars).map(([name, id]) => ({
+    from: `${frame.name}.${name}`,
+    to: id,
+    highlighted: highlightVars.has(name) || highlightObjs.has(id),
+  })),
+);</pre>
+    </div>
+
+    <div class="hiw-file-block">
+      <h3><code>src/render.js</code> — DOM painter</h3>
+      <p>
+        <code>renderStep(els, trace, stepIndex)</code> calls <code>computeLayout</code>, then writes the DOM using
+        <code>createElement</code> / <code>textContent</code> / <code>replaceChildren</code> — never
+        <code>innerHTML</code>. This keeps the renderer XSS-proof even though lesson content is authored data.
+        Arrows are drawn in a <code>requestAnimationFrame</code> callback so box positions are measured after
+        the browser has laid out the updated frames and heap.
+      </p>
+      <pre class="hiw-code">// data-endpoint on var boxes: "globals.a"
+// data-endpoint on heap boxes: "#1"
+// renderArrows() queries both and draws SVG lines between them.
+box.dataset.endpoint = `${frame.name}.${v.name}`; // var box
+box.dataset.endpoint = obj.id;                     // heap box</pre>
+    </div>
+
+    <div class="hiw-file-block">
+      <h3><code>src/controls.js</code> — wiring</h3>
+      <p>
+        <code>initControls</code> owns the step integer and all input sources: Prev / Next / Reset buttons,
+        Play autoplay (1.5 s interval), and keyboard arrow keys. A pure <code>stepReducer</code> handles
+        all transitions. The function returns a <code>{ destroy }</code> handle so <code>main.js</code> can
+        tear down keyboard listeners when the user switches lessons.
+      </p>
+      <pre class="hiw-code">// Autoplay: advance every 1500 ms, stop on last step.
+timer = setInterval(() => dispatch({ type: "next" }), AUTOPLAY_MS);
+if (timer !== null && step === total - 1) stopPlay();</pre>
+    </div>
+
+    <div class="hiw-file-block">
+      <h3><code>src/main.js</code> — bootstrap</h3>
+      <p>
+        Builds the lesson rail, reads <code>localStorage</code> for a saved position, then calls
+        <code>selectLesson</code>. Each lesson switch calls <code>active.destroy()</code> then
+        clones-and-replaces the four control buttons with <code>freshButton(id)</code> so click
+        listeners never stack across selections.
+      </p>
+      <pre class="hiw-code">function freshButton(id) {
+  // Clone-and-replace drops all previously-bound click listeners.
+  const old = $(id);
+  const clone = old.cloneNode(true);
+  old.replaceWith(clone);
+  return clone;
+}</pre>
+    </div>
+
+    <div class="hiw-file-block">
+      <h3><code>src/validateTrace.js</code> — author-time guardrail</h3>
+      <p>
+        Every authored lesson is run through <code>validateTrace</code> by <code>lessons.test.js</code>
+        at commit time. It catches dangling heap references, out-of-range line numbers, missing
+        narration, and unknown highlight ids before they can silently break the renderer.
+      </p>
+      <pre class="hiw-code">// Checks every variable reference resolves in the heap.
+for (const [varName, id] of Object.entries(vars)) {
+  if (!(id in heap)) {
+    errors.push(`step ${i}: var "${varName}" points at missing heap id ${id}`);
+  }
+}</pre>
+    </div>
+
+  </section>
+
+  <!-- ── 5. File Map ── -->
+  <section class="hiw-section">
+    <h2>File Map</h2>
+    <pre class="hiw-file-map">glassbox/
+├── index.html                    ← app shell: panels, controls, lesson rail
+├── style.css                     ← dark theme, SVG arrow styles, responsive layout
+├── how-it-works.html             ← this page
+├── package.json                  ← { "type": "module" } + node --test script
+├── src/
+│   ├── formatValue.js            ← PURE: heap object → display string
+│   ├── layout.js                 ← PURE: step → { frames, objects, arrows }
+│   ├── state.js                  ← PURE: stepReducer + clampStep
+│   ├── storage.js                ← localStorage progress wrapper (fail-safe)
+│   ├── render.js                 ← DOM: paint code, frames, heap, arrows, narration
+│   ├── controls.js               ← DOM: wire buttons + keyboard + autoplay
+│   ├── main.js                   ← bootstrap: build rail, init controls, resume
+│   └── validateTrace.js          ← PURE: author-time trace validator
+└── lessons/
+    ├── index.js                  ← ordered manifest of all 4 lessons
+    ├── 01-name-points-to-value.js
+    ├── 02-list-is-one-object.js
+    ├── 03-two-names-one-list.js
+    └── 04-numbers-vs-lists.js</pre>
+  </section>
+
+  <!-- ── 6. Replicate It Yourself ── -->
+  <section class="hiw-section">
+    <h2>Replicate It Yourself</h2>
+    <ol class="hiw-steps">
+      <li>
+        <span>
+          <strong>Design the trace data model.</strong> A trace is a plain JS object with <code>id</code>,
+          <code>title</code>, <code>code</code> (array of source lines), and <code>steps</code>. Each step
+          holds <code>frames</code> (named scopes with variable-to-heap-id mappings), a <code>heap</code>
+          object, optional <code>highlight</code>, and <code>output</code>. Keep it serializable — no functions,
+          no classes.
+          Reference: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Destructuring_assignment" target="_blank" rel="noopener">MDN destructuring</a>.
+        </span>
+      </li>
+      <li>
+        <span>
+          <strong>Write the pure engine first.</strong> <code>computeLayout(step)</code> maps the trace data
+          to a renderer-friendly model. Because it is a pure function with no DOM dependency, you can test it
+          with Node's built-in test runner (<code>node --test</code>) before touching the browser.
+          Reference: <a href="https://nodejs.org/api/test.html" target="_blank" rel="noopener">Node.js Test Runner</a>.
+        </span>
+      </li>
+      <li>
+        <span>
+          <strong>Build the DOM renderer with <code>createElement</code> only.</strong> Attach
+          <code>data-endpoint</code> attributes to var and heap boxes so <code>renderArrows</code> can
+          query them by the same strings the layout engine produces. Draw SVG arrows inside a
+          <code>requestAnimationFrame</code> callback so box positions are final.
+          Reference: <a href="https://developer.mozilla.org/en-US/docs/Web/API/Document/createElementNS" target="_blank" rel="noopener">MDN createElementNS</a>.
+        </span>
+      </li>
+      <li>
+        <span>
+          <strong>Wire controls with a pure reducer.</strong> A <code>stepReducer(step, action, total)</code>
+          function handles all state transitions. <code>initControls</code> owns the step integer and calls
+          the reducer on every input event. Return a <code>{ destroy }</code> handle so you can clean up
+          keyboard listeners when the user switches lessons without reloading the page.
+        </span>
+      </li>
+      <li>
+        <span>
+          Deploy to GitHub Pages: push to <code>main</code>, then go to repo Settings &rarr; Pages &rarr;
+          Source: <em>Deploy from branch</em> &rarr; <code>main / (root)</code>.
+          Reference: <a href="https://docs.github.com/en/pages/getting-started-with-github-pages" target="_blank" rel="noopener">GitHub Pages docs</a>.
+        </span>
+      </li>
+    </ol>
+  </section>
+
+</div>
+</body>
+</html>
