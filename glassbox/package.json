@@ -1,0 +1,10 @@
+{
+  "name": "glassbox",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Beginner Python memory visualizer — names, arrows, and the heap.",
+  "scripts": {
+    "test": "node --test"
+  }
+}
