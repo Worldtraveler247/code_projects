@@ -30,7 +30,7 @@ export function computeLayout(step) {
     Object.entries(frame.vars).map(([name, id]) => ({
       from: `${frame.name}.${name}`,
       to: id,
-      highlighted: highlightVars.has(name),
+      highlighted: highlightVars.has(name) || highlightObjs.has(id),
     })),
   );
 

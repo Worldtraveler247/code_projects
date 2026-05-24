@@ -35,7 +35,7 @@ test("emits frame variables with highlight flags", () => {
 test("emits one arrow per variable, both pointing at the shared object", () => {
   const layout = computeLayout(sharedStep);
   assert.deepEqual(layout.arrows, [
-    { from: "globals.a", to: "#1", highlighted: false },
+    { from: "globals.a", to: "#1", highlighted: true },
     { from: "globals.b", to: "#1", highlighted: true },
   ]);
 });
