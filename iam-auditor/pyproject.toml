@@ -1,0 +1,47 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "iam-auditor"
+version = "0.1.0"
+description = "Audit AWS IAM for common security risks"
+readme = "README.md"
+requires-python = ">=3.12"
+authors = [{ name = "Eddie Camacho" }]
+license = { text = "MIT" }
+dependencies = [
+    "boto3>=1.34",
+]
+
+[project.optional-dependencies]
+dev = [
+    "moto[iam]>=5.0",
+    "pytest>=8.0",
+    "pytest-cov>=5.0",
+    "ruff>=0.6",
+    "mypy>=1.10",
+    "boto3-stubs[iam]>=1.34",
+]
+
+[project.scripts]
+iam-auditor = "iam_auditor.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/iam_auditor"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "RUF", "SIM"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q --strict-markers"
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+files = ["src"]
