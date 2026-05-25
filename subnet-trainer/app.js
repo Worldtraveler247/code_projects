@@ -86,31 +86,61 @@ function buildSteps(octs, prefix, facts, d) {
             n: 1, label: 'Block size',
             math: `256 − ${d.maskOctetValue} (mask in the ${octetPos} octet)`,
             result: `${blk}`,
+            how: [
+                'The block size is how far apart subnets sit inside the one octet the mask cuts through (the “interesting” octet). Take the mask value in that octet and subtract it from 256.',
+                'A quick way to know the mask value with no binary: each prefix bit past an octet boundary doubles the leading chunk — /25 → 128, /26 → 192, /27 → 224, /28 → 240, /29 → 248, /30 → 252. Whatever that mask value is, 256 minus it is your block size.',
+                { eg: 'For 192.168.1.130/26 the mask is 255.255.255.192. The interesting octet is the 4th, value 192. Block size = 256 − 192 = ', val: '64' },
+            ],
         },
         {
             n: 2, label: 'Network',
             math: `⌊${ipOct} ÷ ${blk}⌋ × ${blk} = ${Math.floor(ipOct / blk)} × ${blk}`,
             result: facts.network,
+            how: [
+                'The network address is the start of the block your IP falls in. In the interesting octet, find the largest multiple of the block size that is still ≤ your IP’s octet. (The “⌊ ⌋” just means round down to a whole number.)',
+                'Shortcut: divide the IP octet by the block size, drop the remainder, then multiply back by the block size. Every octet to the right of the interesting one becomes 0.',
+                { eg: 'For 192.168.1.130/26 (block 64): 130 ÷ 64 = 2 (drop the remainder), 2 × 64 = 128. So the network is ', val: '192.168.1.128' },
+            ],
         },
         {
             n: 3, label: 'Next network',
             math: `${netOct} + ${blk} (in the ${octetPos} octet)`,
             result: `${nextOct > 255 ? 'rolls into next octet' : `…${nextOct}…`}`,
+            how: [
+                'Subnets are spaced exactly one block size apart, so the next subnet starts one full block above this one. Just add the block size to the network value in the interesting octet.',
+                'This value isn’t a usable address — it belongs to the next subnet. You only compute it as a stepping stone to find the broadcast (the address just below it).',
+                { eg: 'For 192.168.1.128 (block 64): 128 + 64 = 192. The next subnet starts at ', val: '192.168.1.192' },
+            ],
         },
         {
             n: 4, label: 'Broadcast',
             math: `next network − 1`,
             result: facts.broadcast ?? 'N/A (point-to-point)',
+            how: [
+                'The broadcast is the very last address in your subnet — the one right before the next subnet begins. So take the next network and subtract 1.',
+                'It’s reserved (it talks to every host at once), so it isn’t handed to a device. /31 and /32 are special: they’re too small to have a broadcast at all.',
+                { eg: 'For next network 192.168.1.192: 192 − 1 = 191. The broadcast is ', val: '192.168.1.191' },
+            ],
         },
         {
             n: 5, label: 'First usable',
             math: prefix >= 31 ? 'network itself (RFC 3021)' : 'network + 1',
             result: facts.first,
+            how: [
+                'The network address itself is reserved, so the first address you can actually assign to a device is one above it: network + 1.',
+                'Exception: a /31 has only two addresses and both are usable (point-to-point links, RFC 3021), so its first usable is the network address itself.',
+                { eg: 'For network 192.168.1.128: 128 + 1 = 129. First usable host is ', val: '192.168.1.129' },
+            ],
         },
         {
             n: 6, label: 'Last usable',
             math: prefix >= 31 ? 'broadcast address' : 'broadcast − 1',
             result: facts.last,
+            how: [
+                'The broadcast is reserved, so the highest address you can assign sits one below it: broadcast − 1.',
+                'First usable through last usable is your full pool of assignable host addresses. (For a /31 there’s no broadcast, so the last usable is simply the higher of its two addresses.)',
+                { eg: 'For broadcast 192.168.1.191: 191 − 1 = 190. Last usable host is ', val: '192.168.1.190' },
+            ],
         },
     ];
 }
@@ -189,6 +219,40 @@ function renderGrid(octs, prefix) {
     return out;
 }
 
+/**
+ * Render a plain-text string into a parent node, turning `backtick` spans into
+ * styled <code> elements. No innerHTML — each fragment is a text node, so user
+ * input that ever reaches here can't inject markup (strict-CSP discipline).
+ */
+function appendInlineCode(parent, text) {
+    text.split('`').forEach((chunk, i) => {
+        if (chunk === '') return;
+        parent.appendChild(i % 2 === 1 ? el('code', null, chunk) : document.createTextNode(chunk));
+    });
+}
+
+/** Build the collapsible "How do I find this?" explainer for one step. */
+function renderHow(howParts) {
+    const details = el('details', 'step-how');
+    details.appendChild(el('summary', null, 'How do I find this?'));
+    const body = el('div', 'step-how-body');
+    howParts.forEach(part => {
+        if (typeof part === 'string') {
+            const p = el('p');
+            appendInlineCode(p, part);
+            body.appendChild(p);
+        } else {
+            // Worked-example line: lead text + a highlighted result value.
+            const p = el('p', 'step-how-eg');
+            p.appendChild(document.createTextNode('Example: ' + part.eg));
+            p.appendChild(el('strong', null, part.val));
+            body.appendChild(p);
+        }
+    });
+    details.appendChild(body);
+    return details;
+}
+
 /** Render the 6-step worked solution as a list of step cards. */
 function renderSteps(octs, prefix, facts) {
     const d = decompose(octs, prefix);
@@ -202,6 +266,7 @@ function renderSteps(octs, prefix, facts) {
         card.appendChild(head);
         card.appendChild(el('div', 'step-math', s.math));
         card.appendChild(el('div', 'step-result', s.result));
+        if (s.how) card.appendChild(renderHow(s.how));
         list.appendChild(card);
     });
     if (d.clean && prefix !== 32) {
