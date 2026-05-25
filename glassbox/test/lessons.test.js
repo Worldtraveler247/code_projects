@@ -4,8 +4,8 @@ import assert from "node:assert/strict";
 import { lessons } from "../lessons/index.js";
 import { validateTrace } from "../src/validateTrace.js";
 
-test("there are exactly 4 lessons", () => {
-  assert.equal(lessons.length, 4);
+test("there are exactly 5 lessons", () => {
+  assert.equal(lessons.length, 5);
 });
 
 test("every lesson passes the trace validator", () => {

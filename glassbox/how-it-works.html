@@ -25,7 +25,7 @@
   <section class="hiw-section">
     <h2>Overview</h2>
     <p>
-      Glassbox is a beginner-focused tool that makes Python's memory model visible. It steps through four hand-authored
+      Glassbox is a beginner-focused tool that makes Python's memory model visible. It steps through five hand-authored
       lessons — each a short snippet with narrated frames — showing how names point to values, how lists live on the
       heap, and how two names can share one object. The goal is the "aha" moment when a student watches <code>b = a</code>
       copy an arrow, not a list, and then sees both names reflect a mutation.
@@ -52,7 +52,7 @@
       <li><strong>CSS</strong> — custom-property dark theme, CSS Grid two-column stage, <code>prefers-reduced-motion</code> guard on pulse animation, responsive breakpoint at 720 px.</li>
       <li><strong>Vanilla JS (ES2022)</strong> — ES modules throughout: pure engine (<code>formatValue</code>, <code>computeLayout</code>, <code>stepReducer</code>), DOM layer (<code>render.js</code>, <code>controls.js</code>, <code>main.js</code>), and authored lesson data.</li>
       <li><strong>SVG</strong> — inline <code>&lt;svg&gt;</code> with <code>createElementNS</code> draws arrows from variable boxes to heap object boxes using measured <code>getBoundingClientRect</code> positions after each frame paint.</li>
-      <li><strong>Node --test</strong> — built-in Node.js test runner; 25 tests cover the four pure modules and validate all four real lessons through the author-time <code>validateTrace</code> guardrail.</li>
+      <li><strong>Node --test</strong> — built-in Node.js test runner; 25 tests cover the four pure modules and validate all five real lessons through the author-time <code>validateTrace</code> guardrail.</li>
     </ul>
   </section>
 
@@ -160,7 +160,7 @@ for (const [varName, id] of Object.entries(vars)) {
 │   ├── main.js                   ← bootstrap: build rail, init controls, resume
 │   └── validateTrace.js          ← PURE: author-time trace validator
 └── lessons/
-    ├── index.js                  ← ordered manifest of all 4 lessons
+    ├── index.js                  ← ordered manifest of all 5 lessons
     ├── 01-name-points-to-value.js
     ├── 02-list-is-one-object.js
     ├── 03-two-names-one-list.js
