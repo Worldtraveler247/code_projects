@@ -41,7 +41,15 @@ iam-auditor --profile my-profile --format json > findings.json
 iam-auditor --max-key-age-days 30
 ```
 
-Exit code is `0` when there are no findings, `1` when there are — useful for CI gates.
+Exit codes (so a CI gate can tell findings apart from a broken run):
+
+| Code | Meaning                                                        |
+| ---- | ------------------------------------------------------------- |
+| `0`  | Audit ran, no findings                                        |
+| `1`  | Audit ran, one or more findings (fail the build)              |
+| `2`  | Audit could not run — bad profile, missing creds, API denied  |
+
+Credential, profile, and AWS API errors print a single clean line to stderr (no traceback).
 
 ## Develop
 
