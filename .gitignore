@@ -44,6 +44,3 @@ htmlcov/
 
 # Tooling artifacts (not source)
 .superpowers/
-
-# Standalone project with its own git repo — versioned independently, not part of this repo
-devsecops-job-hub/
