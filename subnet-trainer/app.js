@@ -402,10 +402,12 @@ function difficulty() {
 
 function randomQuestion() {
     const tier = difficulty();
-    // basic: /8–/30 ; advanced adds /31, /32 and skews toward awkward prefixes
+    // Contiguous prefix coverage so the CIDR suffix doesn't recycle — the host
+    // octets are already random over billions of addresses, so the prefix pool
+    // was the only thing the user could see repeat. basic: /16–/30 ; advanced: /8–/32.
     const pool = tier === 'advanced'
-        ? [9, 10, 13, 17, 19, 20, 21, 22, 23, 25, 26, 27, 28, 29, 30, 31, 32]
-        : [16, 18, 19, 20, 22, 23, 24, 25, 26, 27, 28, 29, 30];
+        ? [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 25, 26, 27, 28, 29, 30, 31, 32]
+        : [16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30];
     const prefix = weightedPick(pool, loadStats());
     const octs = [
         Math.floor(Math.random() * 223) + 1,               // 1–223, avoid 0/multicast first octet
