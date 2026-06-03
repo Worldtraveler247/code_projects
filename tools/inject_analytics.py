@@ -70,6 +70,9 @@ class Result:
     path: Path
     status: str  # "patched", "skipped-present", or "error"
     detail: str = ""
+    # Whether the file's effective content still carries the placeholder token.
+    # Drives the "swap the real token" NOTE off real file state, not the template.
+    uses_placeholder: bool = False
 
 
 def find_target_files(root: Path) -> list[Path]:
@@ -125,18 +128,25 @@ def process_file(path: Path, *, check_only: bool) -> Result:
     except ValueError as exc:
         return Result(path, "error", str(exc))
 
+    # Effective content is what ends up on disk: the injected text if we changed
+    # it, otherwise the file as-is. The NOTE keys off this real content, so a file
+    # already carrying the swapped-in real token won't trigger a false warning.
+    uses_placeholder = BEACON_TOKEN_PLACEHOLDER in updated
+
     if not changed:
-        return Result(path, "skipped-present")
+        return Result(path, "skipped-present", uses_placeholder=uses_placeholder)
 
     if check_only:
-        return Result(path, "patched", "(check mode: not written)")
+        return Result(
+            path, "patched", "(check mode: not written)", uses_placeholder
+        )
 
     try:
         path.write_text(updated, encoding="utf-8")
     except OSError as exc:
         return Result(path, "error", f"write failed: {exc}")
 
-    return Result(path, "patched")
+    return Result(path, "patched", uses_placeholder=uses_placeholder)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -191,12 +201,15 @@ def main(argv: list[str] | None = None) -> int:
         f"\nSummary: {len(patched)} patched, {len(skipped)} already present, "
         f"{len(errors)} error(s)."
     )
-    if BEACON_TOKEN_PLACEHOLDER in BEACON_TEMPLATE:
+    placeholder_files = [r for r in results if r.uses_placeholder]
+    if placeholder_files:
         print(
-            f"\nNOTE: beacon still uses the placeholder token "
-            f"'{BEACON_TOKEN_PLACEHOLDER}'. Replace it with the real token from "
-            "the Cloudflare dashboard before expecting live data."
+            f"\nNOTE: {len(placeholder_files)} file(s) still carry the placeholder "
+            f"token '{BEACON_TOKEN_PLACEHOLDER}'. Replace it with the real token "
+            "from the Cloudflare dashboard before expecting live data:"
         )
+        for r in placeholder_files:
+            print(f"  - {r.path.relative_to(root)}")
 
     # Non-zero exit if anything errored, so CI/automation can catch it.
     return 1 if errors else 0
