@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="dark">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <meta name="description" content="Eddie Camacho's playground — games, dashboards, and experiments built for fun and practice.">
+    <meta property="og:title" content="Eddie's Playground">
+    <meta property="og:description" content="Games, dashboards, and experiments built for fun and practice.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://worldtraveler247.github.io/code_projects/playground.html">
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:title" content="Eddie's Playground">
+    <meta name="twitter:description" content="Games, dashboards, and experiments built for fun and practice.">
+    <link rel="canonical" href="https://worldtraveler247.github.io/code_projects/playground.html">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'self'; img-src 'self' data:; form-action https://api.web3forms.com;">
+    <title>Eddie's Playground</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="icon" href="favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="style.css">
+    <script src="app.js" defer></script>
+</head>
+<body>
+
+    <a href="#main-content" class="skip-nav">Skip to main content</a>
+
+    <canvas id="bg-canvas" aria-hidden="true"></canvas>
+
+    <!-- Reusable icon defs -->
+    <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+        <symbol id="icon-github" viewBox="0 0 24 24">
+            <path fill="currentColor" d="M12 .5C5.65.5.5 5.65.5 12c0 5.08 3.29 9.39 7.86 10.91.58.1.79-.25.79-.56v-2c-3.2.7-3.87-1.36-3.87-1.36-.52-1.32-1.27-1.67-1.27-1.67-1.04-.71.08-.7.08-.7 1.15.08 1.76 1.18 1.76 1.18 1.02 1.75 2.68 1.24 3.34.95.1-.74.4-1.24.72-1.53-2.55-.29-5.24-1.28-5.24-5.69 0-1.26.45-2.29 1.18-3.1-.12-.29-.51-1.46.11-3.04 0 0 .96-.31 3.15 1.18a10.92 10.92 0 0 1 5.74 0c2.19-1.49 3.15-1.18 3.15-1.18.62 1.58.23 2.75.11 3.04.74.81 1.18 1.84 1.18 3.1 0 4.42-2.69 5.39-5.25 5.68.41.36.78 1.06.78 2.13v3.16c0 .31.21.67.8.56C20.21 21.39 23.5 17.08 23.5 12 23.5 5.65 18.35.5 12 .5z"/>
+        </symbol>
+        <symbol id="icon-code" viewBox="0 0 24 24">
+            <path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M16 18l6-6-6-6M8 6l-6 6 6 6"/>
+        </symbol>
+    </svg>
+
+    <!-- Hero -->
+    <header class="hero">
+        <div class="hero-inner">
+            <div class="hero-eyebrow">EDDIE CAMACHO · PLAYGROUND</div>
+            <h1>The <span class="grad">Playground</span></h1>
+            <p class="hero-sub">Games, dashboards, and experiments — built for fun and practice. <a href="index.html">← Back to the portfolio</a></p>
+        </div>
+    </header>
+
+    <main id="main-content">
+
+        <!-- Projects -->
+        <section class="section">
+            <h2 class="section-label">Experiments</h2>
+            <p class="section-hint">
+                Tap a card to launch
+                <span class="hint-sep">·</span>
+                <svg width="14" height="14" aria-hidden="true"><use href="#icon-github"/></svg> view source
+                <span class="hint-sep">·</span>
+                <svg width="14" height="14" aria-hidden="true"><use href="#icon-code"/></svg> open in VS Code
+                <span class="hint-sep">·</span>
+                📖 how it's built
+            </p>
+
+            <!-- Filter bar -->
+            <div class="filter-bar" role="group" aria-label="Filter projects by category">
+                <button class="filter-btn active" data-filter="all" aria-pressed="true">All</button>
+                <button class="filter-btn" data-filter="Game" aria-pressed="false">Game</button>
+                <button class="filter-btn" data-filter="Tool" aria-pressed="false">Tool</button>
+                <button class="filter-btn" data-filter="Education" aria-pressed="false">Education</button>
+                <div class="filter-search">
+                    <label for="card-search" class="sr-only">Search projects</label>
+                    <input type="search" id="card-search" placeholder="Search…" autocomplete="off" spellcheck="false">
+                </div>
+            </div>
+
+            <span id="filter-live" class="sr-only" aria-live="polite" aria-atomic="true"></span>
+
+            <div class="grid">
+
+                <!-- Galactic Guardian -->
+                <article class="card" data-tag="Game">
+                    <a href="space-shooter/index.html" class="card-link">
+                        <div class="card-visual" style="--a:#003d4a;--b:#006478;--c:#00e5ff">
+                            <div class="orb orb1"></div>
+                            <div class="card-icon">🚀</div>
+                        </div>
+                        <div class="card-body">
+                            <div class="card-tag">Game</div>
+                            <h3>Galactic Guardian</h3>
+                            <p>Neon space shooter with mobile controls and particle effects.</p>
+                            <span class="card-cta">Play Now →</span>
+                        </div>
+                    </a>
+                    <div class="card-actions">
+                        <a href="https://github.com/Worldtraveler247/code_projects/tree/main/space-shooter" class="action-btn" target="_blank" rel="noopener noreferrer" aria-label="View source on GitHub" title="View source on GitHub">
+                            <svg width="16" height="16" aria-hidden="true"><use href="#icon-github"/></svg>
+                            <span>Source</span>
+                        </a>
+                        <a href="https://github1s.com/Worldtraveler247/code_projects/tree/main/space-shooter" class="action-btn" target="_blank" rel="noopener noreferrer" aria-label="Browse code in VS Code (github1s)" title="Browse code in VS Code (github1s)">
+                            <svg width="16" height="16" aria-hidden="true"><use href="#icon-code"/></svg>
+                            <span>VS Code</span>
+                        </a>
+                        <a href="space-shooter/how-it-works.html" class="action-btn action-btn--build" target="_blank" rel="noopener noreferrer" aria-label="How this app is built" title="How It's Built">
+                            📖 <span>How It's Built</span>
+                        </a>
+                    </div>
+                </article>
+
+                <!-- Galactic Runner -->
+                <article class="card" data-tag="Game">
+                    <a href="mario-style/index.html" class="card-link">
+                        <div class="card-visual" style="--a:#2d0057;--b:#4a0080;--c:#bf80ff">
+                            <div class="orb orb1"></div>
+                            <div class="orb orb2"></div>
+                            <div class="card-icon">🌌</div>
+                        </div>
+                        <div class="card-body">
+                            <div class="card-tag">Game</div>
+                            <h3>Galactic Runner</h3>
+                            <p>Twilight platformer with parallax mountains and neon platforms.</p>
+                            <span class="card-cta">Play Now →</span>
+                        </div>
+                    </a>
+                    <div class="card-actions">
+                        <a href="https://github.com/Worldtraveler247/code_projects/tree/main/mario-style" class="action-btn" target="_blank" rel="noopener noreferrer" aria-label="View source on GitHub" title="View source on GitHub">
+                            <svg width="16" height="16" aria-hidden="true"><use href="#icon-github"/></svg>
+                            <span>Source</span>
+                        </a>
+                        <a href="https://github1s.com/Worldtraveler247/code_projects/tree/main/mario-style" class="action-btn" target="_blank" rel="noopener noreferrer" aria-label="Browse code in VS Code (github1s)" title="Browse code in VS Code (github1s)">
+                            <svg width="16" height="16" aria-hidden="true"><use href="#icon-code"/></svg>
+                            <span>VS Code</span>
+                        </a>
+                        <a href="mario-style/how-it-works.html" class="action-btn action-btn--build" target="_blank" rel="noopener noreferrer" aria-label="How this app is built" title="How It's Built">
+                            📖 <span>How It's Built</span>
+                        </a>
+                    </div>
+                </article>
+
+                <!-- Tetris -->
+                <article class="card" data-tag="Game">
+                    <a href="my-tetris/index.html" class="card-link">
+                        <div class="card-visual" style="--a:#0a3d14;--b:#155a22;--c:#69f0ae">
+                            <div class="orb orb1"></div>
+                            <div class="card-icon">🕹️</div>
+                        </div>
+                        <div class="card-body">
+                            <div class="card-tag">Game</div>
+                            <h3>Tetris</h3>
+                            <p>Classic block-stacking built with pure JavaScript.</p>
+                            <span class="card-cta">Play Now →</span>
+                        </div>
+                    </a>
+                    <div class="card-actions">
+                        <a href="https://github.com/Worldtraveler247/code_projects/tree/main/my-tetris" class="action-btn" target="_blank" rel="noopener noreferrer" aria-label="View source on GitHub" title="View source on GitHub">
+                            <svg width="16" height="16" aria-hidden="true"><use href="#icon-github"/></svg>
+                            <span>Source</span>
+                        </a>
+                        <a href="https://github1s.com/Worldtraveler247/code_projects/tree/main/my-tetris" class="action-btn" target="_blank" rel="noopener noreferrer" aria-label="Browse code in VS Code (github1s)" title="Browse code in VS Code (github1s)">
+                            <svg width="16" height="16" aria-hidden="true"><use href="#icon-code"/></svg>
+                            <span>VS Code</span>
+                        </a>
+                        <a href="my-tetris/how-it-works.html" class="action-btn action-btn--build" target="_blank" rel="noopener noreferrer" aria-label="How this app is built" title="How It's Built">
+                            📖 <span>How It's Built</span>
+                        </a>
+                    </div>
+                </article>
+
+                <!-- Async 3D Chess -->
+                <article class="card" data-tag="Game">
+                    <a href="3d-chess/index.html" class="card-link">
+                        <div class="card-visual" style="--a:#1a1a2e;--b:#16213e;--c:#e94560">
+                            <div class="orb orb1"></div>
+                            <div class="orb orb2"></div>
+                            <div class="card-icon">♟️</div>
+                        </div>
+                        <div class="card-body">
+                            <div class="card-tag">Game</div>
+                            <h3>Async 3D Chess</h3>
+                            <p>Fully playable, asynchronous 3D chess with Firebase integration.</p>
+                            <span class="card-cta">Play Now →</span>
+                        </div>
+                    </a>
+                    <div class="card-actions">
+                        <a href="https://github.com/Worldtraveler247/code_projects/tree/main/3d-chess" class="action-btn" target="_blank" rel="noopener noreferrer" aria-label="View source on GitHub" title="View source on GitHub">
+                            <svg width="16" height="16" aria-hidden="true"><use href="#icon-github"/></svg>
+                            <span>Source</span>
+                        </a>
+                        <a href="https://github1s.com/Worldtraveler247/code_projects/tree/main/3d-chess" class="action-btn" target="_blank" rel="noopener noreferrer" aria-label="Browse code in VS Code (github1s)" title="Browse code in VS Code (github1s)">
+                            <svg width="16" height="16" aria-hidden="true"><use href="#icon-code"/></svg>
+                            <span>VS Code</span>
+                        </a>
+                        <a href="3d-chess/how-it-works.html" class="action-btn action-btn--build" target="_blank" rel="noopener noreferrer" aria-label="How this app is built" title="How It's Built">
+                            📖 <span>How It's Built</span>
+                        </a>
+                    </div>
+                </article>
+
+                <!-- Stock Monitor -->
+                <article class="card" data-tag="Tool">
+                    <a href="stock-monitor/index.html" class="card-link">
+                        <div class="card-visual" style="--a:#003322;--b:#005533;--c:#00e676">
+                            <div class="orb orb1"></div>
+                            <div class="orb orb2"></div>
+                            <div class="card-icon">📈</div>
+                        </div>
+                        <div class="card-body">
+                            <div class="card-tag">Tool</div>
+                            <h3>Stock Monitor</h3>
+                            <p>Live buy alerts for VOO, SPY, QQQ, NVDA &amp; more — RSI and SMA signals.</p>
+                            <span class="card-cta">Open Dashboard →</span>
+                        </div>
+                    </a>
+                    <div class="card-actions">
+                        <a href="https://github.com/Worldtraveler247/code_projects/tree/main/stock-monitor" class="action-btn" target="_blank" rel="noopener noreferrer" aria-label="View source on GitHub" title="View source on GitHub">
+                            <svg width="16" height="16" aria-hidden="true"><use href="#icon-github"/></svg>
+                            <span>Source</span>
+                        </a>
+                        <a href="https://github1s.com/Worldtraveler247/code_projects/tree/main/stock-monitor" class="action-btn" target="_blank" rel="noopener noreferrer" aria-label="Browse code in VS Code (github1s)" title="Browse code in VS Code (github1s)">
+                            <svg width="16" height="16" aria-hidden="true"><use href="#icon-code"/></svg>
+                            <span>VS Code</span>
+                        </a>
+                        <a href="stock-monitor/how-it-works.html" class="action-btn action-btn--build" target="_blank" rel="noopener noreferrer" aria-label="How this app is built" title="How It's Built">
+                            📖 <span>How It's Built</span>
+                        </a>
+                    </div>
+                </article>
+
+                <!-- Real Estate Crash Indicator -->
+                <article class="card" data-tag="Tool">
+                    <a href="real-estate-risk/index.html" class="card-link">
+                        <div class="card-visual" style="--a:#0a1f3d;--b:#1a3a6e;--c:#fbbf24">
+                            <div class="orb orb1"></div>
+                            <div class="orb orb2"></div>
+                            <div class="card-icon">📉</div>
+                        </div>
+                        <div class="card-body">
+                            <div class="card-tag">Tool</div>
+                            <h3>Real Estate Crash Indicator</h3>
+                            <p>Composite housing market risk gauge — 14 FRED indicators, z-scored against 20-year history, refreshed daily.</p>
+                            <span class="card-cta">Open Dashboard →</span>
+                        </div>
+                    </a>
+                    <div class="card-actions">
+                        <a href="https://github.com/Worldtraveler247/code_projects/tree/main/real-estate-risk" class="action-btn" target="_blank" rel="noopener noreferrer" aria-label="View source on GitHub" title="View source on GitHub">
+                            <svg width="16" height="16" aria-hidden="true"><use href="#icon-github"/></svg>
+                            <span>Source</span>
+                        </a>
+                        <a href="https://github1s.com/Worldtraveler247/code_projects/tree/main/real-estate-risk" class="action-btn" target="_blank" rel="noopener noreferrer" aria-label="Browse code in VS Code (github1s)" title="Browse code in VS Code (github1s)">
+                            <svg width="16" height="16" aria-hidden="true"><use href="#icon-code"/></svg>
+                            <span>VS Code</span>
+                        </a>
+                        <a href="real-estate-risk/how-it-works.html" class="action-btn action-btn--build" target="_blank" rel="noopener noreferrer" aria-label="How this app is built" title="How It's Built">
+                            📖 <span>How It's Built</span>
+                        </a>
+                    </div>
+                </article>
+
+                <!-- Dashboard -->
+                <article class="card" data-tag="Tool">
+                    <a href="my-dashboard/index.html" class="card-link">
+                        <div class="card-visual" style="--a:#5c2000;--b:#8b3a00;--c:#ffab40">
+                            <div class="orb orb1"></div>
+                            <div class="card-icon">📊</div>
+                        </div>
+                        <div class="card-body">
+                            <div class="card-tag">Tool</div>
+                            <h3>Dashboard</h3>
+                            <p>Live weather and productivity tools via Open-Meteo API.</p>
+                            <span class="card-cta">Open →</span>
+                        </div>
+                    </a>
+                    <div class="card-actions">
+                        <a href="https://github.com/Worldtraveler247/code_projects/tree/main/my-dashboard" class="action-btn" target="_blank" rel="noopener noreferrer" aria-label="View source on GitHub" title="View source on GitHub">
+                            <svg width="16" height="16" aria-hidden="true"><use href="#icon-github"/></svg>
+                            <span>Source</span>
+                        </a>
+                        <a href="https://github1s.com/Worldtraveler247/code_projects/tree/main/my-dashboard" class="action-btn" target="_blank" rel="noopener noreferrer" aria-label="Browse code in VS Code (github1s)" title="Browse code in VS Code (github1s)">
+                            <svg width="16" height="16" aria-hidden="true"><use href="#icon-code"/></svg>
+                            <span>VS Code</span>
+                        </a>
+                        <a href="my-dashboard/how-it-works.html" class="action-btn action-btn--build" target="_blank" rel="noopener noreferrer" aria-label="How this app is built" title="How It's Built">
+                            📖 <span>How It's Built</span>
+                        </a>
+                    </div>
+                </article>
+
+                <!-- MathPath to AI (Next.js 16 static export, hosted in-hub) -->
+                <article class="card" data-tag="Education">
+                    <a href="mathpath-to-ai/" class="card-link">
+                        <div class="card-visual" style="--a:#0a0420;--b:#2a0f5c;--c:#a855f7">
+                            <div class="orb orb1"></div>
+                            <div class="orb orb2"></div>
+                            <div class="card-icon">∑</div>
+                        </div>
+                        <div class="card-body">
+                            <div class="card-tag">Education</div>
+                            <h3>MathPath to AI</h3>
+                            <p>From basic algebra to the math used in modern AI engineering — softmax, cross-entropy, backprop, attention. Six gated stages, KaTeX-rendered math, mastery exams.</p>
+                            <span class="card-cta">Start the Path →</span>
+                        </div>
+                    </a>
+                    <div class="card-actions">
+                        <a href="https://github.com/Worldtraveler247/mathpath-to-ai" class="action-btn" target="_blank" rel="noopener noreferrer" aria-label="View source on GitHub" title="View source on GitHub">
+                            <svg width="16" height="16" aria-hidden="true"><use href="#icon-github"/></svg>
+                            <span>Source</span>
+                        </a>
+                        <a href="https://github1s.com/Worldtraveler247/mathpath-to-ai" class="action-btn" target="_blank" rel="noopener noreferrer" aria-label="Browse code in VS Code (github1s)" title="Browse code in VS Code (github1s)">
+                            <svg width="16" height="16" aria-hidden="true"><use href="#icon-code"/></svg>
+                            <span>VS Code</span>
+                        </a>
+                        <a href="https://github.com/Worldtraveler247/mathpath-to-ai#readme" class="action-btn action-btn--build" target="_blank" rel="noopener noreferrer" aria-label="How this app is built" title="How It's Built">
+                            📖 <span>How It's Built</span>
+                        </a>
+                    </div>
+                </article>
+
+                <!-- Code Typist -->
+                <article class="card" data-tag="Education">
+                    <a href="code-typist/index.html" class="card-link">
+                        <div class="card-visual" style="--a:#1f0033;--b:#3d0066;--c:#e040fb">
+                            <div class="orb orb1"></div>
+                            <div class="orb orb2"></div>
+                            <div class="card-icon">⌨️</div>
+                        </div>
+                        <div class="card-body">
+                            <div class="card-tag">Education</div>
+                            <h3>Code Typist</h3>
+                            <p>Typing tutor with authentic Go, Python, and Bash snippets. On-screen keyboard lights up the target key, neon line-art hands show which finger to use.</p>
+                            <span class="card-cta">Start Typing →</span>
+                        </div>
+                    </a>
+                    <div class="card-actions">
+                        <a href="https://github.com/Worldtraveler247/code_projects/tree/main/code-typist" class="action-btn" target="_blank" rel="noopener noreferrer" aria-label="View source on GitHub" title="View source on GitHub">
+                            <svg width="16" height="16" aria-hidden="true"><use href="#icon-github"/></svg>
+                            <span>Source</span>
+                        </a>
+                        <a href="https://github1s.com/Worldtraveler247/code_projects/tree/main/code-typist" class="action-btn" target="_blank" rel="noopener noreferrer" aria-label="Browse code in VS Code (github1s)" title="Browse code in VS Code (github1s)">
+                            <svg width="16" height="16" aria-hidden="true"><use href="#icon-code"/></svg>
+                            <span>VS Code</span>
+                        </a>
+                        <a href="code-typist/how-it-works.html" class="action-btn action-btn--build" target="_blank" rel="noopener noreferrer" aria-label="How this app is built" title="How It's Built">
+                            📖 <span>How It's Built</span>
+                        </a>
+                    </div>
+                </article>
+
+            </div>
+
+            <p id="no-results" hidden>No projects match your search.</p>
+        </section>
+
+    </main>
+
+    <footer>
+        <p class="copyright">Built by Eddie Camacho 2026 · <a href="index.html">Back to the portfolio</a></p>
+    </footer>
+
+<!-- cf-web-analytics (managed by tools/inject_analytics.py) -->
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "f728a20b49cc4a0fbe02cde72f03301c"}'></script>
+</body>
+</html>
