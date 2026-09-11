@@ -186,6 +186,34 @@ main { position: relative; z-index: 1; }
 }
 .hint-sep { color: rgba(74, 247, 255, 0.3); }
 
+/* Closing line under a grid. Unlike .section-hint it must NOT pull upward:
+   the negative top margin there is for hints that tuck under a heading. */
+.section-outro {
+    margin: 40px 0 0;
+    padding-top: 24px;
+    border-top: 1px solid var(--border);
+    color: var(--muted);
+    font-size: 0.85rem;
+    text-align: center;
+    line-height: 1.7;
+}
+.section-outro a {
+    display: inline-block;
+    padding: 6px 14px;
+    margin-left: 4px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    color: var(--cyan);
+    text-decoration: none;
+    white-space: nowrap;
+    transition: background 0.2s ease, border-color 0.2s ease;
+}
+.section-outro a:hover,
+.section-outro a:focus-visible {
+    background: rgba(74, 247, 255, 0.08);
+    border-color: var(--cyan);
+}
+
 /* ── Filter bar ── */
 .filter-bar {
     display: flex;
