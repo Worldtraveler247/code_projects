@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="dark">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'self' https://static.cloudflareinsights.com; connect-src 'self' https://cloudflareinsights.com; img-src 'self' data:; form-action https://buttondown.com; base-uri 'none'; object-src 'none'">
+    <meta name="description" content="The Daily Brief for Saturday, September 12, 2026: security incidents, senior security advice, engineering explainers, and tech news.">
+    <title>The Daily Brief · Sep 12, 2026</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="icon" href="../../../favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="../../../style.css">
+    <link rel="stylesheet" href="../../newsletter.css">
+</head>
+<body class="brief-page">
+    <a href="#main-content" class="skip-nav">Skip to main content</a>
+    <nav class="brief-nav">
+        <a href="../../../index.html">← App Hub</a>
+        <a href="../../">All issues</a>
+    </nav>
+    
+<header class="brief-masthead">
+    <p class="brief-eyebrow">THE DAILY BRIEF</p>
+    <h1>Saturday, September 12, 2026</h1>
+    <ol class="brief-toc">
+        <li><a href="#security-advice">Senior Security Advice</a></li><li><a href="#talk-track">Senior Talk Tracks</a></li><li><a href="#tech-news">Tech News</a></li>
+    </ol>
+</header>
+<main id="main-content" class="brief">
+    
+    <article class="brief-section" id="security-advice">
+        <p class="brief-kicker">Senior Security Advice</p>
+        <h2>Enterprise Password Managers to Kill Password Reuse</h2>
+        
+            <h3>The Advice</h3>
+            <p>Roll out an enterprise password manager to every employee and make every account password unique, generated, and stored in it — never memorized, never reused.</p>
+
+        
+            <h3>Why It Matters</h3>
+            <p>Password reuse is the pattern behind nearly every credential-stuffing campaign: a password that leaks from one breached, unrelated website gets fed into automated tools and tried against corporate logins, VPNs, and cloud consoles until one of them matches. The account itself never has to be &quot;hacked&quot; — the attacker just replays a credential the user already handed away somewhere else. Without a password manager, most people cope with dozens of logins by reusing two or three passwords with minor variations, which means one leaked retail or forum account can become the entry point into payroll, email, or a cloud environment. The incident class this stops is exactly that: large-scale credential-stuffing attacks, where breach dumps from unrelated companies are weaponized against your workforce months or years later.</p>
+
+        
+            <h3>How to Implement It</h3>
+            <ol>
+<li>Select and centrally provision an enterprise password manager (not a &quot;recommendation&quot; — deploy it via SSO/SCIM to every employee, with browser extensions and mobile apps installed by default).</li>
+<li>Run the manager's built-in weak-password and reused-password audit against existing vaults, and force a one-time reset on every account it flags.</li>
+<li>Set policy: every non-SSO login gets a unique, manager-generated password of at least 16 characters, and browser-saved passwords are disabled in favor of the managed vault.</li>
+<li>Make sure login forms don't fight the tool — confirm paste is allowed in password fields, since NIST's guidance exists specifically to stop sites from blocking password-manager autofill.</li>
+<li>Verify it's actually working by pulling the admin dashboard's reused-password count monthly and tracking it to zero — a purchased license with a 40% adoption rate is not a control, it's a line item.</li>
+</ol>
+
+        
+            <h3>The Pushback You&#39;ll Hear</h3>
+            <p>&quot;A password manager is a single point of failure — if the vault gets breached, every credential is exposed.&quot; The senior-engineer rebuttal: that risk already exists today, just distributed across dozens of sites you don't control and can't audit. A vault protected by its own strong MFA and zero-knowledge encryption concentrates that risk into one target your team actually defends, monitors, and can rotate out of quickly — instead of leaving it scattered across every third-party site an employee has ever signed up for. CISA pairs this guidance with MFA for exactly this reason: the password manager kills reuse, MFA covers the case where a single credential still gets stolen.</p>
+
+        
+            <h3>Sources</h3>
+            <ul>
+<li>NIST Special Publication 800-63B (Digital Identity Guidelines: Authentication and Authenticator Management), Section 5.1.1.1 — https://pages.nist.gov/800-63-4/sp800-63b.html</li>
+<li>CISA, &quot;Use Strong Passwords&quot; (Secure Our World campaign) — https://www.cisa.gov/secure-our-world/use-strong-passwords</li>
+</ul>
+
+        
+    </article>
+    
+    <article class="brief-section" id="talk-track">
+        <p class="brief-kicker">Senior Talk Tracks</p>
+        <h2>Secrets Rotation</h2>
+        
+            
+            <p>Here's a question that separates a junior engineer from a senior one: &quot;when's the last time this API key was rotated?&quot; If the honest answer is &quot;since the day someone created it, two years ago,&quot; you've found a real problem, even though nothing about that key looks broken today. That's what secrets rotation is about.</p>
+<p>Plain English first. A &quot;secret,&quot; in this context, is any credential a system uses to prove itself to another system -- a database password, an API key, a certificate, a token. &quot;Rotation&quot; just means replacing that secret with a new one on a regular schedule, and making sure everything that depended on the old one gets updated to use the new one without breaking.</p>
+<p>Here's why it matters in production, and it's not really about any one secret being weak. It's about how long a leaked secret stays useful to an attacker. If you rotate a database credential every ninety days, a secret that leaked eighty days ago is worthless in ten more days, whether or not you ever find out it leaked. If that same credential never rotates, a leak from two years ago might still be valid right now -- and you'd have no way to know without checking every single place it might have ended up.</p>
+<p>The senior take, the part a junior usually misses: rotation isn't really a security control by itself. It's a test of whether your systems can survive a credential changing at all. A lot of organizations avoid rotating secrets not because they don't see the value, but because nobody's confident the change won't break something -- some script, some forgotten integration, still hard-coded to the old value. So a senior engineer treats &quot;can we rotate this without an outage&quot; as the real question, and building automated rotation is what forces you to find and fix every place a secret is hard-coded, long before an attacker finds it for you.</p>
+<p>Think of it like changing the locks on a house you've handed spare keys to a dozen different people over the years -- the contractor, the old dog-walker, a former roommate. You don't remember who still has a copy, and asking each of them to give it back isn't realistic. So you just change the lock. The old keys stop working, whoever holds them, whether or not you ever find out where they went.</p>
+<p>A natural way to bring this up at work is: &quot;do we know how long it would take us to fully rotate our most sensitive credential, end to end, without anything breaking?&quot; That question tends to go quiet fast -- and the silence is the finding.</p>
+
+        
+            <h3>Key Takeaways</h3>
+            <ol>
+<li>Secrets rotation limits how long a leaked credential stays useful to an attacker, whether or not the leak is ever discovered.</li>
+<li>The real value of building automated rotation is that it forces you to find every place a credential is hard-coded, before an attacker does.</li>
+<li>An organization that's afraid to rotate a credential because something might break has already found its biggest hidden risk.</li>
+</ol>
+
+        
+            <h3>Reader Question</h3>
+            <p><strong>&quot;If rotation is so valuable, why don't more organizations just automate it everywhere immediately?&quot;</strong></p>
+<p>Honestly, it's because rotating a credential you're not confident about is scarier than leaving it alone — nobody wants to be the person who broke production trying to improve security. So teams put it off, the credential gets older and riskier, and the fear of breaking something grows right along with it. The way out isn't forcing rotation everywhere at once; it's starting with your highest-value credentials, in a test environment first, and treating every hard-coded dependency you find along the way as a bug to fix, not a reason to stop.</p>
+
+        
+    </article>
+    
+    <article class="brief-section" id="tech-news">
+        <p class="brief-kicker">Tech News</p>
+        
+        
+            
+            <p>If you run a Fortinet firewall or a Citrix NetScaler gateway, today matters more than most. One of these fixes has a federal patch deadline that lands today, and the other has been under active attack for a full week. Two stories: a Fortinet flaw hackers are already using to drop a remote-access trojan, and a Citrix NetScaler authentication bypass that lets an attacker walk straight past your login screen.</p>
+<p>Start with Fortinet. CISA added CVE-2025-25249 to its Known Exploited Vulnerabilities catalog this week — a heap-based buffer overflow in FortiOS's cw_acd daemon, the background process handling part of the operating system's networking stack. Send it a specially crafted packet, and you can corrupt memory badly enough to run your own code with that daemon's privileges — no login required. It hits a wide swath of FortiOS versions, plus FortiSwitchManager and FortiSASE. Security researchers say attackers are already using it to install something called PivotC2, a remote-access trojan, on compromised devices. CISA's deadline for federal systems is today, September 12th. Here's my read: a firewall is supposed to be the thing standing between the internet and your network. When the firewall itself has an unauthenticated remote-code-execution hole, it's not a weak point in your defenses — it is the exposed front door, and the federal deadline is a floor, not a ceiling. If you're running an affected FortiOS branch anywhere, patch it today, not this week.</p>
+<p>Next up, Citrix. NetScaler ADC and NetScaler Gateway — the appliances a lot of companies use for VPN access and remote login — have a critical authentication bypass, CVE-2026-19490, CVSS score 9.3. It affects systems configured as a gateway or an authentication server. The flaw lets an attacker reach an alternate path into the login process that skips the checks a normal login would enforce — so no valid credentials, no multi-factor prompt, nothing. Citrix patched it back in August, but once a working proof-of-concept went public, attackers started exploiting it in the wild starting around September 4th. My take: this is a full week of exposure before most security teams even noticed the shift from &quot;patched&quot; to &quot;actively exploited.&quot; If your NetScaler was internet-facing during that window, patching now closes the door, but it doesn't tell you if someone already walked through it — go back and hunt for sessions and admin changes you can't account for.</p>
+<p>Through-line: two different vendors, the same lesson — the edge devices guarding your network are exactly what's under fire right now, and closing the hole today doesn't undo whatever happened while it was open. Stay patched, stay paranoid, and I'll see you tomorrow.</p>
+
+        
+            <h3>Sources</h3>
+            <ul>
+<li><a href="https://cybersecuritynews.com/fortinet-heap-based-buffer-overflow/" target="_blank" rel="noopener noreferrer">CISA Warns of Fortinet Heap-based Buffer Overflow Flaw Exploited in Attacks</a> — Cybersecurity News</li>
+<li><a href="https://www.cisa.gov/news-events/alerts/2026/09/09/cisa-adds-four-known-exploited-vulnerabilities-catalog" target="_blank" rel="noopener noreferrer">CISA Adds Four Known Exploited Vulnerabilities to Catalog</a> — CISA</li>
+<li><a href="https://aicybr.com/blog/fortinet-cve-2025-25249-kev" target="_blank" rel="noopener noreferrer">Fortinet CVE-2025-25249 Is in CISA KEV: FortiOS and FortiSwitchManager Fixes</a> — AiCybr</li>
+<li><a href="https://www.securityweek.com/fortinet-code-execution-flaw-exploited-in-pivotc2-rat-attacks/" target="_blank" rel="noopener noreferrer">Fortinet Code Execution Flaw Exploited in PivotC2 RAT Attacks</a> — SecurityWeek</li>
+<li><a href="https://github.com/advisories/GHSA-mj8x-m8f5-x4w8" target="_blank" rel="noopener noreferrer">CVE-2025-25249 advisory</a> — GitHub Advisory Database</li>
+<li><a href="https://www.bleepingcomputer.com/news/security/hackers-target-critical-citrix-netscaler-auth-bypass-in-attacks/" target="_blank" rel="noopener noreferrer">Critical Citrix NetScaler auth bypass now leveraged in attacks</a> — BleepingComputer</li>
+<li><a href="https://www.helpnetsecurity.com/2026/08/21/citrix-netscaler-gateway-cve-2026-19490/" target="_blank" rel="noopener noreferrer">Citrix urges customers to fix critical NetScaler authentication bypass (CVE-2026-19490)</a> — Help Net Security</li>
+<li><a href="https://www.rapid7.com/blog/post/etr-cve-2026-19490-critical-vulnerability-affecting-citrix-netscaler-adc-and-netscaler-gateway/" target="_blank" rel="noopener noreferrer">CVE-2026-19490: Critical Vulnerability Affecting Citrix NetScaler ADC and NetScaler Gateway</a> — Rapid7</li>
+<li><a href="https://www.securityweek.com/exploitation-expected-for-critical-authentication-bypass-patched-in-citrix-netscaler/" target="_blank" rel="noopener noreferrer">Exploitation Expected for Critical Authentication Bypass Patched in Citrix NetScaler</a> — SecurityWeek</li>
+</ul>
+
+        
+    </article>
+    
+    <section class="brief-subscribe" id="subscribe">
+    <h2>Get The Daily Brief by email</h2>
+    <p>One short email each morning. Unsubscribe anytime.</p>
+    <form action="https://buttondown.com/api/emails/embed-subscribe/cybercider" method="post">
+        <label for="bd-email">Email address</label>
+        <input type="email" name="email" id="bd-email" required autocomplete="email" placeholder="you@example.com">
+        <button type="submit">Subscribe</button>
+    </form>
+</section>
+</main>
+
+    <footer><p class="copyright">The Daily Brief · Eddie Camacho</p></footer>
+<!-- cf-web-analytics (managed by tools/inject_analytics.py) -->
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "f728a20b49cc4a0fbe02cde72f03301c"}'></script>
+</body>
+</html>
