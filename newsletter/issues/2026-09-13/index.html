@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="dark">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'self' https://static.cloudflareinsights.com; connect-src 'self' https://cloudflareinsights.com; img-src 'self' data:; form-action https://buttondown.com; base-uri 'none'; object-src 'none'">
+    <meta name="description" content="The Daily Brief for Sunday, September 13, 2026: security incidents, senior security advice, engineering explainers, and tech news.">
+    <title>The Daily Brief · Sep 13, 2026</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="icon" href="../../../favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="../../../style.css">
+    <link rel="stylesheet" href="../../newsletter.css">
+</head>
+<body class="brief-page">
+    <a href="#main-content" class="skip-nav">Skip to main content</a>
+    <nav class="brief-nav">
+        <a href="../../../index.html">← App Hub</a>
+        <a href="../../">All issues</a>
+    </nav>
+    
+<header class="brief-masthead">
+    <p class="brief-eyebrow">THE DAILY BRIEF</p>
+    <h1>Sunday, September 13, 2026</h1>
+    <ol class="brief-toc">
+        <li><a href="#current-events">Current Events</a></li><li><a href="#security-advice">Senior Security Advice</a></li><li><a href="#talk-track">Senior Talk Tracks</a></li><li><a href="#tech-news">Tech News</a></li>
+    </ol>
+</header>
+<main id="main-content" class="brief">
+    
+    <article class="brief-section" id="current-events">
+        <p class="brief-kicker">Current Events</p>
+        <h2>The Change Healthcare Ransomware Attack</h2>
+        
+            
+            <p>In February 2024, one stolen password with no second login check took down prescription processing and medical billing for a huge share of the US healthcare system, for weeks. No exotic exploit, no zero-day -- just a remote-access login that only ever asked for a username and a password. Here's how it actually happened.</p>
+<p>Change Healthcare processes something like half of all medical claims in the United States -- the invisible plumbing connecting pharmacies, hospitals, and insurance companies. According to sworn testimony from UnitedHealth Group's own CEO before Congress, an affiliate of the ALPHV ransomware group, also known as BlackCat, got in on February 12th, 2024, by logging into a Citrix remote-access portal with compromised credentials. That portal had no multi-factor authentication turned on, so a stolen username and password was the entire barrier between the open internet and the network.</p>
+<p>Here's the chain. Once inside, the attacker had roughly nine days -- until February 21st -- to move laterally through Change Healthcare's systems undetected, reaching far enough to exfiltrate what would later be confirmed as the largest healthcare data breach in US history. Then they deployed ransomware, and Change Healthcare pulled its own systems offline to contain the damage -- which is exactly what stopped prescription processing, insurance eligibility checks, and claims payment across the country for weeks.</p>
+<p>Here's the root cause in one sentence: a single remote-access credential with no multi-factor authentication behind it was, by itself, enough to reach a network that handled sensitive health data for most of the country.</p>
+<p>What made recovery so slow is its own separate lesson. The CEO told Congress the ransomware also locked up backup systems that Change Healthcare had built years before UnitedHealth acquired the company in 2022 -- backup infrastructure that had never actually been folded into UnitedHealth's own security standards after the deal closed. The system meant to make recovery fast was itself sitting inside the same blast radius as everything else.</p>
+<p>Here's what held, and it's worth naming plainly: once the intrusion was confirmed, UnitedHealth Group did something this industry doesn't always manage -- public congressional testimony under oath, a detailed technical accounting to federal regulators, and a breach count that kept getting corrected upward in public as the true scope became clear, eventually landing near 190 million people. A company that lowballs or stonewalls its own breach number makes every downstream fix harder to trust; this one didn't do that.</p>
+<p>Here's what a senior engineer, or a senior ISSO, would change in how they work because of this. Multi-factor authentication on any remote-access gateway isn't a nice-to-have configured &quot;eventually&quot; -- it belongs there from day one, enforced by policy, not left to hope. And after any acquisition, a senior engineer treats the acquired company's infrastructure, especially anything backup- or recovery-related, as unverified until it's been audited against the parent organization's own security baseline -- because a backup system that was never actually checked is not a backup system you can trust to be there when you need it.</p>
+
+        
+            <h3>Timeline</h3>
+            <table>
+<thead>
+<tr>
+<th>Date</th>
+<th>Event</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Oct 2022</td>
+<td>UnitedHealth Group completes its acquisition of Change Healthcare; per later congressional testimony, Change's pre-existing infrastructure, including backup systems, was not fully integrated into UnitedHealth's own security standards.</td>
+</tr>
+<tr>
+<td>Feb 12, 2024</td>
+<td>An ALPHV/BlackCat affiliate gains access to a Change Healthcare Citrix remote-access portal using compromised credentials; the portal had no multi-factor authentication enabled, per CEO Andrew Witty's Senate testimony.</td>
+</tr>
+<tr>
+<td>Feb 12–21, 2024</td>
+<td>The attacker moves laterally through internal systems undetected and exfiltrates a large volume of protected health information and personal data.</td>
+</tr>
+<tr>
+<td>Feb 21, 2024</td>
+<td>Ransomware is deployed; UnitedHealth Group discloses that Change Healthcare is experiencing a cyberattack and takes systems offline, disrupting claims processing, prescription fulfillment, and eligibility checks nationwide.</td>
+</tr>
+<tr>
+<td>~Mar 3, 2024</td>
+<td>A payment of roughly $22 million in bitcoin is sent to a wallet associated with the ALPHV/BlackCat group, per Witty's later testimony and contemporaneous blockchain-analysis reporting.</td>
+</tr>
+<tr>
+<td>May 1, 2024</td>
+<td>Andrew Witty testifies before the Senate Finance Committee, confirming the root cause — stolen credentials, no MFA on the Citrix portal — and stating the attack also disabled backup systems inherited from the pre-acquisition Change Healthcare environment.</td>
+</tr>
+<tr>
+<td>Through 2024–2025</td>
+<td>The estimated number of affected individuals is revised upward multiple times as forensic review continues — from an initial notice of &quot;more than 500,&quot; to roughly 100 million, to roughly 190 million.</td>
+</tr>
+<tr>
+<td>Jul 31, 2025</td>
+<td>Change Healthcare files a final breach count with HHS Office for Civil Rights: approximately 192.7 million individuals affected, the largest healthcare data breach on record in the United States.</td>
+</tr>
+</tbody>
+</table>
+<p><em>Note: the exact figure for individuals affected changed materially across the eighteen months following the attack as the investigation matured; the July 2025 HHS OCR filing is treated here as the authoritative final count, not the widely repeated early estimates.</em></p>
+
+        
+            <h3>Control Failures</h3>
+            <table>
+<thead>
+<tr>
+<th>Failure</th>
+<th>NIST SP 800-53 Rev 5 Control Family</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>The Citrix remote-access portal accepted a valid username and password with no second authentication factor required.</td>
+<td><strong>IA-2</strong> — Identification and Authentication (Organizational Users)</td>
+</tr>
+<tr>
+<td>A compromised credential alone was sufficient to reach systems processing sensitive health data for a large share of the US population, with no compensating boundary control limiting what that single login could reach.</td>
+<td><strong>AC-6</strong> — Least Privilege</td>
+</tr>
+<tr>
+<td>The attacker moved laterally through internal systems for roughly nine days without detection.</td>
+<td><strong>SI-4</strong> — System Monitoring</td>
+</tr>
+<tr>
+<td>Backup and recovery infrastructure inherited from a 2022 acquisition had not been integrated into or audited against the parent organization's security baseline before the attack.</td>
+<td><strong>CM-7 / CA-8</strong> — Least Functionality / Penetration Testing (post-acquisition security integration)</td>
+</tr>
+<tr>
+<td>Backup systems were reachable and encryptable from the same compromised environment as production systems, giving the ransomware a path to disable the intended recovery mechanism itself.</td>
+<td><strong>CP-9</strong> — System Backup</td>
+</tr>
+<tr>
+<td>The organization's initial public estimate of individuals affected was revised upward across more than a year, indicating incomplete data-inventory and impact-assessment processes at the time of the incident.</td>
+<td><strong>CP-2 / RA-3</strong> — Contingency Plan / Risk Assessment</td>
+</tr>
+</tbody>
+</table>
+
+        
+            <h3>What Held</h3>
+            <ul>
+<li><strong>Eventual transparency, even when it was costly.</strong> UnitedHealth Group's CEO testified under oath before Congress and walked through the technical root cause in public, rather than issuing only a vague statement — a meaningfully higher bar than many breached organizations clear.</li>
+<li><strong>A federal regulatory backstop existed.</strong> HHS's Office for Civil Rights required a final, corrected breach count, which is what eventually produced the accurate ~192.7 million figure instead of letting an early, understated number stand as the public record.</li>
+<li><strong>The company had the resources to fund emergency provider relief.</strong> UnitedHealth Group advanced billions of dollars to affected pharmacies and providers to keep prescriptions and payments moving during the outage — a mitigation available to few organizations this size, but real, and worth naming as the thing that kept the disruption from becoming a full-blown care crisis on top of a security incident.</li>
+</ul>
+
+        
+            <h3>Sources</h3>
+            <ul>
+<li><a href="https://www.cybersecuritydive.com/news/unitedhealth-change-attack-tech-takeaways/715200/" target="_blank" rel="noopener noreferrer">Change Healthcare cyberattack: 5 technical takeaways from UnitedHealth CEO's testimony — Cybersecurity Dive</a> (primary — reports directly on Andrew Witty's sworn Senate testimony)</li>
+<li><a href="https://www.cbsnews.com/news/unitedhealth-senate-hearing-cyberattack-change-healthcare/" target="_blank" rel="noopener noreferrer">UnitedHealth data breach caused by lack of multifactor authentication, CEO says — CBS News</a> (primary — reports directly on the Senate hearing testimony)</li>
+<li><a href="https://www.congress.gov/crs-product/IN12330" target="_blank" rel="noopener noreferrer">The Change Healthcare Cyberattack and Response Considerations for Policymakers — Congressional Research Service, Congress.gov</a> (primary — nonpartisan congressional research summary)</li>
+<li><a href="https://www.cisa.gov/news-events/cybersecurity-advisories/aa23-353a" target="_blank" rel="noopener noreferrer">#StopRansomware: ALPHV Blackcat — CISA</a> (primary — CISA's own advisory on the ALPHV/BlackCat group's tactics)</li>
+<li><a href="https://www.hipaaguide.net/change-healthcare-data-breach/" target="_blank" rel="noopener noreferrer">Change Healthcare Data Breach: 192.7 Million Affected — The HIPAA Guide</a> (corroboration — final HHS OCR-reported figure)</li>
+<li><a href="https://www.csoonline.com/article/2140608/8-critical-lessons-from-the-change-healthcare-ransomware-catastrophe.html" target="_blank" rel="noopener noreferrer">8 Critical Lessons From the Change Healthcare Ransomware Catastrophe — CSO Online</a> (corroboration)</li>
+</ul>
+<p><strong>Tomorrow's Thread:</strong> Day 25 moves to the internet-facing edge exploitation family — Log4Shell (CVE-2021-44228), where a single logging-library flaw in Java applications became one of the most widely exploited vulnerabilities in history within days of disclosure, because almost nobody could even produce a full inventory of where the vulnerable library was running.</p>
+
+        
+    </article>
+    
+    <article class="brief-section" id="security-advice">
+        <p class="brief-kicker">Senior Security Advice</p>
+        <h2>Break-Glass Emergency Access Accounts</h2>
+        
+            <h3>The Advice</h3>
+            <p>Stand up at least two dedicated break-glass emergency access accounts with permanent admin rights and hardware-key authentication, then treat every single sign-in attempt on them as an active incident.</p>
+
+        
+            <h3>Why It Matters</h3>
+            <p>Modern admin access is layered on purpose: single sign-on, multi-factor authentication (MFA), and conditional access policies that check device health and location before letting anyone in. That layering is also a single point of failure. An identity provider outage, a botched conditional access change, or a mass credential reset can lock every real administrator out of their own tenant at the exact moment someone needs to get in and fix it. That is the incident class break-glass accounts exist to prevent: total lockout during a crisis, with no way to respond because the fix itself requires the access that just disappeared. The quieter failure mode is the opposite problem — an old &quot;just in case&quot; admin account that nobody rotated, nobody monitored, and nobody remembered exists, sitting in the directory as an unwatched door an attacker can walk through with none of the alerting that would catch a normal admin login.</p>
+
+        
+            <h3>How to Implement It</h3>
+            <ol>
+<li>Create at least two cloud-only, non-personal emergency access accounts, hosted on the default tenant domain rather than synced from on-premises directory, each permanently assigned the highest admin role directly — not activated through a privileged identity management workflow, since that activation step is exactly what an outage would break.</li>
+<li>Register a phishing-resistant, hardware-backed credential (a FIDO2 security key) for each account, distinct from the authentication method everyday admins use, and store the physical keys separately with split custody so no single person controls both.</li>
+<li>Exclude these accounts from any conditional access policy that could ever block their sign-in — an enforced policy protecting against the exact scenario the account exists for defeats the purpose.</li>
+<li>Configure alerting so that every sign-in and audit log event from a break-glass account — successful or failed — fires an immediate, high-priority alert to the security team, since legitimate use should be rare enough that any use at all is worth a page.</li>
+<li>Verify the control on a fixed schedule, not just after setup: actually sign in with the account in a controlled window, confirm the alert fires, confirm access still works end-to-end, and rotate the credential immediately after every real or test use.</li>
+</ol>
+
+        
+            <h3>The Pushback You&#39;ll Hear</h3>
+            <p>&quot;We already have single sign-on and conditional access — isn't a bypass account just a backdoor?&quot; The senior-engineer rebuttal: the difference between a backdoor and a break-glass account is visibility. A backdoor is undocumented and unwatched. A break-glass account is documented, defended by a hardware key nobody else uses, physically split between custodians, and wired to alert the moment it's touched. The real backdoor risk is what teams build instead when they skip this step — an admin's personal account with saved credentials and no monitoring, kept &quot;just in case.&quot;</p>
+
+        
+            <h3>Sources</h3>
+            <ul>
+<li>Microsoft Learn, &quot;Manage emergency access accounts in Microsoft Entra ID&quot; — https://learn.microsoft.com/en-us/entra/identity/role-based-access-control/security-emergency-access</li>
+</ul>
+
+        
+    </article>
+    
+    <article class="brief-section" id="talk-track">
+        <p class="brief-kicker">Senior Talk Tracks</p>
+        <h2>Idempotency</h2>
+        
+            
+            <p>Here's a word that sounds like it belongs in a math class, but it's actually one of the most important ideas in automation: idempotency. If you've ever run the same script twice and gotten two different, messy results, you've felt the absence of it firsthand.</p>
+<p>Plain English first. Idempotent means running an operation once and running it fifty times produces the exact same end state. Not &quot;it runs fifty times without crashing&quot; -- the actual state of the system after run one and after run fifty is identical. &quot;Make sure this file exists with this content&quot; is idempotent. &quot;Append this line to this file&quot; is not -- run that one fifty times and you've got fifty duplicate lines.</p>
+<p>Here's why it matters in production. Automation tools like Ansible are built entirely around this idea: a playbook is supposed to describe the end state you want, not a list of one-time actions to perform. That means you can run the exact same playbook against a server that's brand new, a server that's half-configured, or a server you already ran it against yesterday, and get the same safe result every time -- no manual bookkeeping about what's already been done.</p>
+<p>The senior take, the part a junior usually misses: idempotency isn't really about convenience, it's about trust. If your automation is idempotent, you can re-run it after any failure, any network blip, any half-finished deploy, without worrying you'll make things worse. If it's not idempotent, every re-run is a gamble, so people get scared of re-running it -- and a tool nobody trusts to re-run quietly turns back into manual work during every incident, which is exactly when you need automation the most.</p>
+<p>Think of a thermostat instead of a light switch. Flipping a light switch is an action -- do it twice and the light is now back off. A thermostat set to seventy degrees is idempotent -- you can walk over and set it to seventy a hundred times, and the room just stays at seventy. Good automation is a thermostat, not a light switch.</p>
+<p>A natural way to raise this with a colleague is: &quot;if that script failed halfway through, are we confident we can just run it again, or does someone need to go clean something up first?&quot;</p>
+
+        
+            <h3>Key Takeaways</h3>
+            <ol>
+<li>Idempotent means running an operation once or fifty times leaves the system in the exact same end state, not just &quot;doesn't crash on repeat.&quot;</li>
+<li>Ansible playbooks are built around describing a desired end state specifically so they can be re-run safely after any failure.</li>
+<li>Automation nobody trusts to re-run safely quietly turns back into manual work during the exact incidents where automation matters most.</li>
+</ol>
+
+        
+            <h3>Reader Question</h3>
+            <p><strong>&quot;If idempotency is so important, why do so many scripts people write still not have it?&quot;</strong></p>
+<p>Honestly, it's because non-idempotent scripts are faster to write and often work fine the first time, so the gap only shows up later, during a re-run nobody planned for — usually mid-incident, which is the worst possible time to discover it. The fix isn't demanding perfect idempotency everywhere on day one; it's asking the idempotency question specifically for anything that's going to run more than once or get automated into a pipeline, since that's exactly where a non-idempotent script eventually bites someone.</p>
+
+        
+    </article>
+    
+    <article class="brief-section" id="tech-news">
+        <p class="brief-kicker">Tech News</p>
+        
+        
+            
+            <p>One HTTP request, no login required — that's all it took this week to read any file off a GitLab server, including the credentials your build pipeline runs on. If you administer software delivery pipelines, or you're aiming to, today's for you. Two stories: that GitLab flaw, and a new European law that just started a legal clock on how fast the next one has to be reported.</p>
+<p>Start with GitLab. Researchers found a path-traversal bug in GitLab's commits API — the part of GitLab that serves up repository file information — tracked as CVE-2026-85706, and it scores a perfect ten out of ten on the Common Vulnerability Scoring System. An unauthenticated attacker sends one crafted request and reads any file the GitLab service account can see: source code, SSH keys, access tokens, the CI/CD secrets your build pipeline uses to deploy everything downstream. GitLab shipped a fix on September 10th. According to the security firm watchTowr, attackers were already probing for the flaw against its honeypot network within hours of that patch going out, and CISA added it to its Known Exploited Vulnerabilities catalog the next day, flagging it for mandatory forensic triage under a binding directive — meaning federal agencies aren't just told to patch, they're told to go check whether they were already compromised first. Here's my read: a patch tells you the hole is closed, not that nobody walked through it while it was open. If you run GitLab and you're only now applying the fix, don't stop there — check your access logs for that commits API endpoint before assuming you're clean.</p>
+<p>Next up, a story about the clock itself. As of September 11th, the European Union's Cyber Resilience Act requires any manufacturer selling a product with digital elements into the EU — hardware or software — to report an actively exploited vulnerability within 24 hours of discovering it, a fuller technical notification within 72 hours, and a final report within 14 days. And this isn't a future-products rule — it covers what's already on the market today. My take: this changes the math for a lot of companies that treated &quot;we'll patch it eventually and mention it in a blog post&quot; as good enough. A 24-hour reporting clock means you need to already know how you'd detect exploitation and who internally gets the call before the vulnerability shows up, because you can't report what you can't first detect.</p>
+<p>Through-line: whether it's a patch window or a legal deadline, today's lesson is the same — the clock that matters most starts the moment something goes wrong, not when you get around to noticing.</p>
+
+        
+            <h3>Sources</h3>
+            <ul>
+<li><a href="https://watchtowr.com/resources/rapid-reaction-gitlab-critical-path-traversal-vulnerability-cve-2026-85706/" target="_blank" rel="noopener noreferrer">Rapid Reaction: GitLab Path Traversal Vulnerability (CVE-2026-85706) — watchTowr</a></li>
+<li><a href="https://www.bleepingcomputer.com/news/security/gitlab-urges-users-to-patch-max-severity-path-traversal-flaw/" target="_blank" rel="noopener noreferrer">GitLab urges users to patch max severity path traversal flaw — BleepingComputer</a></li>
+<li><a href="https://cybersecuritynews.com/cisa-gitlab-path-traversal/" target="_blank" rel="noopener noreferrer">CISA Warns of GitLab Path Traversal Vulnerability Exploited in Attacks — Cybersecurity News</a></li>
+<li><a href="https://forkast.news/one-http-request-every-file-on-the-server-gitlabs-cvss-10-commits-api-flaw-hits-active-exploitation-within-hours/" target="_blank" rel="noopener noreferrer">One HTTP Request, Every File on the Server: GitLab's CVSS 10 Commits-API Flaw Hits Active Exploitation Within Hours — Forkast News</a></li>
+<li><a href="https://digital-strategy.ec.europa.eu/en/policies/cra-reporting" target="_blank" rel="noopener noreferrer">Cyber Resilience Act — Reporting obligations — European Commission, Shaping Europe's Digital Future</a></li>
+<li><a href="https://www.theregister.com/security/2026/09/11/eus-cyber-resilience-act-starts-the-24-hour-vulnerability-clock/5295821" target="_blank" rel="noopener noreferrer">EU's Cyber Resilience Act starts the 24-hour vulnerability clock — The Register</a></li>
+<li><a href="https://www.crowell.com/en/insights/client-alerts/its-live-the-cyber-resilience-act-reporting-is-mandatory-as-of-today-11-september-2026" target="_blank" rel="noopener noreferrer">It's Live: The Cyber Resilience Act Reporting Is Mandatory as of Today, 11 September 2026 — Crowell &amp; Moring LLP</a></li>
+</ul>
+
+        
+    </article>
+    
+    <section class="brief-subscribe" id="subscribe">
+    <h2>Get The Daily Brief by email</h2>
+    <p>One short email each morning. Unsubscribe anytime.</p>
+    <form action="https://buttondown.com/api/emails/embed-subscribe/cybercider" method="post">
+        <label for="bd-email">Email address</label>
+        <input type="email" name="email" id="bd-email" required autocomplete="email" placeholder="you@example.com">
+        <button type="submit">Subscribe</button>
+    </form>
+</section>
+</main>
+
+    <footer><p class="copyright">The Daily Brief · Eddie Camacho</p></footer>
+<!-- cf-web-analytics (managed by tools/inject_analytics.py) -->
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "f728a20b49cc4a0fbe02cde72f03301c"}'></script>
+</body>
+</html>
