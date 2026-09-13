@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="dark">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'self' https://static.cloudflareinsights.com; connect-src 'self' https://cloudflareinsights.com; img-src 'self' data:; form-action https://buttondown.com; base-uri 'none'; object-src 'none'">
+    <meta name="description" content="The Daily Brief for Monday, September 14, 2026: security incidents, senior security advice, engineering explainers, and tech news.">
+    <title>The Daily Brief · Sep 14, 2026</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="icon" href="../../../favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="../../../style.css">
+    <link rel="stylesheet" href="../../newsletter.css">
+</head>
+<body class="brief-page">
+    <a href="#main-content" class="skip-nav">Skip to main content</a>
+    <nav class="brief-nav">
+        <a href="../../../index.html">← App Hub</a>
+        <a href="../../">All issues</a>
+    </nav>
+    
+<header class="brief-masthead">
+    <p class="brief-eyebrow">THE DAILY BRIEF</p>
+    <h1>Monday, September 14, 2026</h1>
+    <ol class="brief-toc">
+        <li><a href="#current-events">Current Events</a></li><li><a href="#security-advice">Senior Security Advice</a></li><li><a href="#talk-track">Senior Talk Tracks</a></li><li><a href="#tech-news">Tech News</a></li>
+    </ol>
+</header>
+<main id="main-content" class="brief">
+    
+    <article class="brief-section" id="current-events">
+        <p class="brief-kicker">Current Events</p>
+        <h2>The Ivanti Connect Secure Zero-Day Chain</h2>
+        
+            
+            <p>In January 2024, two chained flaws in one of the most common corporate VPN appliances gave a state-linked espionage group unauthenticated remote command execution -- and by the time it went public, hundreds of organizations had already had months of head start against them. Here's how it actually happened.</p>
+<p>Ivanti Connect Secure is an SSL VPN appliance -- the box that sits on the edge of a corporate network and decides who gets in. According to Mandiant's own investigation, a China-nexus threat actor it tracks as UNC5221 began exploiting two vulnerabilities in these appliances as a zero-day starting December 3rd, 2023 -- more than five weeks before Ivanti, Volexity, and CISA jointly disclosed anything in public.</p>
+<p>Here's the chain. The first flaw, CVE-2023-46805, is an authentication bypass -- it let an attacker skip the login screen entirely. The second, CVE-2024-21887, is a command injection flaw reachable only once you're past that login screen. Chained together, an unauthenticated attacker on the open internet could run arbitrary commands as root on the appliance itself -- no credentials, no phishing, no user interaction. Volexity had identified well over seventeen hundred compromised appliances carrying a webshell it named GIFTEDVISITOR within days of disclosure.</p>
+<p>Here's the root cause in one sentence: two vulnerabilities in the code running on an internet-facing edge appliance combined to erase the authentication boundary that appliance existed to enforce, and no patch existed for either one when exploitation began.</p>
+<p>The part that makes this a genuinely senior-level case is what came next. Ivanti's own device shipped with a built-in Integrity Checker Tool meant to detect tampering. Mandiant found the attackers actively defeating it -- disabling the scanner script with a single commented-out line, and tampering with the manifest file it checked against. The tool meant to catch the intrusion was running on the same compromised box the intrusion controlled.</p>
+<p>Here's what held. Volexity's own detection work is what surfaced this at all. CISA issued Emergency Directive 24-01 on January 19th, ordering every federal civilian agency to mitigate immediately, then followed up ordering appliances disconnected within 48 hours if they weren't fully patched. And once Ivanti's internal integrity tool was shown to be tamperable, Ivanti shipped a separate external version -- one that doesn't run from inside the box an attacker might already own.</p>
+<p>Here's what a senior engineer, or a senior ISSO, would change in how they work because of this. Any integrity or file-monitoring baseline that lives on the same host it's protecting has to be treated as untrustworthy the moment that host might be compromised -- which is exactly why a senior engineer keeps the verification baseline external, on read-only or offline storage the production host can't write back to. In a RHEL and Podman lab, that means standing up AIDE with its database stored outside the monitored host, not inside it, and proving a local root compromise still can't erase the evidence.</p>
+
+        
+            <h3>Timeline</h3>
+            <table>
+<thead>
+<tr>
+<th>Date</th>
+<th>Event</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Dec 3, 2023</td>
+<td>Mandiant identifies the earliest confirmed zero-day exploitation of CVE-2023-46805 and CVE-2024-21887 by a suspected China-nexus espionage actor it tracks as UNC5221 — over five weeks before public disclosure.</td>
+</tr>
+<tr>
+<td>Jan 10, 2024</td>
+<td>Ivanti, Volexity, and Mandiant/CISA jointly disclose CVE-2023-46805 (authentication bypass, CVSS 8.2) and CVE-2024-21887 (command injection, CVSS 9.1) in Ivanti Connect Secure and Policy Secure gateways. No patch exists yet; Ivanti issues an XML mitigation workaround. Volexity publishes its own incident-response account of active exploitation.</td>
+</tr>
+<tr>
+<td>Jan 14, 2024</td>
+<td>Volexity reports it has identified well over 1,700 Ivanti Connect Secure appliances compromised with the GIFTEDVISITOR webshell.</td>
+</tr>
+<tr>
+<td>Jan 16, 2024</td>
+<td>Full exploit chain details become public; mass, opportunistic exploitation by additional actors surges, peaking within 24 hours.</td>
+</tr>
+<tr>
+<td>Jan 19, 2024</td>
+<td>CISA issues Emergency Directive ED 24-01, ordering all Federal Civilian Executive Branch agencies to mitigate, hunt for compromise, and report status.</td>
+</tr>
+<tr>
+<td>Jan 31, 2024</td>
+<td>Ivanti discloses two more vulnerabilities, CVE-2024-21888 (privilege escalation, CVSS 8.8) and CVE-2024-21893 (server-side request forgery, CVSS 8.2); first real patches begin shipping for a subset of affected versions.</td>
+</tr>
+<tr>
+<td>Feb 1–2, 2024</td>
+<td>CISA issues Supplemental Direction v1 to ED 24-01, requiring FCEB agencies to disconnect any unpatched appliance within 48 hours (by Feb 2, 11:59 PM).</td>
+</tr>
+<tr>
+<td>Feb 8, 2024</td>
+<td>Ivanti discloses a fifth vulnerability, CVE-2024-22024 (XXE, CVSS 8.3); CISA issues Supplemental Direction v2.</td>
+</tr>
+<tr>
+<td>Feb 27–29, 2024</td>
+<td>Mandiant publishes further &quot;Cutting Edge&quot; research documenting attacker tampering with and evasion of Ivanti's built-in Integrity Checker Tool; CISA/joint advisory AA24-060B (&quot;Threat Actors Exploit Multiple Vulnerabilities in Ivanti Connect Secure and Policy Secure Gateways&quot;) is published Feb 29, 2024.</td>
+</tr>
+</tbody>
+</table>
+<p><em>Note: the &quot;1,700+ compromised appliances&quot; figure is Volexity's own reported count from its January 14, 2024 research, not a CISA- or Ivanti-confirmed total; later, separate campaigns against different Ivanti CVEs (e.g., CVE-2025-0282 in 2025) produced different compromise counts and are not conflated with this incident here.</em></p>
+
+        
+            <h3>Control Failures</h3>
+            <table>
+<thead>
+<tr>
+<th>Failure</th>
+<th>NIST SP 800-53 Rev 5 Control Family</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>The Connect Secure/Policy Secure login process could be bypassed entirely by an unauthenticated remote attacker (CVE-2023-46805).</td>
+<td><strong>IA-2</strong> — Identification and Authentication (Organizational Users)</td>
+</tr>
+<tr>
+<td>Once past the login boundary, attacker-supplied input reached a command-injection path with no validation (CVE-2024-21887).</td>
+<td><strong>SI-10</strong> — Information Input Validation</td>
+</tr>
+<tr>
+<td>No vendor patch existed for either chained vulnerability during the five-plus weeks of confirmed pre-disclosure zero-day exploitation.</td>
+<td><strong>SI-2</strong> — Flaw Remediation</td>
+</tr>
+<tr>
+<td>The device's built-in Integrity Checker Tool ran on the same host an attacker with root could already tamper with, and was observed being disabled and having its manifest altered.</td>
+<td><strong>SI-7</strong> — Software, Firmware, and Information Integrity</td>
+</tr>
+<tr>
+<td>The VPN appliance functioned as the sole boundary control for remote access, with no compensating segmentation limiting what a compromised appliance could reach next.</td>
+<td><strong>SC-7</strong> — Boundary Protection</td>
+</tr>
+<tr>
+<td>Attackers cleared local system logs via a built-in utility to cover their tracks, reducing what defenders could reconstruct after the fact.</td>
+<td><strong>AU-6 / AU-9</strong> — Audit Record Review / Protection of Audit Information</td>
+</tr>
+</tbody>
+</table>
+
+        
+            <h3>What Held</h3>
+            <ul>
+<li><strong>Volexity's own detection work surfaced the zero-day at all.</strong> Incident-response findings at a customer environment are what led to coordinated disclosure with Ivanti and CISA, rather than the exploitation continuing silently.</li>
+<li><strong>CISA's Emergency Directive forced fast, mandatory action.</strong> ED 24-01, issued January 19, gave every federal civilian agency a hard deadline to mitigate, hunt, and report — and the follow-up supplemental direction forced disconnection of unpatched appliances within 48 hours rather than leaving it to agency discretion.</li>
+<li><strong>Ivanti shipped an out-of-band verification path once the internal one was shown to be untrustworthy.</strong> An external Integrity Checker Tool, run from outside the potentially compromised appliance, is a direct, concrete response to the specific way the internal tool was defeated.</li>
+<li><strong>Public, detailed threat-intel sharing (Mandiant's &quot;Cutting Edge&quot; series) let the broader defender community detect this</strong>, not just Ivanti's own customers — naming specific webshells, file paths, and log event IDs that any organization could hunt for immediately.</li>
+</ul>
+
+        
+            <h3>Sources</h3>
+            <ul>
+<li><a href="https://www.cisa.gov/news-events/alerts/2024/01/10/ivanti-releases-security-update-connect-secure-and-policy-secure-gateways" target="_blank" rel="noopener noreferrer">Ivanti Releases Security Update for Connect Secure and Policy Secure Gateways — CISA</a> (primary)</li>
+<li><a href="https://www.cisa.gov/news-events/cybersecurity-advisories/aa24-060b" target="_blank" rel="noopener noreferrer">Threat Actors Exploit Multiple Vulnerabilities in Ivanti Connect Secure and Policy Secure Gateways (AA24-060B) — CISA</a> (primary)</li>
+<li><a href="https://www.cisa.gov/news-events/directives/ed-24-01-mitigate-ivanti-connect-secure-and-ivanti-policy-secure-vulnerabilities" target="_blank" rel="noopener noreferrer">ED 24-01: Mitigate Ivanti Connect Secure and Ivanti Policy Secure Vulnerabilities — CISA</a> (primary)</li>
+<li><a href="https://www.volexity.com/blog/2024/01/10/active-exploitation-of-two-zero-day-vulnerabilities-in-ivanti-connect-secure-vpn/" target="_blank" rel="noopener noreferrer">Active Exploitation of Two Zero-Day Vulnerabilities in Ivanti Connect Secure VPN — Volexity</a> (primary)</li>
+<li><a href="https://cloud.google.com/blog/topics/threat-intelligence/investigating-ivanti-zero-day-exploitation" target="_blank" rel="noopener noreferrer">Cutting Edge: Investigating Ivanti Connect Secure VPN Zero-Day Exploitation — Google Cloud / Mandiant Blog</a> (primary)</li>
+<li><a href="https://cloud.google.com/blog/topics/threat-intelligence/investigating-ivanti-exploitation-persistence/" target="_blank" rel="noopener noreferrer">Cutting Edge, Part 3: Investigating Ivanti Connect Secure VPN Exploitation and Persistence Attempts — Google Cloud / Mandiant Blog</a> (primary)</li>
+<li><a href="https://nvd.nist.gov/vuln/detail/CVE-2023-46805" target="_blank" rel="noopener noreferrer">CVE-2023-46805 — NVD</a> (primary)</li>
+<li><a href="https://nvd.nist.gov/vuln/detail/CVE-2024-21887" target="_blank" rel="noopener noreferrer">CVE-2024-21887 — NVD</a> (primary)</li>
+<li><a href="https://www.helpnetsecurity.com/2024/01/16/ivanti-vpn-compromised/" target="_blank" rel="noopener noreferrer">1,700 Ivanti VPN devices compromised. Are yours among them? — Help Net Security</a></li>
+<li><a href="https://www.bleepingcomputer.com/news/security/cisa-orders-federal-agencies-to-disconnect-ivanti-vpn-appliances-by-saturday/" target="_blank" rel="noopener noreferrer">CISA orders federal agencies to disconnect Ivanti VPN appliances by Saturday — BleepingComputer</a></li>
+</ul>
+<p><strong>Tomorrow's Thread:</strong> Day 26 moves to the container/orchestration family — the 2018 Tesla Kubernetes dashboard cryptojacking incident, where an exposed, unauthenticated Kubernetes dashboard with no RBAC restrictions gave attackers a direct path to run cryptomining workloads inside Tesla's AWS environment and reach cloud credentials stored in a pod.</p>
+
+        
+    </article>
+    
+    <article class="brief-section" id="security-advice">
+        <p class="brief-kicker">Senior Security Advice</p>
+        <h2>Least Privilege via AWS IAM Permission Boundaries</h2>
+        
+            <h3>The Advice</h3>
+            <p>Give every IAM user, role, and service account only the permissions it needs to do its job today, and enforce that ceiling with a permission boundary so no one can grant themselves more tomorrow.</p>
+
+        
+            <h3>Why It Matters</h3>
+            <p>Cloud breaches rarely start with a stolen root credential. They start with one over-permissioned role — a CI/CD pipeline, a Lambda function, a junior engineer's account — that has far more access than its actual job requires. Once an attacker (or a mistaken script) gets that credential, the blast radius is whatever that identity can touch, not just what it was supposed to touch. The incident class this prevents is privilege escalation after initial access: a compromised low-value account pivots into admin-level control because nothing stopped it from creating a new role, attaching a broader policy, or reaching into unrelated resources. Least privilege doesn't stop the initial foothold, but it caps the damage once someone gets in, which is exactly why NIST's access control guidance treats it as a baseline requirement, not an optional hardening step.</p>
+
+        
+            <h3>How to Implement It</h3>
+            <ol>
+<li>Start every new role or user at zero permissions and add only what's needed, rather than starting broad and trying to trim later — trimming after the fact rarely happens.</li>
+<li>Attach a permission boundary to any role that's allowed to create other IAM entities, so even a misconfigured or malicious policy that role writes can never exceed the boundary's ceiling.</li>
+<li>Run AWS IAM Access Analyzer against production roles to generate right-sized policies from actual CloudTrail activity, instead of guessing what a role needs.</li>
+<li>Verify the control is working, not just present: pull the last-accessed data for each role's attached policies and confirm unused permissions are actually being flagged and removed, not just visible in a report nobody reads.</li>
+<li>Put access reviews on a calendar — quarterly at minimum — and revoke anything that can't be justified against a current business need, since permissions granted for a project that ended six months ago are still live risk today.</li>
+</ol>
+
+        
+            <h3>The Pushback You&#39;ll Hear</h3>
+            <p>&quot;We don't have time to scope permissions this tightly — it'll slow the team down.&quot; The senior-engineer rebuttal: broad permissions don't save time, they defer cost to incident response. A scoped policy takes an extra hour to write; an over-permissioned role that gets compromised takes days to contain and explain. Tools like IAM Access Analyzer also remove most of the manual guesswork, so the &quot;it's too slow&quot; objection mostly describes doing it the hard way.</p>
+
+        
+            <h3>Sources</h3>
+            <ul>
+<li>AWS Well-Architected Framework, &quot;SEC03-BP02 Grant least privilege access&quot; — https://docs.aws.amazon.com/wellarchitected/latest/framework/sec_permissions_least_privileges.html</li>
+<li>AWS Identity and Access Management, &quot;Security best practices in IAM&quot; — https://docs.aws.amazon.com/IAM/latest/UserGuide/best-practices.html</li>
+<li>NIST, &quot;least privilege&quot; (NIST SP 800-53 AC-6 concept definition), CSRC Glossary — https://csrc.nist.gov/glossary/term/least_privilege</li>
+</ul>
+
+        
+    </article>
+    
+    <article class="brief-section" id="talk-track">
+        <p class="brief-kicker">Senior Talk Tracks</p>
+        <h2>Agent Tool-Use Is the New Attack Surface</h2>
+        
+            
+            <p>There's a new kind of AI deployment showing up in production right now, and it changes the security conversation in a way most teams haven't caught up to yet: AI agents that don't just answer questions, they take actions. Today's topic is why giving an agent tools to use is really giving it a security boundary to defend.</p>
+<p>Plain English first. A basic chatbot reads text and writes text back -- worst case, it says something wrong. An agent is different: it's connected to tools -- it can call an API, run a database query, read or write files, kick off a deployment. The moment you wire up those tools, the agent isn't just talking anymore, it's acting, using whatever permissions you handed it to do the acting.</p>
+<p>Here's why that matters in production. Say you build a support agent and give it a tool to look up a customer's account. To avoid managing a pile of separate permission scopes, someone wires that tool to a service account with broad database access -- read and write, across every customer, not just the one ticket in front of it. The agent behaves fine in testing. Then a crafted input from an untrusted user gets it to call that same tool in a way nobody intended -- and now the blast radius isn't &quot;the chatbot said something embarrassing,&quot; it's &quot;the chatbot touched data it should never have reached.&quot;</p>
+<p>The senior take, the part most teams miss early on: the risk was never really about how smart the model is or how well it resists a bad prompt. It's about the permissions sitting behind the tool call. A model confused for one turn is a nuisance. A model confused while holding admin-level database access is an incident. So the real question isn't &quot;can we stop the agent from being tricked&quot; -- you can't fully guarantee that -- it's &quot;if it is tricked, what's the worst it's actually able to do.&quot;</p>
+<p>Think of it like handing an enthusiastic new intern a master key to the whole building instead of just the one door they need, because cutting individual keys felt like extra work. The intern's judgment isn't the failure point -- the master key is.</p>
+<p>A good way to raise this at work: &quot;before we wire this agent up to that tool, what's the actual blast radius if it calls it the wrong way?&quot;</p>
+
+        
+            <h3>Key Takeaways</h3>
+            <ol>
+<li>Every tool connected to an AI agent should be scoped to the narrowest permission that task actually needs, because that scope becomes the agent's real attack surface.</li>
+<li>You can reduce how often an agent gets tricked, but you can't guarantee it never will, so the permissions behind its tools have to assume it eventually will.</li>
+<li>Agent security is less about model intelligence and more about blast-radius engineering -- bounding the damage a confused or manipulated action can cause.</li>
+</ol>
+
+        
+            <h3>Reader Question</h3>
+            <p><strong>&quot;If prompt injection can't be fully solved, why bother building any input-side defenses at all?&quot;</strong></p>
+<p>Because input-side defenses and permission scoping aren't competing solutions, they're two different layers, and neither one has to be perfect on its own. Even an imperfect filter that blocks most injection attempts buys real value, as long as the permissions behind the tool assume it will occasionally fail -- that way a rare successful injection becomes a contained mistake instead of a full-blown incident. I'd rather have a decent input filter plus tight permissions than a perfect filter plus no permission boundary at all, because only one of those failure modes is survivable.</p>
+
+        
+    </article>
+    
+    <article class="brief-section" id="tech-news">
+        <p class="brief-kicker">Tech News</p>
+        
+        
+            
+            <p>A Russian military hacking group spent months walking through the front door of Cisco's flagship firewall management platform, using a bug Cisco has now patched for the third time this year. If your firewalls are managed from that console, the system meant to protect your network was the way in. Also today: a maximum-severity GitLab flaw that lets an attacker with zero credentials pull your CI/CD secrets in one request, and an Adobe Commerce zero-day that hit stores before a patch existed. Here's what you need to know.</p>
+<p>First, Cisco. CVE-2026-20079 is an authentication bypass in Secure Firewall Management Center's web interface. CISA — the Cybersecurity and Infrastructure Security Agency — added it to its exploited-vulnerabilities catalog with a September 12th federal deadline. Cisco Talos says multiple threat-actor clusters are exploiting it, including Russia's GRU-linked Sandworm group, which chained it with a second bug to deploy Cyclops Blink malware — FMC's third active-exploitation entry this year. This isn't a flaw in the traffic path; it's in the management plane, the layer that configures the firewall. Compromise that, and an attacker doesn't breach your network — they redraw the map. A senior engineer's first move: confirm that interface was never internet-facing, then hunt for Cyclops Blink indicators if it was.</p>
+<p>Next up, GitLab. CVE-2026-85706, a perfect-10 path traversal flaw in the commits API, lets one unauthenticated request pull arbitrary files off a self-managed server — SSH keys, database credentials, deploy tokens, CI/CD variables. GitLab shipped fixes September 10th; CISA added it to the catalog the next day, after watchTowr saw scanning within 24 hours of disclosure — GitLab's second critical flaw under active attack in a month. Teams that got this right already treat CI/CD as Tier-Zero infrastructure: patch on the vendor's clock, and rotate anything a credential-bearing flaw exposed instead of closing the ticket at the version bump.</p>
+<p>Which brings us to Adobe Commerce, briefly. Researchers call it StyleSmuggler — CVE-2026-75650, unauthenticated remote code execution in Magento. Attackers exploited it from September 4th, three days before Adobe's hotfix landed, planting a Rust-based Linux backdoor and PHP web shells. Adobe's guidance is blunt: patching stops new attacks, not old ones — merchants still have to rotate encryption keys, passwords, and payment credentials. My read: that's the real lesson of a true zero-day — a web application firewall in front of payment data buys you the days a patch can't.</p>
+<p>Three vendors, one pattern: the real perimeter now is a management console, an API endpoint, a template engine — not the edge firewall on the whiteboard. Patched doesn't mean clean; it means the door's locked, not that nobody walked through.</p>
+
+        
+            <h3>Sources</h3>
+            <ul>
+<li><a href="https://www.bleepingcomputer.com/news/security/cisco-confirms-cve-2026-20079-secure-fmc-flaw-exploited-in-attacks/" target="_blank" rel="noopener noreferrer">Cisco confirms CVE-2026-20079 Secure FMC flaw exploited in attacks — BleepingComputer</a></li>
+<li><a href="https://www.securityweek.com/organizations-warned-of-cisco-secure-fmc-exploitation/" target="_blank" rel="noopener noreferrer">Organizations Warned of Cisco Secure FMC Exploitation — SecurityWeek</a></li>
+<li><a href="https://thehackernews.com/2026/09/cisa-flags-exploited-cisco-citrix.html" target="_blank" rel="noopener noreferrer">CISA Flags Exploited Cisco, Citrix, Fortinet Flaws, Sets Sept. 12 Federal Patch Deadline — The Hacker News</a></li>
+<li><a href="https://www.bleepingcomputer.com/news/security/gitlab-urges-users-to-patch-max-severity-path-traversal-flaw/" target="_blank" rel="noopener noreferrer">GitLab urges users to patch max severity path traversal flaw — BleepingComputer</a></li>
+<li><a href="https://watchtowr.com/resources/rapid-reaction-gitlab-critical-path-traversal-vulnerability-cve-2026-85706/" target="_blank" rel="noopener noreferrer">Rapid Reaction: GitLab Path Traversal Vulnerability (CVE-2026-85706) — watchTowr</a></li>
+<li><a href="https://fieldeffect.com/blog/gitlab-fixes-critical-vulnerability-probing-begins" target="_blank" rel="noopener noreferrer">GitLab fixes critical vulnerability as internet-wide probing begins — Field Effect</a></li>
+<li><a href="https://www.bleepingcomputer.com/news/security/adobe-fixes-critical-magento-zero-day-exploited-to-backdoor-servers/" target="_blank" rel="noopener noreferrer">Adobe fixes critical Magento zero-day exploited to backdoor servers — BleepingComputer</a></li>
+<li><a href="https://thehackernews.com/2026/09/adobe-patches-magento-zero-day.html" target="_blank" rel="noopener noreferrer">Adobe Patches Magento Zero-Day Exploited to Deploy Rust Backdoor and PHP Web Shell — The Hacker News</a></li>
+<li><a href="https://sansec.io/research/stylesmuggler-0day" target="_blank" rel="noopener noreferrer">StyleSmuggler: Magento and Adobe Commerce 0-day RCE (CVE-2026-75650) under active attack — Sansec</a></li>
+</ul>
+
+        
+    </article>
+    
+    <section class="brief-subscribe" id="subscribe">
+    <h2>Get The Daily Brief by email</h2>
+    <p>One short email each morning. Unsubscribe anytime.</p>
+    <form action="https://buttondown.com/api/emails/embed-subscribe/cybercider" method="post">
+        <label for="bd-email">Email address</label>
+        <input type="email" name="email" id="bd-email" required autocomplete="email" placeholder="you@example.com">
+        <button type="submit">Subscribe</button>
+    </form>
+</section>
+</main>
+
+    <footer><p class="copyright">The Daily Brief · Eddie Camacho</p></footer>
+<!-- cf-web-analytics (managed by tools/inject_analytics.py) -->
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "f728a20b49cc4a0fbe02cde72f03301c"}'></script>
+</body>
+</html>
