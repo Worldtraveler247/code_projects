@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="dark">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'self' https://static.cloudflareinsights.com; connect-src 'self' https://cloudflareinsights.com; img-src 'self' data:; form-action https://buttondown.com; base-uri 'none'; object-src 'none'">
+    <meta name="description" content="The Daily Brief for Tuesday, September 15, 2026: security incidents, senior security advice, engineering explainers, and tech news.">
+    <title>The Daily Brief · Sep 15, 2026</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="icon" href="../../../favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="../../../style.css">
+    <link rel="stylesheet" href="../../newsletter.css">
+</head>
+<body class="brief-page">
+    <a href="#main-content" class="skip-nav">Skip to main content</a>
+    <nav class="brief-nav">
+        <a href="../../../index.html">← App Hub</a>
+        <a href="../../">All issues</a>
+    </nav>
+    
+<header class="brief-masthead">
+    <p class="brief-eyebrow">THE DAILY BRIEF</p>
+    <h1>Tuesday, September 15, 2026</h1>
+    <ol class="brief-toc">
+        <li><a href="#current-events">Current Events</a></li><li><a href="#security-advice">Senior Security Advice</a></li><li><a href="#talk-track">Senior Talk Tracks</a></li><li><a href="#tech-news">Tech News</a></li>
+    </ol>
+</header>
+<main id="main-content" class="brief">
+    
+    <article class="brief-section" id="current-events">
+        <p class="brief-kicker">Current Events</p>
+        <h2>The Tesla Kubernetes Dashboard Cryptojacking Incident</h2>
+        
+            
+            <p>In early 2018, a security research firm found one of Tesla's cloud consoles wide open on the internet -- no password, no login screen, nothing -- and inside it, attackers were quietly mining cryptocurrency on Tesla's own dime. Here's how it actually happened.</p>
+<p>Tesla, like a lot of companies, ran part of its infrastructure on Kubernetes -- the system that automates deploying and managing containerized applications across a fleet of servers. Kubernetes ships with an optional web-based dashboard for managing a cluster, and according to the security firm RedLock, one of Tesla's Kubernetes dashboards was reachable from the open internet with no authentication required at all.</p>
+<p>Here's the chain. Anyone who found that dashboard could see straight into the cluster -- no login, no multi-factor prompt, nothing. Inside one of the exposed pods, RedLock's researchers found access keys for Tesla's Amazon Web Services account, sitting in plain environment variables. Whoever got there first used those keys to reach Tesla's AWS environment and quietly stood up cryptocurrency-mining software across it. And this wasn't a smash-and-grab -- the attackers kept CPU usage low to avoid tripping obvious alarms, ran the mining software on a non-standard port, and hid their mining pool's server behind Cloudflare instead of connecting to a known public pool address that security tools might flag.</p>
+<p>Here's the root cause in one sentence: an administrative console that should never have been reachable from the internet was reachable from the internet, and it was sitting one click away from live cloud credentials.</p>
+<p>Here's what held. RedLock's cloud security monitoring is what caught this at all -- not Tesla's own internal alerting. And once notified, Tesla fixed it within hours and says the exposure was limited to internally used engineering test cars, with no indication customer vehicle safety, security, or privacy was affected.</p>
+<p>Here's what a senior engineer, or a senior ISSO, would change in how they work because of this. An administrative dashboard is not a public-facing product, and it should never be reachable without a network boundary and an authentication layer in front of it -- full stop, no exceptions for internal tooling. And any credential sitting in a pod's environment variables should be treated as one misconfigured ingress rule away from being public, which is exactly why short-lived, tightly scoped credentials and a locked-down Kubernetes dashboard are both non-negotiable in a RHEL, Podman, and AWS environment running any container orchestration at all.</p>
+
+        
+            <h3>Timeline</h3>
+            <table>
+<thead>
+<tr>
+<th>Date</th>
+<th>Event</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>~Jan 2018</td>
+<td>A Tesla Kubernetes administration console is left reachable from the open internet with no authentication enabled.</td>
+</tr>
+<tr>
+<td>Jan 30, 2018</td>
+<td>RedLock's Cloud Security Intelligence (CSI) team discovers the exposed dashboard and unusual cryptomining activity inside Tesla's AWS environment; RedLock notifies Tesla immediately.</td>
+</tr>
+<tr>
+<td>Jan 30 – Feb 2018</td>
+<td>Tesla remediates the exposure; RedLock's researchers report the fix was applied within hours of notification.</td>
+</tr>
+<tr>
+<td>Feb 20, 2018</td>
+<td>RedLock publishes its findings publicly as part of its Cloud Security Trends report; Tesla confirms the incident to reporters, stating impact was limited to internally used engineering test cars.</td>
+</tr>
+<tr>
+<td>Feb 20–21, 2018</td>
+<td>Widespread press coverage (Fortune, CNBC, TechCrunch, Electrek) reports the technical details: exposed dashboard, leaked AWS keys, stealth cryptomining techniques including Cloudflare-fronted mining pool traffic.</td>
+</tr>
+<tr>
+<td>Following weeks</td>
+<td>Tesla's bug bounty program credits RedLock's disclosure; RedLock donates its bounty award to charity. The incident becomes a widely cited case study in Kubernetes dashboard hardening guidance across the industry.</td>
+</tr>
+</tbody>
+</table>
+<p><em>Note: RedLock's own report is the origin of the technical details — the exposed dashboard, the plaintext AWS keys in pod environment variables, and the stealth mining techniques. The exact dollar value of the stolen compute was never publicly confirmed by Tesla or RedLock, and reporting differs on how many pods were involved; treat any specific pod count you see elsewhere as secondary-source estimation, not a confirmed figure.</em></p>
+
+        
+            <h3>Control Failures</h3>
+            <table>
+<thead>
+<tr>
+<th>Failure</th>
+<th>NIST SP 800-53 Rev 5 Control Family</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>The Kubernetes administrative dashboard was reachable from the open internet with no login of any kind required.</td>
+<td><strong>IA-2</strong> — Identification and Authentication (Organizational Users)</td>
+</tr>
+<tr>
+<td>No network boundary control (firewall rule, VPN, private network) restricted access to an internal administrative console.</td>
+<td><strong>SC-7</strong> — Boundary Protection</td>
+</tr>
+<tr>
+<td>AWS access keys were stored in plaintext in a pod's environment variables rather than issued as short-lived, scoped credentials.</td>
+<td><strong>IA-5</strong> — Authenticator Management</td>
+</tr>
+<tr>
+<td>The exposed dashboard and the pod carrying it appear to have had broader access than an administrative console needed.</td>
+<td><strong>AC-6</strong> — Least Privilege</td>
+</tr>
+<tr>
+<td>Tesla's own internal monitoring did not catch the intrusion or the resulting unusual cloud compute activity — an external firm did.</td>
+<td><strong>SI-4</strong> — System Monitoring</td>
+</tr>
+<tr>
+<td>No process existed to routinely audit internet-facing exposure of internal administrative tooling before this incident surfaced it.</td>
+<td><strong>CA-7</strong> — Continuous Monitoring</td>
+</tr>
+</tbody>
+</table>
+
+        
+            <h3>What Held</h3>
+            <ul>
+<li><strong>A third-party cloud security monitoring service caught what internal tooling didn't.</strong> RedLock's external scanning is the only reason this was found and fixed instead of continuing indefinitely — a strong argument for not relying solely on in-house detection.</li>
+<li><strong>Tesla's remediation was fast.</strong> Once notified, the exposed dashboard was locked down within hours, not days — the kind of response time that limits how long a known gap stays open.</li>
+<li><strong>Blast radius stayed contained.</strong> Tesla's own statement said the impact was limited to internally used engineering test cars, with no indication customer privacy, vehicle safety, or vehicle security was compromised — naming that boundary matters as much as naming the failure.</li>
+<li><strong>A working bug bounty program turned an external researcher into a partner instead of an adversary.</strong> RedLock disclosed responsibly, was credited and compensated through Tesla's program, and the incident became public on Tesla's own remediation timeline rather than through a leak.</li>
+</ul>
+
+        
+            <h3>Sources</h3>
+            <ul>
+<li><a href="https://cyberscoop.com/tesla-cryptomining-redlock-cloud-breach/" target="_blank" rel="noopener noreferrer">Cloud Security Trends — RedLock CSI Team, February 2018 findings on Tesla, as reported by CyberScoop</a> (primary — direct reporting on RedLock's original research and Tesla's own statement)</li>
+<li><a href="https://www.cnbc.com/2018/02/21/hackers-hijack-teslas-cloud-system-to-mine-cryptocurrency-redlock.html" target="_blank" rel="noopener noreferrer">Hackers hijack Tesla's cloud system to mine cryptocurrency: RedLock — CNBC</a> (primary — carries Tesla's official statement in full)</li>
+<li><a href="https://electrek.co/2018/02/20/tesla-cloud-hijacked-hackers-mine-cryptocurrencies/" target="_blank" rel="noopener noreferrer">Tesla's cloud was 'hijacked' by hackers to mine cryptocurrencies — Electrek</a></li>
+<li><a href="https://techcrunch.com/2018/02/20/poor-cloud-security-let-hackers-mine-cryptocurrency-on-teslas-dime/" target="_blank" rel="noopener noreferrer">Poor cloud security let hackers mine cryptocurrency on Tesla's dime — TechCrunch</a></li>
+<li><a href="https://www.coindesk.com/markets/2018/02/21/teslas-cloud-hit-by-crypto-mining-malware-attack" target="_blank" rel="noopener noreferrer">Tesla's Cloud Hit By Crypto Mining Malware Attack — CoinDesk</a></li>
+<li><a href="https://blog.heptio.com/on-securing-the-kubernetes-dashboard-16b09b1b7aca" target="_blank" rel="noopener noreferrer">On Securing the Kubernetes Dashboard — Heptio (Joe Beda)</a> (primary — Kubernetes community's own technical response and hardening guidance written in direct response to this incident)</li>
+</ul>
+<p><strong>Tomorrow's Thread:</strong> Day 27 moves to the software supply chain family — the SolarWinds SUNBURST compromise, where a trojanized update to network-monitoring software distributed a backdoor to roughly 18,000 organizations, including multiple US federal agencies, and went undetected for months.</p>
+
+        
+    </article>
+    
+    <article class="brief-section" id="security-advice">
+        <p class="brief-kicker">Senior Security Advice</p>
+        <h2>Deploy Endpoint Detection and Response on Every Endpoint</h2>
+        
+            <h3>The Advice</h3>
+            <p>Put endpoint detection and response (EDR) on every server, workstation, and laptop in the organization, centrally managed, with alerts routed to a human — not just installed and forgotten.</p>
+
+        
+            <h3>Why It Matters</h3>
+            <p>Traditional antivirus checks a file against a list of known bad signatures and misses anything new. EDR instead watches behavior on the endpoint itself — a process spawning a shell, a script disabling logging, a binary reaching for credentials it has no business touching — and can isolate the machine or kill the process the moment that shows up. Without it, an attacker who lands on one laptop or server gets a quiet window to dump credentials, map the network, and reach for the next machine, with nothing on that endpoint watching the behavior itself. The incident class this stops is exactly the one CISA calls out in its ransomware guidance: an initial foothold that goes undetected long enough for the attacker to escalate and spread before anyone notices. By the time a ransom note appears, EDR was either missing, misconfigured, or its alerts never reached a person who could act.</p>
+
+        
+            <h3>How to Implement It</h3>
+            <ol>
+<li>Deploy an EDR agent to every server, workstation, and laptop — not just the ones that feel high-risk. CIS Control 10 is explicit that effective malware defense means EDR or anti-malware tooling on all servers, workstations, and laptops, managed centrally, not a patchwork of coverage.</li>
+<li>Configure the tool to escalate warnings and indicators to security personnel automatically, rather than leaving alerts to pile up in a console nobody watches.</li>
+<li>Enable behavior-based detection, not just signature matching, so the tool catches new or fileless techniques instead of only known malware.</li>
+<li>Verify coverage, not just installation: run an automated inventory comparison between your asset list and your EDR console weekly, and treat any endpoint missing the agent as a finding, not a rounding error.</li>
+<li>Verify the control actually works: run a benign, pre-approved test detection (most EDR vendors ship one) on a schedule and confirm it generates a real alert that reaches an analyst — an EDR agent that's installed but silently failing to report is functionally the same as no EDR at all.</li>
+</ol>
+
+        
+            <h3>The Pushback You&#39;ll Hear</h3>
+            <p>&quot;We already have antivirus, isn't that enough?&quot; The senior-engineer rebuttal: signature-based antivirus stops known malware; it doesn't watch behavior, and most real intrusions today don't rely on malware a scanner would recognize. CIS Controls treat EDR as the modern baseline specifically because it catches the process-level behavior — credential dumping, lateral movement, disabled logging — that a signature scan walks right past. Antivirus is a floor, not a substitute.</p>
+
+        
+            <h3>Sources</h3>
+            <ul>
+<li>CIS Control 10: Malware Defenses — https://www.cisecurity.org/controls/malware-defenses</li>
+<li>CISA #StopRansomware Guide — https://www.cisa.gov/stopransomware/ransomware-guide</li>
+</ul>
+
+        
+    </article>
+    
+    <article class="brief-section" id="talk-track">
+        <p class="brief-kicker">Senior Talk Tracks</p>
+        <h2>What an Admission Controller Buys You</h2>
+        
+            
+            <p>If you've worked with Kubernetes for a while, you've probably heard the term &quot;admission controller&quot; and mentally filed it under &quot;some validation thing.&quot; Today I want to give you the senior version of that idea, because it's actually one of the more powerful levers in the whole system.</p>
+<p>Plain English first. When you ask Kubernetes to create something -- a pod, a deployment, whatever -- that request doesn't go straight into the cluster. It passes through a checkpoint first. An admission controller is a piece of code that sits at that checkpoint and gets to look at every single object before it's allowed to exist, and either let it through, change it, or reject it outright.</p>
+<p>Here's why that matters in production. Say your organization has a rule: no container runs as root. You could try to catch that in code review, or hope your CI pipeline flags it. But someone will always find a path around a rule that only lives in a process. An admission controller enforces it at the one point nothing can bypass -- the literal moment before the object is allowed to exist in the cluster. Write a policy that says &quot;reject any pod requesting to run as root,&quot; and it doesn't matter if that pod came from a careful engineer, a rushed hotfix, or a compromised CI pipeline -- it never gets created.</p>
+<p>The senior take, the part a junior engineer usually misses: most people think of Kubernetes security as &quot;what can a pod do once it's running&quot; -- network policies, resource limits, that kind of thing. An admission controller moves the question earlier: &quot;should this thing have ever been allowed to exist in the first place.&quot; That's a completely different, and much stronger, security posture. You're not cleaning up after a bad deployment, you're refusing to let it happen.</p>
+<p>Think of it like airport security instead of a police patrol downtown. A patrol reacts to trouble after someone's already inside the city doing something. Airport security stops the wrong thing from ever getting on the plane in the first place. An admission controller is the checkpoint, not the patrol.</p>
+<p>A good way to raise this at work: &quot;before we ship this, do our admission controllers actually block what we think they block, or are we just hoping nobody writes an insecure pod spec?&quot;</p>
+
+        
+            <h3>Key Takeaways</h3>
+            <ol>
+<li>An admission controller inspects every object before it's allowed to exist in a Kubernetes cluster, not after — it's a gate, not a patrol.</li>
+<li>Security rules that only live in documentation or code review get bypassed eventually; rules enforced by an admission controller can't be skipped by a rushed deployment.</li>
+<li>Admission control shifts the security question from &quot;what can this pod do once running&quot; to &quot;should this pod have ever been allowed to run at all.&quot;</li>
+</ol>
+
+        
+            <h3>Reader Question</h3>
+            <p><strong>&quot;If an admission controller can reject bad configurations, why do we still need runtime security tools at all?&quot;</strong></p>
+<p>Because admission control only sees the object's declared specification at creation time — it can't see what a container actually does once it's running, like an application that behaves fine on paper but gets exploited and starts making unexpected network calls at runtime. I'd treat admission control as closing off an entire category of bad configurations before they exist, and runtime security as the separate layer that watches for the things no static policy could have predicted — together they cover both &quot;was this allowed to start&quot; and &quot;is this behaving the way it should now that it's running.&quot;</p>
+
+        
+    </article>
+    
+    <article class="brief-section" id="tech-news">
+        <p class="brief-kicker">Tech News</p>
+        
+        
+            
+            <p>One AWS agent installed on millions of cloud servers had a bug serious enough to hand an attacker your cloud credentials — a 9.9 out of 10 on the severity scale. If you run infrastructure in AWS, or you're studying for a role where you will, today's for you. Two stories: that AWS flaw, and a pair of router bugs that just blew past a federal patch deadline.</p>
+<p>Start with AWS. Amazon disclosed CVE-2026-89049 on September 10th — a server-side request forgery flaw in the Systems Manager Agent's port-forwarding feature, the tool a lot of teams use instead of opening SSH to a server directly. Here's the problem: an attacker who only has permission to open a port-forwarding session — not shell access, not Run Command — can abuse that session to reach link-local addresses, including the instance metadata service at 169.254.169.254. Reach that, and you can pull the EC2 instance's own temporary IAM credentials straight out of it. A lot of security teams deliberately hand out port-forwarding access as the &quot;safe,&quot; narrow permission and keep shell access locked down separately. This bug erases that boundary. AWS fixed it in Systems Manager Agent version 3.3.4851.0. My read: this is a reminder that a permission's name doesn't tell you its actual reach — &quot;port forwarding&quot; sounds narrow until you test what network it can actually touch.</p>
+<p>Next up, routers. CISA added two MikroTik RouterOS flaws to its Known Exploited Vulnerabilities catalog on September 10th, with a mitigation deadline of September 13th — already passed as of this recording. One is a missing-authentication bug in the router's bandwidth-test service that an unauthenticated attacker can use to leak kernel memory or crash the device outright. The other lets an attacker with nothing but an unauthenticated SSH attempt smuggle a crafted username past the login handler and escalate privileges on the box. MikroTik shipped fixes across its RouterOS branches, and the Canadian Centre for Cyber Security and Poland's CERT both issued their own advisories on top of CISA's. Teams that got this right already patch network gear — routers, switches, VPN boxes — on the same clock as servers, instead of treating them as set-and-forget hardware in a closet.</p>
+<p>Through-line: whether it's a cloud agent or a router in a rack, this week's lesson is the same — patch management doesn't stop at the server, and a &quot;narrow&quot; permission is only as narrow as someone has actually tested it to be.</p>
+
+        
+            <h3>Sources</h3>
+            <ul>
+<li><a href="https://aws.amazon.com/security/security-bulletins/2026-107-aws/" target="_blank" rel="noopener noreferrer">CVE-2026-89049 — AWS Security Bulletin 2026-107-AWS</a> (primary)</li>
+<li><a href="https://www.cisa.gov/news-events/alerts/2026/09/10/cisa-adds-two-known-exploited-vulnerabilities-catalog" target="_blank" rel="noopener noreferrer">CISA Adds Two Known Exploited Vulnerabilities to Catalog — CISA</a> (primary)</li>
+<li><a href="https://mikrotik.com/supportsec/september-2026-vulnerability/" target="_blank" rel="noopener noreferrer">MikroTik September 2026 vulnerability advisory — MikroTik</a> (primary)</li>
+<li><a href="https://cert.pl/en/posts/2026/09/mikrotik-routeros-cve/" target="_blank" rel="noopener noreferrer">Vulnerabilities in MikroTik RouterOS software — CERT Polska</a></li>
+<li><a href="https://www.cyber.gc.ca/en/alerts-advisories/mikrotik-security-advisory-av26-887" target="_blank" rel="noopener noreferrer">MikroTik security advisory (AV26-887) — Canadian Centre for Cyber Security</a></li>
+<li><a href="https://www.bleepingcomputer.com/news/security/hackers-exploit-new-mikrotik-routeros-flaws-to-hijack-routers/" target="_blank" rel="noopener noreferrer">Hackers exploit new MikroTik RouterOS flaws to hijack routers — BleepingComputer</a></li>
+</ul>
+
+        
+    </article>
+    
+    <section class="brief-subscribe" id="subscribe">
+    <h2>Get The Daily Brief by email</h2>
+    <p>One short email each morning. Unsubscribe anytime.</p>
+    <form action="https://buttondown.com/api/emails/embed-subscribe/cybercider" method="post">
+        <label for="bd-email">Email address</label>
+        <input type="email" name="email" id="bd-email" required autocomplete="email" placeholder="you@example.com">
+        <button type="submit">Subscribe</button>
+    </form>
+</section>
+</main>
+
+    <footer><p class="copyright">The Daily Brief · Eddie Camacho</p></footer>
+<!-- cf-web-analytics (managed by tools/inject_analytics.py) -->
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "f728a20b49cc4a0fbe02cde72f03301c"}'></script>
+</body>
+</html>
