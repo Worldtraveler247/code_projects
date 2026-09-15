@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="dark">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'self' https://static.cloudflareinsights.com; connect-src 'self' https://cloudflareinsights.com; img-src 'self' data:; form-action https://buttondown.com; base-uri 'none'; object-src 'none'">
+    <meta name="description" content="The Daily Brief for Wednesday, September 16, 2026: security incidents, senior security advice, engineering explainers, and tech news.">
+    <title>The Daily Brief · Sep 16, 2026</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="icon" href="../../../favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="../../../style.css">
+    <link rel="stylesheet" href="../../newsletter.css">
+</head>
+<body class="brief-page">
+    <a href="#main-content" class="skip-nav">Skip to main content</a>
+    <nav class="brief-nav">
+        <a href="../../../index.html">← App Hub</a>
+        <a href="../../">All issues</a>
+    </nav>
+    
+<header class="brief-masthead">
+    <p class="brief-eyebrow">THE DAILY BRIEF</p>
+    <h1>Wednesday, September 16, 2026</h1>
+    <ol class="brief-toc">
+        <li><a href="#current-events">Current Events</a></li><li><a href="#security-advice">Senior Security Advice</a></li><li><a href="#talk-track">Senior Talk Tracks</a></li><li><a href="#tech-news">Tech News</a></li>
+    </ol>
+</header>
+<main id="main-content" class="brief">
+    
+    <article class="brief-section" id="current-events">
+        <p class="brief-kicker">Current Events</p>
+        <h2>The 3CX Cascading Supply Chain Attack</h2>
+        
+            
+            <p>In the spring of 2023, a business phone-system maker used by hundreds of thousands of companies pushed out a routine software update -- and that update was malware, signed with the company's own legitimate certificate. Here's how it actually happened.</p>
+<p>3CX makes VoIP and PBX software -- corporate phone systems -- and its desktop app runs on machines at customers worldwide. According to Mandiant's own investigation, this attack didn't start at 3CX at all. It started over a year earlier, in February 2022, when a completely different company -- Trading Technologies, maker of a financial trading platform called X_TRADER -- had its own website compromised by a suspected North Korean-linked group Mandiant tracks as UNC4736. Attackers replaced a legitimate X_TRADER installer with a trojanized one, still signed with a valid certificate.</p>
+<p>Here's the chain. At some point in 2022, a 3CX employee downloaded and ran that trojanized X_TRADER installer -- on a personal computer, not a company laptop. That installer dropped a backdoor Mandiant calls VEILEDSIGNAL, which let the attackers harvest that employee's corporate credentials straight off their personal machine. Those stolen credentials got the attackers into 3CX's actual network, where they moved laterally and eventually compromised both of 3CX's software build servers -- the Windows one and the Mac one. From there, they didn't need to trick anyone into installing malware. They built it into 3CX's next legitimate app update and let 3CX's own trusted, auto-signed release process ship it directly to customers.</p>
+<p>And here's the detail that makes this a genuinely senior-level case: to hide their payload inside a signed file without breaking its digital signature, they used a tool researchers call SIGFLIP to abuse a ten-year-old Windows flaw, CVE-2013-3900, that lets you append data after a file's signature block without invalidating it. Microsoft had shipped a fix for that back in 2013 -- but left it opt-in, off by default, because turning it on broke some legitimate software. A decade later, that same opt-in gap is what let a trojanized file pass as clean.</p>
+<p>Here's the root cause in one sentence: a personal-device compromise at a completely unrelated company handed attackers a credential foothold that let them walk straight into 3CX's build pipeline and borrow its own code-signing trust to distribute malware.</p>
+<p>Here's what held. SentinelOne actually flagged the malicious app early -- 3CX checked it against VirusTotal, saw a clean result, and dismissed the alert as a false positive. Days later, CrowdStrike independently caught the same activity from a completely different angle -- outbound beaconing traffic, not a file signature -- and that's what actually forced the response. 3CX's own CEO later admitted publicly that the company should have acted sooner, which is rare, useful honesty from a breached vendor.</p>
+<p>Here's what a senior engineer, or a senior ISSO, would change in how they work because of this. A single alert dismissed on a single corroborating check is not an investigation -- it's a coin flip, and it needs an actual incident-handling process behind it, every time. And any build pipeline needs out-of-band integrity verification that checks the whole artifact, not just the byte range that was originally signed -- which is exactly what a properly configured signature and hash verification step in a Podman-based CI pipeline should be doing before anything ships.</p>
+
+        
+            <h3>Timeline</h3>
+            <table>
+<thead>
+<tr>
+<th>Date</th>
+<th>Event</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Feb 2022</td>
+<td>Trading Technologies' website is compromised by UNC4736, a suspected North Korea-nexus cluster Mandiant links with moderate confidence to the AppleJeus activity set; a trojanized X_TRADER installer, signed with a certificate valid until October 2022, is posted for download in its place.</td>
+</tr>
+<tr>
+<td>2022 (exact date not publicly disclosed)</td>
+<td>A 3CX employee downloads and runs the trojanized X_TRADER installer on a personal computer; the VEILEDSIGNAL backdoor is installed and the employee's corporate credentials are harvested from that device.</td>
+</tr>
+<tr>
+<td>Late 2022</td>
+<td>Attackers use the stolen credentials to access 3CX's corporate network, move laterally (including a renamed Fast Reverse Proxy tool), and compromise both 3CX's Windows and macOS software build servers.</td>
+</tr>
+<tr>
+<td>Mar 22, 2023</td>
+<td>SentinelOne telemetry shows a spike in behavioral detections tied to the 3CXDesktopApp binary.</td>
+</tr>
+<tr>
+<td>Mar 29, 2023</td>
+<td>CrowdStrike independently observes malicious beaconing and second-stage payload activity emanating from the legitimately signed 3CXDesktopApp binary at customer sites and alerts 3CX.</td>
+</tr>
+<tr>
+<td>Mar 30, 2023</td>
+<td>3CX CEO Nick Galea posts publicly on the company forum acknowledging malware in the DesktopApp Electron client (update 7).</td>
+</tr>
+<tr>
+<td>Apr 1, 2023</td>
+<td>3CX officially confirms a software supply chain attack and retains Mandiant for incident response.</td>
+</tr>
+<tr>
+<td>Apr 20, 2023</td>
+<td>Mandiant publishes its findings on the initial intrusion vector, identifying the X_TRADER/Trading Technologies chain and describing this as the first documented case of one software supply chain compromise cascading into a second, unrelated software supply chain compromise.</td>
+</tr>
+</tbody>
+</table>
+<p><em>Note: the exact date the 3CX employee downloaded the trojanized X_TRADER installer has not been publicly specified by Mandiant or 3CX. The widely cited &quot;600,000+ companies&quot; figure for 3CX's customer base appears in press and vendor reporting, not as a confirmed breach-scope number from 3CX itself, and is not repeated in the script as a hard fact.</em></p>
+
+        
+            <h3>Control Failures</h3>
+            <table>
+<thead>
+<tr>
+<th>Failure</th>
+<th>NIST SP 800-53 Rev 5 Control Family</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>A 3CX employee's personal, unmanaged computer — used to run unrelated third-party software — became the entry point for harvesting credentials used against the corporate environment.</td>
+<td><strong>AC-20</strong> — Use of External Systems</td>
+</tr>
+<tr>
+<td>A SentinelOne detection alert on the malicious 3CX binary was checked against a single corroborating source (VirusTotal) and dismissed as a false positive rather than escalated through an incident-handling process.</td>
+<td><strong>IR-4 / SI-4</strong> — Incident Handling / System Monitoring</td>
+</tr>
+<tr>
+<td>Windows and macOS build servers were modified with persistence mechanisms (DLL search-order hijacking via a system service; malicious Launch Daemons) with no change-control process flagging the alteration.</td>
+<td><strong>CM-3</strong> — Configuration Change Control</td>
+</tr>
+<tr>
+<td>A legitimately signed DLL was modified to carry an encrypted payload appended after the signature block, without invalidating the Authenticode signature.</td>
+<td><strong>SI-7</strong> — Software, Firmware, and Information Integrity</td>
+</tr>
+<tr>
+<td>The build pipeline itself became the malware distribution channel — 3CX's own trusted auto-update mechanism shipped the trojanized app, with no independent, out-of-band verification catching the substitution before release.</td>
+<td><strong>SR-3 / SR-11</strong> — Supply Chain Controls and Processes / Component Authenticity</td>
+</tr>
+<tr>
+<td>A Windows signature-validation flaw (CVE-2013-3900) that enabled this exact class of tampering had a vendor fix available for a decade, but the fix was opt-in and not enforced by default across the ecosystem.</td>
+<td><strong>SI-2</strong> — Flaw Remediation</td>
+</tr>
+</tbody>
+</table>
+
+        
+            <h3>What Held</h3>
+            <ul>
+<li><strong>CrowdStrike's independent, behavior-based detection caught what a signature-based check missed.</strong> It flagged outbound beaconing from the legitimately signed 3CX binary — a completely different signal than the one 3CX had already dismissed — which is the actual reason this stopped spreading further.</li>
+<li><strong>3CX's public transparency, including admitting its own mistake.</strong> CEO Nick Galea stated publicly that the company should have acted sooner on the earlier SentinelOne alert — a level of candor about a self-inflicted misstep that isn't guaranteed after a breach.</li>
+<li><strong>Mandiant's published root-cause chain let the wider industry act.</strong> Once the X_TRADER connection was public, other researchers (including Symantec) independently identified additional victims of the upstream Trading Technologies compromise, containing a blast radius that extended well beyond 3CX alone.</li>
+<li><strong>3CX pulled and rebuilt clean, re-signed app versions once the compromise was confirmed</strong>, rather than attempting a quiet patch.</li>
+</ul>
+
+        
+            <h3>Sources</h3>
+            <ul>
+<li><a href="https://cloud.google.com/blog/topics/threat-intelligence/3cx-software-supply-chain-compromise" target="_blank" rel="noopener noreferrer">3CX Software Supply Chain Compromise Initiated by a Prior Software Supply Chain Compromise — Google Cloud / Mandiant Blog</a> (primary)</li>
+<li><a href="https://nvd.nist.gov/vuln/detail/CVE-2013-3900" target="_blank" rel="noopener noreferrer">CVE-2013-3900 — NVD</a> (primary)</li>
+<li><a href="https://www.crowdstrike.com/en-us/blog/crowdstrike-detects-and-prevents-active-intrusion-campaign-targeting-3cxdesktopapp-customers/" target="_blank" rel="noopener noreferrer">CrowdStrike Prevents 3CXDesktopApp Intrusion Campaign — CrowdStrike Blog</a> (primary — the responding vendor's own detection account)</li>
+<li><a href="https://www.3cx.com/blog/news/mandiant-security-update2/" target="_blank" rel="noopener noreferrer">Mandiant Security Update – Initial Intrusion Vector Found — 3CX Blog</a> (primary — the affected organization's own statement)</li>
+<li><a href="https://attack.mitre.org/campaigns/C0057/" target="_blank" rel="noopener noreferrer">3CX Supply Chain Attack, Campaign C0057 — MITRE ATT&amp;CK</a></li>
+<li><a href="https://cyberscoop.com/3cx-supply-chain-attack/" target="_blank" rel="noopener noreferrer">'They outsmarted us.' 3CX CEO acknowledges mistakes handling potential supply chain cyberattack — CyberScoop</a></li>
+<li><a href="https://krebsonsecurity.com/2023/04/3cx-breach-was-a-double-supply-chain-compromise/" target="_blank" rel="noopener noreferrer">3CX Breach Was a Double Supply Chain Compromise — Krebs on Security</a></li>
+<li><a href="https://www.cybersecuritydive.com/news/3cx-supply-chain-attack-cause/648144/" target="_blank" rel="noopener noreferrer">3CX attack caused by another supply chain attack, Mandiant says — Cybersecurity Dive</a></li>
+<li><a href="https://www.bleepingcomputer.com/news/security/3cx-hack-caused-by-trading-software-supply-chain-attack/" target="_blank" rel="noopener noreferrer">3CX hack caused by trading software supply chain attack — BleepingComputer</a></li>
+</ul>
+<p><strong>Tomorrow's Thread:</strong> Day 28 moves to the AI/agent security family — Anthropic's own disclosure of the GTG-1002 campaign, in which a suspected Chinese state-sponsored group used the Claude Code agent to autonomously execute most stages of a multi-target cyber-espionage operation, with human operators intervening only a small fraction of the time.</p>
+
+        
+    </article>
+    
+    <article class="brief-section" id="security-advice">
+        <p class="brief-kicker">Senior Security Advice</p>
+        <h2>Just-In-Time Privileged Access</h2>
+        
+            <h3>The Advice</h3>
+            <p>Replace standing admin rights with just-in-time privileged access: nobody holds elevated permissions by default, they request them, get them for a fixed window, and the access expires on its own.</p>
+
+        
+            <h3>Why It Matters</h3>
+            <p>A standing admin account is a permanent target. If it's compromised through a phished credential, a leaked token, or a vulnerable jump box, an attacker inherits full elevated rights immediately and can act with them for as long as the intrusion goes unnoticed — hours, sometimes weeks. CISA's Zero Trust Maturity Model treats this as a core maturity gap: in the model's optimal stage for identity, access is granted through automated just-in-time and just-enough access, scoped dynamically to what the task actually requires, instead of sitting open around the clock. Without that control, privilege escalation and lateral movement — the phase of an intrusion where an attacker turns one foothold into control of the environment — become far easier, because the keys are already sitting in the door. This is the same failure pattern behind a large share of &quot;one compromised account, full domain takeover&quot; incidents: the account that got popped didn't need to be an admin all day, it just always was.</p>
+
+        
+            <h3>How to Implement It</h3>
+            <ol>
+<li>Inventory every account holding standing privileged access — domain admins, cloud IAM admins, database superusers — and treat that list as the attack surface it is.</li>
+<li>Put a privileged access management (PAM) tool or cloud-native equivalent (AWS IAM Identity Center permission sets with time-bound sessions, temporary STS credentials) in front of elevation, so admin rights are requested, approved, and time-boxed rather than always-on.</li>
+<li>Set short default windows — think one shift or a few hours, not &quot;until revoked&quot; — and require re-request for anything longer.</li>
+<li>Log every elevation request, approval, and expiration to the same central logging pipeline as everything else, so a privilege grant is as visible as a login.</li>
+<li>Verify it's actually working: pick a privileged account monthly and confirm its elevated rights expired on schedule with no manual renewal — a JIT system that quietly reverts to standing access under pressure isn't JIT at all.</li>
+</ol>
+
+        
+            <h3>The Pushback You&#39;ll Hear</h3>
+            <p>&quot;Our admins need to move fast, and approval workflows slow down incident response.&quot; The senior-engineer rebuttal: build a break-glass path for genuine emergencies — a separate, tightly monitored account for exactly that scenario — and keep routine elevation on the JIT workflow. Emergency access and everyday admin access are different risks and deserve different controls; conflating them is how &quot;just this once&quot; quietly becomes permanent standing access again.</p>
+
+        
+            <h3>Sources</h3>
+            <ul>
+<li>CISA Zero Trust Maturity Model — https://www.cisa.gov/zero-trust-maturity-model</li>
+<li>NIST SP 800-207, Zero Trust Architecture — https://csrc.nist.gov/pubs/sp/800/207/final</li>
+</ul>
+
+        
+    </article>
+    
+    <article class="brief-section" id="talk-track">
+        <p class="brief-kicker">Senior Talk Tracks</p>
+        <h2>S3 Strong Consistency Doesn&#39;t Mean What You Think</h2>
+        
+            
+            <p>Let's talk about S3 -- Amazon's Simple Storage Service, the place most cloud systems dump their files, backups, and logs -- and one word that gets thrown around wrong more than almost any other word in cloud architecture: consistency.</p>
+<p>Plain English first. Consistency just answers one question: after you write something, if you immediately try to read it back, do you get the new version, or could you still get an old one? For years, S3 was what's called &quot;eventually consistent&quot; -- write a file, read it back a second later, and you might get a 404 or a stale copy. Engineers built entire retry-and-poll patterns just to work around that gap. Then, in December of 2020, AWS quietly changed the rules. S3 became strongly consistent -- the instant a write succeeds, every read after it, anywhere, returns that new version. No gap. No stale read.</p>
+<p>Here's why that matters in production, and where it gets interesting. A lot of engineers stop the story right there and assume &quot;S3 is consistent now&quot; means the whole pipeline is safe from timing surprises. It doesn't. That guarantee only covers one object, in the region where you wrote it. The moment you add cross-region replication -- a copy of that object being pushed to a second AWS region -- there's a lag again, just a different kind. Put a content delivery network like CloudFront in front of your bucket, and it will happily serve a cached, older version on purpose until its cache expires. And if two processes write the same file at the exact same moment, S3 doesn't lock anything -- it just keeps whichever write landed last and silently throws the other one away.</p>
+<p>Think of it like a whiteboard in one office. The second someone writes on it, everyone standing in that room sees the new version -- that's the strong consistency. But if someone photographs that whiteboard and emails it to a branch office across the country, that photo can be old by the time anyone opens it. And if two people grab markers and scribble over the same line at the same instant, only one version survives -- nobody rings a bell to tell the loser their edit vanished.</p>
+<p>A good way to open this at work: &quot;Now that S3 is strongly consistent, are we still dragging along retry-and-poll logic from before 2020 that we don't need anymore -- and are we assuming our caches and cross-region replicas are just as strong, when they're really not?&quot;</p>
+
+        
+            <h3>Key Takeaways</h3>
+            <ol>
+<li>AWS made S3 strongly read-after-write consistent for every request back in December 2020, retiring the old &quot;eventually consistent&quot; behavior within a single region.</li>
+<li>That guarantee is scoped to one object in one region — cross-region replication and CDN layers like CloudFront still introduce their own lag on top of it.</li>
+<li>S3's concurrency model is last-writer-wins, not locking, so two simultaneous writes to the same key can still silently overwrite each other even though every read is instantly consistent.</li>
+</ol>
+
+        
+            <h3>Reader Question</h3>
+            <p><strong>&quot;If S3 is strongly consistent now, why would a senior engineer still design for eventual consistency anywhere in the system?&quot;</strong></p>
+<p>I'd still design for eventual consistency wherever S3 sits behind replication or a cache, because the strong-consistency guarantee only applies to reads hitting the same region as the write — a CloudFront distribution or a cross-region replica can legitimately serve older data for a while, and that's expected behavior, not a bug. I'd also treat the last-writer-wins behavior on concurrent writes as a real design constraint rather than an edge case, especially for anything like a shared state file or a lock object. So the December 2020 change removed something I no longer need to build — retry loops for same-region reads — but it didn't remove the need to think about consistency everywhere else in the pipeline.</p>
+
+        
+    </article>
+    
+    <article class="brief-section" id="tech-news">
+        <p class="brief-kicker">Tech News</p>
+        
+        
+            
+            <p>Picture the appliance whose entire job is opening and inspecting every email before it reaches your inbox — this week, attackers turned that appliance into a root shell, no login required. If you run mail security, or any appliance that inspects untrusted traffic by design, today's for you. Two stories: that Cisco flaw, and a government breach on the other side of the world that started with a patch nobody got around to.</p>
+<p>Start with Cisco. CVE-2026-76461, CVSS nine point eight, is a SQL injection flaw in the email-parsing logic of AsyncOS, the software behind Cisco's Secure Email Gateway. Cisco disclosed it on September 14th: send the appliance one crafted email carrying malicious SQL statements, and insufficient input validation lets those statements execute as operating-system commands — with root privileges, on physical or virtual boxes, no credentials needed. According to CISA, the Cybersecurity and Infrastructure Security Agency, attackers were already exploiting this in the wild before the fix landed, and CISA added it to its Known Exploited Vulnerabilities catalog the same day, giving federal agencies until September 17th — three days — to patch. There's no workaround; upgrading is the only fix. My read: a mail gateway's whole job is touching attacker-controlled input, so treating it like a trusted, set-and-forget box instead of hardening and monitoring it the way you would an internet-facing server is exactly how this happens.</p>
+<p>Next up, Japan's Digital Agency. On September 11th, the agency disclosed that attackers reached the Government Solution Service — a shared IT platform used across roughly two dozen ministries — by exploiting a VPN vulnerability, exposing about 246,000 records: roughly 189,000 government employees and 57,000 private-sector workers doing government contract work. Names, emails, phone numbers, some addresses. According to the agency, this wasn't a zero-day — it was a medium-severity, already-known flaw that simply hadn't been patched yet. Attackers got in around late June; the agency didn't confirm how until July, and didn't go public until September. My take: this is the least exotic breach story you'll hear all year, and that's exactly the point — a known, medium-severity bug on an edge box beat a government's shared network, not because it was clever, but because nobody closed the ticket.</p>
+<p>Through-line: whether it's a gateway built to touch untrusted content or a VPN box everyone forgot was on the backlog, the device sitting at your network's edge is exactly where attackers expect you to be complacent.</p>
+
+        
+            <h3>Sources</h3>
+            <ul>
+<li><a href="https://www.cisa.gov/news-events/alerts/2026/09/14/cisa-adds-one-known-exploited-vulnerability-catalog" target="_blank" rel="noopener noreferrer">CISA Adds One Known Exploited Vulnerability to Catalog — CISA</a></li>
+<li><a href="https://thehackernews.com/2026/09/cisco-secure-email-gateway-flaw.html" target="_blank" rel="noopener noreferrer">Cisco Secure Email Gateway Flaw Exploited in the Wild, Enables Root Command Execution — The Hacker News</a></li>
+<li><a href="https://www.bleepingcomputer.com/news/security/new-cisco-secure-email-zero-day-exploited-to-execute-commands-as-root/" target="_blank" rel="noopener noreferrer">Cisco patches Secure Email Gateway zero-day exploited in attacks — BleepingComputer</a></li>
+<li><a href="https://www.bleepingcomputer.com/news/security/japans-digital-agency-says-vpn-flaw-exposed-246-000-personnel-records/" target="_blank" rel="noopener noreferrer">Japan's Digital Agency says VPN flaw exposed 246,000 personnel records — BleepingComputer</a></li>
+<li><a href="https://www.bloomberg.com/news/articles/2026-09-11/japan-s-digital-agency-hit-by-unauthorized-access-to-servers" target="_blank" rel="noopener noreferrer">Japan's Digital Agency Hit by Unauthorized Access to Servers — Bloomberg</a></li>
+<li><a href="https://www.japantimes.co.jp/news/2026/09/11/japan/digital-agency-information-leakage/" target="_blank" rel="noopener noreferrer">Digital Agency says personal information possibly leaked — The Japan Times</a></li>
+</ul>
+
+        
+    </article>
+    
+    <section class="brief-subscribe" id="subscribe">
+    <h2>Get The Daily Brief by email</h2>
+    <p>One short email each morning. Unsubscribe anytime.</p>
+    <form action="https://buttondown.com/api/emails/embed-subscribe/cybercider" method="post">
+        <label for="bd-email">Email address</label>
+        <input type="email" name="email" id="bd-email" required autocomplete="email" placeholder="you@example.com">
+        <button type="submit">Subscribe</button>
+    </form>
+</section>
+</main>
+
+    <footer><p class="copyright">The Daily Brief · Eddie Camacho</p></footer>
+<!-- cf-web-analytics (managed by tools/inject_analytics.py) -->
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "f728a20b49cc4a0fbe02cde72f03301c"}'></script>
+</body>
+</html>
