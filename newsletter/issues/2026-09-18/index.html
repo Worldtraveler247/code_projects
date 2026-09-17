@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="dark">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'self' https://static.cloudflareinsights.com; connect-src 'self' https://cloudflareinsights.com; img-src 'self' data:; form-action https://buttondown.com; base-uri 'none'; object-src 'none'">
+    <meta name="description" content="The Daily Brief for Friday, September 18, 2026: security incidents, senior security advice, engineering explainers, and tech news.">
+    <title>The Daily Brief · Sep 18, 2026</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="icon" href="../../../favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="../../../style.css">
+    <link rel="stylesheet" href="../../newsletter.css">
+</head>
+<body class="brief-page">
+    <a href="#main-content" class="skip-nav">Skip to main content</a>
+    <nav class="brief-nav">
+        <a href="../../../index.html">← App Hub</a>
+        <a href="../../">All issues</a>
+    </nav>
+    
+<header class="brief-masthead">
+    <p class="brief-eyebrow">THE DAILY BRIEF</p>
+    <h1>Friday, September 18, 2026</h1>
+    <ol class="brief-toc">
+        <li><a href="#current-events">Current Events</a></li><li><a href="#security-advice">Senior Security Advice</a></li><li><a href="#talk-track">Senior Talk Tracks</a></li><li><a href="#tech-news">Tech News</a></li>
+    </ol>
+</header>
+<main id="main-content" class="brief">
+    
+    <article class="brief-section" id="current-events">
+        <p class="brief-kicker">Current Events</p>
+        <h2>The Storm-0558 Signing Key Breach</h2>
+        
+            
+            <p>In the summer of 2023, a Chinese state-linked hacking group read email out of the U.S. State Department and Commerce Department for weeks, using a Microsoft signing key that should never have worked outside a personal Outlook.com login. Here's how it actually happened.</p>
+<p>Microsoft runs two separate trust systems -- one signing key for consumer Microsoft accounts, like Outlook.com, and a completely different one for enterprise Azure Active Directory accounts, like a federal agency's Exchange Online tenant. According to Microsoft's own investigation, a group it tracks as Storm-0558 obtained an inactive Microsoft account consumer signing key. They then hit a validation gap in the API Exchange used to mint access tokens for Outlook Web Access. Microsoft's own account of the root cause is specific: the Exchange authentication team assumed the Azure AD SDK checked which authority had issued a token by default. It didn't, and nobody had added that check explicitly. So a consumer-only key forged tokens that Exchange Online accepted as valid enterprise logins.</p>
+<p>Here's the chain. Starting around May 15th, 2023, Storm-0558 used forged tokens built with that stolen key to log into Outlook Web Access and Outlook.com mailboxes at roughly two dozen organizations, without ever touching a password. Microsoft's own systems didn't catch it. The State Department's security operations center found it first, in mid-June, using a custom detection rule built on a premium audit log called MailItemsAccessed -- a log tier that most of the other affected organizations didn't even have at the time, because it sat behind a higher licensing tier.</p>
+<p>Here's the root cause in one sentence: an enterprise identity system trusted a token without checking which signing authority actually issued it, because a team building on top of that system assumed a check existed that didn't.</p>
+<p>And here's the part that stays open. Microsoft's September 2023 report proposed that the key leaked into a crash dump and then into a compromised engineer's account. The federal Cyber Safety Review Board investigated further and stated, on the record, that Microsoft has no logs or evidence supporting that theory. So as of the Board's April 2024 report, exactly how the key left Microsoft's environment is still not publicly confirmed.</p>
+<p>Here's what held. The State Department's own premium logging and a custom detection rule is what actually surfaced this, not Microsoft. Once notified, Microsoft revoked the compromised key within days and fixed the validation gap. And under pressure from CISA and the Review Board, Microsoft made that premium audit-logging tier free for federal customers going forward, closing the visibility gap that let this run for roughly six weeks before anyone caught it.</p>
+<p>Here's what a senior engineer, or a senior ISSO, would change in how they work because of this. Never assume a vendor's identity library validates issuer and scope correctly by default -- test it directly. And object-level audit logging that can tell you exactly what an attacker touched can't be treated as an upsell feature; a senior engineer standing up a RHEL-hosted AWS environment would enable detailed, per-object audit logging as a day-one baseline control, not something bolted on after an incident forces the vendor's hand.</p>
+
+        
+            <h3>Timeline</h3>
+            <table>
+<thead>
+<tr>
+<th>Date</th>
+<th>Event</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Apr 2021 (disputed)</td>
+<td>Microsoft's later hypothesis: the MSA consumer signing key allegedly leaked into a crash dump in a corporate debugging environment. The Cyber Safety Review Board later found no logs or evidence supporting this account.</td>
+</tr>
+<tr>
+<td>~May 15, 2023</td>
+<td>Storm-0558 begins using forged authentication tokens, built from the stolen MSA consumer signing key, to access Outlook Web Access and Outlook.com mailboxes.</td>
+</tr>
+<tr>
+<td>Jun 15–16, 2023</td>
+<td>The U.S. State Department's security operations center detects anomalous mail access using a custom rule built on the MailItemsAccessed premium audit log; State notifies Microsoft and CISA.</td>
+</tr>
+<tr>
+<td>Jun 26, 2023</td>
+<td>Microsoft revokes the compromised MSA key and fixes the token-validation gap in the GetAccessTokenForResource API so issuer/authority is checked.</td>
+</tr>
+<tr>
+<td>Jul 11–12, 2023</td>
+<td>Microsoft publicly discloses the intrusion; CISA and the FBI jointly issue Cybersecurity Advisory AA23-193A on detecting related activity in Exchange Online.</td>
+</tr>
+<tr>
+<td>Jul 14, 2023</td>
+<td>Microsoft's Security Blog publishes a technical breakdown of Storm-0558's tactics and the token-forgery mechanism.</td>
+</tr>
+<tr>
+<td>Sep 6, 2023</td>
+<td>Microsoft publishes &quot;Results of major technical investigations for Storm-0558 key acquisition,&quot; proposing the crash-dump leak hypothesis as its leading theory.</td>
+</tr>
+<tr>
+<td>Apr 2, 2024</td>
+<td>DHS's Cyber Safety Review Board publishes its report, calling the intrusion preventable, stating it found no evidence for Microsoft's crash-dump theory, and criticizing Microsoft's public statements about the incident.</td>
+</tr>
+</tbody>
+</table>
+<p><em>Note: reporting differs on the exact number of affected organizations — Microsoft's own disclosure and most contemporaneous reporting cite roughly 25 organizations, while some later figures cite 22 organizations and 503 individuals; treat the precise count as approximate rather than a single confirmed number. The exact date and mechanism of the key's theft remain publicly unconfirmed, per the CSRB's own findings.</em></p>
+
+        
+            <h3>Control Failures</h3>
+            <table>
+<thead>
+<tr>
+<th>Failure</th>
+<th>NIST SP 800-53 Rev 5 Control Family</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>The Exchange Online token-validation code assumed the Azure AD SDK checked a token's issuing authority by default; it didn't, and no explicit issuer check was added, letting a consumer-only key forge enterprise tokens.</td>
+<td><strong>IA-5</strong> — Authenticator Management</td>
+</tr>
+<tr>
+<td>An inactive/retired Microsoft account signing key remained fully valid and usable for forging live authentication tokens.</td>
+<td><strong>SC-12</strong> — Cryptographic Key Establishment and Management</td>
+</tr>
+<tr>
+<td>Object-level audit visibility (the MailItemsAccessed log needed to tell which specific emails were read) was gated behind a premium license tier most affected organizations did not hold.</td>
+<td><strong>AU-12 / AU-6</strong> — Audit Record Generation / Audit Review, Analysis, and Reporting</td>
+</tr>
+<tr>
+<td>The forged-token campaign ran for roughly six weeks before any detection; Microsoft's own monitoring did not flag cross-tenant use of a consumer key against enterprise resources.</td>
+<td><strong>SI-4</strong> — System Monitoring</td>
+</tr>
+<tr>
+<td>Signing-key material tied to a highly sensitive production signing environment ended up reachable from a separate corporate debugging environment.</td>
+<td><strong>AC-4</strong> — Information Flow Enforcement</td>
+</tr>
+<tr>
+<td>Microsoft's own public root-cause statements (the crash-dump theory) were later found by an independent federal review to be unsupported by any log or evidence Microsoft could produce.</td>
+<td><strong>IR-4</strong> — Incident Handling</td>
+</tr>
+</tbody>
+</table>
+
+        
+            <h3>What Held</h3>
+            <ul>
+<li><strong>The State Department's own premium audit logging and a custom detection rule caught what Microsoft's systems didn't.</strong> The &quot;MailItemsAccessed&quot; log and an internally built alert rule is the actual reason this surfaced at all, not vendor-side detection.</li>
+<li><strong>Microsoft revoked the compromised key within days of notification</strong>, cutting off further token forgery using that key across every tenant, not just the ones already known to be affected.</li>
+<li><strong>CISA and the FBI moved fast on a joint advisory</strong> (AA23-193A) giving every other Exchange Online customer concrete logging and detection guidance within a day of public disclosure.</li>
+<li><strong>Sustained public and regulatory pressure — from CISA and the Cyber Safety Review Board — forced a structural fix</strong>, not just a patch: Microsoft made the premium audit-logging tier free for federal customers, closing the exact visibility gap that let this run six weeks undetected.</li>
+</ul>
+
+        
+            <h3>Sources</h3>
+            <ul>
+<li><a href="https://www.cisa.gov/news-events/cybersecurity-advisories/aa23-193a" target="_blank" rel="noopener noreferrer">Enhanced Monitoring to Detect APT Activity Targeting Outlook Online — CISA/FBI Cybersecurity Advisory AA23-193A</a> (primary)</li>
+<li><a href="https://www.cisa.gov/sites/default/files/2025-03/CSRBReviewOfTheSummer2023MEOIntrusion508.pdf" target="_blank" rel="noopener noreferrer">Review of the Summer 2023 Microsoft Exchange Online Intrusion — DHS Cyber Safety Review Board report, via CISA</a> (primary)</li>
+<li><a href="https://www.microsoft.com/en-us/security/blog/2023/07/14/analysis-of-storm-0558-techniques-for-unauthorized-email-access/" target="_blank" rel="noopener noreferrer">Analysis of Storm-0558 techniques for unauthorized email access — Microsoft Security Blog</a> (primary)</li>
+<li><a href="https://www.microsoft.com/en-us/msrc/blog/2023/09/results-of-major-technical-investigations-for-storm-0558-key-acquisition" target="_blank" rel="noopener noreferrer">Results of Major Technical Investigations for Storm-0558 Key Acquisition — Microsoft Security Response Center</a> (primary)</li>
+<li><a href="https://www.techtarget.com/searchsecurity/news/366577765/Cyber-Safety-Review-Board-slams-Microsoft-security-failures" target="_blank" rel="noopener noreferrer">Cyber Safety Review Board slams Microsoft security failures — TechTarget</a></li>
+<li><a href="https://therecord.media/dhs-cascade-of-security-failures-microsoft-china-hack" target="_blank" rel="noopener noreferrer">DHS blames 'cascade of security failures at Microsoft' for China hack on US government — The Record</a></li>
+<li><a href="https://www.cybersecuritydive.com/news/microsoft-security-log-state-department/697462/" target="_blank" rel="noopener noreferrer">Microsoft extends security log retention following State Department hacks — Cybersecurity Dive</a></li>
+<li><a href="https://www.wiz.io/blog/key-takeaways-from-microsofts-latest-storm-0558-report" target="_blank" rel="noopener noreferrer">Storm-0558 Update: Takeaways from Microsoft's recent report — Wiz Blog</a></li>
+</ul>
+<p><strong>Tomorrow's Thread:</strong> Day 30 moves to the cloud misconfig/IAM family — Toyota's decade-long cloud database misconfiguration, disclosed in May 2023, that left connected-vehicle location data on roughly 2.15 million customers in Japan accessible without a password from November 2013 to April 2023.</p>
+
+        
+    </article>
+    
+    <article class="brief-section" id="security-advice">
+        <p class="brief-kicker">Senior Security Advice</p>
+        <h2>Bake a Hardening Baseline Into Every Build Image</h2>
+        
+            <h3>The Advice</h3>
+            <p>Every server and container image should be built from a CIS Benchmark or DISA STIG hardening baseline, not hardened by hand after the fact, and every image should be scanned against that baseline before it ships.</p>
+
+        
+            <h3>Why It Matters</h3>
+            <p>A default operating system install is tuned for compatibility, not security: unnecessary services run, permissive file permissions sit untouched, and weak defaults wait to be found. NIST SP 800-53's configuration management family requires exactly this discipline - control CM-2 calls for a documented baseline configuration for each system, and CM-6 requires that baseline reflect the most restrictive mode consistent with operations, with any deviation tracked and approved rather than left to drift. The Center for Internet Security (CIS) and the Defense Information Systems Agency (DISA) publish the actual settings that satisfy that requirement: CIS Benchmarks are consensus-built configuration guides covering operating systems, cloud platforms, containers, and databases, and DISA's Security Technical Implementation Guides (STIGs) are the mandatory hardening standard across the Department of Defense, spanning roughly 500 guides and 20,000 individual settings. Without a baked-in baseline, hardening becomes a manual checklist that one engineer runs once and nobody repeats - and the incident class this causes is the unremarkable one: a box gets built, a hardening step gets skipped or reverted during a later change, and months later that one missed setting - an open management port, a default credential, an unneeded service - is the foothold an attacker actually used.</p>
+
+        
+            <h3>How to Implement It</h3>
+            <ol>
+<li>Pick the baseline that matches the environment - a CIS Benchmark for general enterprise systems, or the applicable DISA STIG profile for anything touching DoD or federal work - and apply it to the golden image or base container layer, not to servers after they're already running.</li>
+<li>Automate the hardening itself with a configuration management tool (Ansible, Chef, or a vendor-provided hardened image) so every new instance launches compliant instead of needing a post-boot fix-up pass.</li>
+<li>Scan every build against the baseline using an SCAP-based tool - Red Hat's own documentation for RHEL points to OpenSCAP and the <code>oscap</code> command-line utility for exactly this - and fail the build pipeline if the scan finds a non-compliant setting.</li>
+<li>Track and approve any deviation from the baseline explicitly, per CM-6, instead of letting exceptions accumulate silently; an undocumented deviation is really just drift wearing a disguise.</li>
+<li>Verify the control is actually working, not just applied once: re-scan running production systems on a recurring schedule (not only at build time) and treat a system that has drifted out of compliance as a finding, the same way an open vulnerability would be tracked and remediated.</li>
+</ol>
+
+        
+            <h3>The Pushback You&#39;ll Hear</h3>
+            <p>&quot;STIGs break things - services stop working after we apply them.&quot; The senior-engineer rebuttal: that's what tailoring and testing are for, not a reason to skip hardening entirely. Both CIS Benchmarks and DISA STIGs are designed to be tailored to documented, approved exceptions when a specific setting genuinely conflicts with an operational need - the failure mode isn't hardening breaking things, it's hardening never being applied in the first place and nobody finding out until an audit or an incident does.</p>
+
+        
+            <h3>Sources</h3>
+            <ul>
+<li>NIST SP 800-53 Rev. 5, Security and Privacy Controls for Information Systems and Organizations - CM-2 Baseline Configuration and CM-6 Configuration Settings - https://csrc.nist.gov/pubs/sp/800/53/r5/upd1/final</li>
+<li>CIS (Center for Internet Security), CIS Benchmarks - https://www.cisecurity.org/cis-benchmarks</li>
+<li>Red Hat Enterprise Linux 9 Documentation, &quot;Scanning the system for configuration compliance and vulnerabilities&quot; (OpenSCAP / oscap) - https://docs.redhat.com/en/documentation/red_hat_enterprise_linux/9/html/security_hardening/scanning-the-system-for-configuration-compliance-and-vulnerabilities_security-hardening</li>
+</ul>
+
+        
+    </article>
+    
+    <article class="brief-section" id="talk-track">
+        <p class="brief-kicker">Senior Talk Tracks</p>
+        <h2>Error Budgets</h2>
+        
+            
+            <p>Let's talk about something a lot of engineers hear in an SRE meeting and nod along to without really getting: the error budget.</p>
+<p>Plain English first. An SLO -- short for service level objective -- is the reliability target a team commits to, something like &quot;this service will work correctly 99.9 percent of the time, measured over a rolling 30 days.&quot; That leftover zero-point-one-percent is the error budget: the amount of unreliability the team is officially allowed to spend. For a 99.9 percent target over 30 days, that works out to a little over 43 minutes of downtime or errors before the team has broken its promise.</p>
+<p>Here's why that matters in production, and where it gets interesting. Most junior engineers hear &quot;error budget&quot; and assume its whole job is to cap how bad things are allowed to get -- a ceiling on failure. That's only half the idea. The real point of an error budget is to be a currency for risk. If a team still has budget left, that's a green light to ship faster, push a riskier deploy, run an experiment -- because the organization has decided some instability is an acceptable price for moving quickly. But the moment that budget is spent, the deal changes: no new feature launches, no risky deploys, all hands go to reliability work until the budget resets. A team that never runs out of error budget usually isn't a reliability success story -- it's often a sign they're being too cautious and shipping slower than they need to.</p>
+<p>Think of it like a household's monthly eating-out budget. Some months you're under budget, so you try the new restaurant that might be a miss. Once you've blown through the budget, you stop taking chances and just cook the meals you know work, until next month resets the number.</p>
+<p>A good way to bring this up at work: &quot;Do we actually enforce a feature freeze when we blow through our error budget, or is that number just sitting on a dashboard nobody acts on?&quot;</p>
+
+        
+            <h3>Key Takeaways</h3>
+            <ol>
+<li>An error budget is simply one minus the SLO (service level objective) — for a 99.9 percent target over 30 days, that's about 43 minutes of allowed downtime or errors.</li>
+<li>The error budget's real purpose is to license risk-taking, not just cap failure — spending it on faster releases is the intended use, not a warning sign by itself.</li>
+<li>An error budget only changes behavior if running out actually triggers a feature freeze and a shift to reliability work — otherwise it's a vanity metric.</li>
+</ol>
+
+        
+            <h3>Reader Question</h3>
+            <p><strong>&quot;If a team never comes close to using its error budget, is that actually a good outcome?&quot;</strong></p>
+<p>No, I'd treat that as a signal, not a win — if the budget goes unused month after month, the team is probably being overly cautious, shipping too slowly, or setting an SLO looser than what the business actually needs. I'd rather see a team spend most of its budget on deliberate, well-tested risk than sit on a pile of unused reliability margin, because the whole point of the budget is to be spent on moving faster, not hoarded.</p>
+
+        
+    </article>
+    
+    <article class="brief-section" id="tech-news">
+        <p class="brief-kicker">Tech News</p>
+        
+        
+            
+            <p>Cisco just landed two zero-days in CISA's Known Exploited Vulnerabilities catalog inside 48 hours, and one is a maximum-severity bypass in the platform a lot of federal and defense networks use to decide who gets on the network at all. When the system that establishes trust becomes the thing under attack, everything behind it inherits that risk. Coming up: the Cisco identity bypass, a second Cisco zero-day from the same week, and a credential-harvesting campaign hitting exposed developer servers.</p>
+<p>Start with CVE-2026-76460, in Cisco Identity Services Engine and its Passive Identity Connector, versions 3.0 through 3.5, carrying a CVSS — Common Vulnerability Scoring System — score of ten out of ten. According to Cisco, insufficient authentication control on an API endpoint lets an unauthenticated attacker send one crafted request and bypass the web management interface entirely. CISA added it to the catalog on September 16th and gave federal agencies three days, until September 19th, to patch. My read: this is the network access control layer deciding which device gets on the network — exactly the identity infrastructure a defense contractor runs at the perimeter. A senior engineer treats a perfect-ten score there as a stop-the-line event, not a ticket in the queue.</p>
+<p>Next up, same vendor, same week. CVE-2026-76461, CVSS nine-point-eight, is a SQL injection in Cisco Secure Email Gateway's AsyncOS software. One crafted email triggers it, no login required, and it ends in root command execution. Cisco disclosed it and CISA added it to the catalog the same day, September 14th — meaning it was already being exploited before anyone outside Cisco knew it existed. Two entries from one vendor in a week is a prioritization test: the mail gateway and the identity broker both hand an attacker a foothold with zero credentials, so they jump the queue first.</p>
+<p>Which brings us to CVE-2026-39364, CVSS eight-point-two, in the Vite development server that sits on plenty of engineer laptops and continuous-integration runners. Query-parameter tricks let an unauthenticated attacker pull files the server should block. F5 tracked over eight hundred attacks and roughly thirty-two thousand scan events in a month, hunting for environment files, Amazon Web Services and Azure credentials, and Terraform state files. My read: a dev server was never meant to face the internet — this is what happens when a sprint's convenience outlives the sprint, and the file describing your whole cloud footprint becomes public inventory.</p>
+<p>All three stories share one failure mode: treating the systems that establish trust — identity, mail, or the build pipeline — as lower priority than what they protect.</p>
+
+        
+            <h3>Sources</h3>
+            <ul>
+<li><a href="https://www.cisa.gov/news-events/alerts/2026/09/16/cisa-adds-two-known-exploited-vulnerabilities-catalog" target="_blank" rel="noopener noreferrer">CISA Adds Two Known Exploited Vulnerabilities to Catalog</a></li>
+<li><a href="https://www.cisa.gov/news-events/alerts/2026/09/14/cisa-adds-one-known-exploited-vulnerability-catalog" target="_blank" rel="noopener noreferrer">CISA Adds One Known Exploited Vulnerability to Catalog</a></li>
+<li><a href="https://www.bleepingcomputer.com/news/security/cisco-warns-of-identity-service-engine-zero-day-exploited-in-attacks/" target="_blank" rel="noopener noreferrer">Cisco warns of max severity ISE zero-day exploited in attacks — BleepingComputer</a></li>
+<li><a href="https://www.helpnetsecurity.com/2026/09/17/cisco-ise-vulnerability-exploited-cve-2026-76460/" target="_blank" rel="noopener noreferrer">Unauthenticated attackers are bypassing Cisco ISE's management interface (CVE-2026-76460) — Help Net Security</a></li>
+<li><a href="https://www.theregister.com/security/2026/09/17/cisco-drops-another-exploited-zero-day-this-time-a-perfect-10/5297180" target="_blank" rel="noopener noreferrer">Cisco drops another exploited zero-day, this time a perfect 10 — The Register</a></li>
+<li><a href="https://www.bleepingcomputer.com/news/security/new-cisco-secure-email-zero-day-exploited-to-execute-commands-as-root/" target="_blank" rel="noopener noreferrer">Cisco patches Secure Email Gateway zero-day exploited in attacks — BleepingComputer</a></li>
+<li><a href="https://www.helpnetsecurity.com/2026/09/15/cve-2026-76461-cisco-email-gateway-zero-day-exploited/" target="_blank" rel="noopener noreferrer">Cisco patches actively exploited email gateway zero-day (CVE-2026-76461) — Help Net Security</a></li>
+<li><a href="https://thehackernews.com/2026/09/mass-scanning-campaign-exploits-vite.html" target="_blank" rel="noopener noreferrer">Mass-Scanning Campaign Exploits Vite Flaw to Extract Cloud Credentials From Exposed Dev Servers — The Hacker News</a></li>
+<li><a href="https://www.bleepingcomputer.com/news/security/hackers-target-exposed-vite-dev-servers-to-steal-aws-azure-secrets/" target="_blank" rel="noopener noreferrer">Hackers target exposed Vite dev servers to steal AWS, Azure secrets — BleepingComputer</a></li>
+<li><a href="https://www.scworld.com/brief/mass-scanning-campaign-targets-vite-development-servers-for-cloud-credentials" target="_blank" rel="noopener noreferrer">Mass scanning campaign targets Vite development servers for cloud credentials — SC Media</a></li>
+</ul>
+
+        
+    </article>
+    
+    <section class="brief-subscribe" id="subscribe">
+    <h2>Get The Daily Brief by email</h2>
+    <p>One short email each morning. Unsubscribe anytime.</p>
+    <form action="https://buttondown.com/api/emails/embed-subscribe/cybercider" method="post">
+        <label for="bd-email">Email address</label>
+        <input type="email" name="email" id="bd-email" required autocomplete="email" placeholder="you@example.com">
+        <button type="submit">Subscribe</button>
+    </form>
+</section>
+</main>
+
+    <footer><p class="copyright">The Daily Brief · Eddie Camacho</p></footer>
+<!-- cf-web-analytics (managed by tools/inject_analytics.py) -->
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "f728a20b49cc4a0fbe02cde72f03301c"}'></script>
+</body>
+</html>
