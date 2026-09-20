@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="dark">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'self' https://static.cloudflareinsights.com; connect-src 'self' https://cloudflareinsights.com; img-src 'self' data:; form-action https://buttondown.com; base-uri 'none'; object-src 'none'">
+    <meta name="description" content="The Daily Brief for Monday, September 21, 2026: security incidents, senior security advice, engineering explainers, and tech news.">
+    <title>The Daily Brief · Sep 21, 2026</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="icon" href="../../../favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="../../../style.css">
+    <link rel="stylesheet" href="../../newsletter.css">
+</head>
+<body class="brief-page">
+    <a href="#main-content" class="skip-nav">Skip to main content</a>
+    <nav class="brief-nav">
+        <a href="../../../index.html">← App Hub</a>
+        <a href="../../">All issues</a>
+    </nav>
+    
+<header class="brief-masthead">
+    <p class="brief-eyebrow">THE DAILY BRIEF</p>
+    <h1>Monday, September 21, 2026</h1>
+    <ol class="brief-toc">
+        <li><a href="#current-events">Current Events</a></li><li><a href="#security-advice">Senior Security Advice</a></li><li><a href="#talk-track">Senior Talk Tracks</a></li><li><a href="#tech-news">Tech News</a></li>
+    </ol>
+</header>
+<main id="main-content" class="brief">
+    
+    <article class="brief-section" id="current-events">
+        <p class="brief-kicker">Current Events</p>
+        <h2>The Kaseya VSA / REvil Ransomware Supply-Chain Attack</h2>
+        
+            
+            <p>In July 2021, a ransomware gang turned one remote-management vendor's own software-update channel into a delivery mechanism for ransomware, and within about 72 hours it had reached somewhere between eight hundred and fifteen hundred downstream small businesses that had never heard of the vendor at all. Here's how it actually happened.</p>
+<p>Kaseya VSA is remote-monitoring-and-management software -- the kind of tool managed service providers, or MSPs, use to administer hundreds of client networks from one console. According to Kaseya's own incident summary and the Dutch Institute for Vulnerability Disclosure, DIVD researcher Wietse Boonstra found seven separate zero-day vulnerabilities in VSA in the spring of 2021 and reported them to Kaseya privately, starting April sixth. Kaseya shipped patches for some of them through April and May. Three of the seven were still unpatched on July second, when the REvil ransomware group started using them against internet-facing, on-premises VSA servers.</p>
+<p>Here's the chain. One flaw let an attacker pull valid session credentials off an unauthenticated client-download endpoint. A second, a SQL injection bug, extended that into a working authenticated session. A third let the attacker upload an arbitrary file and get it executed with the VSA web server's own privileges. From there, the attacker didn't need to write new malware-delivery code -- they used VSA's own legitimate feature for pushing software updates to every endpoint a server managed, disguised as a routine agent hot-fix. Each managed endpoint decoded and ran that payload automatically, because nothing on the endpoint side checked whether the &quot;update&quot; it just received was actually signed by Kaseya.</p>
+<p>Root cause, in one sentence: an internet-facing management console trusted its own unauthenticated push channel enough to let it silently deploy and execute code on every machine underneath it, and three known vulnerabilities that made that channel reachable were still open when attackers arrived.</p>
+<p>Here's what held. DIVD's private disclosure meant Kaseya already understood most of this chain and had already patched part of it before July second, so the final blast radius wasn't the worst case. Within hours of detecting exploitation, Kaseya shut its SaaS platform down entirely and told every on-premises customer -- patched or not -- to shut their VSA servers off immediately, which is credited with keeping the SaaS side clean and capping further on-prem spread. CISA and the FBI issued joint guidance within two days. And Kaseya refused to pay REvil's roughly seventy-million-dollar ransom demand, later obtaining a decryptor without paying -- though reporting differs on exactly how that decryptor arrived, and that detail is still not something Kaseya has confirmed on the record.</p>
+<p>Here's what a senior engineer, or ISSO, would change. Any software-update or agent-push channel is itself a privileged code-execution path and needs the same scrutiny as a login page -- rate limiting, authentication, and mandatory signature verification before anything downstream executes it. In a RHEL 9 or Podman lab, that means building a small push-update mechanism, proving it will blindly execute an unsigned payload, and then proving that requiring a checksum or signature check before execution actually stops it -- because that missing check is exactly what let one compromised console become a ransomware delivery platform for over a thousand businesses that had no direct relationship with Kaseya at all.</p>
+
+        
+            <h3>Timeline</h3>
+            <table>
+<thead>
+<tr>
+<th>Date</th>
+<th>Event</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>March 23, 2021</td>
+<td>DIVD volunteer researcher Wietse Boonstra finds the first six zero-day vulnerabilities in Kaseya VSA.</td>
+</tr>
+<tr>
+<td>April 2, 2021</td>
+<td>Boonstra finds a seventh related vulnerability, bringing the chain to seven flaws total.</td>
+</tr>
+<tr>
+<td>April 6, 2021</td>
+<td>DIVD makes first contact with Kaseya and begins a coordinated, private disclosure process.</td>
+</tr>
+<tr>
+<td>April 10, 2021</td>
+<td>Kaseya ships VSA v9.5.5, patching one of the seven flaws (later tracked as CVE-2021-30118).</td>
+</tr>
+<tr>
+<td>May 8, 2021</td>
+<td>Kaseya ships VSA v9.5.6, patching two more of the flaws.</td>
+</tr>
+<tr>
+<td>June 4, 2021</td>
+<td>DIVD hands Kaseya a list of identified internet-facing, still-vulnerable VSA hosts.</td>
+</tr>
+<tr>
+<td>July 2, 2021</td>
+<td>REvil affiliates begin mass-exploiting the remaining unpatched flaws against on-premises VSA servers, pushing a fake &quot;VSA Agent Hot-fix&quot; that deploys REvil ransomware; Kaseya shuts down its SaaS servers and tells all on-premises customers to shut theirs down.</td>
+</tr>
+<tr>
+<td>July 4, 2021</td>
+<td>CISA and the FBI issue joint guidance for MSPs and downstream customers affected by the attack.</td>
+</tr>
+<tr>
+<td>July 11, 2021</td>
+<td>Kaseya begins restoring SaaS service and releases a patch (with the remaining fixes) for on-premises VSA servers.</td>
+</tr>
+<tr>
+<td>July 21–23, 2021</td>
+<td>Kaseya announces it obtained a universal decryptor from &quot;a trusted third party&quot; and says it did not pay REvil's ransom demand; later reporting says the key came from the FBI, which is not something Kaseya has confirmed on the record.</td>
+</tr>
+</tbody>
+</table>
+<p><em>Note: reporting differs on the exact downstream victim count — Kaseya and CISA describe roughly 50–60 directly compromised MSPs, with estimates of downstream small-business customers ranging from about 800 to 1,500 depending on the source; this script uses that range rather than a single precise figure.</em></p>
+
+        
+            <h3>Control Failures</h3>
+            <table>
+<thead>
+<tr>
+<th>Failure</th>
+<th>NIST SP 800-53 Rev 5 Control Family</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>An unauthenticated endpoint (the client-download page) leaked valid session credential material to anyone who requested it (CVE-2021-30116).</td>
+<td><strong>IA-5</strong> — Authenticator Management</td>
+</tr>
+<tr>
+<td>A semi-authenticated SQL injection flaw in the VSA web application (CVE-2021-30117) let a stolen session escalate into broader database access.</td>
+<td><strong>SI-10</strong> — Information Input Validation</td>
+</tr>
+<tr>
+<td>An unauthenticated arbitrary file upload (CVE-2021-30118) let the attacker place and execute a file with the VSA web server's own privileges.</td>
+<td><strong>CM-7</strong> — Least Functionality</td>
+</tr>
+<tr>
+<td>VSA's own agent software-update mechanism pushed and executed a payload on every managed endpoint with no code-signing or integrity check before execution.</td>
+<td><strong>SI-7</strong> — Software, Firmware, and Information Integrity</td>
+</tr>
+<tr>
+<td>Three of the seven privately disclosed vulnerabilities remained unpatched on internet-facing on-premises servers roughly three months after Kaseya received full technical detail from DIVD.</td>
+<td><strong>SI-2</strong> — Flaw Remediation</td>
+</tr>
+<tr>
+<td>A single compromised MSP management console carried enough trust to push code into every downstream client network that MSP served, with no segmentation limiting one compromise's reach across unrelated organizations.</td>
+<td><strong>SC-7</strong> — Boundary Protection</td>
+</tr>
+</tbody>
+</table>
+
+        
+            <h3>What Held</h3>
+            <ul>
+<li><strong>DIVD's private, coordinated disclosure meant Kaseya already understood most of the chain and had patched part of it before July 2nd.</strong> Two rounds of patches shipped in April and May closed four of the seven flaws before REvil ever touched the remaining three.</li>
+<li><strong>Kaseya's own incident response was fast and blunt.</strong> Within hours of detecting exploitation, it shut down its entire SaaS platform and told every on-premises customer — patched or not — to shut off VSA immediately, which is credited with keeping the SaaS fleet clean and capping further on-prem infections.</li>
+<li><strong>CISA and the FBI issued joint guidance within two days</strong> (July 4th), giving every other MSP running VSA concrete detection and containment steps before more attackers could pile on.</li>
+<li><strong>Kaseya refused to pay REvil's roughly $70 million ransom demand</strong> and still obtained a working decryptor for affected customers — naming the disputed &quot;who actually supplied it&quot; detail honestly, rather than taking credit for a clean resolution it can't fully explain.</li>
+</ul>
+
+        
+            <h3>Sources</h3>
+            <ul>
+<li><a href="https://helpdesk.kaseya.com/hc/en-gb/articles/4403584098961-Incident-Overview-Technical-Details" target="_blank" rel="noopener noreferrer">Incident Overview &amp; Technical Details — Kaseya Help Center (official incident summary)</a> (primary)</li>
+<li><a href="https://www.cisa.gov/news-events/news/kaseya-ransomware-attack-guidance-affected-msps-and-their-customers" target="_blank" rel="noopener noreferrer">Kaseya VSA Supply-Chain Ransomware Attack — CISA/FBI joint guidance</a> (primary)</li>
+<li><a href="https://csirt.divd.nl/cases/DIVD-2021-00011/" target="_blank" rel="noopener noreferrer">DIVD-2021-00011 — Kaseya VSA Disclosure, full case timeline — DIVD CSIRT</a> (primary — discoverer's own account)</li>
+<li><a href="https://www.divd.nl/newsroom/articles/case-kaseya/" target="_blank" rel="noopener noreferrer">Case: Kaseya — Dutch Institute for Vulnerability Disclosure</a> (primary — discoverer's own account)</li>
+<li><a href="https://www.tenable.com/blog/cve-2021-30116-multiple-zero-day-vulnerabilities-in-kaseya-vsa-exploited-to-distribute-ransomware" target="_blank" rel="noopener noreferrer">CVE-2021-30116: Multiple Zero-Day Vulnerabilities in Kaseya VSA Exploited to Distribute REvil Ransomware — Tenable</a></li>
+<li><a href="https://krebsonsecurity.com/2021/07/kaseya-left-customer-portal-vulnerable-to-2015-flaw-in-its-own-software/" target="_blank" rel="noopener noreferrer">Kaseya Left Customer Portal Vulnerable to 2015 Flaw in its Own Software — Krebs on Security</a></li>
+<li><a href="https://blogs.vmware.com/security/2021/07/revils-modern-island-hop-crime-at-scale.html" target="_blank" rel="noopener noreferrer">REvil's Modern Island Hop: Crime at Scale — VMware Security Blog</a></li>
+<li><a href="https://en.wikipedia.org/wiki/Kaseya_VSA_ransomware_attack" target="_blank" rel="noopener noreferrer">Kaseya VSA ransomware attack — Wikipedia (background/summary, cross-checked against primary sources above)</a></li>
+</ul>
+<hr />
+<p><strong>Tomorrow's Thread:</strong> Day 33 moves to the identity/credential-compromise family — the Change Healthcare–style pattern is already covered, so tomorrow looks at a different credential-compromise case not yet used in this series, while the XZ Utils &quot;software supply chain&quot; deferred topic from Day 31 is set aside since it was already covered on Day 3.</p>
+
+        
+    </article>
+    
+    <article class="brief-section" id="security-advice">
+        <p class="brief-kicker">Senior Security Advice</p>
+        <h2>Automate Access Revocation the Moment Someone Leaves</h2>
+        
+            <h3>The Advice</h3>
+            <p>Wire account termination into your HR system so that the moment someone leaves - fired, resigns, or contract ends - every account, session, and access token tied to them is automatically disabled, not manually cleaned up whenever someone remembers.</p>
+
+        
+            <h3>Why It Matters</h3>
+            <p>A person who leaves the company but keeps working access is a standing account with nobody watching it - not a hacked account, just a real one that should have been shut off and wasn't. NIST SP 800-53's Account Management control, AC-2, requires that account management be aligned with personnel termination and transfer processes, and its automated enhancement exists specifically because a process that depends on a manager remembering to file a ticket is not a control, it's a hope. The incident class this causes shows up constantly in insider-threat and post-termination cases: a former employee (or a contractor whose engagement ended) still has a valid login weeks or months later, and either they use it out of spite, or an attacker finds the dormant account first because nobody was watching it. Manual offboarding also tends to miss the accounts nobody thinks about - a shared Slack workspace, an old AWS IAM user, a mobile device management enrollment - which is exactly the gap automation is built to close.</p>
+
+        
+            <h3>How to Implement It</h3>
+            <ol>
+<li>Make HR's termination record the trigger, not a manual ticket: connect the HR system of record to the identity provider so a termination date automatically fires deprovisioning, the way Microsoft Entra ID Governance's Lifecycle Workflows or an equivalent SCIM-based pipeline does.</li>
+<li>Disable the identity provider account first - that alone blocks new sign-ins to every application using single sign-on - then immediately revoke active sessions and refresh tokens, since a disabled account can still have a live session running.</li>
+<li>Extend the workflow past the primary directory: remove the user from groups and distribution lists, revoke API keys and IAM users issued outside of single sign-on, and pull them off any mobile device management enrollment.</li>
+<li>Set a same-day service-level target for the termination-to-disable step, and a separate, shorter one for high-risk terminations (anyone leaving on bad terms or with privileged access), since NIST's automated account management enhancement is built around removing the delay a manual process introduces.</li>
+<li>Verify the control is actually working: run a recurring audit - 24 to 72 hours after each termination is a reasonable cadence - that checks the identity provider, key SaaS applications, and cloud IAM for any account tied to a departed person that is still active, and treat anything found as a finding, not a cleanup task.</li>
+</ol>
+
+        
+            <h3>The Pushback You&#39;ll Hear</h3>
+            <p>&quot;HR doesn't always tell us the same day, so automation just moves the delay somewhere else.&quot; The senior-engineer rebuttal: that's an argument for fixing the HR-to-IT handoff, not for keeping deprovisioning manual. Once the termination record exists anywhere in HR, an automated pipeline acts on it in minutes; a manual process depending on a person filing a ticket adds its own separate delay on top, and now there are two gaps instead of one. Fix the trigger, keep the automation.</p>
+
+        
+            <h3>Sources</h3>
+            <ul>
+<li>NIST SP 800-53 Rev. 5, Security and Privacy Controls for Information Systems and Organizations - AC-2 Account Management and AC-2(1) Automated System Account Management - https://csrc.nist.gov/pubs/sp/800/53/r5/upd1/final</li>
+<li>Microsoft Learn, &quot;Automate employee offboarding tasks after their last day of work with the Microsoft Entra admin center&quot; (Microsoft Entra ID Governance, Lifecycle Workflows) - https://learn.microsoft.com/en-us/entra/id-governance/tutorial-scheduled-leaver-portal</li>
+</ul>
+
+        
+    </article>
+    
+    <article class="brief-section" id="talk-track">
+        <p class="brief-kicker">Senior Talk Tracks</p>
+        <h2>What Load Average Really Measures</h2>
+        
+            
+            <p>Let's talk about a number every Linux engineer glances at constantly and most of them slightly misread: load average.</p>
+<p>Plain English first. Run the &quot;uptime&quot; command or &quot;top&quot; on any Linux box and you'll see three numbers, something like 2.5, 3.1, 4.0. Those are the load average over the last 1 minute, 5 minutes, and 15 minutes. A lot of people assume that's just &quot;percent CPU busy.&quot; It's not. Load average is actually a count of processes that are either using the CPU right now, or waiting in line for something -- and that &quot;something&quot; is the part almost nobody explains. It includes processes waiting for CPU time, but it also includes processes stuck in what's called uninterruptible sleep, usually waiting on disk input and output, or I-O for short.</p>
+<p>Here's why that matters in production. A junior engineer sees a load average of 8 on a server and panics: &quot;CPU is on fire, we need to scale up.&quot; But if that server has 16 CPU cores, a load of 8 might be perfectly healthy -- you always have to divide load by core count first. And even then, the number alone doesn't tell you what's actually backed up. You could have a load of 8 with CPU usage sitting at 10 percent, because seven of those eight processes aren't fighting for CPU at all -- they're stuck waiting on a slow disk or an overloaded storage volume.</p>
+<p>The senior take, the failure mode a junior usually misses: teams set up alerts on raw load average without normalizing for core count and without checking iowait, the percentage of time the CPU sat idle waiting on I-O. That leads to the wrong fix every time -- throwing more CPU at a storage problem, or ignoring a real CPU bottleneck because the raw number &quot;didn't look that high&quot; on a big box.</p>
+<p>Think of it like counting cars backed up at a tollbooth over the last few minutes. A long line could mean the tollbooth itself is slow to process each car -- that's your CPU. Or it could mean the tollbooth is fine, but the road just past it is jammed -- that's your disk I-O. Both look identical as &quot;cars backed up.&quot; The fix is completely different depending on which one it actually is.</p>
+<p>A good way to open this at work: &quot;Before we scale compute because of that load average alert, have we checked whether it's CPU-bound or if those processes are actually stuck waiting on disk?&quot;</p>
+
+        
+            <h3>Key Takeaways</h3>
+            <ol>
+<li>Load average counts processes that are either running on the CPU or waiting in line for it, and that waiting line includes processes stuck on slow disk I-O, not just CPU contention.</li>
+<li>A load average number is meaningless without dividing it by the server's core count first — 8 is very different on a 4-core box than on a 64-core box.</li>
+<li>High load with low CPU usage usually points to an I-O bottleneck, so the fix is faster storage or fewer disk-bound processes, not more compute.</li>
+</ol>
+
+        
+            <h3>Reader Question</h3>
+            <p><strong>&quot;Load average just spiked from 2 to 12 on an 8-core box — how do you figure out whether that's a CPU problem or an I-O problem before you touch anything?&quot;</strong></p>
+<p>I'd run top or vmstat first and look at the CPU breakdown, specifically the iowait column — if iowait is high and user or system CPU time is low, that spike is processes waiting on disk, not fighting for the processor. I'd also check for processes sitting in D state with a tool like ps, since those are the ones stuck on I-O. Only if iowait is low and actual CPU usage is pegged would I treat it as a real compute bottleneck worth scaling for.</p>
+
+        
+    </article>
+    
+    <article class="brief-section" id="tech-news">
+        <p class="brief-kicker">Tech News</p>
+        
+        
+            
+            <p>Here's what you need to know: if you run Linux anywhere, the U.S. government just set today as the deadline to patch three actively-exploited kernel flaws — and one of them has reportedly been exploitable in the wild for close to a year. Two stories today: a kernel bug that outlived its own patch window, and a former employee's leftover access that turned into a four-month supply-chain leak nobody caught.</p>
+<p>Start with the kernel. On September 18th, the Cybersecurity and Infrastructure Security Agency — CISA — added three Linux kernel flaws to its Known Exploited Vulnerabilities catalog and set today, the 21st, as the federal remediation deadline. The headline flaw, CVE-2025-39682, sits in the kernel's TLS receive path and lets a local authenticated user trigger memory disclosure or a crash — CISA rates it 9.8 out of 10. Its proof of concept has been public since last September, so exposure may run close to a year. The other two: CVE-2026-53266, an out-of-bounds write in the ebtables firewall path that enables local privilege escalation, and CVE-2025-39964, a race condition in kernel crypto-socket handling that can crash a system or corrupt crypto operations. Here's the part that should get your attention: CISA flagged all three as requiring forensic triage, not just a patch — agencies have to check crash logs and audit logs for signs someone already used this window to escalate. My read: three CVEs, three kernel subsystems, on a year-old public exploit — that's exactly why a senior engineer keeps kernel versions current fleet-wide and treats &quot;no crash observed&quot; as insufficient evidence of no compromise.</p>
+<p>Next up, a supply-chain story about offboarding. CrowdSec, the threat-intelligence firm, disclosed this week that attackers copied roughly 170 private GitHub repositories back in May — undetected until the stolen code surfaced on a cybercrime forum on September 16th, four months later. The root cause traces to May's TanStack npm compromise: attackers hijacked the OAuth token of a developer who'd left CrowdSec but still had live GitHub access to, quote, &quot;finish work.&quot; In under ten minutes, that token cloned the private repos from an address in Toronto, exposing emails for 83 users and contact details for 51 early investors. My take: no zero-day, no sophisticated intrusion — just an offboarding item never closed. Teams that get this right revoke access as part of termination itself, not a follow-up task.</p>
+<p>Both stories share the same gap: it's rarely the newest bug that gets you — it's the year-old kernel path and the months-old access grant nobody circled back to close.</p>
+
+        
+            <h3>Sources</h3>
+            <ul>
+<li><a href="https://thehackernews.com/2026/09/cisa-flags-three-linux-kernel.html" target="_blank" rel="noopener noreferrer">CISA Flags Three Linux Kernel Vulnerabilities Exploited in the Wild</a></li>
+<li><a href="https://www.cisa.gov/news-events/alerts/2026/09/18/cisa-adds-one-known-exploited-vulnerability-catalog" target="_blank" rel="noopener noreferrer">CISA Adds One Known Exploited Vulnerability to Catalog</a></li>
+<li><a href="https://www.cisa.gov/news-events/alerts/2026/09/18/cisa-adds-two-known-exploited-vulnerabilities-catalog" target="_blank" rel="noopener noreferrer">CISA Adds Two Known Exploited Vulnerabilities to Catalog</a></li>
+<li><a href="https://cybersecuritynews.com/linux-kernel-vulnerabilities-actively-exploited/" target="_blank" rel="noopener noreferrer">CISA Warns of Linux Kernel Vulnerabilities Actively Exploited in Attacks</a></li>
+<li><a href="https://www.techtimes.com/articles/327741/20260919/cisa-flags-three-actively-exploited-linux-kernel-flaws-orders-federal-patch-sunday.htm" target="_blank" rel="noopener noreferrer">CISA Flags Three Actively Exploited Linux Kernel Flaws, Orders Federal Patch by Sunday</a></li>
+<li><a href="https://thehackernews.com/2026/09/crowdsec-says-tanstack-npm-attack-led.html" target="_blank" rel="noopener noreferrer">CrowdSec Says TanStack npm Attack Led to Copy of 170 Private GitHub Repositories</a></li>
+<li><a href="https://cybersecuritynews.com/tanstack-supply-chain-attack/" target="_blank" rel="noopener noreferrer">TanStack Supply Chain Attack Lets Hackers Steal 170 Private CrowdSec GitHub Repositories</a></li>
+</ul>
+
+        
+    </article>
+    
+    <section class="brief-subscribe" id="subscribe">
+    <h2>Get The Daily Brief by email</h2>
+    <p>One short email each morning. Unsubscribe anytime.</p>
+    <form action="https://buttondown.com/api/emails/embed-subscribe/cybercider" method="post">
+        <label for="bd-email">Email address</label>
+        <input type="email" name="email" id="bd-email" required autocomplete="email" placeholder="you@example.com">
+        <button type="submit">Subscribe</button>
+    </form>
+</section>
+</main>
+
+    <footer><p class="copyright">The Daily Brief · Eddie Camacho</p></footer>
+<!-- cf-web-analytics (managed by tools/inject_analytics.py) -->
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "f728a20b49cc4a0fbe02cde72f03301c"}'></script>
+</body>
+</html>
