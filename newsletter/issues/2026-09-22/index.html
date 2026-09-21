@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="dark">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'self' https://static.cloudflareinsights.com; connect-src 'self' https://cloudflareinsights.com; img-src 'self' data:; form-action https://buttondown.com; base-uri 'none'; object-src 'none'">
+    <meta name="description" content="The Daily Brief for Tuesday, September 22, 2026: security incidents, senior security advice, engineering explainers, and tech news.">
+    <title>The Daily Brief · Sep 22, 2026</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="icon" href="../../../favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="../../../style.css">
+    <link rel="stylesheet" href="../../newsletter.css">
+</head>
+<body class="brief-page">
+    <a href="#main-content" class="skip-nav">Skip to main content</a>
+    <nav class="brief-nav">
+        <a href="../../../index.html">← App Hub</a>
+        <a href="../../">All issues</a>
+    </nav>
+    
+<header class="brief-masthead">
+    <p class="brief-eyebrow">THE DAILY BRIEF</p>
+    <h1>Tuesday, September 22, 2026</h1>
+    <ol class="brief-toc">
+        <li><a href="#current-events">Current Events</a></li><li><a href="#security-advice">Senior Security Advice</a></li><li><a href="#talk-track">Senior Talk Tracks</a></li><li><a href="#tech-news">Tech News</a></li>
+    </ol>
+</header>
+<main id="main-content" class="brief">
+    
+    <article class="brief-section" id="current-events">
+        <p class="brief-kicker">Current Events</p>
+        <h2>The MGM Resorts &amp; Caesars Entertainment Vishing Breaches</h2>
+        
+            
+            <p>In September 2023, a hacking crew got into two of the largest casino and hotel operators in the world -- not with malware at first, but with a phone call. Caesars Entertainment and MGM Resorts were both breached within days of each other, and in neither case was a software vulnerability the reason. Here's how it actually happened.</p>
+<p>The group behind both intrusions goes by several names -- Scattered Spider, UNC3944, Octo Tempest, Muddled Libra -- and according to the joint CISA and FBI advisory on the group, their specialty isn't exploiting code, it's exploiting the people who staff IT help desks. Weeks before either casino was hit, Okta's own security team had already published a public warning, on August 31st, describing this exact technique: an attacker calls a company's IT service desk, poses as a high-privilege employee, and talks the agent into resetting that employee's multi-factor authentication. Okta called it cross-tenant impersonation. Three weeks later, the same technique hit Caesars and MGM anyway.</p>
+<p>At Caesars, according to the company's own SEC filing, the attackers got in through an outsourced IT support vendor and, by September 7th, had stolen the casino's loyalty-program database, including driver's license and Social Security numbers for a large number of members. Caesars paid roughly fifteen million dollars -- about half the attackers' original demand, per reporting the company hasn't disputed -- to keep that data from being leaked, and disclosed the payment itself in its own filing.</p>
+<p>At MGM, the attackers found an employee's name on LinkedIn, called MGM's internal help desk claiming to be that person, and in about ten minutes talked the agent into resetting their credentials. That one reset handed them elevated access into MGM's Okta identity platform and its Azure tenant -- the infrastructure controlling identity and access for the rest of the company. From there, the ALPHV ransomware group encrypted systems across MGM's properties. Digital room keys, slot machines, and reservation and payment systems went down for roughly ten days.</p>
+<p>Root cause, in one sentence: a verbal claim over the phone, backed only by information anyone could scrape off a LinkedIn profile, was enough to get a privileged credential reset -- no callback, no manager approval, no out-of-band check.</p>
+<p>Here's what held. MGM chose not to pay the ransom, relying instead on outside incident responders and law enforcement, and it filed an SEC 8-K within a day of detecting the intrusion, then a second filing weeks later that quantified the roughly hundred-million-dollar impact honestly instead of downplaying it. And the industry wasn't left blind going forward -- the CISA and FBI joint advisory that followed in November gave every other company running a help desk concrete detection guidance for the identical technique.</p>
+<p>Here's what a senior engineer, or a senior ISSO, would change in how they work. A help-desk credential or MFA reset for any privileged account needs a verification step that a phone call and a scraped LinkedIn profile cannot satisfy -- a callback to a number already on file, manager approval, or video verification. In a lab with Okta, Entra ID, or even a self-hosted identity provider like FreeIPA, that means writing down your own service desk's actual reset procedure and asking one honest question: would a ten-minute phone call be enough to beat it?</p>
+
+        
+            <h3>Timeline</h3>
+            <table>
+<thead>
+<tr>
+<th>Date</th>
+<th>Event</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>July 29 – August 19, 2023</td>
+<td>Okta observes a cluster of social engineering attacks against US-based customers' IT service desks, targeting highly privileged (&quot;Super Administrator&quot;) accounts for MFA-factor resets.</td>
+</tr>
+<tr>
+<td>August 31, 2023</td>
+<td>Okta Security publishes &quot;Cross-Tenant Impersonation: Prevention and Detection,&quot; publicly naming and describing the vishing-to-MFA-reset technique three weeks before it is used against MGM and Caesars.</td>
+</tr>
+<tr>
+<td>September 7, 2023</td>
+<td>Caesars Entertainment determines an unauthorized actor, via social engineering of an outsourced IT support vendor, acquired a copy of its loyalty-program database.</td>
+</tr>
+<tr>
+<td>September 10–11, 2023</td>
+<td>MGM Resorts begins experiencing system-wide outages after Scattered Spider vishes MGM's internal help desk (a call reported to have lasted about ten minutes) using an employee identity sourced from LinkedIn, gaining elevated access to MGM's Okta and Azure environments.</td>
+</tr>
+<tr>
+<td>September 12–13, 2023</td>
+<td>MGM shuts down affected systems, engages external cybersecurity experts, notifies law enforcement, and files an SEC Form 8-K disclosing a &quot;cybersecurity issue.&quot;</td>
+</tr>
+<tr>
+<td>September 14, 2023</td>
+<td>Caesars files its own SEC Form 8-K confirming the data theft; contemporaneous reporting (unrebutted by Caesars) puts the ransom paid at roughly $15 million.</td>
+</tr>
+<tr>
+<td>September 20, 2023</td>
+<td>MGM's domestic properties return to normal operations after roughly ten days of manual, non-digital operations.</td>
+</tr>
+<tr>
+<td>October 5, 2023</td>
+<td>MGM files a second 8-K estimating an approximately $100 million negative impact to Adjusted Property EBITDAR, plus under $10 million in one-time response costs.</td>
+</tr>
+<tr>
+<td>November 16, 2023</td>
+<td>CISA and the FBI publish joint Cybersecurity Advisory AA23-320A, detailing Scattered Spider's tactics, techniques, and procedures for defenders industry-wide.</td>
+</tr>
+</tbody>
+</table>
+<p><em>Note: reporting on the exact Caesars ransom figure (~$15 million, roughly half an initial ~$30 million demand) comes from contemporaneous financial-press reporting rather than a number Caesars has stated outright in its own filings; Caesars' 8-K acknowledges steps taken to have stolen data deleted without itself naming a dollar figure.</em></p>
+
+        
+            <h3>Control Failures</h3>
+            <table>
+<thead>
+<tr>
+<th>Failure</th>
+<th>NIST SP 800-53 Rev 5 Control Family</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>A caller's verbal identity claim, supported only by information scraped from a public LinkedIn profile, was sufficient for MGM's help desk to reset a privileged employee's authentication factors.</td>
+<td><strong>IA-5</strong> — Authenticator Management</td>
+</tr>
+<tr>
+<td>The compromised identity was a highly privileged Okta/Azure administrative account whose reset gave the attacker broad identity-and-access-management reach across the rest of the company's environment.</td>
+<td><strong>AC-6</strong> — Least Privilege</td>
+</tr>
+<tr>
+<td>No boundary or segmentation control stopped a compromised identity-provider session from reaching downstream production systems (reservations, payments, room-key, casino floor) across MGM's properties.</td>
+<td><strong>SC-7</strong> — Boundary Protection</td>
+</tr>
+<tr>
+<td>Okta had publicly documented this exact vishing/MFA-reset technique on August 31st, roughly three weeks before Scattered Spider used the same technique against MGM and Caesars, without evidence either company's help-desk procedures had been updated in response.</td>
+<td><strong>AT-3</strong> — Role-Based Security Training</td>
+</tr>
+<tr>
+<td>Neither company's public filings describe a documented, mandatory secondary-approval or out-of-band verification step required before a help-desk agent could action a privileged credential/MFA reset.</td>
+<td><strong>CM-3</strong> — Configuration Change Control</td>
+</tr>
+<tr>
+<td>Caesars' intrusion originated through an outsourced IT support vendor, indicating insufficient oversight of that vendor's own identity-verification and support practices.</td>
+<td><strong>SA-9</strong> — External System Services</td>
+</tr>
+</tbody>
+</table>
+
+        
+            <h3>What Held</h3>
+            <ul>
+<li><strong>Okta's own August 31st threat brief gave the industry three weeks of public warning</strong> about this exact vishing/MFA-reset technique before MGM was hit — a senior engineer tracks vendor security advisories, not just CVE feeds, precisely because of timelines like this.</li>
+<li><strong>MGM declined to pay the ransom</strong>, relying instead on external incident responders and law enforcement engagement documented in its own 8-K, rather than funding the group further.</li>
+<li><strong>Both companies disclosed quickly and specifically under SEC rules</strong> — MGM within a day of detecting the intrusion, Caesars about a week after discovery — rather than staying silent until forced to.</li>
+<li><strong>The CISA/FBI joint advisory in November converted one pair of incidents into industry-wide defensive guidance</strong>, giving every other organization running a help desk concrete detection and hardening steps for the identical technique.</li>
+</ul>
+
+        
+            <h3>Sources</h3>
+            <ul>
+<li><a href="https://www.cisa.gov/news-events/cybersecurity-advisories/aa23-320a" target="_blank" rel="noopener noreferrer">Scattered Spider — Joint Cybersecurity Advisory AA23-320A, CISA/FBI</a> (primary)</li>
+<li><a href="https://sec.okta.com/articles/2023/08/cross-tenant-impersonation-prevention-and-detection/" target="_blank" rel="noopener noreferrer">Cross-Tenant Impersonation: Prevention and Detection — Okta Security</a> (primary)</li>
+<li><a href="https://www.sec.gov/Archives/edgar/data/789570/000119312523233855/d502352d8k.htm" target="_blank" rel="noopener noreferrer">MGM Resorts International — Form 8-K, September 13, 2023 — SEC EDGAR</a> (primary)</li>
+<li><a href="https://www.sec.gov/Archives/edgar/data/789570/000119312523251667/d461062d8k.htm" target="_blank" rel="noopener noreferrer">MGM Resorts International — Form 8-K, October 5, 2023 (financial impact) — SEC EDGAR</a> (primary)</li>
+<li><a href="https://investor.caesars.com/static-files/0bc13ee5-34a9-402e-8e7a-824b9dba4e57" target="_blank" rel="noopener noreferrer">Caesars Entertainment, Inc. — Form 8-K, filed 09/14/2023 — Caesars Investor Relations</a> (primary)</li>
+<li><a href="https://www.bleepingcomputer.com/news/security/caesars-entertainment-confirms-ransom-payment-customer-data-theft/" target="_blank" rel="noopener noreferrer">Caesars Entertainment confirms ransom payment, customer data theft — BleepingComputer</a></li>
+<li><a href="https://www.cnbc.com/2023/09/14/caesars-paid-millions-in-ransom-to-cybercrime-group-prior-to-mgm-hack.html" target="_blank" rel="noopener noreferrer">Caesars paid millions in ransom to cybercrime group prior to MGM hack — CNBC</a></li>
+<li><a href="https://www.cnbc.com/2023/09/13/mgm-resorts-cyberattack-and-outage-stretches-into-third-day.html" target="_blank" rel="noopener noreferrer">MGM Resorts says cyberattack could have material effect on company — CNBC</a></li>
+<li><a href="https://en.wikipedia.org/wiki/Scattered_Spider" target="_blank" rel="noopener noreferrer">Scattered Spider — Wikipedia (background/summary, cross-checked against primary sources above)</a></li>
+</ul>
+<hr />
+<p><strong>Tomorrow's Thread:</strong> Day 34 moves to the internet-facing edge exploitation family — the 2023 Barracuda Email Security Gateway zero-day (CVE-2023-2868), where a suspected China-nexus actor exploited an unpatched appliance and Barracuda ultimately told customers to physically replace the hardware rather than trust that patching alone had removed the attacker.</p>
+
+        
+    </article>
+    
+    <article class="brief-section" id="security-advice">
+        <p class="brief-kicker">Senior Security Advice</p>
+        <h2>Deploy Protective DNS to Block Malicious Domains Before They Load</h2>
+        
+            <h3>The Advice</h3>
+            <p>Route every managed device's DNS lookups through a protective DNS resolver that blocks known-malicious domains at resolution time, before a connection to them is ever made.</p>
+
+        
+            <h3>Why It Matters</h3>
+            <p>Almost every attack chain needs a domain name lookup before it can do damage: malware fetching a second-stage payload, a phishing page finishing its load, or a compromised host calling home to its command-and-control server. All of that starts with DNS, the system that turns a domain name into an address. Protective DNS sits at that first step and refuses to resolve a domain it knows is malicious, which stops the attack before any malicious content ever reaches the device - even if a user has already clicked the bad link. Without it, an organization is relying entirely on endpoint and email tools to catch the attack after the connection is already made, which is a later and less reliable point to stop it. The incident class this is built for is exactly the one security teams see repeatedly: ransomware and malware campaigns that depend on DNS to reach a payload server or a command-and-control host, where blocking that one lookup breaks the chain early enough that the rest of the attack never executes.</p>
+
+        
+            <h3>How to Implement It</h3>
+            <ol>
+<li>Stand up or subscribe to a protective DNS resolver - CISA operates one for federal and state/local government entities, and equivalent commercial services exist for everyone else - and point every managed endpoint and the network's recursive resolvers at it, not just a pilot group.</li>
+<li>Close the bypass: block outbound DNS (port 53, and DNS-over-TLS/DNS-over-HTTPS ports) to anything except the sanctioned resolver, so a device or a piece of malware can't just hardcode a public resolver and skip the filter.</li>
+<li>Extend coverage off-network: configure the DNS client on laptops and mobile devices so remote and hybrid workers stay behind protective DNS even when they're off the corporate network, not only when connected to the office.</li>
+<li>Turn on logging and alerting for every blocked query - a block is not a non-event, it's a signal that a specific device tried to reach a known-bad domain, and that device needs to be looked at.</li>
+<li>Verify the control is actually working, not just configured: periodically resolve a benign test domain that vendors and CISA publish specifically for this purpose from a sample of managed devices and confirm the block or redirect actually fires, and run a network scan to confirm no other DNS egress path exists.</li>
+</ol>
+
+        
+            <h3>The Pushback You&#39;ll Hear</h3>
+            <p>&quot;We already have EDR and a secure web gateway - isn't DNS filtering redundant?&quot; The senior-engineer rebuttal: it isn't a replacement, it's an earlier and cheaper layer. Protective DNS blocks the lookup before a single byte of the malicious payload is downloaded, and it catches non-web callbacks that a web gateway never sees. The cases it stops are often the ones where the endpoint agent hasn't flagged the connection yet because the indicator is new - DNS-layer blocklists get updated with threat intelligence that reaches the network before the endpoint does.</p>
+
+        
+            <h3>Sources</h3>
+            <ul>
+<li>CISA, &quot;Protective Domain Name System (DNS) Resolver&quot; - https://www.cisa.gov/resources-tools/services/protective-domain-name-system-dns-resolver</li>
+<li>NSA and CISA, &quot;Selecting a Protective DNS Service&quot; (Cybersecurity Information Sheet, v1.3) - https://media.defense.gov/2025/Mar/24/2003675043/-1/-1/0/CSI-Selecting-a-Protective-DNS-Service-v1.3.PDF</li>
+<li>NIST Special Publication 800-81 Revision 3, &quot;Secure Domain Name System (DNS) Deployment Guide&quot; (final publication, March 2026) - https://csrc.nist.gov/pubs/sp/800/81/r3/final</li>
+</ul>
+
+        
+    </article>
+    
+    <article class="brief-section" id="talk-track">
+        <p class="brief-kicker">Senior Talk Tracks</p>
+        <h2>Why Pods Share a Network Namespace</h2>
+        
+            
+            <p>Let's talk about something that trips up almost everyone new to Kubernetes: why the containers inside one pod can talk to each other over &quot;localhost,&quot; like they're the same machine, when they're clearly separate containers.</p>
+<p>Plain English first. In Kubernetes, the smallest thing you deploy isn't a container, it's a pod, and a pod can actually hold more than one container. Here's the part that surprises people: every container in that pod shares one network identity. One IP address, one set of ports, one loopback interface. Under the hood, Kubernetes quietly starts a tiny hidden container first, called the pause container, and every other container in the pod attaches to the network namespace that pause container created. A namespace here just means an isolated slice of the operating system's networking stack. So container A and container B in the same pod aren't calling each other across a network at all -- they're talking over localhost, the same way two programs on your laptop do.</p>
+<p>Here's why that matters in production. This is exactly what makes the sidecar pattern work -- bolting a helper container onto your main app, like a service mesh proxy that handles encryption and traffic routing, or a logging agent that ships your app's output somewhere else. That sidecar can intercept traffic on localhost without your main application changing a single line of code.</p>
+<p>The senior take, the failure mode a junior usually misses: because every container in a pod shares one set of ports, two containers in that same pod cannot both bind to port 8080. A junior debugging a crash-looping sidecar often chases the wrong thing -- a config typo, a bad image -- when the actual problem is a silent port collision with the container sitting right next to it.</p>
+<p>Think of it like roommates sharing one apartment mailbox. They can hand each other mail instantly, no postage, no delay -- but only one of them can be &quot;Apartment 4B&quot; on any given piece of mail at a time.</p>
+<p>A good way to open this at work: &quot;Before we add that sidecar, have we checked it's not fighting the main container for the same port on the pod's shared network namespace?&quot;</p>
+
+        
+            <h3>Key Takeaways</h3>
+            <ol>
+<li>Every container in a Kubernetes pod shares one IP address and one set of ports, courtesy of a hidden &quot;pause&quot; container that holds the shared network namespace open.</li>
+<li>Containers in the same pod talk to each other over localhost with zero network latency, which is exactly what makes the sidecar pattern — bolting a proxy or logging agent onto an app — possible without touching app code.</li>
+<li>Because ports are shared pod-wide, two containers in one pod can't bind the same port, and that silent collision is a common, easily misdiagnosed cause of a &quot;crashing&quot; sidecar.</li>
+</ol>
+
+        
+            <h3>Reader Question</h3>
+            <p><strong>&quot;If two containers in the same pod need to talk to each other, why not just call them by their container names like you would with separate services?&quot;</strong></p>
+<p>Because inside a pod there's no DNS or service discovery layer between containers — there's no separation to discover across in the first place, since they share one network namespace and one IP. They just talk over localhost using whatever port the other container is listening on, the same way two processes would on a single machine. That's also exactly why you have to be deliberate about port assignments inside a pod — nothing arbitrates a collision for you.</p>
+
+        
+    </article>
+    
+    <article class="brief-section" id="tech-news">
+        <p class="brief-kicker">Tech News</p>
+        
+        
+            
+            <p>A network gatekeeper that decides who gets onto the network at a lot of large enterprises just handed out root access to anyone who sent it one crafted web request — no login needed. Cisco has confirmed active exploitation, and the federal patch deadline already came and went. Three stories today: that Cisco identity flaw, Microsoft's push toward passkeys as the new default sign-in, and a Windows update that broke the very logins it was supposed to protect.</p>
+<p>Start with Cisco. CVE-2026-76460 is a perfect-ten flaw in Cisco's Identity Services Engine, the appliance that enforces network access. An API endpoint — that's application programming interface — never checked who was calling it, so one crafted request skips authentication and lands an attacker root access. The Cybersecurity and Infrastructure Security Agency, CISA, added it to its Known Exploited Vulnerabilities catalog with a September 19th deadline for federal systems. Here's the part that matters after you patch: root access lets an attacker edit the local logs, so Cisco is telling admins to pull access logs from every node and cross-check them against firewall logs stored somewhere the attacker never touched. My read: when the compromised box controls who gets on the network, you don't just relock the door — you check every room for what already walked through it.</p>
+<p>Next up, identity in the cloud. Microsoft has been enrolling Entra ID users into passkeys by default since September 1st, and it's retiring SMS and voice sign-in codes on February 1st, 2027. Passkeys are phishing-resistant; you can't type one into a fake login page the way you can a text-message code. My take: Microsoft is closing a door attackers have abused for years, and teams that get ahead of a retirement date like this migrate on their own schedule instead of scrambling the week the old method dies.</p>
+<p>Which brings us to a patch that broke the thing it was defending. This month's Windows updates — KB5124008 and KB5124012 — switched on a feature called Machine Identity Isolation, and on some systems it broke the secure channel, the trusted link between a machine and its domain, locking out users with valid credentials. Microsoft's fix for now is a registry change plus a manual repair of that channel. My read: this is exactly why a senior engineer stages security updates through a test ring before a fleet-wide rollout — the patch closing one door can slam another one shut on you.</p>
+<p>Every story tonight comes down to the same question: who, or what, gets trusted to walk through the door, and what happens when that trust breaks down.</p>
+
+        
+            <h3>Sources</h3>
+            <ul>
+<li><a href="https://www.bleepingcomputer.com/news/security/cisco-warns-of-identity-service-engine-zero-day-exploited-in-attacks/" target="_blank" rel="noopener noreferrer">Cisco warns of max severity ISE zero-day exploited in attacks</a></li>
+<li><a href="https://thehackernews.com/2026/09/cisco-warns-of-new-zero-day-ise-auth.html" target="_blank" rel="noopener noreferrer">Cisco Warns of New Zero-Day ISE Auth Bypass (CVSS 10.0) Exploited in Active Attacks</a></li>
+<li><a href="https://www.cisa.gov/news-events/alerts/2026/09/16/cisa-adds-two-known-exploited-vulnerabilities-catalog" target="_blank" rel="noopener noreferrer">CISA Adds Two Known Exploited Vulnerabilities to Catalog</a></li>
+<li><a href="https://www.securityweek.com/active-exploitation-triggers-emergency-patch-for-cisco-ise-zero-day/" target="_blank" rel="noopener noreferrer">Active Exploitation Triggers Emergency Patch for Cisco ISE Zero-Day</a></li>
+<li><a href="https://www.helpnetsecurity.com/2026/09/17/cisco-ise-vulnerability-exploited-cve-2026-76460/" target="_blank" rel="noopener noreferrer">Unauthenticated attackers are bypassing Cisco ISE's management interface (CVE-2026-76460)</a></li>
+<li><a href="https://www.bleepingcomputer.com/news/microsoft/microsoft-reminds-admins-to-migrate-entra-id-users-to-passkeys/" target="_blank" rel="noopener noreferrer">Microsoft reminds admins to migrate Entra ID users to passkeys</a></li>
+<li><a href="https://learn.microsoft.com/en-us/entra/identity/authentication/concept-sms-voice-retirement" target="_blank" rel="noopener noreferrer">Passkeys by default and retirement of Microsoft-provided SMS and voice authentication — Microsoft Entra ID</a></li>
+<li><a href="https://www.bleepingcomputer.com/news/microsoft/microsoft-releases-workaround-for-windows-domain-login-authentication-issues/" target="_blank" rel="noopener noreferrer">Microsoft shares workaround for Windows domain login issues</a></li>
+<li><a href="https://www.bleepingcomputer.com/news/microsoft/windows-11-kb5124008-update-breaks-domain-trust-for-some-users/" target="_blank" rel="noopener noreferrer">Windows 11 KB5124008 update breaks domain trust for some users</a></li>
+</ul>
+
+        
+    </article>
+    
+    <section class="brief-subscribe" id="subscribe">
+    <h2>Get The Daily Brief by email</h2>
+    <p>One short email each morning. Unsubscribe anytime.</p>
+    <form action="https://buttondown.com/api/emails/embed-subscribe/cybercider" method="post">
+        <label for="bd-email">Email address</label>
+        <input type="email" name="email" id="bd-email" required autocomplete="email" placeholder="you@example.com">
+        <button type="submit">Subscribe</button>
+    </form>
+</section>
+</main>
+
+    <footer><p class="copyright">The Daily Brief · Eddie Camacho</p></footer>
+<!-- cf-web-analytics (managed by tools/inject_analytics.py) -->
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "f728a20b49cc4a0fbe02cde72f03301c"}'></script>
+</body>
+</html>
