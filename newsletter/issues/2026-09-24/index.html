@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="dark">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'self' https://static.cloudflareinsights.com; connect-src 'self' https://cloudflareinsights.com; img-src 'self' data:; form-action https://buttondown.com; base-uri 'none'; object-src 'none'">
+    <meta name="description" content="The Daily Brief for Thursday, September 24, 2026: security incidents, senior security advice, engineering explainers, and tech news.">
+    <title>The Daily Brief · Sep 24, 2026</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="icon" href="../../../favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="../../../style.css">
+    <link rel="stylesheet" href="../../newsletter.css">
+</head>
+<body class="brief-page">
+    <a href="#main-content" class="skip-nav">Skip to main content</a>
+    <nav class="brief-nav">
+        <a href="../../../index.html">← App Hub</a>
+        <a href="../../">All issues</a>
+    </nav>
+    
+<header class="brief-masthead">
+    <p class="brief-eyebrow">THE DAILY BRIEF</p>
+    <h1>Thursday, September 24, 2026</h1>
+    <ol class="brief-toc">
+        <li><a href="#current-events">Current Events</a></li><li><a href="#security-advice">Senior Security Advice</a></li><li><a href="#talk-track">Senior Talk Tracks</a></li><li><a href="#tech-news">Tech News</a></li>
+    </ol>
+</header>
+<main id="main-content" class="brief">
+    
+    <article class="brief-section" id="current-events">
+        <p class="brief-kicker">Current Events</p>
+        <h2>The Microsoft Power Apps Portals Data Exposure</h2>
+        
+            
+            <p>In August 2021, researchers found that a single Microsoft feature being off by default had quietly exposed 38 million records across 47 different organizations -- including Microsoft's own payroll data. No hacker broke in. The door had just been left open since the feature shipped. Here's how it actually happened.</p>
+<p>Power Apps portals is Microsoft's low-code platform for building public-facing web portals -- job-application sites, COVID contact-tracing forms, customer registration pages -- fast, without writing much custom code. Every portal exposes its underlying data through something called an OData feed, a standard way for other programs to query a list of records. Microsoft built a feature called Table Permissions specifically to restrict who could query that feed. The problem: Table Permissions shipped turned OFF by default. Unless a portal's own administrator remembered to turn it on, the feed answered anonymous requests from anyone who knew the URL, no login required.</p>
+<p>Security firm UpGuard found the first exposed portal on May 24th, 2021, and spent the next month quietly checking how widespread the pattern was before reporting the full scope to Microsoft's Security Response Center on June 24th. What they found sitting behind that default-open setting: Social Security numbers from job applicants, COVID-19 vaccination appointment data, employee IDs, and -- inside Microsoft's own portal -- payroll email addresses and IDs for over three hundred thousand people. Root cause, in one sentence: a platform-wide default left a sensitive data feed open to the entire internet, and closing it depended on every single customer administrator noticing and acting, which most of them never did.</p>
+<p>Here's what changed the outcome. Microsoft didn't just tell the 47 affected organizations to go fix their own settings. They flipped the platform's default itself -- Table Permissions now ships ON -- so every existing and future portal got the secure configuration without depending on an administrator's memory. That's the senior move here: when a security setting depends on thousands of individual admins opting in correctly, the fix isn't better documentation, it's changing what &quot;default&quot; means.</p>
+<p>Here's what a senior engineer, or a senior ISSO, would change in how they work. Any platform you administer that exposes an API by default -- an S3 bucket, a database export, an OData feed -- gets audited for what its out-of-the-box setting actually is, not what the documentation says a careful admin should configure. In a lab with Podman on RHEL 9, that means standing up a toy API that's open by default, proving it leaks data to an anonymous request, and then flipping the default itself rather than telling an imaginary future admin to remember -- because &quot;remember to configure it&quot; is exactly the control that failed here, at scale, across 47 organizations.</p>
+
+        
+            <h3>Timeline</h3>
+            <table>
+<thead>
+<tr>
+<th>Date</th>
+<th>Event</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>May 24, 2021</td>
+<td>UpGuard discovers its first exposed Power Apps portal OData feed containing personally identifiable information and privately notifies the portal's owner.</td>
+</tr>
+<tr>
+<td>May 24 – June 24, 2021</td>
+<td>UpGuard expands its search across the Power Apps portals platform, identifying the same default-permissions gap across dozens of separate organizations' portals.</td>
+</tr>
+<tr>
+<td>June 24, 2021</td>
+<td>UpGuard submits a full coordinated-disclosure report to the Microsoft Security Response Center (MSRC), including reproduction steps for identifying anonymously readable OData feeds.</td>
+</tr>
+<tr>
+<td>August 2021 (early-mid)</td>
+<td>Microsoft and UpGuard work through the disclosure; Microsoft begins notifying affected customers, including its own internal payroll-portal team.</td>
+</tr>
+<tr>
+<td>August 23, 2021</td>
+<td>UpGuard publishes its public research report, &quot;By Design: How Default Permissions on Microsoft Power Apps Exposed Millions,&quot; disclosing the scope: roughly 38 million records across 47 entities.</td>
+</tr>
+<tr>
+<td>Late August 2021</td>
+<td>Microsoft changes the Power Apps portals platform default so Table Permissions ships ON, and releases tooling for administrators to self-diagnose whether their own portal was exposed.</td>
+</tr>
+</tbody>
+</table>
+<p><em>Note: UpGuard's report and subsequent press coverage describe the ~38 million figure as the aggregate across all identified affected portals; the exact per-organization breakdown (e.g., 332,000 Microsoft payroll records) comes from UpGuard's published research rather than a Microsoft-issued victim count.</em></p>
+
+        
+            <h3>Control Failures</h3>
+            <table>
+<thead>
+<tr>
+<th>Failure</th>
+<th>NIST SP 800-53 Rev 5 Control Family</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>OData API list feeds on Power Apps portals returned data to anonymous, unauthenticated requests by default, with no login required to query them.</td>
+<td><strong>AC-3</strong> — Access Enforcement</td>
+</tr>
+<tr>
+<td>The Table Permissions feature that would have restricted this access existed but shipped OFF by default across the entire platform, so a secure configuration required each customer to actively discover and enable it themselves.</td>
+<td><strong>CM-6</strong> — Configuration Settings</td>
+</tr>
+<tr>
+<td>No platform-wide control flagged the scale of the exposure — Microsoft's own payroll portal was among those affected — until an outside researcher manually enumerated portals and reported it, roughly a month after first discovery.</td>
+<td><strong>SI-4</strong> — System Monitoring</td>
+</tr>
+<tr>
+<td>Highly sensitive categories of data — Social Security numbers, COVID-19 contact-tracing and vaccination records — sat behind the same default-open feed as low-sensitivity data, with no differentiated protection based on data sensitivity.</td>
+<td><strong>RA-2</strong> — Security Categorization</td>
+</tr>
+<tr>
+<td>Responsibility for enabling the access control sat entirely with individual administrators across 47 separate organizations, with no platform-enforced baseline ensuring every tenant met a minimum security posture before going live.</td>
+<td><strong>CM-2</strong> — Baseline Configuration</td>
+</tr>
+</tbody>
+</table>
+
+        
+            <h3>What Held</h3>
+            <ul>
+<li><strong>UpGuard's methodical, non-malicious research is what actually closed this.</strong> No evidence surfaced of prior exploitation by a malicious actor — the exposure was found and reported by researchers checking systematically, not attackers scanning opportunistically.</li>
+<li><strong>Microsoft fixed the platform, not just the symptom.</strong> Rather than asking 47 organizations to individually remediate and hoping every future customer configured things correctly, Microsoft changed what &quot;default&quot; meant for the whole product — the fix protects every portal that will ever be created on the platform, not just the ones already found.</li>
+<li><strong>The roughly two-month gap between UpGuard's first private notice and its public report gave Microsoft a real head start</strong> to investigate and respond before the scope became public knowledge.</li>
+</ul>
+
+        
+            <h3>Sources</h3>
+            <ul>
+<li><a href="https://www.upguard.com/breaches/power-apps" target="_blank" rel="noopener noreferrer">By Design: How Default Permissions on Microsoft Power Apps Exposed Millions — UpGuard</a> (primary — discoverer's own account)</li>
+<li><a href="https://thehackernews.com/2021/08/38-million-records-exposed-from.html" target="_blank" rel="noopener noreferrer">38 Million Records Exposed from Microsoft Power Apps of Dozens of Organisations — The Hacker News</a></li>
+<li><a href="https://www.techrepublic.com/article/microsoft-power-apps-misconfiguration-exposes-data-from-38-million-records/" target="_blank" rel="noopener noreferrer">Microsoft Power Apps misconfiguration exposes data from 38 million records — TechRepublic</a></li>
+<li><a href="https://www.welivesecurity.com/2021/08/24/microsoft-power-apps-misconfiguration-exposes-millions-records/" target="_blank" rel="noopener noreferrer">Microsoft Power Apps misconfiguration exposes millions of records — WeLiveSecurity</a></li>
+<li><a href="https://www.theregister.com/2021/08/23/power_shell_records/" target="_blank" rel="noopener noreferrer">38 million records exposed by misconfigured Microsoft Power Apps. Redmond's advice? RTFM — The Register</a></li>
+</ul>
+<hr />
+<p><strong>Tomorrow's Thread:</strong> Day 36 moves to the AI and agent security family — a documented case of prompt injection or tool abuse in a deployed AI agent, distinct from today's cloud-misconfiguration family and from Day 1's OpenAI/Hugging Face intrusion.</p>
+
+        
+    </article>
+    
+    <article class="brief-section" id="security-advice">
+        <p class="brief-kicker">Senior Security Advice</p>
+        <h2>Scan Every Container Image for Known Vulnerabilities Before It Deploys</h2>
+        
+            <h3>The Advice</h3>
+            <p>Scan every container image for known vulnerabilities in the build pipeline, and block the deploy automatically when a critical vulnerability comes back unpatched.</p>
+
+        
+            <h3>Why It Matters</h3>
+            <p>A container image is a snapshot of an operating system, a language runtime, and every library your application pulls in, frozen at build time. If any of those layers ship a known vulnerability, that vulnerability rides straight into production the moment the image is deployed, and it usually sits there quietly until someone with a CVE database and a plan finds it first. NIST's Application Container Security Guide calls out vulnerabilities, embedded malware, and untrusted base images as core risks of the image-build stage specifically because those problems are baked in before the container ever runs, not introduced afterward. The incident class this prevents is the one where attackers don't need to write custom exploit code at all: they run mass scans of internet-facing services, fingerprint the software versions, and walk in through a vulnerability that had a patch available for months. An unscanned image isn't a convenience shortcut. It's an unpatched server that nobody thought to check.</p>
+
+        
+            <h3>How to Implement It</h3>
+            <ol>
+<li>Wire an image scanner (Trivy, Grype, Anchore, or a cloud-native equivalent like Amazon ECR scanning) directly into the CI/CD pipeline so every image gets scanned on every build, not on a manual, occasional basis.</li>
+<li>Set a hard gate, not a warning: builds with critical or high-severity vulnerabilities that have an available fix fail the pipeline and cannot be pushed to the registry, aligned with the policy-enforcement approach NIST SP 800-190 recommends for the build stage.</li>
+<li>Scan running images on a recurring schedule too, not just at build time, because a clean image today can have a new CVE disclosed against it next week.</li>
+<li>Pin and scan base images specifically, since most vulnerabilities in an application image come from the OS and runtime layer underneath your own code, not your code itself.</li>
+<li>Verify the control is actually working: intentionally build a test image with a known-vulnerable package pinned in, push it through the pipeline, and confirm the gate blocks it. If it sails through, the scanner isn't wired into the gate, it's just generating reports nobody enforces.</li>
+</ol>
+
+        
+            <h3>The Pushback You&#39;ll Hear</h3>
+            <p>&quot;Scanning slows down our deploys.&quot; The senior-engineer rebuttal: a scan that runs in the pipeline adds seconds to minutes to a build; a breach that starts from an unpatched container image running in production costs weeks of incident response and customer trust. The fix for slow scans is caching and parallelizing the pipeline step, not skipping the check. Teams that got this right treat the scan gate the same way they treat a failing unit test: the build doesn't ship until it's green.</p>
+
+        
+            <h3>Sources</h3>
+            <ul>
+<li>NIST Special Publication 800-190, Application Container Security Guide - https://nvlpubs.nist.gov/nistpubs/specialpublications/nist.sp.800-190.pdf</li>
+<li>CIS Docker Benchmark - https://www.cisecurity.org/benchmark/docker</li>
+</ul>
+
+        
+    </article>
+    
+    <article class="brief-section" id="talk-track">
+        <p class="brief-kicker">Senior Talk Tracks</p>
+        <h2>Model Supply Chain Risk</h2>
+        
+            
+            <p>Let's talk about a mistake teams make with AI models that they'd never make with regular code: trusting a file just because it's popular.</p>
+<p>Here's the plain English version. When a team wants to use a machine learning model instead of building one from scratch, they usually download one that's already trained, often from a public hub like Hugging Face -- think of it like a package registry, but for models instead of code libraries. And most teams pick one the same way you'd pick a restaurant: by the star rating and the download count.</p>
+<p>Here's why that's a problem in production. A model file isn't just data -- depending on the format, loading it can execute code, the same way certain document formats can. A malicious actor can upload a model that looks completely normal, performs well on the tasks everyone tests it against, and still contains a backdoor -- either literal code that runs when the file loads, or weights that have been subtly poisoned to misbehave only on specific trigger inputs nobody's testing for. That's model supply chain risk: the danger isn't in your code, it's in a file you downloaded and trusted because enough other people downloaded it too.</p>
+<p>The senior take, the failure mode a junior usually misses: with regular open-source code, you can at least read the diff, run a static analyzer, or compare it against a known-good version. With model weights, there's no equivalent &quot;read the code&quot; step for most teams -- millions of numbers don't diff into something a human can eyeball for malicious intent. So teams that would never run an unreviewed shell script in production will happily load an unreviewed model file, because it doesn't look like code to them. It is.</p>
+<p>Think of it like a professional kitchen. Reading source code is like a health inspector actually walking the kitchen and checking what's being cooked. Downloading a popular pretrained model based on stars and reviews alone is like hiring a chef because of great review scores and never once checking what's actually in the food -- you're trusting reputation for something reputation was never built to verify.</p>
+<p>A good way to open this at work: &quot;Before we pull that model into production, where did it come from, and did anyone actually scan it, or are we trusting it because it's popular?&quot;</p>
+
+        
+            <h3>Key Takeaways</h3>
+            <ol>
+<li>A pretrained model downloaded from a public hub is a supply-chain dependency just like an open-source package, except its contents — millions of numeric weights — can't be read or diffed the way source code can.</li>
+<li>Popularity metrics like download counts and star ratings measure adoption, not safety, and treating them as a safety signal is the same mistake as trusting an unreviewed package because it has a lot of stars.</li>
+<li>Model files in certain formats can execute code on load, meaning a malicious model isn't just a bad-prediction risk — it can be a direct code-execution risk the moment it's loaded.</li>
+</ol>
+
+        
+            <h3>Reader Question</h3>
+            <p><strong>&quot;If scanning every model file for malicious code is possible, why doesn't every team just do that and call the risk solved?&quot;</strong></p>
+<p>Scanning catches some things — known malicious patterns in certain file formats — but it doesn't catch a model that was poisoned during training itself, where the weights look completely normal and only misbehave on a trigger nobody's tested for. My answer would be that scanning is necessary but not sufficient — it has to be paired with real provenance, meaning you know who trained it and on what, because a scan can tell you a file isn't running a known exploit, but it can't tell you the model wasn't taught to misbehave under specific conditions.</p>
+
+        
+    </article>
+    
+    <article class="brief-section" id="tech-news">
+        <p class="brief-kicker">Tech News</p>
+        
+        
+            
+            <p>If your network security appliance handles single sign-on for your OAuth apps, stop reading and check for a patch — attackers are already using a hole in it to run their own code with no login at all. Two stories today: a critical zero-day in F5's BIG-IP access manager, and a fake password-manager download that's been quietly killing off antivirus software before stealing credentials.</p>
+<p>Start with F5. CVE-2026-94127 is a heap-based buffer overflow in BIG-IP Access Policy Manager, or APM — specifically in setups where APM acts as an OAuth authorization server, issuing access tokens to other applications. F5 rates it 9.8 out of 10, and confirmed in a September 22nd advisory that attackers had already weaponized it before the company even shipped a fix. The Cybersecurity and Infrastructure Security Agency, CISA, added it to its Known Exploited Vulnerabilities catalog that same day, with a September 25th deadline for federal systems. Here's the takeaway: this isn't a login page that got breached — it's the appliance that issues the tokens other systems trust, so a senior engineer treats every token that appliance handed out before the patch as potentially forged, not just the appliance itself as fixed.</p>
+<p>Which brings us to a fake LastPass Authenticator. Researchers at LastPass and Delphos say attackers built lookalike GitHub pages — impersonating more than 40 companies, LastPass among them — that rank high in search results for terms like &quot;LastPass Authenticator download.&quot; The installer is a renamed, legitimate Microsoft debugging tool that sideloads a malicious file, which then drops a signed Windows kernel driver — signed through Microsoft's own hardware compatibility program — to kill off 145 different antivirus and endpoint-detection tools before deploying an infostealer researchers are calling Rapuncel. LastPass itself wasn't breached; its brand was just the bait. My take: a valid Microsoft signature on a driver tells you it passed a compatibility check, not that it's safe to load — treat driver-level kill switches as a category worth watching until code-signing policy catches up with kernel-level malware.</p>
+<p>Both stories point at the same lesson: the thing you trust by default — the appliance issuing your tokens, the signature on a driver — is exactly what today's attackers are learning to weaponize.</p>
+<p>Patch that F5 appliance today, and if your team touches driver allow-lists, go check what's actually on yours.</p>
+
+        
+            <h3>Sources</h3>
+            <ul>
+<li><a href="https://thehackernews.com/2026/09/f5-patches-critical-big-ip-apm-zero-day.html" target="_blank" rel="noopener noreferrer">F5 Patches Critical BIG-IP APM Zero-Day Exploited for Unauthenticated RCE on OAuth Servers</a></li>
+<li><a href="https://www.bleepingcomputer.com/news/security/f5-warns-of-big-ip-apm-remote-code-execution-zero-day-exploited-in-attacks/" target="_blank" rel="noopener noreferrer">F5 patches BIG-IP APM zero-day flaw exploited in RCE attacks</a></li>
+<li><a href="https://securityonline.info/big-ip-apm-vulnerability-cve-2026-94127/" target="_blank" rel="noopener noreferrer">Exploited BIG-IP APM Vulnerability Allows Remote Code Execution (CVE-2026-94127)</a></li>
+<li><a href="https://thehackernews.com/2026/09/fake-lastpass-authenticator-installer.html" target="_blank" rel="noopener noreferrer">Fake LastPass Authenticator Installer Abuses Microsoft-Signed Driver to Kill Antivirus and EDR</a></li>
+<li><a href="https://www.bleepingcomputer.com/news/security/fake-lastpass-authenticator-github-repos-push-new-rapuncel-infostealer/" target="_blank" rel="noopener noreferrer">Fake LastPass Authenticator GitHub repos push new Rapuncel infostealer</a></li>
+<li><a href="https://securityaffairs.com/199577/malware/fake-lastpass-on-github-led-to-an-infostealer-that-killed-145-security-tools.html" target="_blank" rel="noopener noreferrer">Fake LastPass on GitHub Led to an Infostealer That Killed 145 Security Tools</a></li>
+</ul>
+
+        
+    </article>
+    
+    <section class="brief-subscribe" id="subscribe">
+    <h2>Get The Daily Brief by email</h2>
+    <p>One short email each morning. Unsubscribe anytime.</p>
+    <form action="https://buttondown.com/api/emails/embed-subscribe/cybercider" method="post">
+        <label for="bd-email">Email address</label>
+        <input type="email" name="email" id="bd-email" required autocomplete="email" placeholder="you@example.com">
+        <button type="submit">Subscribe</button>
+    </form>
+</section>
+</main>
+
+    <footer><p class="copyright">The Daily Brief · Eddie Camacho</p></footer>
+<!-- cf-web-analytics (managed by tools/inject_analytics.py) -->
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "f728a20b49cc4a0fbe02cde72f03301c"}'></script>
+</body>
+</html>
