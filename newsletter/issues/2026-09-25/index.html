@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="dark">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'self' https://static.cloudflareinsights.com; connect-src 'self' https://cloudflareinsights.com; img-src 'self' data:; form-action https://buttondown.com; base-uri 'none'; object-src 'none'">
+    <meta name="description" content="The Daily Brief for Friday, September 25, 2026: security incidents, senior security advice, engineering explainers, and tech news.">
+    <title>The Daily Brief · Sep 25, 2026</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="icon" href="../../../favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="../../../style.css">
+    <link rel="stylesheet" href="../../newsletter.css">
+</head>
+<body class="brief-page">
+    <a href="#main-content" class="skip-nav">Skip to main content</a>
+    <nav class="brief-nav">
+        <a href="../../../index.html">← App Hub</a>
+        <a href="../../">All issues</a>
+    </nav>
+    
+<header class="brief-masthead">
+    <p class="brief-eyebrow">THE DAILY BRIEF</p>
+    <h1>Friday, September 25, 2026</h1>
+    <ol class="brief-toc">
+        <li><a href="#current-events">Current Events</a></li><li><a href="#security-advice">Senior Security Advice</a></li><li><a href="#talk-track">Senior Talk Tracks</a></li><li><a href="#tech-news">Tech News</a></li>
+    </ol>
+</header>
+<main id="main-content" class="brief">
+    
+    <article class="brief-section" id="current-events">
+        <p class="brief-kicker">Current Events</p>
+        <h2>The EchoLeak Zero-Click Prompt Injection in Microsoft 365 Copilot</h2>
+        
+            
+            <p>In June 2025, researchers showed that Microsoft 365 Copilot could be robbed of your data by a single email you never even opened. No click, no attachment, no link. Here's how it actually happened.</p>
+<p>Researchers at Aim Security found a flaw they named EchoLeak. An attacker sends a normal-looking email to a target inside an organization running Copilot. Buried in that email is a set of instructions written in plain English, worded to look like it's addressed to the human reader, not to an AI. Later, when that same person asks Copilot an unrelated question, Copilot's retrieval system pulls in relevant context to answer -- and that poisoned email gets swept in along with everything else. Copilot can't tell the difference between an instruction from its actual user and an instruction hiding inside a document it just retrieved. It follows the hidden instruction, gathers sensitive data the user already had access to, and sends it out through a rendering trick that quietly reaches out to an attacker-controlled server. No click required anywhere in the chain.</p>
+<p>Root cause, in one sentence: Copilot's retrieval pipeline let untrusted, attacker-controlled content sit in the exact same instruction channel as trusted commands from the actual user, with nothing enforcing a hard line between the two.</p>
+<p>Microsoft did have a defense in place -- a classifier built specifically to catch prompt injection attempts. The researchers defeated it by writing the hidden instructions so they never mentioned an AI or Copilot at all, phrasing everything as if it were meant for the human recipient. That's the part worth sitting with: the control existed, and it was still routed around by careful wording alone.</p>
+<p>Here's what held. Aim Security reported this privately and gave Microsoft time to fix it before anything went public. Microsoft shipped a server-side fix, confirmed no evidence of exploitation in the wild, and didn't need a single customer to take any action -- because the fix lived in the service itself, not in something every tenant had to go patch individually.</p>
+<p>Here's what a senior engineer, or a senior ISSO, would change in how they work. Any system that feeds retrieved, external content into an AI model's instruction context needs a real trust boundary between &quot;data to read&quot; and &quot;commands to follow&quot; -- not just a classifier hoping to catch bad phrasing. In a lab with a local model and a simple retrieval script, that means feeding it a document with a hidden instruction, watching it get followed anyway, and then fixing it by separating retrieved content from the instruction channel entirely -- because that gap is the whole incident.</p>
+
+        
+            <h3>Timeline</h3>
+            <table>
+<thead>
+<tr>
+<th>Date</th>
+<th>Event</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>January 2025 (approx.)</td>
+<td>The retrieval-augmented generation (RAG) pipeline and rendering behavior later abused by EchoLeak are present in Microsoft 365 Copilot as shipped.</td>
+</tr>
+<tr>
+<td>Early 2025</td>
+<td>Aim Security researchers identify the zero-click indirect prompt injection chain and begin responsible-disclosure coordination with Microsoft's Security Response Center (MSRC).</td>
+</tr>
+<tr>
+<td>Spring 2025</td>
+<td>Microsoft begins remediation work following Aim Security's private report.</td>
+</tr>
+<tr>
+<td>May 2025</td>
+<td>Microsoft deploys a server-side fix to the affected retrieval and rendering behavior.</td>
+</tr>
+<tr>
+<td>June 11, 2025</td>
+<td>Microsoft publishes its update guide entry and formally assigns CVE-2025-32711; Aim Security publishes its public research; the technique becomes widely known as &quot;EchoLeak.&quot;</td>
+</tr>
+</tbody>
+</table>
+<p><em>Note: Microsoft's own advisory states the flaw was fully mitigated server-side, required no customer action, and found no evidence of in-the-wild exploitation; that assessment comes from Microsoft's own disclosure rather than independent confirmation.</em></p>
+
+        
+            <h3>Control Failures</h3>
+            <table>
+<thead>
+<tr>
+<th>#</th>
+<th>Failure</th>
+<th>NIST SP 800-53 Rev 5 family</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>Retrieved, untrusted external content (the email) was ingested into the same instruction channel Copilot used for trusted user commands, with no enforced separation between &quot;data&quot; and &quot;instructions.&quot;</td>
+<td><strong>AC-4</strong> — Information Flow Enforcement</td>
+</tr>
+<tr>
+<td>2</td>
+<td>The Cross-Prompt Injection Attack (XPIA) classifier meant to detect and block injected instructions was bypassed by phrasing the payload as if addressed to a human, not an AI.</td>
+<td><strong>SI-10</strong> — Information Input Validation</td>
+</tr>
+<tr>
+<td>3</td>
+<td>The exfiltration path let data leave the tenant boundary via an automatically rendered reference to an external server, without a network-layer check on the destination.</td>
+<td><strong>SC-7</strong> — Boundary Protection</td>
+</tr>
+<tr>
+<td>4</td>
+<td>The Copilot session operated with the full scope of data the signed-in user could already access, so a single successful injection could reach anything in that scope.</td>
+<td><strong>AC-6</strong> — Least Privilege</td>
+</tr>
+<tr>
+<td>5</td>
+<td>The flaw required an external security research team, not internal detection, to first surface the exploitable chain.</td>
+<td><strong>SI-4</strong> — System Monitoring</td>
+</tr>
+</tbody>
+</table>
+
+        
+            <h3>What Held</h3>
+            <ul>
+<li><strong>Aim Security's coordinated disclosure gave Microsoft a real head start.</strong> The researchers reported privately and held public details until a fix was live, which is exactly why Microsoft could say there was no evidence of in-the-wild exploitation.</li>
+<li><strong>Microsoft fixed the platform, not the tenant.</strong> Because the remediation lived server-side, every existing customer got the fix automatically — no patch cycle, no per-tenant configuration change required.</li>
+<li><strong>A layered defense existed, even though it was bypassed.</strong> The XPIA classifier being defeated is a real gap, but its presence — and Microsoft's own account of the fix — shows defense-in-depth thinking was already part of the design, which is a different failure than having no control at all.</li>
+</ul>
+
+        
+            <h3>Sources</h3>
+            <ul>
+<li><a href="https://msrc.microsoft.com/en-US/security-guidance/advisory/CVE-2025-32711" target="_blank" rel="noopener noreferrer">CVE-2025-32711 — Security Update Guide, Microsoft Security Response Center</a> (primary)</li>
+<li><a href="https://www.aimsecurity.ai/blog/echoleak-zero-click-copilot-vulnerability" target="_blank" rel="noopener noreferrer">EchoLeak: Zero-Click Copilot Vulnerability — Aim Security</a> (primary — discoverer's own account)</li>
+<li><a href="https://thehackernews.com/2025/06/zero-click-ai-vulnerability-exposes.html" target="_blank" rel="noopener noreferrer">Zero-Click AI Vulnerability Exposes Microsoft 365 Copilot Data Without User Interaction — The Hacker News</a></li>
+<li><a href="https://www.hackthebox.com/blog/cve-2025-32711-echoleak-copilot-vulnerability" target="_blank" rel="noopener noreferrer">Inside CVE-2025-32711 (EchoLeak): Prompt injection meets AI exfiltration — HackTheBox</a></li>
+<li><a href="https://sentra.io/blog/copilot-echoleak-prompt-injection" target="_blank" rel="noopener noreferrer">EchoLeak (CVE-2025-32711): What the Microsoft Copilot Prompt Injection Vulnerability Means for Your Data — Sentra</a></li>
+</ul>
+<hr />
+<p><strong>Tomorrow's Thread:</strong> Day 37 moves to the container and orchestration escape family — Azurescape, the 2021 Unit 42-discovered cross-tenant container escape in Microsoft Azure Container Instances, distinct from today's AI/agent security family and from Day 2's runc escape and Day 10's Leaky Vessels.</p>
+
+        
+    </article>
+    
+    <article class="brief-section" id="security-advice">
+        <p class="brief-kicker">Senior Security Advice</p>
+        <h2>Enforce Application Allowlisting on Critical Systems</h2>
+        
+            <h3>The Advice</h3>
+            <p>Put your critical servers and endpoints on application allowlisting so only explicitly approved software can execute, and route every exception through change management instead of a quiet one-off click.</p>
+
+        
+            <h3>Why It Matters</h3>
+            <p>Antivirus and endpoint detection tools mostly work by recognizing something bad. Allowlisting flips that logic: nothing runs unless it's already on the approved list, known-bad or not. That matters because a lot of real intrusions don't use custom malware at all — they use a legitimate admin tool, a renamed executable, or a scripting engine that's already sitting on the box. Signature-based tools can miss that entirely, especially when the file is packed, encrypted, or just never seen before. Ransomware operators count on being able to drop and run a payload once they've landed. On a host where only approved binaries execute, that payload never gets the chance, no matter how new or well-disguised it is. That's exactly why CISA's own ransomware prevention guidance names application allowlisting, alongside EDR, as a baseline control for every asset.</p>
+
+        
+            <h3>How to Implement It</h3>
+            <ol>
+<li>Start with your highest-value systems first — domain controllers, build and CI servers, systems handling sensitive data — using an OS-native tool (Windows Defender Application Control or AppLocker, Linux fapolicyd or SELinux) or a dedicated allowlisting product.</li>
+<li>Build the baseline from a clean, known-good image, then run in audit/log-only mode before enforcing. Review what actually tries to run for a real business cycle (patch days, month-end jobs, backup windows) so you're not blind-blocking legitimate software.</li>
+<li>Flip from audit to enforce/deny once the baseline is stable, and require a change ticket with an approver and a reason for every new binary added afterward — no ad hoc additions.</li>
+<li>Extend beyond raw executables to scripts and libraries over time. Once .exe files are locked down, attackers pivot to PowerShell, DLL side-loading, and living-off-the-land binaries, so a policy that only covers one layer gets bypassed.</li>
+<li>Verify it's actually enforcing, not just enabled: push an unauthorized test binary to an allowlisted host and confirm it's blocked and the block is logged and alerted on. A policy that's &quot;on&quot; but silently fails open is worse than no policy, because it gives you false confidence.</li>
+</ol>
+
+        
+            <h3>The Pushback You&#39;ll Hear</h3>
+            <p>&quot;This is going to break things and flood the help desk with tickets.&quot; The senior-engineer rebuttal: that's what the audit-mode period is for. Running in log-only mode first surfaces the real software inventory on a system before anything gets blocked, so enforcement day isn't a surprise. Once the baseline is right, a mature allowlist mostly runs itself, and it stops the one class of attack — running an unapproved payload — that a lot of other controls simply aren't designed to catch.</p>
+
+        
+            <h3>Sources</h3>
+            <ul>
+<li>#StopRansomware Guide - CISA - https://www.cisa.gov/stopransomware/ransomware-guide</li>
+<li>CIS Controls v8, Control 2.5 &quot;Allowlist Authorized Software&quot; - https://controls-assessment-specification.readthedocs.io/en/latest/control-2/control-2.5.html</li>
+<li>NIST Special Publication 800-167, Guide to Application Whitelisting - https://nvlpubs.nist.gov/nistpubs/specialpublications/nist.sp.800-167.pdf</li>
+</ul>
+
+        
+    </article>
+    
+    <article class="brief-section" id="talk-track">
+        <p class="brief-kicker">Senior Talk Tracks</p>
+        <h2>The Shared Responsibility Line in Practice</h2>
+        
+            
+            <p>Here's a sentence that sounds simple and gets people in real trouble: &quot;AWS is responsible for security.&quot; No. AWS is responsible for security OF the cloud. You're responsible for security IN the cloud. That one preposition is the whole ballgame.</p>
+<p>Let's make it plain. AWS's job is the stuff you can't see and usually can't touch: the physical data centers, the hardware, the hypervisor, the global network. They patch that. They guard that. That's &quot;security of the cloud.&quot; Everything you configure on top of it -- who can access your S3 buckets, whether your database is publicly reachable, whether your servers are patched, how you set up your permissions -- that's &quot;security in the cloud,&quot; and it's on you, completely, regardless of how good AWS's side is.</p>
+<p>Here's why that matters in production, and the senior take: most cloud breaches people blame on &quot;the cloud&quot; are actually a customer misconfiguration sitting entirely on their side of that line. AWS didn't leave an S3 bucket public -- somebody's IAM policy or bucket setting did. A junior engineer hears &quot;AWS security&quot; and pictures one big shared fortress. A senior engineer knows the fortress has a property line running straight through the middle of it, and their entire job lives on one specific side of that line.</p>
+<p>Think of it like renting an apartment. The building's foundation, the fire escapes, the locks on the main entrance -- that's the landlord's job, the &quot;of the building&quot; part. But if you leave your own apartment door unlocked, the landlord's rock-solid foundation doesn't save you. Nobody blames &quot;the building&quot; for that break-in.</p>
+<p>A good way to open this at work: &quot;Before we assume AWS is handling that, let's check -- is this actually on our side of the shared responsibility line?&quot;</p>
+
+        
+            <h3>Key Takeaways</h3>
+            <ol>
+<li>The shared responsibility model splits cloud security into &quot;security of the cloud,&quot; which the provider owns, and &quot;security in the cloud,&quot; which the customer owns — and the exact line moves depending on the service.</li>
+<li>The large majority of publicized cloud security incidents trace back to customer-side misconfiguration, not a failure in the provider's own infrastructure.</li>
+<li>Using a more managed service, like a managed database instead of a self-run one on a virtual machine, shifts more of the line toward the provider, but it never erases the customer's side of it entirely.</li>
+</ol>
+
+        
+            <h3>Reader Question</h3>
+            <p><strong>&quot;If the shared responsibility line moves depending on the service, how would you figure out exactly where it falls for a specific AWS service you'd never used before?&quot;</strong></p>
+<p>I'd start with AWS's own documentation for that specific service, because the shared responsibility line isn't uniform — it shifts based on how much AWS manages versus how much the customer configures, and a fully managed service like a serverless database pushes more responsibility toward AWS than a self-managed virtual machine does. My answer would be that I never assume the line based on another service I've used before; I verify it service by service, because assuming it stayed the same as the last service is exactly the kind of gap that leads to an unpatched or misconfigured resource nobody thought was theirs to fix.</p>
+
+        
+    </article>
+    
+    <article class="brief-section" id="tech-news">
+        <p class="brief-kicker">Tech News</p>
+        
+        
+            
+            <p>A single flaw in the way the Linux kernel cleans up old socket connections just handed researchers root access on the host — from inside a completely default, unprivileged Docker container, no special settings required. If you run anything in containers, this is the story to know today. Two stories: a Linux container-escape exploit with no patch yet on the most common Ubuntu releases, and a technique that lets an attacker silently hijack the exact cloud storage bucket your logs or backups are pointed at.</p>
+<p>Start with the container escape. Security firm DepthFirst published working exploit code on September 22nd for a flaw now tracked as CVE-2026-80521 — a use-after-free bug in how the Linux kernel garbage-collects AF_UNIX sockets, the connections programs use to pass file descriptors to each other. The bug lets a process inside a plain, unprivileged container — no extra capabilities, no relaxed security settings — walk out to root on the host itself. The fix already exists upstream and landed back in early August, but Ubuntu hasn't shipped it yet for its 22.04, 24.04, or 26.04 releases, including the kernel packages a lot of teams run on AWS, Azure, and Google Cloud. Here's the takeaway: a container boundary is a kernel feature, not a wall — a senior engineer treats every unpatched kernel CVE as a potential escape route, not just a local annoyance, and patches the host kernel instead of trusting the container alone to hold.</p>
+<p>Next up, a cloud storage trick that doesn't even need a vulnerability. Researchers at Unit 42 detailed a technique called bucket namespace hijacking: because bucket names have to be globally unique across an entire cloud provider, an attacker who can delete your storage bucket — or simply waits for one you retire — can immediately register a bucket with that exact same name under their own account. Anything still pointed at that name — a logging pipeline, a backup job, a data-transfer sink — quietly starts shipping data straight to the attacker, and no IAM alert fires, because as far as the cloud provider is concerned, a bucket by that name legitimately exists again. My take: this only works because most teams treat a bucket name like a fixed address instead of a resource someone else can claim the moment it's released — worth auditing what your pipelines still point at, on AWS, Azure, and Google Cloud alike.</p>
+<p>Both stories point at the same blind spot: the trust boundary you assume is there — a container wall, a storage name — is exactly what needs to be verified, not assumed.</p>
+
+        
+            <h3>Sources</h3>
+            <ul>
+<li><a href="https://thehackernews.com/2026/09/exploit-released-for-unpatched-ubuntu.html" target="_blank" rel="noopener noreferrer">Exploit Released for Unpatched Ubuntu Linux Flaw Enabling Host-Root Container Escape</a></li>
+<li><a href="https://thecybersecguru.com/news/cve-2026-80521-ubuntu-kernel-container-escape/" target="_blank" rel="noopener noreferrer">CVE-2026-80521: Ubuntu Kernel Flaw Lets Containers Escape to Host Root</a></li>
+<li><a href="https://unit42.paloaltonetworks.com/cloud-bucket-hijacking-risks/" target="_blank" rel="noopener noreferrer">The Global Namespace Risk: Universal Bucket Hijacking Technique for Cloud Data Exfiltration — Unit 42</a></li>
+<li><a href="https://cybersecuritynews.com/bucket-hijacking-attack/" target="_blank" rel="noopener noreferrer">New Bucket Hijacking Attack Allows Hackers to Reroute Cloud Data Streams to External Storage</a></li>
+</ul>
+
+        
+    </article>
+    
+    <section class="brief-subscribe" id="subscribe">
+    <h2>Get The Daily Brief by email</h2>
+    <p>One short email each morning. Unsubscribe anytime.</p>
+    <form action="https://buttondown.com/api/emails/embed-subscribe/cybercider" method="post">
+        <label for="bd-email">Email address</label>
+        <input type="email" name="email" id="bd-email" required autocomplete="email" placeholder="you@example.com">
+        <button type="submit">Subscribe</button>
+    </form>
+</section>
+</main>
+
+    <footer><p class="copyright">The Daily Brief · Eddie Camacho</p></footer>
+<!-- cf-web-analytics (managed by tools/inject_analytics.py) -->
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "f728a20b49cc4a0fbe02cde72f03301c"}'></script>
+</body>
+</html>
