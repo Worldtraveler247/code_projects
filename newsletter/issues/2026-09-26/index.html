@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="dark">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'self' https://static.cloudflareinsights.com; connect-src 'self' https://cloudflareinsights.com; img-src 'self' data:; form-action https://buttondown.com; base-uri 'none'; object-src 'none'">
+    <meta name="description" content="The Daily Brief for Saturday, September 26, 2026: security incidents, senior security advice, engineering explainers, and tech news.">
+    <title>The Daily Brief · Sep 26, 2026</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="icon" href="../../../favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="../../../style.css">
+    <link rel="stylesheet" href="../../newsletter.css">
+</head>
+<body class="brief-page">
+    <a href="#main-content" class="skip-nav">Skip to main content</a>
+    <nav class="brief-nav">
+        <a href="../../../index.html">← App Hub</a>
+        <a href="../../">All issues</a>
+    </nav>
+    
+<header class="brief-masthead">
+    <p class="brief-eyebrow">THE DAILY BRIEF</p>
+    <h1>Saturday, September 26, 2026</h1>
+    <ol class="brief-toc">
+        <li><a href="#current-events">Current Events</a></li><li><a href="#security-advice">Senior Security Advice</a></li><li><a href="#talk-track">Senior Talk Tracks</a></li><li><a href="#tech-news">Tech News</a></li>
+    </ol>
+</header>
+<main id="main-content" class="brief">
+    
+    <article class="brief-section" id="current-events">
+        <p class="brief-kicker">Current Events</p>
+        <h2>Azurescape: The Cross-Tenant Container Escape in Azure Container Instances</h2>
+        
+            
+            <p>In September 2021, security researchers proved something no one had publicly demonstrated before on a major public cloud: that a customer running a completely ordinary container could break out and reach other customers' workloads on the very same platform. Here's how it actually happened.</p>
+<p>Researchers at Unit 42, Palo Alto Networks' threat intelligence arm, were testing Azure Container Instances -- Microsoft's pay-as-you-go service for spinning up containers without managing any servers yourself. They found the platform was still running a container runtime called runc, version 1.0.0-release-candidate-2 -- already two years out of date, and vulnerable to a previously disclosed flaw, CVE-2019-5736. That bug let a container escape its own boundary and get code execution as root on the host machine underneath it. From there, the researchers found something worse waiting on that host: a live, privileged Kubernetes service-account token. With it, they could reach the Kubernetes API server controlling the entire multi-tenant cluster -- the same cluster running containers that belonged to other Azure customers, not just them.</p>
+<p>Root cause, in one sentence: a known, two-year-old vulnerability was left unpatched in a shared, multi-tenant runtime, and the blast radius of exploiting it wasn't one customer's container -- it was every customer sharing that cluster.</p>
+<p>Here's what happened next, and it's the part worth knowing cold. The researchers reported the flaw to the Microsoft Security Response Center under coordinated disclosure, and Microsoft moved fast -- patched by the end of August 2021, before any public detail went out. Microsoft's own investigation found no evidence any other customer's data was actually accessed. Out of caution, Microsoft still notified every customer who'd had a container running on the same clusters the researchers had touched, through Azure's own Service Health Notifications, and recommended they rotate any privileged credential deployed before August 31st -- treating possible exposure as real even without proof anyone else had exploited it.</p>
+<p>Here's what a senior engineer, or a senior ISSO, would change in how they work. A multi-tenant platform's promise -- that your container is isolated from every other customer's -- is only as strong as the oldest unpatched component underneath it. In a lab with Podman on RHEL 9, that means picking one shared-runtime component, checking its version against the latest known CVE for it, and proving to yourself what an unpatched flaw in that layer would actually expose -- because &quot;it's just a container&quot; was never the real boundary; the host underneath it always was.</p>
+
+        
+            <h3>Timeline</h3>
+            <table>
+<thead>
+<tr>
+<th>Date</th>
+<th>Event</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>February 2019</td>
+<td>CVE-2019-5736, a runc container-escape vulnerability unrelated to Azure at time of disclosure, is publicly disclosed and patched upstream.</td>
+</tr>
+<tr>
+<td>2021 (research period)</td>
+<td>Unit 42 researchers Yuval Avrahami and Ariel Zelivansky, testing Azure Container Instances (ACI), discover the platform is still running runc v1.0.0-rc2 — a version that predates the CVE-2019-5736 fix by roughly two years.</td>
+</tr>
+<tr>
+<td>Summer 2021</td>
+<td>Unit 42 escalates the runc escape into a full multi-tenant compromise: from host root, they reach a privileged Kubernetes service-account token and take control of the shared cluster's API server.</td>
+</tr>
+<tr>
+<td>Prior to late August 2021</td>
+<td>Unit 42 reports the full chain to the Microsoft Security Response Center (MSRC) under coordinated vulnerability disclosure.</td>
+</tr>
+<tr>
+<td>Late August 2021</td>
+<td>Microsoft patches the underlying issue in Azure Container Instances.</td>
+</tr>
+<tr>
+<td>August 31, 2021</td>
+<td>Microsoft's advisory cutoff: customers who shared a cluster with the researchers are advised to rotate any privileged credential deployed to the platform before this date.</td>
+</tr>
+<tr>
+<td>September 2021</td>
+<td>Microsoft publishes its MSRC blog, &quot;Coordinated disclosure of vulnerability in Azure Container Instances Service&quot;; Unit 42 publishes its own findings as &quot;Finding Azurescape.&quot;</td>
+</tr>
+</tbody>
+</table>
+<p><em>Note: secondary reporting differs slightly on the exact September 2021 day Unit 42's blog went live (accounts place it either the 9th or the 13th); both Microsoft's own MSRC post and Unit 42's research post are treated as the primary record here regardless of that discrepancy.</em></p>
+
+        
+            <h3>Control Failures</h3>
+            <table>
+<thead>
+<tr>
+<th>#</th>
+<th>Failure</th>
+<th>NIST SP 800-53 Rev 5 Control Family</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>Azure Container Instances ran a roughly two-year-outdated version of runc with a known, already-disclosed vulnerability (CVE-2019-5736) still exploitable in production.</td>
+<td><strong>SI-2</strong> — Flaw Remediation</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Once a container escaped to host root, a live, privileged Kubernetes service-account token was reachable from that same host, handing the attacker a path to the cluster's control plane.</td>
+<td><strong>AC-6</strong> — Least Privilege</td>
+</tr>
+<tr>
+<td>3</td>
+<td>No boundary stopped a single host-level compromise from reaching the Kubernetes API server governing every other customer's containers sharing that multi-tenant cluster.</td>
+<td><strong>SC-7</strong> — Boundary Protection</td>
+</tr>
+<tr>
+<td>4</td>
+<td>The outdated runtime version and the escalation path were found by an external research team, not by Microsoft's own internal detection or inventory processes.</td>
+<td><strong>SI-4</strong> — System Monitoring</td>
+</tr>
+<tr>
+<td>5</td>
+<td>No enforced baseline tracked the container-runtime version running in production against currently known CVEs for that component.</td>
+<td><strong>CM-2</strong> — Baseline Configuration</td>
+</tr>
+</tbody>
+</table>
+
+        
+            <h3>What Held</h3>
+            <ul>
+<li><strong>Coordinated disclosure worked as designed.</strong> Unit 42 reported privately, and Microsoft had a fix live before any exploit detail became public — no malicious actor is known to have used this chain.</li>
+<li><strong>Microsoft's own investigation found no unauthorized access to customer data.</strong> The theoretical blast radius was severe, but containment held in practice.</li>
+<li><strong>Microsoft treated &quot;no evidence of misuse&quot; as different from &quot;no possible exposure.&quot;</strong> Even without proof of harm, it proactively notified every customer who'd shared a cluster with the researchers and recommended credential rotation — the more conservative and correct posture.</li>
+</ul>
+
+        
+            <h3>Sources</h3>
+            <ul>
+<li><a href="https://msrc.microsoft.com/blog/2021/09/coordinated-disclosure-of-vulnerability-in-azure-container-instances-service/" target="_blank" rel="noopener noreferrer">Coordinated disclosure of vulnerability in Azure Container Instances Service — Microsoft Security Response Center</a> (primary)</li>
+<li><a href="https://unit42.paloaltonetworks.com/azure-container-instances/" target="_blank" rel="noopener noreferrer">Finding Azurescape – Cross-Account Container Takeover in Azure Container Instances — Unit 42, Palo Alto Networks</a> (primary — discoverer's own account)</li>
+<li><a href="https://thehackernews.com/2021/09/microsoft-warns-of-cross-account.html" target="_blank" rel="noopener noreferrer">Microsoft Warns of Cross-Account Takeover Bug in Azure Container Instances — The Hacker News</a></li>
+<li><a href="https://www.bleepingcomputer.com/news/security/microsoft-fixes-bug-letting-hackers-take-over-azure-containers/" target="_blank" rel="noopener noreferrer">Microsoft fixes bug letting hackers take over Azure containers — BleepingComputer</a></li>
+<li><a href="https://redmondmag.com/articles/2021/09/10/azurescape-attack-azure-container.aspx" target="_blank" rel="noopener noreferrer">'Azurescape' Attack on Azure Container Instances Highlights Risks of Using Multitenant Services — Redmondmag</a></li>
+</ul>
+<hr />
+<p><strong>Tomorrow's Thread:</strong> Day 38 moves to the software supply chain family — the XZ Utils backdoor (CVE-2024-3094), distinct from today's container-escape family and from this series' earlier supply-chain entries (3CX, Kaseya VSA).</p>
+
+        
+    </article>
+    
+    <article class="brief-section" id="security-advice">
+        <p class="brief-kicker">Senior Security Advice</p>
+        <h2>Run Incident Response Tabletop Exercises Before You Need Them</h2>
+        
+            <h3>The Advice</h3>
+            <p>Run a full incident response tabletop exercise at least twice a year, walking your actual team through a realistic breach scenario before a real one forces everyone to improvise.</p>
+
+        
+            <h3>Why It Matters</h3>
+            <p>An incident response plan that has never been rehearsed is a hypothesis, not a capability. Most organizations have a written plan sitting in a shared drive, but the first time anyone actually acts it out is during a live breach, under pressure, with customers or regulators already asking questions. That is when the plan's gaps surface: nobody has legal's after-hours number, no one is sure who can authorize taking a system offline, and the person who was supposed to draft the customer notification is on vacation. In real incidents, the technical containment is often fine; what costs organizations the most time is confusion over decision authority, escalation paths, and who talks to whom. A tabletop exercise finds those gaps on a Tuesday afternoon with coffee instead of during an actual breach at 2 a.m. NIST's incident response guidance and CISA's own exercise programs both treat this kind of rehearsal as a core preparation activity, not an optional add-on.</p>
+
+        
+            <h3>How to Implement It</h3>
+            <ol>
+<li>Schedule at least two tabletop exercises a year, built around scenarios that match your actual risk profile (ransomware, cloud credential compromise, insider data exfiltration). CISA's free Tabletop Exercise Packages (CTEPs) provide ready-made, customizable scenarios and discussion questions you can adapt instead of writing one from scratch.</li>
+<li>Pull in people beyond IT and security: legal, communications, an executive who can actually authorize decisions, and whoever owns customer or regulator notification. Real incidents touch all of them, so the exercise should too.</li>
+<li>Run it as a facilitated, discussion-based walkthrough with a timeline of injects, forcing each participant to say out loud what they would do and who they would call. This is where you find the gaps: unclear on-call escalation, no owner for the press statement, no defined threshold for &quot;notify customers.&quot;</li>
+<li>Produce an After-Action Report every time listing the specific gaps found, with an owner and a date attached to each fix, and update the written IR plan accordingly.</li>
+<li>Verify the control is actually working, not just performed: in the next exercise, deliberately reuse a gap flagged in the prior After-Action Report and confirm it is now closed. If the same gap resurfaces, the &quot;fix&quot; was paperwork, not a real change.</li>
+</ol>
+
+        
+            <h3>The Pushback You&#39;ll Hear</h3>
+            <p>&quot;We already have an incident response plan, we don't need to rehearse it.&quot; The senior-engineer rebuttal: a plan nobody has acted out is untested code. You don't know it works until you run it. A tabletop exercise is the cheapest possible way to find out that the escalation contact list is stale or that no one actually has authority to pull a server offline, before that gap costs you hours during a real breach.</p>
+
+        
+            <h3>Sources</h3>
+            <ul>
+<li>CISA Tabletop Exercise Packages (CTEP) - https://www.cisa.gov/resources-tools/services/cisa-tabletop-exercise-packages</li>
+<li>NIST Special Publication 800-84, Guide to Test, Training, and Exercise Programs for IT Plans and Capabilities - https://nvlpubs.nist.gov/nistpubs/legacy/sp/nistspecialpublication800-84.pdf</li>
+<li>NIST Special Publication 800-61 Revision 3, Incident Response Recommendations and Considerations for Cybersecurity Risk Management: A CSF 2.0 Community Profile - https://csrc.nist.gov/pubs/sp/800/61/r3/final</li>
+</ul>
+
+        
+    </article>
+    
+    <article class="brief-section" id="talk-track">
+        <p class="brief-kicker">Senior Talk Tracks</p>
+        <h2>Least Privilege as a Process, Not a Setting</h2>
+        
+            
+            <p>Here's a phrase you'll hear in every security interview: &quot;least privilege.&quot; Most people treat it like a setting you configure once. It's not. It's a process you have to keep running, or it quietly stops being true.</p>
+<p>Let's make it plain. Least privilege means giving a person or a system only the access it actually needs to do its job -- nothing more. Sounds simple. The problem is what happens after day one. Someone joins a project, gets access to a database. Three months later they roll off that project. Does anyone remove the access? Usually not. Multiply that by every employee, every system account, every integration, over years, and you get what security people call permission creep -- access nobody's using, that nobody remembers granting, sitting there as pure risk with zero upside.</p>
+<p>Here's why that matters in production, and the senior take: a junior engineer treats least privilege as something you get right at setup -- configure the IAM policy correctly once, move on. A senior engineer treats it as a recurring process: who has access, do they still need it, and can we prove that on demand. Because every one of those forgotten permissions is a door an attacker doesn't need to pick a lock for -- it's already unlocked, just nobody's checking it anymore.</p>
+<p>Think of it like handing out keys to a building. On day one, it's easy to make sure only the right people get the right keys. But if you never collect a key back when someone changes departments or leaves the company, five years later half the keys in circulation belong to people who don't even work there. The lock was never broken. Nobody ever checked who still had a copy.</p>
+<p>A good way to open this at work: &quot;Before we grant this, do we have a process for reviewing and removing it later -- or are we about to create another permission nobody's going to remember in a year?&quot;</p>
+
+        
+            <h3>Key Takeaways</h3>
+            <ol>
+<li>Least privilege is a process of granting and then actively removing access, not a one-time configuration step — the removal half is where most organizations fail.</li>
+<li>Permission creep is the accumulation of unused, forgotten access over time, and it's dangerous precisely because it's invisible until an attacker finds it first.</li>
+<li>A senior engineer treats &quot;can we prove who has access to this, right now&quot; as a standing requirement, not a question you scramble to answer during an audit.</li>
+</ol>
+
+        
+            <h3>Reader Question</h3>
+            <p><strong>&quot;If least privilege is supposed to be a process, how would you actually catch permission creep before an audit forces you to?&quot;</strong></p>
+<p>I'd build a recurring access review into the calendar, not just wait for an audit to trigger one — quarterly for most systems, tighter for anything sensitive — where I'm pulling a report of who has access to what and confirming it against who actually still needs it for their current role. My answer would be that the review has to be owned by someone specific with a recurring reminder, because &quot;we'll get to it eventually&quot; is exactly how permission creep accumulates in the first place; the process only works if removing access is as routine as granting it.</p>
+
+        
+    </article>
+    
+    <article class="brief-section" id="tech-news">
+        <p class="brief-kicker">Tech News</p>
+        
+        
+            
+            <p>A ransomware crew doesn't need to steal your source code to hold your software supply chain hostage — they just need an unpatched build server they can reach over the network, and CISA says that's happening right now to one of the most widely used CI/CD platforms on the internet. Two stories today: a critical flaw in JetBrains TeamCity now confirmed in active ransomware attacks, and a $351 million cryptocurrency heist that never touched a single private key.</p>
+<p>Start with TeamCity. The Cybersecurity and Infrastructure Security Agency warned this week that ransomware groups are actively exploiting CVE-2026-63077, a critical authentication-bypass flaw in TeamCity On-Premises that lets an attacker with nothing more than network access run arbitrary operating-system commands on the server. JetBrains patched it back on July 25th, and CISA added it to its Known Exploited Vulnerabilities catalog in early August — but researchers say more than 160 internet-facing TeamCity servers are still running the vulnerable version today. Here's why that matters more than a typical unpatched web server: TeamCity is a continuous-integration and continuous-delivery pipeline, the automated system that builds and ships your code. Compromise it, and an attacker isn't just on one box — they can tamper with stored credentials, configurations, and the build artifacts feeding every downstream deployment. My take: a two-month-old patch for a maximum-severity flaw sitting unapplied on a system with pipeline-wide trust is exactly the kind of gap a senior engineer flags in a risk review before it becomes someone else's incident report.</p>
+<p>Next up, the Bitget hack. The cryptocurrency exchange confirmed Thursday that attackers made off with $351.6 million, and the mechanism is the interesting part: investigators say the private keys protecting the wallets never left the vault. Instead, someone compromised the backend system that tells Bitget's wallets what to sign — spoofing transfer instructions and triggering the exchange's own authorization workflow to move the funds out the front door. Bitget says preliminary evidence, including IP addresses tied to infrastructure used before, points toward North Korea's Lazarus Group. My read: this is a reminder that the strongest cryptography in the world doesn't help you if the system deciding what gets signed is the thing that gets popped — access control on that decision layer matters just as much as the keys themselves.</p>
+<p>Both stories land on the same principle: patch what's reachable from the internet, and audit not just who holds your keys, but what's allowed to tell them what to sign.</p>
+
+        
+            <h3>Sources</h3>
+            <ul>
+<li><a href="https://www.bleepingcomputer.com/news/security/cisa-ransomware-gangs-now-exploiting-critical-teamcity-flaw/" target="_blank" rel="noopener noreferrer">CISA: Ransomware gangs now exploiting critical TeamCity flaw — BleepingComputer</a></li>
+<li><a href="https://thehackernews.com/2026/08/cisa-flags-teamcity-cve-2026-63077-rce.html" target="_blank" rel="noopener noreferrer">CISA Flags TeamCity CVE-2026-63077 RCE Flaw Under Active Exploitation in the Wild — The Hacker News</a></li>
+<li><a href="https://www.scworld.com/news/critical-jetbrains-teamcity-rce-exploited-by-ransomware-says-cisa" target="_blank" rel="noopener noreferrer">Critical 9.8 JetBrains TeamCity RCE exploited by ransomware, says CISA — SC World</a></li>
+<li><a href="https://www.cnbc.com/2026/09/25/crypto-platform-bitget-suspects-north-korea-in-352-million-hack.html" target="_blank" rel="noopener noreferrer">Crypto platform Bitget suspects North Korea is responsible for $352 million hack — CNBC</a></li>
+<li><a href="https://crypto.news/bitget-probe-points-to-backend-breach/" target="_blank" rel="noopener noreferrer">Bitget probe points to backend breach after $351.6M hack — crypto.news</a></li>
+<li><a href="https://www.coindesk.com/markets/2026/09/25/bitget-s-usd351-million-hack-happened-via-spoofed-transfers-not-private-keys-ceo-gray-chen-says" target="_blank" rel="noopener noreferrer">Bitget's $352 million hack happened via spoofed transfers, not private keys, CEO Gracy Chen says — CoinDesk</a></li>
+</ul>
+
+        
+    </article>
+    
+    <section class="brief-subscribe" id="subscribe">
+    <h2>Get The Daily Brief by email</h2>
+    <p>One short email each morning. Unsubscribe anytime.</p>
+    <form action="https://buttondown.com/api/emails/embed-subscribe/cybercider" method="post">
+        <label for="bd-email">Email address</label>
+        <input type="email" name="email" id="bd-email" required autocomplete="email" placeholder="you@example.com">
+        <button type="submit">Subscribe</button>
+    </form>
+</section>
+</main>
+
+    <footer><p class="copyright">The Daily Brief · Eddie Camacho</p></footer>
+<!-- cf-web-analytics (managed by tools/inject_analytics.py) -->
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "f728a20b49cc4a0fbe02cde72f03301c"}'></script>
+</body>
+</html>
