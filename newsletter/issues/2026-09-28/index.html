@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="dark">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'self' https://static.cloudflareinsights.com; connect-src 'self' https://cloudflareinsights.com; img-src 'self' data:; form-action https://buttondown.com; base-uri 'none'; object-src 'none'">
+    <meta name="description" content="The Daily Brief for Monday, September 28, 2026: security incidents, senior security advice, engineering explainers, and tech news.">
+    <title>The Daily Brief · Sep 28, 2026</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="icon" href="../../../favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="../../../style.css">
+    <link rel="stylesheet" href="../../newsletter.css">
+</head>
+<body class="brief-page">
+    <a href="#main-content" class="skip-nav">Skip to main content</a>
+    <nav class="brief-nav">
+        <a href="../../../index.html">← App Hub</a>
+        <a href="../../">All issues</a>
+    </nav>
+    
+<header class="brief-masthead">
+    <p class="brief-eyebrow">THE DAILY BRIEF</p>
+    <h1>Monday, September 28, 2026</h1>
+    <ol class="brief-toc">
+        <li><a href="#current-events">Current Events</a></li><li><a href="#security-advice">Senior Security Advice</a></li><li><a href="#talk-track">Senior Talk Tracks</a></li><li><a href="#tech-news">Tech News</a></li>
+    </ol>
+</header>
+<main id="main-content" class="brief">
+    
+    <article class="brief-section" id="current-events">
+        <p class="brief-kicker">Current Events</p>
+        <h2>The GitLab.com Database Deletion Incident</h2>
+        
+            
+            <p>Here's a story every senior sysadmin should have memorized: how one engineer, at eleven at night, took down one of the internet's biggest code-hosting platforms — and then found out every safety net the company thought it had was already gone. Here's how it actually happened.</p>
+<p>On January 31st, 2017, GitLab-dot-com was under unusual load, and an on-call engineer was trying to fix a secondary database that had fallen out of sync with the primary. Replication between the two had already silently broken hours earlier, because write-ahead-log archiving wasn't enabled, so the primary was discarding data the secondary still needed before it could catch up. The engineer's plan was simple: wipe the empty data directory on the out-of-sync secondary, then resync it from the primary. He ran &quot;remove, recursive, force&quot; on what he believed was that secondary host. Within a couple of seconds he realized he was actually connected to the live production primary, and killed the command — but by then, of roughly three hundred gigabytes of production data, only about four and a half gigabytes were left.</p>
+<p>Root cause, in one sentence: a single destructive command was one keystroke away from live production, with no confirmation prompt, no peer review, and no clear way to tell which host you were actually on.</p>
+<p>Here's the part that made this a career-defining incident instead of just a bad night. When GitLab turned to restore from backup, they found all five of their backup and recovery mechanisms had failed. The scheduled database exports had been silently erroring out for weeks, because they were running against the wrong database version — and the emails warning about it were being silently rejected by a mail-server misconfiguration. There was no real snapshot schedule for the production database. Cloud disk snapshots had never been turned on, to save money. The file-level backups amounted to a few empty bytes. And replication — the one live safety net — was the very thing that had just failed.</p>
+<p>What actually held was almost an accident. Hours earlier, an engineer had taken a manual disk snapshot of the database for an unrelated staging refresh. That snapshot, about six hours old, was the only usable copy of anything, and it's what GitLab restored from after roughly eighteen hours of downtime. I want to be honest about that: that wasn't a designed control holding the line — it was luck standing in for one. What was a real control was GitLab's own transparency afterward: a live public incident document updated in real time, and a full engineering postmortem days later, naming every failure without spin.</p>
+<p>Here's what a senior engineer, or a senior ISSO, would change in how they work. Any command that can delete production data needs a second set of eyes, or a hard confirmation step, before it runs — full stop. In a RHEL 9 lab with Podman, that means actually writing a backup verification job: take a database backup, then prove on a separate host that you can restore from it on a schedule, instead of trusting that a quiet cron job for months actually means anything.</p>
+
+        
+            <h3>Timeline</h3>
+            <table>
+<thead>
+<tr>
+<th>Date / Time (UTC)</th>
+<th>Event</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>January 31, 2017, ~17:20</td>
+<td>Start of the window whose database writes would later be permanently lost; GitLab.com is under elevated load, later attributed in part to spam/abuse traffic.</td>
+</tr>
+<tr>
+<td>January 31, 2017, evening</td>
+<td>Streaming replication between the primary (db1) and secondary (db2) PostgreSQL hosts breaks; write-ahead-log (WAL) segments are purged by the primary before the secondary can apply them, because WAL archiving was not enabled.</td>
+</tr>
+<tr>
+<td>January 31, 2017, ~23:00</td>
+<td>An on-call engineer, trying to resync the out-of-sync secondary, intends to remove its empty PostgreSQL data directory so <code>pg_basebackup</code> can rebuild it.</td>
+</tr>
+<tr>
+<td>January 31, 2017, 23:00–23:27</td>
+<td>The <code>rm -rf</code> command is instead run against the live production primary, db1.cluster.gitlab.com, deleting its data directory.</td>
+</tr>
+<tr>
+<td>January 31, 2017, 23:27</td>
+<td>The engineer notices the mistake within seconds and terminates the command; of roughly 300 GB, only about 4.5 GB remains.</td>
+</tr>
+<tr>
+<td>January 31–February 1, 2017</td>
+<td>Engineers discover, one by one, that all five backup/replication mechanisms (pg_dump exports to S3, LVM snapshots, Azure disk snapshots, regular file-level backups, and streaming replication) had failed or were never properly configured for the production database.</td>
+</tr>
+<tr>
+<td>February 1, 2017, ~17:00 (~18 hours after the deletion)</td>
+<td>GitLab.com is restored using a manually taken LVM snapshot an engineer had made roughly six hours before the incident for an unrelated staging-environment refresh — the only usable copy found.</td>
+</tr>
+<tr>
+<td>February 10, 2017</td>
+<td>GitLab publishes its full public postmortem, &quot;Postmortem of database outage of January 31,&quot; with a detailed root-cause analysis and corrective-action list.</td>
+</tr>
+</tbody>
+</table>
+<p><em>Note: secondary reporting gives slightly different figures for total downtime (commonly cited as roughly 18 hours) and for exact data-loss counts; GitLab's own account cites approximately 5,000 projects, 5,000 comments, and 700 user accounts affected within the ~6-hour loss window, and this script uses those figures as GitLab's own estimate rather than an independently audited count.</em></p>
+
+        
+            <h3>Control Failures</h3>
+            <table>
+<thead>
+<tr>
+<th>#</th>
+<th>Failure</th>
+<th>NIST SP 800-53 Rev 5 Control Family</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>All five independent backup and replication mechanisms for the production database had silently failed or were never actually configured, and this went undetected for weeks.</td>
+<td><strong>CP-9</strong> — System Backup</td>
+</tr>
+<tr>
+<td>2</td>
+<td>GitLab had no tested, validated disaster-recovery/restore procedure for its production database; actual recovery depended on an untested, ad hoc snapshot that happened to exist.</td>
+<td><strong>CP-10</strong> — System Recovery and Reconstitution</td>
+</tr>
+<tr>
+<td>3</td>
+<td>Automated alerts for failing nightly backup jobs were silently rejected by a mail-delivery misconfiguration, so engineers had no visibility that backups had been broken for weeks.</td>
+<td><strong>SI-4</strong> — System Monitoring</td>
+</tr>
+<tr>
+<td>4</td>
+<td>A destructive command against a production database host could be run directly by a single on-call engineer, with no peer review, second approval, or environment-confirmation step required first.</td>
+<td><strong>CM-3</strong> — Configuration Change Control</td>
+</tr>
+<tr>
+<td>5</td>
+<td>The engineer's terminal session gave no clear, enforced way to distinguish the live production primary from the out-of-sync secondary he intended to target.</td>
+<td><strong>CM-8</strong> — System Component Inventory</td>
+</tr>
+</tbody>
+</table>
+
+        
+            <h3>What Held</h3>
+            <ul>
+<li><strong>Application data survived where database data didn't.</strong> Git repositories and wikis are stored separately from the PostgreSQL database, so code and wiki content were never touched by the deletion — a real architectural separation, not luck.</li>
+<li><strong>Be honest about the rest: this was closer to luck than to defense-in-depth.</strong> The snapshot that actually saved the data was not a designed backup control — it was one engineer's incidental habit, taken hours earlier for an unrelated reason. Naming that plainly, instead of dressing it up as a working control, is itself the senior read on this incident.</li>
+<li><strong>GitLab's own transparency and incident-response discipline held.</strong> Publishing a live public incident document in real time and a full, unsparing postmortem ten days later is a real organizational control — it's what turned a near-catastrophic data-loss event into a trusted industry case study instead of a cover-up.</li>
+</ul>
+
+        
+            <h3>Sources</h3>
+            <ul>
+<li><a href="https://about.gitlab.com/blog/postmortem-of-database-outage-of-january-31/" target="_blank" rel="noopener noreferrer">Postmortem of database outage of January 31 — GitLab</a> (primary)</li>
+<li><a href="https://about.gitlab.com/blog/gitlab-dot-com-database-incident/" target="_blank" rel="noopener noreferrer">GitLab.com database incident — GitLab</a> (primary)</li>
+<li><a href="https://www.theregister.com/2017/02/01/gitlab_data_loss/" target="_blank" rel="noopener noreferrer">GitLab.com melts down after wrong directory deleted, backups fail — The Register</a></li>
+<li><a href="https://techcrunch.com/2017/02/01/gitlab-suffers-major-backup-failure-after-data-deletion-incident/" target="_blank" rel="noopener noreferrer">GitLab suffers major backup failure after data deletion incident — TechCrunch</a></li>
+<li><a href="https://www.theregister.com/2017/02/02/gitlabcom_has_found_and_restored_from_an_accidental_backup/" target="_blank" rel="noopener noreferrer">GitLab.com luckily found lost data on a staging server — The Register</a></li>
+</ul>
+<hr />
+<p><strong>Tomorrow's Thread:</strong> Day 40 moves to the identity and credential compromise family — the August–December 2022 LastPass breach, where a compromised developer endpoint led to stolen source code and, months later, to customers' encrypted password vaults being exfiltrated — distinct from today's operational/change-management family.</p>
+
+        
+    </article>
+    
+    <article class="brief-section" id="security-advice">
+        <p class="brief-kicker">Senior Security Advice</p>
+        <h2>Require a Software Bill of Materials for Every App You Ship or Buy</h2>
+        
+            <h3>The Advice</h3>
+            <p>Require an accurate, signed Software Bill of Materials for every application you build or buy, and actually check it against known vulnerabilities before that software reaches production.</p>
+
+        
+            <h3>Why It Matters</h3>
+            <p>Modern software is mostly other people's code. A typical application pulls in dozens of open-source libraries, and each of those pulls in more, several layers deep. If nobody tracks that chain, a team has no way to answer a simple question fast: &quot;do we run the vulnerable component?&quot; That gap is what turned the Log4Shell disclosure in December 2021 into a weeks-long fire drill industry-wide. The flaw wasn't in software most teams wrote — it was buried three or four dependencies down inside a logging library almost nobody could name from memory, and organizations without an inventory of their own components spent days manually grepping build artifacts just to find out if they were exposed. A Software Bill of Materials, or SBOM, is that inventory: a structured, machine-readable list of every component in a piece of software. Executive Order 14028 already requires one for anything sold to the U.S. federal government, and CISA's newly updated 2026 Minimum Elements guidance raises the bar further, now requiring the SBOM itself to carry a digital signature so recipients know it hasn't been tampered with. Without this control, a single newly disclosed vulnerability in a widely used library becomes an open-ended hunt across every application your organization runs.</p>
+
+        
+            <h3>How to Implement It</h3>
+            <ol>
+<li>Bake SBOM generation into the CI/CD pipeline with a tool like Syft or CycloneDX so an SBOM is produced automatically for every build artifact — never a manual, skippable step.</li>
+<li>For purchased or vendored software, make an SBOM a contract requirement before deployment, aligned to CISA's 2026 Minimum Elements — most vendors selling into the federal space already produce one under EO 14028.</li>
+<li>Feed every SBOM into a component-tracking tool, such as Dependency-Track or Grype, that continuously matches your inventory against the National Vulnerability Database and CISA's Known Exploited Vulnerabilities catalog, so a new CVE in a library you already shipped triggers an alert without a new scan.</li>
+<li>Verify the control is real, not decorative: periodically pull one build's SBOM and manually diff it against the actual dependency tree, confirming transitive dependencies are captured — a signed SBOM that's missing half the components is worse than none, because it creates false confidence.</li>
+<li>Store every SBOM centrally, versioned against the release it describes, so when the next Log4Shell-scale event hits, the question &quot;where do we use this component&quot; is a database query that takes minutes, not a manual audit that takes days.</li>
+</ol>
+
+        
+            <h3>The Pushback You&#39;ll Hear</h3>
+            <p>&quot;We don't have time to bolt another compliance artifact onto every build.&quot; The senior-engineer rebuttal: SBOM generation is a one-time pipeline step that runs automatically after that, costing seconds per build. Weigh that against the alternative — when the next critical library vulnerability drops, teams without an SBOM spend days manually auditing every application while teams with one answer the exposure question before the incident call even ends.</p>
+
+        
+            <h3>Sources</h3>
+            <ul>
+<li><a href="https://www.cisa.gov/resources-tools/resources/2026-minimum-elements-software-bill-materials-sbom" target="_blank" rel="noopener noreferrer">2026 Minimum Elements for a Software Bill of Materials (SBOM) - CISA</a></li>
+<li><a href="https://nvlpubs.nist.gov/nistpubs/specialpublications/nist.sp.800-218.pdf" target="_blank" rel="noopener noreferrer">NIST SP 800-218, Secure Software Development Framework (SSDF) Version 1.1</a></li>
+<li><a href="https://www.cisa.gov/topics/information-communications-technology-supply-chain-security/sbom" target="_blank" rel="noopener noreferrer">Software Bill of Materials (SBOM) - CISA</a></li>
+</ul>
+
+        
+    </article>
+    
+    <article class="brief-section" id="talk-track">
+        <p class="brief-kicker">Senior Talk Tracks</p>
+        <h2>When a Playbook Should Not Be the Tool</h2>
+        
+            
+            <p>Ansible is a tool that lets you describe the state you want a bunch of servers to be in, written out in a file called a playbook, and it goes and makes every server match that description. Most people who are new to automation treat it like a hammer -- once they learn it, every task in front of them starts looking like a nail. A senior engineer knows that's exactly backwards.</p>
+<p>Here's the plain version of the problem. A playbook is built for repeatable, predictable work -- configuring a hundred servers the same way, over and over, forever. It is not built for a one-time, high-stakes, unpredictable situation. Think about an active production outage at two in the morning. Someone suggests writing a quick playbook to fix it across the fleet. That sounds efficient. It's actually dangerous, because you're now debugging your fix and your automation tool at the same time, under pressure, against systems that are already unhealthy.</p>
+<p>Here's why that matters in production, and the senior take: a junior engineer sees automation as an unqualified good -- more automation always equals more professional. A senior engineer treats automation as a tool with a specific job, and knows the emergency, one-off, &quot;I need to see exactly what's happening on this one box right now&quot; situation calls for a human at a terminal, not a playbook running across forty servers unsupervised. Automate the boring, repeatable stuff. Keep a human in the loop for anything novel or high-blast- radius, because a playbook does exactly what you tell it, exactly that fast, on every single target -- including your mistakes.</p>
+<p>Think of it like a form letter versus a phone call. A form letter is perfect for sending the same renewal notice to ten thousand customers. It is a terrible way to tell one specific customer their account got compromised at midnight. Same idea: right tool, wrong situation, and the cost of getting that choice wrong scales with how many machines are listening.</p>
+<p>A natural way to open this at work: &quot;Before we automate this, is it actually the repeatable case, or is this the one-off we should just walk through by hand first?&quot;</p>
+
+        
+            <h3>Key Takeaways</h3>
+            <ol>
+<li>A playbook is designed for repeatable, predictable, fleet-wide work — not for one-off, high-stakes changes, because it executes uniformly and fast across every target, mistakes included.</li>
+<li>Automating a novel or emergency fix under pressure means debugging the fix and the automation tool simultaneously, which is a worse position than just fixing one box by hand first.</li>
+<li>The senior instinct isn't &quot;automate everything&quot; — it's &quot;automate the repeatable, keep a human in the loop for anything high blast radius or unproven.&quot;</li>
+</ol>
+
+        
+            <h3>Reader Question</h3>
+            <p><strong>&quot;If automation is supposed to reduce human error, why would you ever choose to do something by hand instead of writing a playbook for it?&quot;</strong></p>
+<p>I'd say automation reduces human error specifically for work you've already proven is safe and repeatable — it doesn't remove the risk of a decision that's still novel or untested, it just executes that decision faster and more consistently, mistakes included. My answer would be that for a one-off or emergency change, I want a human validating the fix on one system first, precisely so the automation I eventually write is automating a change I already know works, not the first draft of one I'm still debugging under pressure.</p>
+
+        
+    </article>
+    
+    <article class="brief-section" id="tech-news">
+        <p class="brief-kicker">Tech News</p>
+        
+        
+            
+            <p>There's a hole in one of the most common remote-access appliances in the enterprise world, and right now, nobody outside the vendor has a fix for it. If your organization runs Citrix NetScaler at the network edge, security researchers say attackers are already inside, using it as we speak. Two stories today: an unpatched NetScaler zero-day with no CVE number yet, and a supply-chain worm that infected open-source code packages and started stealing credentials within hours of going live.</p>
+<p>Start with NetScaler. Details of two remote-code-execution flaws in Citrix NetScaler ADC and NetScaler Gateway leaked on September 25th, out of a private pre-notification the Dutch national cybersecurity center sent to a small circle of organizations. Security firm watchTowr and independent researcher Kevin Beaumont confirmed the next day that attackers are actively exploiting both flaws in the wild. Here's what makes this different from a routine zero-day: no patch, no official Citrix advisory, no public proof-of-concept — just live attacks against a device sitting at the edge of the network, handling VPN access, load balancing, and user logins all at once. Citrix says a fix is coming early this week, according to SecurityWeek's reporting. Here's my read: even once that patch lands, it only locks the door — it doesn't tell you whether someone already walked through it. A senior engineer's response to a zero-day like this isn't &quot;wait for the patch.&quot; It's assume compromise on anything internet-facing right now, and start hunting for what already got in.</p>
+<p>Which brings us to the second story. Researchers at Socket and SC World reported this week that someone hijacked legitimate open-source packages published by the AI memory company MemTensor — one on npm, the package manager most JavaScript projects pull code from, and one on PyPI, its Python equivalent — and slipped in a credential-stealing program called sckit. It runs on Windows, Linux, and Mac, and hunts for cloud credentials, source-code access tokens, and anything sitting inside a continuous-integration job. Worse, researchers say it can self-propagate, copying itself into other packages and GitHub projects automatically. My take: this is exactly why a senior engineer treats every third-party package as untrusted code running with your permissions, not a free library — pin your dependency versions, scan before you build, and never let a CI pipeline hold more credentials than the job in front of it needs.</p>
+<p>Both stories tonight point at the same gap: trust that isn't verified — whether it's a device sitting at your network edge or a package sitting in your build pipeline — is exactly where attackers go first.</p>
+
+        
+            <h3>Sources</h3>
+            <ul>
+<li><a href="https://thehackernews.com/2026/09/warning-two-unpatched-citrix-netscaler.html" target="_blank" rel="noopener noreferrer">Warning: Two Unpatched Citrix NetScaler RCE Zero-Days Under Active Exploitation — The Hacker News</a></li>
+<li><a href="https://www.securityweek.com/critical-netscaler-vulnerability-exploited-in-attacks/" target="_blank" rel="noopener noreferrer">Critical NetScaler Vulnerability Exploited in Attacks — SecurityWeek</a></li>
+<li><a href="https://cybersecuritynews.com/citrix-netscaler-0-day-rce-2/" target="_blank" rel="noopener noreferrer">Citrix NetScaler 0-Day RCE Vulnerabilities Actively Exploited in Attacks — Cyber Security News</a></li>
+<li><a href="https://thehackernews.com/2026/09/compromised-memtensor-packages-deliver.html" target="_blank" rel="noopener noreferrer">Compromised MemTensor Packages Deliver sckit Credential Stealer via npm and PyPI — The Hacker News</a></li>
+<li><a href="https://socket.dev/blog/memtensor-compromise" target="_blank" rel="noopener noreferrer">MemTensor npm and PyPI Packages Compromised in Credential-Stealing Supply Chain Attack — Socket</a></li>
+<li><a href="https://www.scworld.com/news/memtensor-npm-pypi-packages-compromised-with-cross-platform-credential-stealer" target="_blank" rel="noopener noreferrer">MemTensor npm, PyPI packages compromised with cross-platform credential stealer — SC World</a></li>
+</ul>
+
+        
+    </article>
+    
+    <section class="brief-subscribe" id="subscribe">
+    <h2>Get The Daily Brief by email</h2>
+    <p>One short email each morning. Unsubscribe anytime.</p>
+    <form action="https://buttondown.com/api/emails/embed-subscribe/cybercider" method="post">
+        <label for="bd-email">Email address</label>
+        <input type="email" name="email" id="bd-email" required autocomplete="email" placeholder="you@example.com">
+        <button type="submit">Subscribe</button>
+    </form>
+</section>
+</main>
+
+    <footer><p class="copyright">The Daily Brief · Eddie Camacho</p></footer>
+<!-- cf-web-analytics (managed by tools/inject_analytics.py) -->
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "f728a20b49cc4a0fbe02cde72f03301c"}'></script>
+</body>
+</html>
