@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="dark">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'self' https://static.cloudflareinsights.com; connect-src 'self' https://cloudflareinsights.com; img-src 'self' data:; form-action https://buttondown.com; base-uri 'none'; object-src 'none'">
+    <meta name="description" content="The Daily Brief for Friday, October 2, 2026: security incidents, senior security advice, engineering explainers, and tech news.">
+    <title>The Daily Brief · Oct 2, 2026</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="icon" href="../../../favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="../../../style.css">
+    <link rel="stylesheet" href="../../newsletter.css">
+</head>
+<body class="brief-page">
+    <a href="#main-content" class="skip-nav">Skip to main content</a>
+    <nav class="brief-nav">
+        <a href="../../../index.html">← App Hub</a>
+        <a href="../../">All issues</a>
+    </nav>
+    
+<header class="brief-masthead">
+    <p class="brief-eyebrow">THE DAILY BRIEF</p>
+    <h1>Friday, October 2, 2026</h1>
+    <ol class="brief-toc">
+        <li><a href="#current-events">Current Events</a></li><li><a href="#security-advice">Senior Security Advice</a></li><li><a href="#tech-news">Tech News</a></li>
+    </ol>
+</header>
+<main id="main-content" class="brief">
+    
+    <article class="brief-section" id="current-events">
+        <p class="brief-kicker">Current Events</p>
+        <h2>The Verkada Camera Breach</h2>
+        
+            
+            <p>Here's an incident where the camera company watching everyone else got watched first -- not by a nation-state, but by a hacktivist collective that found one leftover password. Here's how it actually happened.</p>
+<p>In March 2021, Verkada ran cloud-connected security cameras for thousands of organizations -- hospitals, schools, police departments, a Tesla factory floor. According to Verkada's own incident report, attackers first reached an internal Jenkins server on March 7th -- a build server Verkada's support team used to run bulk maintenance operations across customer cameras, and one that was reachable from the public internet. Sitting inside a script on that server was a hardcoded &quot;super admin&quot; credential.</p>
+<p>That one credential was the whole ballgame. Attackers used it to log into Verkada's customer support web interface with full super-admin privileges, bypassing the normal authorization checks -- including two-factor authentication -- because the credential itself was the backdoor around all of it. That backend had a built-in support feature that could emulate any customer's own session, so once the attackers were in, they weren't limited to one account. According to Bloomberg's original reporting and Verkada's own account, they reached archived and live video from dozens of customer organizations, including classrooms, a psychiatric hospital, and a county jail. The cameras themselves also shipped with a built-in root-access support feature, which meant the same compromise handed attackers code-execution-level access on individual devices too -- not because of a second bug, but because that was simply how the product already worked.</p>
+<p>Root cause, in one sentence: an internet-reachable internal support server held a single hardcoded super-admin credential, and that one credential -- not customer-specific, not scoped to a task, never rotated -- was the entire difference between normal support operations and a fleet-wide compromise.</p>
+<p>Here's what actually contained this. Verkada learned of the intrusion on March 9th, after the attackers themselves reached out to a journalist -- not through any internal detection. But once notified, the company moved fast: it cut off the attackers' access within about two hours, disabled every internal administrator account as a precaution, and began notifying affected customers within six hours. A subsequent review of Verkada's own logs found no evidence of backdoors or lateral movement into customer networks beyond the video access itself -- meaning the logging the company already had in place, even though nobody was watching it in real time, was still good enough afterward to scope the damage and rule out a worse outcome.</p>
+<p>Here's what a senior engineer, or a senior ISSO, would change in how they work because of this. A credential that can impersonate any customer account has no business being hardcoded in a script on a server reachable from the internet -- full stop. In a RHEL 9 lab with Podman, that means externalizing every credential into a secrets store or environment file with restricted permissions, scoping each one to exactly the task it performs, and proving with a simple grep across the codebase that no token like that is sitting in plaintext anywhere a support engineer's script could leak it.</p>
+
+        
+            <h3>Timeline</h3>
+            <table>
+<thead>
+<tr>
+<th>Date</th>
+<th>Event</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>March 7, 2021</td>
+<td>Attackers gain initial access to an internet-exposed Jenkins server used by Verkada's support team for bulk camera-maintenance operations, per Verkada's own incident report.</td>
+</tr>
+<tr>
+<td>March 7–9, 2021</td>
+<td>Using a hardcoded &quot;super admin&quot; credential found in a script on that server, attackers log into Verkada's customer support web interface with full administrative privileges, bypassing standard authorization controls including two-factor authentication.</td>
+</tr>
+<tr>
+<td>March 8–9, 2021</td>
+<td>Attackers access archived and live video feeds from customer organizations via Verkada's Command support interface, and separately obtain root-level access on individual camera devices through a built-in support feature.</td>
+</tr>
+<tr>
+<td>March 9, 2021, ~18:00 UTC</td>
+<td>Verkada first learns of the intrusion, after the attackers contact a Bloomberg reporter and describe their access; Verkada activates its incident response.</td>
+</tr>
+<tr>
+<td>March 9, 2021 (within ~2 hours of notification)</td>
+<td>Verkada cuts off the attackers' access and disables all internal administrator accounts.</td>
+</tr>
+<tr>
+<td>March 9, 2021 (within ~6 hours of notification)</td>
+<td>Verkada begins notifying affected customers.</td>
+</tr>
+<tr>
+<td>March 9, 2021, ~noon PST</td>
+<td>Verkada states all customer systems are secured and no further customer action is required.</td>
+</tr>
+<tr>
+<td>March 10, 2021</td>
+<td>Verkada publishes a public &quot;Security Update&quot; describing the incident and its response.</td>
+</tr>
+<tr>
+<td>March 18, 2021</td>
+<td>A federal grand jury in the Western District of Washington indicts Swiss hacker Till Kottmann (aka Tillie Kottmann) on charges including conspiracy to commit computer fraud and abuse, conspiracy to commit wire fraud, and aggravated identity theft, covering hacking activity from 2019 onward that includes the Verkada intrusion.</td>
+</tr>
+</tbody>
+</table>
+<p><em>Note: reporting differs on the exact scope. Verkada's own incident report states 97 customer organizations had video or image data viewed; separate reporting tied specifically to the Command interface puts the figure at 68 organizations and 4,530 cameras actually accessed, while the widely cited &quot;150,000 cameras&quot; figure describes the size of Verkada's total connected camera fleet the compromised credential could theoretically have reached, not a confirmed count of cameras actually viewed. This script states each figure as its source presents it rather than resolving the discrepancy.</em></p>
+
+        
+            <h3>Control Failures</h3>
+            <table>
+<thead>
+<tr>
+<th>#</th>
+<th>Failure</th>
+<th>NIST SP 800-53 Rev 5 Control Family</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>A &quot;super admin&quot; credential capable of authenticating to Verkada's customer support backend was hardcoded in a script rather than issued per-user and rotated.</td>
+<td><strong>IA-5</strong> — Authenticator Management</td>
+</tr>
+<tr>
+<td>2</td>
+<td>The internal Jenkins server used for bulk camera-maintenance operations was reachable from the public internet rather than isolated behind a management-only network boundary.</td>
+<td><strong>SC-7</strong> — Boundary Protection</td>
+</tr>
+<tr>
+<td>3</td>
+<td>The compromised super-admin credential could impersonate any customer's session and reach the entire customer base, rather than being scoped to a specific customer, task, or time window.</td>
+<td><strong>AC-6</strong> — Least Privilege</td>
+</tr>
+<tr>
+<td>4</td>
+<td>Verkada's cameras shipped with a built-in root-access support feature that gave device-level code execution to anyone holding the right backend credential, far beyond what routine support required.</td>
+<td><strong>CM-7</strong> — Least Functionality</td>
+</tr>
+<tr>
+<td>5</td>
+<td>No internal monitoring detected the intrusion during the roughly 36-to-48-hour window attackers had access; Verkada learned of it only because the attackers contacted a journalist.</td>
+<td><strong>SI-4</strong> — System Monitoring</td>
+</tr>
+<tr>
+<td>6</td>
+<td>Verkada's post-incident conclusion that logs showed &quot;no evidence of backdoors or lateral movement&quot; depended on retroactive log review rather than a real-time alerting capability that could have caught the access as it happened.</td>
+<td><strong>AU-6</strong> — Audit Record Review, Analysis, and Reporting</td>
+</tr>
+</tbody>
+</table>
+
+        
+            <h3>What Held</h3>
+            <ul>
+<li><strong>Fast containment once notified.</strong> Verkada cut off the attackers' access within roughly two hours of learning about the intrusion, disabled every internal administrator account as a precaution, and began notifying affected customers within six hours — a genuinely fast incident-response execution once the company knew there was a problem.</li>
+<li><strong>Logging was good enough after the fact, even though nobody was watching it in real time.</strong> A post-incident review of Verkada's own logs found no evidence of backdoors or lateral movement into customer networks beyond the video access itself, which is what let the company credibly scope the damage instead of guessing at it.</li>
+<li><strong>Be honest about the limit of both.</strong> Neither control stopped the intrusion or even caught it while it was happening — detection depended entirely on the attackers choosing to contact a reporter. This incident's real lesson is about the missing detection layer, not a control that actually held during the attack itself.</li>
+</ul>
+
+        
+            <h3>Sources</h3>
+            <ul>
+<li><a href="https://docs.verkada.com/docs/Security_Incident_Report_Version1.2.pdf" target="_blank" rel="noopener noreferrer">March 9, 2021 Security Incident Report — Kyle Randolph, CISO, Verkada</a> (primary)</li>
+<li><a href="https://www.verkada.com/security-update/2021-03-10/" target="_blank" rel="noopener noreferrer">Verkada Security Update, March 10, 2021 — Verkada</a> (primary)</li>
+<li><a href="https://ipvm.com/reports/verkada-hack" target="_blank" rel="noopener noreferrer">Verkada Mass Hack (Public Report) — IPVM</a></li>
+<li><a href="https://www.axios.com/2021/03/09/hackers-breach-verkada-security-cameras" target="_blank" rel="noopener noreferrer">Bloomberg: Hackers breach 150,000 cameras tied to hospitals, prisons, schools — Axios</a></li>
+<li><a href="https://www.hipaajournal.com/verkada-surveillance-camera-hacker-indicted-on-multiple-counts-of-conspiracy-wire-fraud-and-aggravated-identity-theft/" target="_blank" rel="noopener noreferrer">Verkada Surveillance Camera Hacker Indicted on Multiple Counts of Conspiracy, Wire Fraud and Aggravated Identity Theft — HIPAA Journal</a></li>
+<li><a href="https://www.theregister.com/2021/03/19/till_kottmann_indicted/" target="_blank" rel="noopener noreferrer">Swiss security provocateur who leaked Intel secrets indicted by US authorities — The Register</a></li>
+</ul>
+<hr />
+<p><strong>Tomorrow's Thread:</strong> Day 44 moves to the operational and change-management-failure family — the July 2024 CrowdStrike Falcon channel-file update that crashed millions of Windows systems worldwide, distinct from today's cloud-misconfiguration-and-IAM family.</p>
+
+        
+    </article>
+    
+    <article class="brief-section" id="security-advice">
+        <p class="brief-kicker">Senior Security Advice</p>
+        <h2>Put a Web Application Firewall in Front of Every Internet-Facing App</h2>
+        
+            <h3>The Advice</h3>
+            <p>Every internet-facing web application must sit behind a web application firewall configured with an active managed rule set, not just a network firewall and a prayer.</p>
+
+        
+            <h3>Why It Matters</h3>
+            <p>A regular network firewall checks which ports and IP addresses are allowed through. It has no idea what's inside the HTTP request riding on that allowed connection. An attacker sending a SQL injection payload, a cross-site scripting attempt, or a malicious file upload to a public login page sails straight past a network firewall, because port 443 is supposed to be open. A web application firewall (WAF) is the layer that actually reads the request itself and blocks the attack pattern before it ever reaches the application code.</p>
+<p>Without one, every web app is only as safe as its own code, all the time, with zero room for a mistake. The incident class this prevents is depressingly common and well documented: attackers scanning the open internet for known, unpatched web application vulnerabilities — injection flaws, broken authentication endpoints, vulnerable plugins — and walking straight in because nothing sat between them and the vulnerable code. A WAF doesn't replace secure coding, but it buys time between &quot;a vulnerability exists&quot; and &quot;the vulnerability gets patched,&quot; which in a real organization is never zero days.</p>
+<p>CIS Critical Security Control 16, Application Software Security, calls for exactly this kind of protective layer in front of web applications as part of a defense-in-depth posture, and its underlying safeguard on deploying web application firewalls specifically requires inspecting all traffic flowing to a web app for common attack patterns. OWASP's own Virtual Patching Cheat Sheet describes the same mechanism from the other direction: a WAF or equivalent enforcement layer can &quot;virtually patch&quot; a known vulnerability by blocking exploit attempts at the network edge while the real code fix is still being developed and tested.</p>
+
+        
+            <h3>How to Implement It</h3>
+            <ol>
+<li>Put every internet-facing web application behind a WAF — a cloud-native option like AWS WAF, Azure Front Door WAF, or Cloudflare, or a self-hosted option like ModSecurity, depending on where the app actually lives.</li>
+<li>Turn on a managed rule set (such as the OWASP Core Rule Set or your provider's equivalent) that covers the OWASP Top 10 attack classes — injection, broken authentication, cross-site scripting — instead of writing every rule from scratch.</li>
+<li>Run new rules in detection-only or &quot;count&quot; mode first against real production traffic, review what would have been blocked, then flip to blocking mode once you've confirmed legitimate traffic isn't caught in the net.</li>
+<li>Verify the control is actually working, not just deployed: run a safe, authorized test request containing a known attack pattern (for example, a harmless SQL injection string against a non-production path) and confirm in the WAF's own logs that it was inspected and blocked, not silently passed through.</li>
+<li>Review WAF logs and blocked-request trends on a recurring basis, and treat a sudden drop in blocked traffic as a signal to check whether the WAF is still actually in the request path — not just evidence that attacks stopped.</li>
+</ol>
+
+        
+            <h3>The Pushback You&#39;ll Hear</h3>
+            <p>&quot;The WAF will block real customers and break the app.&quot; The senior-engineer rebuttal: that's exactly why step three exists. No competent rollout flips a new rule set straight to blocking mode. You run it in detection mode first, watch what it would have blocked against real traffic, tune out the false positives, and only then turn on enforcement. A WAF that's never tuned is a liability; a WAF that's never turned on is worse.</p>
+
+        
+            <h3>Sources</h3>
+            <ul>
+<li><a href="https://www.cisecurity.org/controls/application-software-security" target="_blank" rel="noopener noreferrer">CIS Critical Security Control 16: Application Software Security (Center for Internet Security)</a></li>
+<li><a href="https://cheatsheetseries.owasp.org/cheatsheets/Virtual_Patching_Cheat_Sheet.html" target="_blank" rel="noopener noreferrer">Virtual Patching Cheat Sheet (OWASP Cheat Sheet Series)</a></li>
+</ul>
+
+        
+    </article>
+    
+    <article class="brief-section" id="tech-news">
+        <p class="brief-kicker">Tech News</p>
+        
+        
+            
+            <p>A federal patching deadline hits this weekend for a Cisco bug that lets an attacker become an administrator without ever logging in — and it's the fifth time this year Cisco's SD-WAN software has been caught this way. Two stories today: that Cisco flaw, and a file-sharing gateway that let an outsider take over the whole appliance with no credentials at all.</p>
+<p>Start with Cisco. CVE-2026-76504 is an authentication bypass in Catalyst SD-WAN Manager — the console that configures and monitors a company's wide-area network from one place. According to Cisco's own advisory, a flaw in how the management API handles URI encoding lets an unauthenticated attacker reach it with full administrator privileges. Severity: nine point eight out of ten. CISA added it to the Known Exploited Vulnerabilities catalog on September thirtieth, and federal civilian agencies have until this Saturday, October third, to patch. Here's my read: this is the fifth actively exploited SD-WAN zero-day Cisco has disclosed this year alone. At some point a pattern like that stops being about one bug and starts being about how that product gets built and tested — if you run SD-WAN Manager, don't wait for your next change window.</p>
+<p>Next up, Kiteworks. The company's Email Protection Gateway — an appliance a lot of regulated organizations use to filter and secure sensitive email — had a maximum-severity flaw reported through its own bug bounty program. BleepingComputer reports the bug, tracked as CVE-2026-54154, chained three separate weaknesses — a path traversal flaw, a code injection flaw, and a missing authentication check — into one attack that let an outsider run code on the appliance and ultimately take it over completely, no password required. Kiteworks has patched it in version nine point four point one. My take: no single one of those three flaws sounds catastrophic in isolation. Chained together, they are. That's exactly why a senior engineer reviews a vulnerability disclosure for the whole attack path, not just the headline severity score of each individual finding.</p>
+<p>Different vendors, same lesson: the systems you trust to sit at your network's edge are the ones that get probed hardest, and patching them has to be the fastest SLA in the building, not the slowest.</p>
+
+        
+            <h3>Sources</h3>
+            <ul>
+<li><a href="https://www.rapid7.com/blog/post/etr-critical-cisco-catalyst-sd-wan-manager-api-authentication-bypass-exploited-in-the-wild-cve-2026-76504/" target="_blank" rel="noopener noreferrer">Cisco Catalyst SD-WAN Manager Authentication Bypass Vulnerability — Rapid7</a></li>
+<li><a href="https://www.bleepingcomputer.com/news/security/cisco-warns-of-new-sd-wan-authentication-bypass-zero-day-exploited-in-attacks/" target="_blank" rel="noopener noreferrer">Cisco warns of new SD-WAN authentication bypass zero-day exploited in attacks — BleepingComputer</a></li>
+<li><a href="https://thehackernews.com/2026/10/cisa-adds-exploited-cisco-catalyst-sd.html" target="_blank" rel="noopener noreferrer">CISA Adds Exploited Cisco Catalyst SD-WAN Manager Auth Bypass to KEV — The Hacker News</a></li>
+<li><a href="https://threatprotect.qualys.com/2026/09/30/cisco-catalyst-sd-wan-manager-authentication-bypass-vulnerability-exploited-in-attacks-cve-2026-76504/" target="_blank" rel="noopener noreferrer">Cisco Catalyst SD-WAN Manager Authentication Bypass Vulnerability Exploited in Attacks (CVE-2026-76504) — Qualys ThreatPROTECT</a></li>
+<li><a href="https://www.bleepingcomputer.com/news/security/kiteworks-patches-max-severity-email-protection-gateway-code-injection-vulnerability/" target="_blank" rel="noopener noreferrer">Kiteworks patches max severity Email Protection Gateway code injection vulnerability — BleepingComputer</a></li>
+</ul>
+
+        
+    </article>
+    
+    <section class="brief-subscribe" id="subscribe">
+    <h2>Get The Daily Brief by email</h2>
+    <p>One short email each morning. Unsubscribe anytime.</p>
+    <form action="https://buttondown.com/api/emails/embed-subscribe/cybercider" method="post">
+        <label for="bd-email">Email address</label>
+        <input type="email" name="email" id="bd-email" required autocomplete="email" placeholder="you@example.com">
+        <button type="submit">Subscribe</button>
+    </form>
+</section>
+</main>
+
+    <footer><p class="copyright">The Daily Brief · Eddie Camacho</p></footer>
+<!-- cf-web-analytics (managed by tools/inject_analytics.py) -->
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "f728a20b49cc4a0fbe02cde72f03301c"}'></script>
+</body>
+</html>
