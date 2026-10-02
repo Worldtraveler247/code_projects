@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="dark">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'self' https://static.cloudflareinsights.com; connect-src 'self' https://cloudflareinsights.com; img-src 'self' data:; form-action https://buttondown.com; base-uri 'none'; object-src 'none'">
+    <meta name="description" content="The Daily Brief for Saturday, October 3, 2026: security incidents, senior security advice, engineering explainers, and tech news.">
+    <title>The Daily Brief · Oct 3, 2026</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="icon" href="../../../favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="../../../style.css">
+    <link rel="stylesheet" href="../../newsletter.css">
+</head>
+<body class="brief-page">
+    <a href="#main-content" class="skip-nav">Skip to main content</a>
+    <nav class="brief-nav">
+        <a href="../../../index.html">← App Hub</a>
+        <a href="../../">All issues</a>
+    </nav>
+    
+<header class="brief-masthead">
+    <p class="brief-eyebrow">THE DAILY BRIEF</p>
+    <h1>Saturday, October 3, 2026</h1>
+    <ol class="brief-toc">
+        <li><a href="#current-events">Current Events</a></li><li><a href="#security-advice">Senior Security Advice</a></li><li><a href="#tech-news">Tech News</a></li>
+    </ol>
+</header>
+<main id="main-content" class="brief">
+    
+    <article class="brief-section" id="current-events">
+        <p class="brief-kicker">Current Events</p>
+        <h2>The Knight Capital Trading Glitch</h2>
+        
+            
+            <p>Here's an incident where one missed server erased four hundred forty million dollars in forty-five minutes, and nearly ended one of the largest trading firms on Wall Street. Here's how it actually happened.</p>
+<p>On August 1st, 2012, Knight Capital Americas was going live with a new feature for the New York Stock Exchange's Retail Liquidity Program. According to the SEC's own administrative order, a Knight technician manually deployed the new code to the firm's automated order router, called SMARS, across eight production servers. The code went out to seven of them. The eighth server never got the update.</p>
+<p>Here's why that mattered. The new code repurposed an old flag inside SMARS -- a flag that used to trigger a function called &quot;Power Peg.&quot; Knight had retired Power Peg back in 2003, but the code itself was never deleted. It just sat there, dormant, for nine years. On that one un-updated server, the new flag didn't launch the retail liquidity feature. It woke Power Peg back up.</p>
+<p>When the market opened at 9:30 a.m., Power Peg did exactly what it was built to do -- except, per the SEC's findings, the piece of it that was supposed to track how many shares had already filled on a given order had been moved to a different part of the code years earlier and no longer worked. So the system kept firing orders into the market, never recognizing that any of them had been filled, and never stopping on its own. There was no automated circuit breaker. It took Knight's own engineers until 9:58 a.m. -- twenty-eight minutes after the opening bell -- to manually track down the problem and shut the router off. By then, SMARS had sent more than four million orders into a hundred fifty-four stocks, trading over three hundred ninety-seven million shares Knight never meant to buy or sell.</p>
+<p>Root cause, in one sentence: a manual deployment left obsolete, undeleted code live on a single production server, and nothing in Knight's process could verify the fleet was consistent before the market opened.</p>
+<p>Here's what actually contained this. The New York Stock Exchange broke -- meaning canceled -- trades in six securities where prices had swung by at least thirty percent, limiting the damage in the most extreme cases. And once Knight's capital was nearly wiped out, a group of investors led by Jefferies moved overnight to put in roughly four hundred million dollars, keeping the firm solvent long enough to wind down its position in an orderly way instead of collapsing outright.</p>
+<p>Here's what a senior engineer, or a senior ISSO, would change in how they work because of this. A deployment process needs an automated way to confirm every server in a fleet is actually running identical code before anything goes live -- not a technician's checklist under time pressure. In a RHEL 9 lab with Podman, that means pushing a build across a handful of containers standing in for a server fleet, hashing what actually landed on each one, and refusing to call the deployment complete until every hash matches -- so a partial rollout gets caught by a script, the way it never was here.</p>
+
+        
+            <h3>Timeline</h3>
+            <table>
+<thead>
+<tr>
+<th>Date</th>
+<th>Event</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>July 27–31, 2012</td>
+<td>During a multi-day manual rollout of new Retail Liquidity Program (RLP) code to Knight Capital's SMARS order router, a technician copies the new code to seven of eight production servers but misses the eighth, per the SEC's administrative order.</td>
+</tr>
+<tr>
+<td>August 1, 2012, ~8:01 a.m. ET (pre-market)</td>
+<td>Knight's internal systems generate automated error messages referencing SMARS and describing &quot;Power Peg disabled,&quot; per the SEC order; these are not acted on before trading begins.</td>
+</tr>
+<tr>
+<td>August 1, 2012, 9:30 a.m. ET</td>
+<td>The market opens. The un-updated eighth server begins executing the reactivated, dormant Power Peg function, sending uncontrolled child orders into the market.</td>
+</tr>
+<tr>
+<td>August 1, 2012, ~9:30–9:58 a.m. ET</td>
+<td>Over roughly 45 minutes, SMARS sends more than 4 million orders, executing over 397 million shares across 154 stocks, per the SEC's findings.</td>
+</tr>
+<tr>
+<td>August 1, 2012, 9:58 a.m. ET</td>
+<td>Knight engineers identify and manually shut down SMARS, ending the erroneous order flow.</td>
+</tr>
+<tr>
+<td>August 1, 2012 (later that day)</td>
+<td>The New York Stock Exchange announces it will break (cancel) trades in six securities where prices moved at least 30% during the incident.</td>
+</tr>
+<tr>
+<td>August 2, 2012</td>
+<td>Knight discloses a large trading loss tied to the incident and its stock price collapses by more than 70% intraday.</td>
+</tr>
+<tr>
+<td>On or about August 6, 2012</td>
+<td>A group of investors led by Jefferies commits approximately $400 million in emergency financing to keep Knight solvent.</td>
+</tr>
+<tr>
+<td>October 16, 2013</td>
+<td>The SEC issues an administrative order (Release No. 70694, File No. 3-15570) finding Knight violated Rule 15c3-5 (the Market Access Rule) and imposing a $12 million penalty — the SEC's first enforcement action under that rule.</td>
+</tr>
+</tbody>
+</table>
+<p><em>Note: the exact loss figure differs by source. The SEC's own materials describe a trading loss &quot;of over $460 million,&quot; while Knight's contemporaneous disclosures and much secondary reporting cite approximately $440 million pre-tax. This script states both rather than resolving the discrepancy.</em></p>
+
+        
+            <h3>Control Failures</h3>
+            <table>
+<thead>
+<tr>
+<th>#</th>
+<th>Failure</th>
+<th>NIST SP 800-53 Rev 5 Control Family</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>New order-routing code was deployed manually to eight production servers with no automated check confirming all eight ended up running identical code before go-live.</td>
+<td><strong>CM-3</strong> — Configuration Change Control</td>
+</tr>
+<tr>
+<td>2</td>
+<td>The obsolete &quot;Power Peg&quot; function, retired in 2003, was never removed from the SMARS codebase, leaving dead functionality that a single repurposed flag could silently reactivate.</td>
+<td><strong>CM-7</strong> — Least Functionality</td>
+</tr>
+<tr>
+<td>3</td>
+<td>Automated pre-market alerts describing &quot;Power Peg disabled&quot; errors were generated but never reviewed or escalated before the market opened.</td>
+<td><strong>AU-6</strong> — Audit Record Review, Analysis, and Reporting</td>
+</tr>
+<tr>
+<td>4</td>
+<td>No automated circuit breaker existed to halt SMARS once its order volume and repetition pattern became anomalous; detection and shutdown were entirely manual.</td>
+<td><strong>SI-4</strong> — System Monitoring</td>
+</tr>
+<tr>
+<td>5</td>
+<td>Per the SEC's findings, Knight's financial risk controls were not actually capable of preventing orders that breached the firm's own pre-set capital exposure thresholds.</td>
+<td><strong>CM-6</strong> — Configuration Settings</td>
+</tr>
+<tr>
+<td>6</td>
+<td>The new build went live without a pre-deployment test or review step capable of catching cross-server inconsistency or the reactivation of dormant code.</td>
+<td><strong>SA-11</strong> — Developer Testing and Evaluation</td>
+</tr>
+</tbody>
+</table>
+
+        
+            <h3>What Held</h3>
+            <ul>
+<li><strong>NYSE's authority to break erroneous trades.</strong> Canceling trades in six securities where prices had swung at least 30% limited Knight's locked-in losses in the most extreme cases — a market-structure safeguard, not a Knight control.</li>
+<li><strong>Emergency private-sector recapitalization.</strong> The Jefferies-led consortium's roughly $400 million overnight financing kept Knight solvent and let it unwind its accidental position in an orderly way rather than defaulting outright, limiting broader market contagion.</li>
+<li><strong>Be honest about the limit of both.</strong> Neither control stopped or even slowed the erroneous trading itself — both operated purely after the fact. Detection and containment inside Knight were entirely manual, and took the full 45 minutes the market was open before anyone pulled the plug.</li>
+</ul>
+
+        
+            <h3>Sources</h3>
+            <ul>
+<li><a href="https://www.sec.gov/files/litigation/admin/2013/34-70694.pdf" target="_blank" rel="noopener noreferrer">In the Matter of Knight Capital Americas LLC — SEC Administrative Proceeding, Release No. 70694, File No. 3-15570 (October 16, 2013)</a> (primary)</li>
+<li><a href="https://www.sec.gov/newsroom/press-releases/2013-222" target="_blank" rel="noopener noreferrer">SEC Press Release 2013-222: Knight Capital Agrees to Pay $12 Million to Settle Charges Related to August 2012 Technical Breakdown</a> (primary)</li>
+<li><a href="https://www.wilmerhale.com/en/insights/client-alerts/knight-capital-settles-rule-15c3-5-violations-with-sec-agrees-to-pay-12-million" target="_blank" rel="noopener noreferrer">Knight Capital Settles Rule 15c3-5 Violations with SEC, Agrees to Pay $12 Million — WilmerHale Client Alert</a></li>
+<li><a href="https://www.honeybadger.io/newsletter/knight-capital/" target="_blank" rel="noopener noreferrer">The Most Expensive Bug in History: Knight Capital 2012 — Honeybadger</a></li>
+<li><a href="https://www.theglobaltreasurer.com/2012/08/03/knight-capital-suffers-us440m-trading-loss-from-software-glitch/" target="_blank" rel="noopener noreferrer">Knight Capital Suffers US$440m Trading Loss from Software Glitch — The Global Treasurer</a></li>
+</ul>
+<hr />
+<p><strong>Tomorrow's Thread:</strong> Day 45 moves to the container/orchestration-escape family — the September 2024 NVIDIA Container Toolkit vulnerability (CVE-2024-0132), disclosed by Wiz Research, which let a malicious container image escape to the host GPU server — distinct from today's operational/change-management family.</p>
+
+        
+    </article>
+    
+    <article class="brief-section" id="security-advice">
+        <p class="brief-kicker">Senior Security Advice</p>
+        <h2>Enforce TLS 1.2+ Everywhere and Retire Legacy SSL/TLS</h2>
+        
+            <h3>The Advice</h3>
+            <p>Every service that accepts a network connection must negotiate TLS 1.2 or higher, and SSL 2.0, SSL 3.0, and TLS 1.0/1.1 must be disabled outright, not just deprioritized.</p>
+
+        
+            <h3>Why It Matters</h3>
+            <p>A login form, an internal API, or an admin panel that still accepts an old encryption protocol is handing an attacker a downgrade path. Those legacy protocols carry known, fixable-only-by-removal weaknesses — predictable initialization vectors, weak padding checks, export-grade ciphers that can be brute-forced — that let an attacker sitting on the network read or tamper with traffic that everyone assumes is private. The incident class this closes is the on-path interception: an attacker on a shared network, a compromised router, or a rogue access point forces or waits for a connection to fall back to an old protocol version, then reads session tokens, passwords, or sensitive data right out of what looked like an encrypted channel. The fix isn't a patch to the old protocol — there isn't one — it's turning the old protocol off.</p>
+<p>NIST Special Publication 800-52 Revision 2 sets TLS 1.2 as the floor, requires TLS 1.3 support, and states that TLS 1.1 should not be configured and TLS 1.0, SSL 3.0, and SSL 2.0 shall not be used. CISA's guidance on securing data in transit points the same direction, recommending TLS 1.3 wherever possible and TLS 1.2 or later as the baseline for everything else.</p>
+
+        
+            <h3>How to Implement It</h3>
+            <ol>
+<li>Inventory every listener that terminates TLS — load balancers, API gateways, internal service mesh endpoints, even old admin interfaces and IoT management ports — because you can't retire a protocol you don't know is running.</li>
+<li>Set the minimum negotiable protocol version to TLS 1.2 at every one of those listeners, and enable TLS 1.3 where the platform supports it, instead of leaving the default &quot;any version&quot; setting in place.</li>
+<li>Explicitly disable SSL 2.0, SSL 3.0, TLS 1.0, and TLS 1.1 at the server or load-balancer configuration, rather than assuming a weak protocol is unreachable just because nobody uses it on purpose.</li>
+<li>Verify the control is actually working, not just configured: run an external TLS scanner (such as testssl.sh or an equivalent handshake test) against each public endpoint and confirm the server actively refuses a TLS 1.0/1.1 handshake instead of silently accepting it.</li>
+<li>Re-scan on a recurring schedule, because a new load balancer, a forgotten legacy service, or a default configuration reintroduced during a migration can quietly reopen the old protocol without anyone changing a policy on purpose.</li>
+</ol>
+
+        
+            <h3>The Pushback You&#39;ll Hear</h3>
+            <p>&quot;We have an old client or partner integration that only speaks TLS 1.0.&quot; The senior-engineer rebuttal: that client is the risk, not a reason to keep the door open for everyone else. Isolate that one integration behind its own endpoint with a documented exception and an expiration date, instead of lowering the minimum protocol version for every other user and system that connects to you.</p>
+
+        
+            <h3>Sources</h3>
+            <ul>
+<li><a href="https://csrc.nist.gov/pubs/sp/800/52/r2/final" target="_blank" rel="noopener noreferrer">NIST Special Publication (SP) 800-52 Rev. 2, Guidelines for the Selection, Configuration, and Use of Transport Layer Security (TLS) Implementations</a></li>
+<li><a href="https://www.cisa.gov/audiences/state-local-tribal-and-territorial-government/secure-us-sltt/encrypt-government-data" target="_blank" rel="noopener noreferrer">Encrypted DNS Implementation Guidance / Encrypt Data in Transit guidance (CISA)</a></li>
+</ul>
+
+        
+    </article>
+    
+    <article class="brief-section" id="tech-news">
+        <p class="brief-kicker">Tech News</p>
+        
+        
+            
+            <p>Fortinet's own email security gateway has a critical flaw under active attack right now, and there's still no patch — only a workaround. That's the gap that keeps a security team up at night. Three stories today: that FortiMail zero-day, fresh detail on what attackers do once they're inside a Citrix appliance, and a quieter flaw in the tool that hands out storage inside a Kubernetes cluster.</p>
+<p>Start with FortiMail, Fortinet's email security appliance — the gateway a lot of organizations put in front of the inbox to filter spam and malware before it reaches an employee. According to Fortinet's own advisory, published October first, the flaw — Common Vulnerabilities and Exposures number 2026-104286 — combines a path traversal bug with mishandled null bytes, special characters that trick the system into reading a shorter, different file path than the one actually sent. Severity: nine point eight out of ten. One crafted web request, no login required, and an attacker writes a file anywhere on the underlying system. The Cybersecurity and Infrastructure Security Agency, or CISA, added it to the Known Exploited Vulnerabilities catalog that same day, with a federal deadline of this Sunday, October fourth. Here's my read: when a vendor ships a workaround instead of a fix, that workaround isn't optional reading — disabling identity-based encryption and cutting the management interface off from the internet is the real patch until an actual one exists.</p>
+<p>Next up, Citrix. You may recall NetScaler's unauthenticated command-injection hole from late September. According to The Hacker News, researchers this week detailed what attackers do after breaking in: create a hidden superuser account, then drop a web shell disguised as an ordinary style-sheet file so it blends into NetScaler's own interface. My take: patching the vulnerability is step one. If nobody's hunted for new accounts and files that appeared while that door was open, the door's closed, but nobody's checked who already walked through it.</p>
+<p>Which brings us to Amazon. AWS disclosed a medium-severity flaw, CVE-2026-103505, in the driver that connects a Kubernetes cluster to its Elastic File System storage. According to AWS's own security bulletin, anyone with permission to request a storage volume could sneak unauthorized mount options past the driver's checks. AWS fixed it in version three-point-five. On its own, that's a narrow bug. My take: the real lesson is that in Kubernetes, the permission to request storage is itself a privileged action — handing it out freely hands out more trust than most teams realize.</p>
+<p>Through-line: a missing patch, a planted account, an overly trusted permission — different systems, same gap between what got deployed and what's actually being watched.</p>
+
+        
+            <h3>Sources</h3>
+            <ul>
+<li><a href="https://thehackernews.com/2026/10/critical-fortimail-zero-day-flaw.html" target="_blank" rel="noopener noreferrer">Critical FortiMail Zero-Day Flaw Exploited in Attacks Allows Unauthenticated Arbitrary File Writes — The Hacker News</a></li>
+<li><a href="https://www.bleepingcomputer.com/news/security/fortinet-warns-of-critical-fortimail-flaw-exploited-in-zero-day-attacks/" target="_blank" rel="noopener noreferrer">Fortinet warns of critical FortiMail flaw exploited in zero-day attacks — BleepingComputer</a></li>
+<li><a href="https://fortiguard.fortinet.com/psirt/FG-IR-26-175" target="_blank" rel="noopener noreferrer">PSIRT Advisory FG-IR-26-175 — Fortinet FortiGuard Labs</a></li>
+<li><a href="https://www.cisa.gov/news-events/alerts/2026/10/01/cisa-adds-one-known-exploited-vulnerability-catalog" target="_blank" rel="noopener noreferrer">CISA Adds One Known Exploited Vulnerability to Catalog</a></li>
+<li><a href="https://thehackernews.com/2026/10/citrix-netscaler-post-exploitation.html" target="_blank" rel="noopener noreferrer">Citrix NetScaler Post-Exploitation Payload Creates Superuser, Maps Web Shell to CSS-Like URLs — The Hacker News</a></li>
+<li><a href="https://www.bleepingcomputer.com/news/security/citrix-admins-warned-to-shut-down-netscalers-over-2-exploited-zero-days/" target="_blank" rel="noopener noreferrer">Citrix admins warned to shut down NetScalers over 2 exploited zero-days — BleepingComputer</a></li>
+<li><a href="https://aws.amazon.com/security/security-bulletins/2026-120-aws/" target="_blank" rel="noopener noreferrer">CVE-2026-103505 Security Bulletin — Amazon Web Services</a></li>
+<li><a href="https://nvd.nist.gov/vuln/detail/CVE-2026-103505" target="_blank" rel="noopener noreferrer">NVD - CVE-2026-103505</a></li>
+</ul>
+
+        
+    </article>
+    
+    <section class="brief-subscribe" id="subscribe">
+    <h2>Get The Daily Brief by email</h2>
+    <p>One short email each morning. Unsubscribe anytime.</p>
+    <form action="https://buttondown.com/api/emails/embed-subscribe/cybercider" method="post">
+        <label for="bd-email">Email address</label>
+        <input type="email" name="email" id="bd-email" required autocomplete="email" placeholder="you@example.com">
+        <button type="submit">Subscribe</button>
+    </form>
+</section>
+</main>
+
+    <footer><p class="copyright">The Daily Brief · Eddie Camacho</p></footer>
+<!-- cf-web-analytics (managed by tools/inject_analytics.py) -->
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "f728a20b49cc4a0fbe02cde72f03301c"}'></script>
+</body>
+</html>
