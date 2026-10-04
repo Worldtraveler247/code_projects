@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="dark">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'self' https://static.cloudflareinsights.com; connect-src 'self' https://cloudflareinsights.com; img-src 'self' data:; form-action https://buttondown.com; base-uri 'none'; object-src 'none'">
+    <meta name="description" content="The Daily Brief for Monday, October 5, 2026: security incidents, senior security advice, engineering explainers, and tech news.">
+    <title>The Daily Brief · Oct 5, 2026</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="icon" href="../../../favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="../../../style.css">
+    <link rel="stylesheet" href="../../newsletter.css">
+</head>
+<body class="brief-page">
+    <a href="#main-content" class="skip-nav">Skip to main content</a>
+    <nav class="brief-nav">
+        <a href="../../../index.html">← App Hub</a>
+        <a href="../../">All issues</a>
+    </nav>
+    
+<header class="brief-masthead">
+    <p class="brief-eyebrow">THE DAILY BRIEF</p>
+    <h1>Monday, October 5, 2026</h1>
+    <ol class="brief-toc">
+        <li><a href="#current-events">Current Events</a></li><li><a href="#security-advice">Senior Security Advice</a></li><li><a href="#tech-news">Tech News</a></li>
+    </ol>
+</header>
+<main id="main-content" class="brief">
+    
+    <article class="brief-section" id="current-events">
+        <p class="brief-kicker">Current Events</p>
+        <h2>The polyfill.io Supply Chain Attack</h2>
+        
+            
+            <p>Here's an incident where a free, invisible piece of code sitting on hundreds of thousands of websites turned hostile overnight -- not because of a hack, but because someone simply bought it. Here's how it actually happened.</p>
+<p>Polyfill was a popular open-source JavaScript library that let old browsers run modern web code, and for years, websites everywhere loaded it for free from one convenient address: cdn.polyfill.io. In February 2024, a Chinese company called Funnull bought the polyfill.io domain name and took over the project's GitHub account. The library's original creator, a developer named Andrew Betts, didn't even own the domain -- he had no say in the sale. He immediately posted a public warning telling anyone using polyfill.io to remove it immediately, months before anyone found actual malicious behavior.</p>
+<p>Here's the mechanic. Because sites were pulling that script live from the CDN every time a page loaded -- not a saved, verified copy -- whoever controlled the domain controlled what every one of those sites actually ran, instantly, with no new deployment on the site owner's side at all. On June twenty-fifth, 2024, the security firm Sansec published research showing exactly what Funnull had done with that control: cdn.polyfill.io was injecting obfuscated JavaScript that redirected certain mobile visitors to a sports betting site, through a fake Google Analytics domain. According to Sansec, the malicious code specifically avoided triggering for admin users and only activated on specific devices at specific hours, to dodge casual review.</p>
+<p>Root cause, in one sentence: thousands of production websites were trusting a live, third-party script with no cryptographic check confirming it was still the file they originally approved.</p>
+<p>Here's what actually contained this. Cloudflare -- which never authorized polyfill.io's use of its name -- rolled out an automatic rewrite within about twenty-four hours, silently redirecting any site behind its proxy to a safe mirror, no customer action required. Separately, the domain registrar Namecheap suspended polyfill.io on June twenty-seventh for abuse, and when the operators tried to relaunch the same code on polyfill.com, Namecheap suspended that one too, the very next day.</p>
+<p>But be honest about the limit here. Both of those were outside interventions that depended on Sansec's research becoming public first. Nothing in a typical website's own pipeline would have caught this on its own, and estimates of the damage still vary -- Sansec's own count was over one hundred thousand sites, while Censys independently counted more than three hundred eighty-four thousand hosts still referencing the malicious domain.</p>
+<p>Here's what a senior engineer, or a senior ISSO, would change in how they work because of this. Never load a live third-party script into production without pinning it -- using Subresource Integrity to hash-check exactly what you approved. In a RHEL 9 lab with Podman, that means standing up a small file server, computing a SHA hash for a script you trust, and writing a verification step that refuses to proceed the moment that hash changes -- so a vendor going rogue gets caught by your own pipeline, not by someone else's research six months later.</p>
+
+        
+            <h3>Timeline</h3>
+            <table>
+<thead>
+<tr>
+<th>Date</th>
+<th>Event</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>February 2024</td>
+<td>Funnull, a China-based CDN company, acquires the polyfill.io domain name and the project's GitHub account; original polyfill author Andrew Betts (who never owned the domain) publicly warns users to remove polyfill.io immediately, before any malicious behavior is observed.</td>
+</tr>
+<tr>
+<td>June 25, 2024</td>
+<td>Security research firm Sansec publishes findings that cdn.polyfill.io is injecting obfuscated JavaScript redirecting mobile visitors to a sports-betting site via a typosquatted fake Google Analytics domain, and assigns an initial estimate of 100,000+ affected sites.</td>
+</tr>
+<tr>
+<td>June 25, 2024</td>
+<td>Cloudflare — stating it never authorized polyfill.io's use of its name or branding — deploys an automatic URL-rewriting service within roughly 24 hours, redirecting any site behind its proxy to a safe cdnjs-based mirror.</td>
+</tr>
+<tr>
+<td>June 27, 2024</td>
+<td>Domain registrar Namecheap suspends polyfill.io for abuse.</td>
+</tr>
+<tr>
+<td>June 28, 2024</td>
+<td>After the operators attempt to relaunch the same service under polyfill.com, Namecheap suspends that domain as well.</td>
+</tr>
+<tr>
+<td>July 2024</td>
+<td>NVD publishes CVE-2024-38526 and GitHub publishes advisory GHSA-5vgj-ggm4-fg62 documenting the supply chain compromise; the polyfill.io operator disputes the characterization as malicious and the domain later returns under different terms.</td>
+</tr>
+</tbody>
+</table>
+<p><em>Note: estimates of scope diverge by source. Sansec's own headline figure is &quot;100,000+ sites&quot;; independent scanning by Censys counted 384,773 hosts referencing the malicious domain; Cloudflare's public framing described &quot;several hundreds of thousands&quot; of sites. This script states each figure as its source presents it rather than resolving the discrepancy.</em></p>
+
+        
+            <h3>Control Failures</h3>
+            <table>
+<thead>
+<tr>
+<th>#</th>
+<th>Failure</th>
+<th>NIST SP 800-53 Rev 5 Control Family</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>Embedding websites pulled a live script from cdn.polyfill.io on every page load with no cryptographic check (such as Subresource Integrity) confirming the delivered file still matched what was originally approved.</td>
+<td><strong>SI-7</strong> — Software, Firmware, and Information Integrity</td>
+</tr>
+<tr>
+<td>2</td>
+<td>When Funnull acquired the polyfill.io domain and GitHub account in February 2024, no downstream organization had a process to re-assess or revoke trust in that third-party component after its ownership changed — despite the original author's own public warning.</td>
+<td><strong>SR-3</strong> — Supply Chain Controls and Processes</td>
+</tr>
+<tr>
+<td>3</td>
+<td>The injected code was deliberately engineered to evade detection, activating only for specific mobile devices at specific hours and explicitly skipping anyone it detected as an admin user.</td>
+<td><strong>SI-3</strong> — Malicious Code Protection</td>
+</tr>
+<tr>
+<td>4</td>
+<td>A single third-party CDN domain sat directly inside the trust and execution boundary of every site that referenced it, so compromising one domain meant code execution on every embedding site — Censys counted over 384,000 such hosts.</td>
+<td><strong>SC-7</strong> — Boundary Protection</td>
+</tr>
+<tr>
+<td>5</td>
+<td>No embedding organization had monitoring positioned to detect that a third-party script outside their control had changed behavior in production; detection depended entirely on an external security vendor's independent research.</td>
+<td><strong>SI-4</strong> — System Monitoring</td>
+</tr>
+<tr>
+<td>6</td>
+<td>The effective response relied on ad hoc interventions by Cloudflare and Namecheap rather than any pre-existing organizational change-control process capable of flagging or blocking a silent change to a referenced third-party script.</td>
+<td><strong>CM-3</strong> — Configuration Change Control</td>
+</tr>
+</tbody>
+</table>
+
+        
+            <h3>What Held</h3>
+            <ul>
+<li><strong>Cloudflare's rapid, automatic mitigation.</strong> Within roughly 24 hours of Sansec's disclosure, Cloudflare began silently rewriting polyfill.io links to a safe mirror for every site behind its proxy — including free-tier customers — with zero action required from the site owners themselves.</li>
+<li><strong>Registrar-level abuse authority.</strong> Namecheap's suspension of polyfill.io on June 27, and of the relaunched polyfill.com the very next day, cut the malicious code off at the infrastructure layer each time the operators tried to keep serving it.</li>
+<li><strong>Be honest about the limit of both.</strong> Neither control belonged to the thousands of affected websites — both were third parties acting after Sansec's research went public. No embedding site's own pipeline detected or blocked anything; they were protected, if at all, only because someone else was watching the domain they'd quietly trusted.</li>
+</ul>
+
+        
+            <h3>Sources</h3>
+            <ul>
+<li><a href="https://sansec.io/research/polyfill-supply-chain-attack" target="_blank" rel="noopener noreferrer">Polyfill supply chain attack hits 100K+ sites — Sansec</a> (primary)</li>
+<li><a href="https://github.com/advisories/GHSA-5vgj-ggm4-fg62" target="_blank" rel="noopener noreferrer">CVE-2024-38526 — GitHub Advisory Database (GHSA-5vgj-ggm4-fg62)</a> (primary)</li>
+<li><a href="https://blog.cloudflare.com/automatically-replacing-polyfill-io-links-with-cloudflares-mirror-for-a-safer-internet/" target="_blank" rel="noopener noreferrer">Automatically replacing polyfill.io links with Cloudflare's mirror for a safer Internet — Cloudflare Blog</a> (primary)</li>
+<li><a href="https://www.bleepingcomputer.com/news/security/polyfillio-javascript-supply-chain-attack-impacts-over-100k-sites/" target="_blank" rel="noopener noreferrer">Polyfill.io JavaScript supply chain attack impacts over 100K sites — BleepingComputer</a></li>
+<li><a href="https://thehackernews.com/2024/07/polyfillio-attack-impacts-over-380000.html" target="_blank" rel="noopener noreferrer">Polyfill[.]io Attack Impacts Over 380,000 Hosts, Including Major Companies — The Hacker News</a></li>
+<li><a href="https://censys.com/blog/july-2-polyfill-io-supply-chain-attack-digging-into-the-web-of-compromised-domains/" target="_blank" rel="noopener noreferrer">July 2: Polyfill.io Supply Chain Attack — Digging into the Web of Compromised Domains — Censys</a></li>
+<li><a href="https://www.securityweek.com/polyfill-domain-shut-down-as-owner-disputes-accusations-of-malicious-activity/" target="_blank" rel="noopener noreferrer">Polyfill Domain Shut Down as Owner Disputes Accusations of Malicious Activity — SecurityWeek</a></li>
+</ul>
+<hr />
+<p><strong>Tomorrow's Thread:</strong> Day 47 moves to the cloud-misconfiguration/IAM family — the 2026 Supabase exposure, where cybersecurity firm UpGuard reportedly found roughly 16,000 improperly secured databases on the popular &quot;vibe-coded&quot; app hosting platform exposing names, addresses, phone numbers, and passwords — distinct from today's software supply-chain family.</p>
+
+        
+    </article>
+    
+    <article class="brief-section" id="security-advice">
+        <p class="brief-kicker">Senior Security Advice</p>
+        <h2>Vet and Continuously Monitor Third-Party Vendors Before They Touch Your Systems or Data</h2>
+        
+            <h3>The Advice</h3>
+            <p>Before any vendor gets a login, an API key, or a copy of your data, require a documented security assessment scaled to how much access they're getting — and keep re-checking them for as long as that access lasts, instead of approving them once and forgetting they exist.</p>
+
+        
+            <h3>Why It Matters</h3>
+            <p>Every vendor connection is an extension of your own attack surface, whether it's a managed service provider with a standing VPN tunnel, a SaaS platform holding customer records, or a contractor with a scoped admin account. Attackers know this, and they routinely skip a well-defended target entirely and go after the weaker vendor sitting next to it instead. That's the incident class this control closes: a third party with legitimate, trusted access gets breached first, and the attacker rides that existing trust relationship — a shared credential, an always-on remote connection, a software update channel — straight into the real target's environment. From the inside, it doesn't look like an external attack at all; it looks like the vendor doing their normal job, which is exactly why it goes unnoticed for so long. A security program that locks down every internal control but waves vendors through the door without the same scrutiny has a hole in it shaped exactly like its supply chain.</p>
+<p>NIST Special Publication 800-161 Revision 1, the government's cybersecurity supply chain risk management guidance, builds its entire approach around this: identify which suppliers are critical because they touch your systems, your data, or your operational continuity, assess their risk before and after onboarding, and fold security requirements into procurement and contract management rather than treating them as a side conversation. CISA's Vendor Supply Chain Risk Management template operationalizes the same idea with a standardized set of questions organizations can put in front of any ICT supplier to evaluate their security practices before signing anything.</p>
+
+        
+            <h3>How to Implement It</h3>
+            <ol>
+<li>Classify vendors by what they can actually touch — production systems, sensitive data, remote network access — and give the critical ones real scrutiny instead of treating every vendor the same.</li>
+<li>Require a standardized security questionnaire before onboarding, covering their incident response process, patch cadence, data handling, and any independent attestation they hold (a SOC 2 report, for instance), using a structured template like CISA's rather than an ad hoc email thread.</li>
+<li>Put the security requirements in the contract itself — breach notification timelines, encryption requirements, a right-to-audit clause — so they're enforceable, not just a policy document nobody can point back to later.</li>
+<li>Grant vendors the minimum access the engagement actually requires, through scoped, time-boxed accounts rather than a standing all-access credential, and revoke it the moment the engagement ends.</li>
+<li>Verify the control is actually working, not just signed off on paper: re-assess critical vendors on a recurring schedule or at contract renewal, watch for their public breach disclosures, and periodically log in as the vendor's own account to confirm what it can reach still matches what was approved — not what it's quietly grown into.</li>
+</ol>
+
+        
+            <h3>The Pushback You&#39;ll Hear</h3>
+            <p>&quot;We don't have the headcount to vet every vendor we use.&quot; The senior-engineer rebuttal: nobody's asking you to. NIST's own guidance tells you to tier this — put real depth into the vendors with access to critical systems or sensitive data, and a lighter touch on everyone else. The vendor with API keys into your production database and the vendor that services the office coffee machine do not need the same level of scrutiny, but right now most organizations are giving both of them none.</p>
+
+        
+            <h3>Sources</h3>
+            <ul>
+<li><a href="https://csrc.nist.gov/pubs/sp/800/161/r1/upd1/final" target="_blank" rel="noopener noreferrer">NIST Special Publication 800-161 Revision 1, Cybersecurity Supply Chain Risk Management Practices for Systems and Organizations (NIST)</a></li>
+<li><a href="https://www.cisa.gov/resources-tools/resources/vendor-supply-chain-risk-management-scrm-template" target="_blank" rel="noopener noreferrer">Vendor Supply Chain Risk Management (SCRM) Template (CISA)</a></li>
+</ul>
+
+        
+    </article>
+    
+    <article class="brief-section" id="tech-news">
+        <p class="brief-kicker">Tech News</p>
+        
+        
+            
+            <p>A major Danish university just confirmed hackers walked into its entire identity system using nothing more exotic than a stolen login, and walked out with more than twenty years of personal records on up to 200,000 people. Here's why that matters to you: the biggest security lessons this week don't come from flashy zero-days. They come from gaps in the basics — credential hygiene and patch timing. Two stories: that university identity breach, and new evidence a mail-server flaw was being probed weeks before the public ever heard about it.</p>
+<p>Start with the Technical University of Denmark, or DTU. According to the university's own disclosure and BleepingComputer's reporting, an attacker used compromised credentials — a valid username and password, not a software flaw — to log into DTUBasen, DTU's identity and access management system, the single source of truth for who everyone at that university is. The data inside went back to 2003: Danish national ID numbers, home addresses, next-of-kin details, for roughly 40,000 current users and about 160,000 former ones. DTU says it still can't determine exactly what got downloaded, and it's handed the case to Denmark's data protection authority and its national cybercrime police. My read: this is a two-part failure. Nobody caught a stolen credential logging into the one system that defines everyone's identity, and that system was holding over two decades of records nobody still needed. A senior engineer treats an identity store as the highest-value target in the building, and data minimization shrinks the blast radius long before an attacker shows up.</p>
+<p>Next up, Zimbra. According to Microsoft's own security team, attackers were already probing a command-injection flaw in Zimbra's mail server, tracked as CVE-2026-73570, weeks before it was publicly disclosed on August thirteenth. The bug lived in an optional SNMP notification feature — Simple Network Management Protocol — and a single crafted email ran commands with the mail server's own privileges. Once inside, attackers planted web shells, installed a systemd persistence mechanism to survive reboots, and rode stolen SSH trust between servers to move sideways before pulling mailbox data out to cloud storage. My take: a patch shipping on July twentieth didn't protect anyone who hadn't applied it, and the real lesson is attackers start hunting the moment a fix ships, whether or not a CVE number exists yet.</p>
+<p>A stolen password and a quietly-probed patch: different doors, same result. The basics decide the outcome before any sophisticated attack ever begins.</p>
+
+        
+            <h3>Sources</h3>
+            <ul>
+<li><a href="https://www.bleepingcomputer.com/news/security/danish-university-dtu-breach-exposes-data-of-up-to-200-000-people/" target="_blank" rel="noopener noreferrer">Danish university DTU breach exposes data of up to 200,000 people — BleepingComputer</a></li>
+<li><a href="https://www.dtu.dk/english/newsarchive/2026/10/cyberattack-on-dtu_notification-of-a-personal-data-breach" target="_blank" rel="noopener noreferrer">Cyberattack on DTU: Notification of a personal data breach — DTU (official)</a></li>
+<li><a href="https://www.microsoft.com/en-us/security/blog/2026/09/30/unauthenticated-command-injection-on-internet-facing-mail-servers-tracking-cve-2026-73570/" target="_blank" rel="noopener noreferrer">Unauthenticated command injection on internet-facing mail servers: tracking CVE-2026-73570 — Microsoft Security Blog</a></li>
+<li><a href="https://www.theregister.com/security/2026/10/01/microsoft-catches-hackers-exploiting-zimbra-bug-before-disclosure/5300543" target="_blank" rel="noopener noreferrer">Microsoft catches hackers exploiting Zimbra bug before disclosure — The Register</a></li>
+</ul>
+
+        
+    </article>
+    
+    <section class="brief-subscribe" id="subscribe">
+    <h2>Get The Daily Brief by email</h2>
+    <p>One short email each morning. Unsubscribe anytime.</p>
+    <form action="https://buttondown.com/api/emails/embed-subscribe/cybercider" method="post">
+        <label for="bd-email">Email address</label>
+        <input type="email" name="email" id="bd-email" required autocomplete="email" placeholder="you@example.com">
+        <button type="submit">Subscribe</button>
+    </form>
+</section>
+</main>
+
+    <footer><p class="copyright">The Daily Brief · Eddie Camacho</p></footer>
+<!-- cf-web-analytics (managed by tools/inject_analytics.py) -->
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "f728a20b49cc4a0fbe02cde72f03301c"}'></script>
+</body>
+</html>
