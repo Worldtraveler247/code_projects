@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="dark">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'self' https://static.cloudflareinsights.com; connect-src 'self' https://cloudflareinsights.com; img-src 'self' data:; form-action https://buttondown.com; base-uri 'none'; object-src 'none'">
+    <meta name="description" content="The Daily Brief for Tuesday, October 6, 2026: security incidents, senior security advice, engineering explainers, and tech news.">
+    <title>The Daily Brief · Oct 6, 2026</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="icon" href="../../../favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="../../../style.css">
+    <link rel="stylesheet" href="../../newsletter.css">
+</head>
+<body class="brief-page">
+    <a href="#main-content" class="skip-nav">Skip to main content</a>
+    <nav class="brief-nav">
+        <a href="../../../index.html">← App Hub</a>
+        <a href="../../">All issues</a>
+    </nav>
+    
+<header class="brief-masthead">
+    <p class="brief-eyebrow">THE DAILY BRIEF</p>
+    <h1>Tuesday, October 6, 2026</h1>
+    <ol class="brief-toc">
+        <li><a href="#current-events">Current Events</a></li><li><a href="#security-advice">Senior Security Advice</a></li><li><a href="#tech-news">Tech News</a></li>
+    </ol>
+</header>
+<main id="main-content" class="brief">
+    
+    <article class="brief-section" id="current-events">
+        <p class="brief-kicker">Current Events</p>
+        <h2>The Supabase Mass Data Exposure</h2>
+        
+            
+            <p>Here's an incident where a security researcher, not an attacker, found over sixteen thousand exposed databases just by reading the public source code of ordinary websites. Here's how it actually happened.</p>
+<p>Supabase is a popular backend-as-a-service platform -- it gives developers a hosted Postgres database plus an auto-generated REST and GraphQL API, so an app can talk to its database directly without writing backend code. On September twenty-fifth, 2026, the research firm UpGuard published findings, authored by its director of research Greg Pollock, after scanning roughly three hundred thousand domains showing signs of running on Supabase. UpGuard found that sixteen thousand three hundred twenty-six of those databases had at least one table that anyone on the internet could read.</p>
+<p>Here's the mechanic. Every Supabase project ships a public API key inside its own client-side JavaScript -- that part is by design, the key is meant to be public. What's supposed to stand between that public key and your actual rows is Postgres Row Level Security, RLS, which Supabase's own dashboard turns on by default when you create a table through the UI. But a large share of these apps were built, or partly built, by AI coding assistants -- tools like Claude Code, Cursor, Bolt, and Lovable -- generating raw SQL migrations outside that dashboard flow. Raw SQL doesn't inherit that default. So the table goes live, the public key is already sitting in the page source, and the API happily returns every row to anyone who asks. UpGuard confirmed real exposed data: plaintext passwords, phone numbers, over one hundred thousand private messages, thousands of license plates from a valet service, even the internal records of one African government's consulate.</p>
+<p>Root cause, in one sentence: a secure default that only applied inside one creation path got silently bypassed the moment a different, increasingly common creation path -- AI-generated raw SQL -- was used instead.</p>
+<p>Here's what actually contained this, partially. Supabase had already started closing the adjacent gap months earlier: a changelog change making new tables opt-in, rather than automatically exposed to the API, which became default for new projects starting May thirtieth, 2026. That fix is still rolling out -- full enforcement on every existing project is scheduled for October thirtieth, 2026, just weeks from this recording. So the remediation was already in motion before UpGuard published; it simply hadn't reached everyone yet.</p>
+<p>Be honest about the limit here. None of that stopped the sixteen thousand- plus databases already exposed by the time of disclosure, and detection depended entirely on an outside researcher's internet-wide scan, not on Supabase's own monitoring or on any customer's own audit of their own data.</p>
+<p>Here's what a senior engineer, or a senior ISSO, would change in how they work because of this. Never trust a platform default that's scoped to only one creation path. In an AWS or RHEL lab running Postgres, a senior engineer would stand up a table two different ways -- through a dashboard- style default and through a raw migration script -- and then explicitly query the system catalogs to prove, for every single table, that row level security is actually enabled, instead of assuming it is because the platform's own marketing says so.</p>
+
+        
+            <h3>Timeline</h3>
+            <table>
+<thead>
+<tr>
+<th>Date</th>
+<th>Event</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>April 28, 2026</td>
+<td>Supabase ships an opt-in changelog change (GitHub discussion #45329) so new tables are no longer automatically exposed to the Data/GraphQL API; available immediately but not yet default.</td>
+</tr>
+<tr>
+<td>May 30, 2026</td>
+<td>The non-exposure behavior becomes the default for newly created Supabase projects, rolling out gradually over several weeks.</td>
+</tr>
+<tr>
+<td>September 25, 2026</td>
+<td>UpGuard publishes &quot;Everything Everywhere: Systemic Data Exposure in Supabase Apps,&quot; authored by Director of Research Greg Pollock, reporting 16,326 Supabase-hosted databases with at least one publicly readable table, found by scanning roughly 300,000 domains showing signs of Supabase usage.</td>
+</tr>
+<tr>
+<td>September 25, 2026</td>
+<td>Supabase CISO Bil Harmer responds to press, stating the company had no advance access to UpGuard's research, that projects are &quot;secure by default,&quot; and that security is a shared responsibility between platform and customer configuration.</td>
+</tr>
+<tr>
+<td>October 30, 2026</td>
+<td>Enforcement of the non-exposure default is scheduled to extend to all existing Supabase projects, not just new ones — a date still roughly three weeks away as of this recording.</td>
+</tr>
+</tbody>
+</table>
+<p><em>Note: UpGuard's count (16,326 databases, ~300,000 domains scanned) comes from the firm's own published research and is treated as the authoritative figure here; press coverage (TechCrunch, BleepingComputer, Unite.AI, and others) consistently repeats this same number rather than offering an independent count. This script does not have independent confirmation, beyond UpGuard's own characterization, of exactly how many of the 16,326 databases remained exposed as of this recording versus had since been remediated by their owners.</em></p>
+
+        
+            <h3>Control Failures</h3>
+            <table>
+<thead>
+<tr>
+<th>#</th>
+<th>Failure</th>
+<th>NIST SP 800-53 Rev 5 Control Family</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>Tables created through raw SQL migrations (common with AI coding assistants) did not inherit Row Level Security, so Postgres enforced no row-level access logic before the REST/GraphQL layer served data.</td>
+<td><strong>AC-3</strong> — Access Enforcement</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Prior to the April 2026 opt-in change, Supabase's Data and GraphQL API automatically exposed every newly created public-schema table by default — unnecessary functionality enabled out of the box.</td>
+<td><strong>CM-7</strong> — Least Functionality</td>
+</tr>
+<tr>
+<td>3</td>
+<td>The public, client-shipped anon API key, combined with disabled RLS, gave any anonymous internet visitor the same effective read access as the application itself — far beyond what the UI needed.</td>
+<td><strong>AC-6</strong> — Least Privilege</td>
+</tr>
+<tr>
+<td>4</td>
+<td>AI-generated schema and migration changes reached production with no required review step confirming RLS policies existed before go-live.</td>
+<td><strong>CM-3</strong> — Configuration Change Control</td>
+</tr>
+<tr>
+<td>5</td>
+<td>Neither Supabase nor its customers ran a routine internal scan verifying which of their own tables were internet-readable; discovery depended entirely on UpGuard's unsolicited external scan of ~300,000 domains.</td>
+<td><strong>RA-5</strong> — Vulnerability Monitoring and Scanning</td>
+</tr>
+<tr>
+<td>6</td>
+<td>No platform-wide continuous assessment process tracked how many live projects had drifted into this exposed state as AI-assisted, raw-SQL app development grew more common.</td>
+<td><strong>CA-7</strong> — Continuous Monitoring</td>
+</tr>
+</tbody>
+</table>
+
+        
+            <h3>What Held</h3>
+            <ul>
+<li><strong>Supabase's dashboard-default RLS behavior.</strong> For projects built through Supabase's own UI flow, RLS was already on by default — the platform's primary, intended creation path was not itself the hole; the gap was specifically in the raw-SQL/AI-generated bypass of that path.</li>
+<li><strong>A remediation already in motion before disclosure.</strong> Supabase's own changelog shows it had started closing the adjacent API-exposure gap months before UpGuard published — opt-in available April 28, 2026, default for new projects from May 30, 2026 — meaning the fix predates the headline, even though it wasn't yet complete.</li>
+<li><strong>Be honest about the limit of both.</strong> Dashboard-default RLS did nothing for the thousands of tables already created outside that flow, and the broader API-exposure fix won't cover every existing project until its October 30, 2026 enforcement date — weeks after this recording. Naming that gap, not just the fix in progress, is the senior move.</li>
+</ul>
+
+        
+            <h3>Sources</h3>
+            <ul>
+<li><a href="https://www.upguard.com/blog/everything-everywhere-systemic-data-exposure-in-supabase-apps" target="_blank" rel="noopener noreferrer">Everything Everywhere: Systemic Data Exposure in Supabase Apps — UpGuard</a> (primary)</li>
+<li><a href="https://github.com/orgs/supabase/discussions/45329" target="_blank" rel="noopener noreferrer">Breaking Change: Tables not exposed to Data and GraphQL API automatically — Supabase Changelog / GitHub Discussion #45329</a> (primary)</li>
+<li><a href="https://techcrunch.com/2026/09/25/some-supabase-customers-are-publicly-exposing-reams-of-peoples-data-to-the-web/" target="_blank" rel="noopener noreferrer">Some Supabase customers are publicly exposing reams of people's data to the web — TechCrunch</a></li>
+<li><a href="https://www.bleepingcomputer.com/news/security/misconfigured-supabase-apps-expose-data-in-over-16-000-databases/" target="_blank" rel="noopener noreferrer">Over 16,000 Supabase databases expose PII, passwords, auth tokens — BleepingComputer</a></li>
+<li><a href="https://www.unite.ai/upguard-study-finds-16-326-supabase-databases-exposing-readable-tables/" target="_blank" rel="noopener noreferrer">UpGuard Study Finds 16,326 Supabase Databases Exposing Readable Tables — Unite.AI</a></li>
+<li><a href="https://cybernews.com/news/16000-supabase-databases-exposed/" target="_blank" rel="noopener noreferrer">16,000 Supabase databases exposed as vibe-coded apps leak sensitive user data — Cybernews</a></li>
+</ul>
+<hr />
+<p><strong>Tomorrow's Thread:</strong> Day 48 moves to the identity/credential-compromise family — a landmark session-token-theft or credential-stuffing case distinct from today's cloud-misconfiguration/IAM family, since Change Healthcare, Okta, Snowflake, and MGM/Caesars have already been covered earlier in this series and a different case in that family should be selected and verified before writing that script.</p>
+
+        
+    </article>
+    
+    <article class="brief-section" id="security-advice">
+        <p class="brief-kicker">Senior Security Advice</p>
+        <h2>Purge or Destroy Storage Media Before It Leaves Your Control</h2>
+        
+            <h3>The Advice</h3>
+            <p>Before any drive, phone, backup tape, or decommissioned server leaves your organization's control — for resale, return to a lessor, recycling, or the trash — sanitize it to a level that matches the data's sensitivity (Clear, Purge, or Destroy), and keep a record proving it happened.</p>
+
+        
+            <h3>Why It Matters</h3>
+            <p>Deleting a file, or even reformatting a drive, does not erase the data — it just removes the pointer to it, leaving the underlying bits fully recoverable with free forensic tools. The threat this stops is data walking out the door on hardware nobody thought twice about: a leased laptop returned at refresh, a failed drive pulled from a RAID array and binned, a copier with a hard drive nobody remembers is there. The incident class is well documented: researchers who buy used enterprise drives and devices on the secondary market routinely recover financial records, medical data, and credentials the previous owner assumed were gone. None of that needs a sophisticated attacker — just someone willing to plug in a recovered drive.</p>
+<p>NIST Special Publication 800-88 Revision 2, the federal guide for media sanitization, frames the fix as three escalating actions — Clear, Purge, and Destroy — chosen based on how sensitive the data is and whether the media needs to be reused. Purge (overwrite, cryptographic erase, or degaussing) makes recovery infeasible even with advanced lab techniques; Destroy (shredding, pulverizing, incinerating) removes the option to ever read the media again.</p>
+
+        
+            <h3>How to Implement It</h3>
+            <ol>
+<li>Classify the media by the sensitivity of the data it held before deciding anything — a dev laptop and a drive that stored production customer records don't get the same treatment.</li>
+<li>Pick Clear, Purge, or Destroy per NIST SP 800-88 based on classification and whether the media will be reused; for self-encrypting drives and cloud volumes, cryptographic erase (destroying the encryption key) is often the fastest Purge-equivalent option.</li>
+<li>Require a documented chain of custody and a certificate of sanitization for every asset that leaves custody, including hardware returned to a lessor or handed to a destruction vendor — not just a verbal assurance it was &quot;wiped.&quot;</li>
+<li>Verify the control actually worked, don't just trust the checkbox: periodically pull a sample of &quot;sanitized&quot; drives and attempt data recovery with a forensic tool before they leave the building, and reconcile destruction vendor certificates against actual serial numbers.</li>
+<li>Build sanitization into the standard asset offboarding workflow so it happens automatically at decommission, lease return, and disposal — not as a manual step someone has to remember.</li>
+</ol>
+
+        
+            <h3>The Pushback You&#39;ll Hear</h3>
+            <p>&quot;We already reformat drives before they go out the door.&quot; The senior-engineer rebuttal: a quick format or delete removes the file table, not the data — it's the digital equivalent of removing a book from a library catalog while leaving the book on the shelf. NIST's own guidance treats Clear as the weakest tier for exactly this reason; anything leaving your control needs Purge or Destroy, not a format.</p>
+
+        
+            <h3>Sources</h3>
+            <ul>
+<li><a href="https://csrc.nist.gov/pubs/sp/800/88/r2/final" target="_blank" rel="noopener noreferrer">NIST Special Publication 800-88 Revision 2, Guidelines for Media Sanitization (NIST)</a></li>
+<li><a href="https://www.nist.gov/news-events/news/2025/09/guidelines-media-sanitization-nist-publishes-sp-800-88r2" target="_blank" rel="noopener noreferrer">Guidelines for Media Sanitization: NIST Publishes SP 800-88r2 (NIST)</a></li>
+</ul>
+
+        
+    </article>
+    
+    <article class="brief-section" id="tech-news">
+        <p class="brief-kicker">Tech News</p>
+        
+        
+            
+            <p>Citrix's NetScaler — the gateway a lot of companies use for single sign-on — started crashing under live attacks this weekend, and the emergency patch Citrix shipped two weeks earlier, for a different flaw, didn't stop it. If your organization runs NetScaler for authentication, that's your login system going dark, company-wide, with no warning. Two stories today: that NetScaler outage, and a wave of South Korean bank breaches investigators are tracing to an off-the-shelf AI hacking tool.</p>
+<p>Let's start with NetScaler. According to Citrix's own security bulletin, the flaw — Common Vulnerabilities and Exposures number 2026-88779 — is a memory overflow in how NetScaler handles SAML, Security Assertion Markup Language, the protocol that lets one login work across multiple applications. It only hits appliances set up as a SAML service provider or identity provider, but there, one crafted request crashes the service, no login required. Citrix shipped fixed builds on October fourth, and the Cybersecurity and Infrastructure Security Agency, or CISA, added the flaw to its Known Exploited Vulnerabilities catalog that same day, giving federal agencies until October seventh to fix it. Here's what stings: some appliances hit were already patched — for two different NetScaler zero-days disclosed just weeks earlier. My read: when one vendor ships three emergency patches to the same product in a month, the right response isn't patch fatigue. It's asking whether that appliance belongs on the internet-facing edge at all, or behind something that can absorb the next surprise.</p>
+<p>Which brings us to South Korea. According to BleepingComputer and the Korea Times, Shinhan Bank and at least six other South Korean financial firms — including KB Kookmin and Hana Bank — have disclosed data leaks this past week, together exposing tens of thousands of customers' national ID numbers, income figures, and loan details. Investigators found traces of an open-source AI penetration-testing tool on one attack server, and South Korea's Financial Services Commission has ordered every financial firm in the country to lock down outside access unless it's essential. The technique behind at least one breach was credential stuffing: taking username-and-password pairs leaked from unrelated sites and trying them, automatically, against a bank's login page until some work. My take: the AI tool is the headline, but credential stuffing is decades old, and it only works because people reuse passwords. A senior security team treats password reuse and missing multi-factor authentication as the real root cause, whether or not an AI agent did the typing.</p>
+<p>An availability failure in your sign-on gateway and a confidentiality failure from reused passwords land you in the same place: a system nobody can trust until it's checked, end to end.</p>
+
+        
+            <h3>Sources</h3>
+            <ul>
+<li><a href="https://support.citrix.com/external/article/CTX697174/citrix-netscaler-adc-and-citrix-netscale.html" target="_blank" rel="noopener noreferrer">Citrix NetScaler ADC and Citrix NetScaler Gateway Security Bulletin for CVE-2026-88779 — Citrix Support</a></li>
+<li><a href="https://thehackernews.com/2026/10/new-netscaler-zero-day-exploited-in.html" target="_blank" rel="noopener noreferrer">New NetScaler Zero-Day Exploited in Targeted Attacks Can Knock SAML Deployments Offline — The Hacker News</a></li>
+<li><a href="https://www.sophos.com/en-us/blog/citrix-netscaler-vulnerability-cve-2026-88779-in-active-exploitation" target="_blank" rel="noopener noreferrer">Citrix NetScaler vulnerability (CVE-2026-88779) in active exploitation — Sophos</a></li>
+<li><a href="https://securityaffairs.com/200414/security/u-s-cisa-adds-citrix-netscaler-flaw-to-its-known-exploited-vulnerabilities-catalog-3.html" target="_blank" rel="noopener noreferrer">U.S. CISA adds Citrix NetScaler flaw to its Known Exploited Vulnerabilities catalog — Security Affairs</a></li>
+<li><a href="https://www.bleepingcomputer.com/news/security/south-korea-probes-bank-breaches-amid-suspected-ai-powered-attacks/" target="_blank" rel="noopener noreferrer">South Korea probes bank breaches amid suspected AI-powered attacks — BleepingComputer</a></li>
+<li><a href="https://www.koreatimes.co.kr/business/banking-finance/20261005/ai-powered-attacks-on-banks-expose-technological-lag-in-koreas-financial-cyber-defenses" target="_blank" rel="noopener noreferrer">AI-powered attacks on banks expose technological lag in Korea's financial cyber defenses — The Korea Times</a></li>
+<li><a href="https://www.martincid.com/business/korea-ai-hacks-shinhan-seven-lenders-68000-records/" target="_blank" rel="noopener noreferrer">Shinhan and six Korean lenders lose 68,000 records in hacks tied to an AI tool — martincid.com</a></li>
+</ul>
+
+        
+    </article>
+    
+    <section class="brief-subscribe" id="subscribe">
+    <h2>Get The Daily Brief by email</h2>
+    <p>One short email each morning. Unsubscribe anytime.</p>
+    <form action="https://buttondown.com/api/emails/embed-subscribe/cybercider" method="post">
+        <label for="bd-email">Email address</label>
+        <input type="email" name="email" id="bd-email" required autocomplete="email" placeholder="you@example.com">
+        <button type="submit">Subscribe</button>
+    </form>
+</section>
+</main>
+
+    <footer><p class="copyright">The Daily Brief · Eddie Camacho</p></footer>
+<!-- cf-web-analytics (managed by tools/inject_analytics.py) -->
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "f728a20b49cc4a0fbe02cde72f03301c"}'></script>
+</body>
+</html>
