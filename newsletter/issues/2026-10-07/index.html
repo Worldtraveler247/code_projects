@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="dark">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'self' https://static.cloudflareinsights.com; connect-src 'self' https://cloudflareinsights.com; img-src 'self' data:; form-action https://buttondown.com; base-uri 'none'; object-src 'none'">
+    <meta name="description" content="The Daily Brief for Wednesday, October 7, 2026: security incidents, senior security advice, engineering explainers, and tech news.">
+    <title>The Daily Brief · Oct 7, 2026</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="icon" href="../../../favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="../../../style.css">
+    <link rel="stylesheet" href="../../newsletter.css">
+</head>
+<body class="brief-page">
+    <a href="#main-content" class="skip-nav">Skip to main content</a>
+    <nav class="brief-nav">
+        <a href="../../../index.html">← App Hub</a>
+        <a href="../../">All issues</a>
+    </nav>
+    
+<header class="brief-masthead">
+    <p class="brief-eyebrow">THE DAILY BRIEF</p>
+    <h1>Wednesday, October 7, 2026</h1>
+    <ol class="brief-toc">
+        <li><a href="#current-events">Current Events</a></li><li><a href="#security-advice">Senior Security Advice</a></li><li><a href="#tech-news">Tech News</a></li>
+    </ol>
+</header>
+<main id="main-content" class="brief">
+    
+    <article class="brief-section" id="current-events">
+        <p class="brief-kicker">Current Events</p>
+        <h2>The Twilio and Cloudflare 0ktapus Phishing Campaign</h2>
+        
+            
+            <p>Here's an incident that's really two incidents -- the same attacker ran the identical playbook against two companies in the same few weeks, and one got breached while the other didn't lose a thing. Here's how it actually happened.</p>
+<p>In the summer of 2022, a phishing operation researchers later named 0ktapus went after company after company with the same simple trick: a text message, sent to a personal or work phone, warning that a password was expiring or a schedule had changed, with a link to what looked exactly like that company's own Okta login page. Okta is one of the most widely used identity providers in the world, so impersonating its login screen worked almost everywhere the attacker tried it.</p>
+<p>Here's the mechanic. On July twentieth, 2022, according to Cloudflare's own blog post, at least seventy-six Cloudflare employees and family members received these texts within under one minute of each other -- a sign the attacker had a list and a script ready to fire all at once. The fake page didn't just steal a typed password. It relayed whatever the victim entered straight to the attacker in real time, over Telegram, so a one-time code typed into the fake page could be reused against the real site within seconds, before it expired. A small number of Cloudflare employees did fall for it and entered their credentials. Less than three weeks later, according to Twilio's own incident report published August 7th, 2022, the same style of attack hit Twilio: employees received near-identical texts impersonating Twilio's IT department, some clicked through to a cloned login page, and this time the attacker got in -- reaching internal systems and a limited set of customer data before Twilio shut it down.</p>
+<p>Root cause, in one sentence: both companies were relying on authentication factors -- a password plus a text message or app code -- that are just data a human can be tricked into typing into the wrong website, with nothing in the login flow itself checking whether that website was the real one.</p>
+<p>Here's what actually contained this, at only one of the two companies. Cloudflare requires every employee to use a physical FIDO2 hardware security key to log in, not a text-message or app-based code. A hardware key doesn't just produce a number a user can be tricked into retyping -- it performs a cryptographic handshake that's bound to the real site's actual address. When the fooled employees' browsers tried to complete that handshake against the attacker's lookalike domain, the key simply couldn't produce a valid response for the wrong site. Cloudflare has stated no system was compromised. Twilio did not have that same hardware-key requirement in place at the time.</p>
+<p>Be honest about the limit here. Phishing-resistant hardware keys aren't free or instant to roll out across an entire company, and Twilio was one of more than a hundred organizations Group-IB tied to this same 0ktapus campaign -- most of them without that control either. Cloudflare's result wasn't luck; it was one specific control that Twilio, at that point, simply hadn't made mandatory yet.</p>
+<p>Here's what a senior engineer, or a senior ISSO, would change in how they work because of this. Never treat a text message or a six-digit app code as equivalent to a hardware-backed credential, because only one of those is actually bound to the real website asking for it. In a RHEL 9 or Podman lab, that means being able to explain, concretely, why a time-based one-time code can be captured and replayed by a phishing proxy in real time, while a properly implemented, origin- bound credential cannot -- and pushing for that distinction to show up in an actual MFA policy, not just a slide in a security-awareness deck.</p>
+
+        
+            <h3>Timeline</h3>
+            <table>
+<thead>
+<tr>
+<th>Date</th>
+<th>Event</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>July 20, 2022</td>
+<td>At least 76 Cloudflare employees and family members receive SMS phishing texts within under one minute, linking to a cloned Cloudflare Okta login page; a small number of employees enter credentials, but Cloudflare's own blog states no systems were compromised, crediting mandatory FIDO2 hardware security keys.</td>
+</tr>
+<tr>
+<td>August 4, 2022</td>
+<td>Twilio becomes aware of unauthorized access to a limited number of customer accounts after employees are fooled by a near-identical SMS phishing campaign impersonating Twilio's IT department.</td>
+</tr>
+<tr>
+<td>August 7, 2022</td>
+<td>Twilio publishes its initial incident report, &quot;Incident Report: Employee and Customer Account Compromise.&quot;</td>
+</tr>
+<tr>
+<td>August 10, 2022</td>
+<td>Twilio updates the report, identifying and notifying around 125 customer accounts whose data was accessed &quot;for a limited period of time,&quot; and states it found no evidence customer passwords, authentication tokens, or API keys were accessed.</td>
+</tr>
+<tr>
+<td>Late August 2022</td>
+<td>Security firm Group-IB publishes research naming the broader campaign &quot;0ktapus,&quot; tying the same attacker infrastructure to phishing attempts against more than 130 organizations and roughly 9,931 compromised accounts industry-wide.</td>
+</tr>
+</tbody>
+</table>
+<p><em>Note: some later press coverage cites slightly different Twilio customer-impact totals as the investigation continued beyond this initial window; this script uses Twilio's own August 10, 2022 figure of around 125 notified customers as the primary-sourced number as of that update.</em></p>
+
+        
+            <h3>Control Failures</h3>
+            <table>
+<thead>
+<tr>
+<th>#</th>
+<th>Failure</th>
+<th>NIST SP 800-53 Rev 5 Control Family</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>Authentication at the affected organization relied on a password plus a phishable factor (SMS or app-based one-time code) instead of a credential cryptographically bound to the legitimate site.</td>
+<td><strong>IA-5</strong> — Authenticator Management</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Employees at both companies were successfully socially engineered by a realistic, urgent-sounding text despite the campaign hitting well over a hundred organizations with the identical script.</td>
+<td><strong>AT-2</strong> — Security Awareness Training</td>
+</tr>
+<tr>
+<td>3</td>
+<td>The login flow itself had no mechanism to verify that the site requesting credentials was the organization's real origin before accepting what a human typed into it.</td>
+<td><strong>IA-2</strong> — Identification and Authentication (Organizational Users)</td>
+</tr>
+<tr>
+<td>4</td>
+<td>Once inside Twilio's internal systems, the attacker was able to reach a range of internal tools and customer data rather than being confined to a narrow scope tied to the compromised employee's actual job function.</td>
+<td><strong>AC-6</strong> — Least Privilege</td>
+</tr>
+<tr>
+<td>5</td>
+<td>Detection at the breached organization depended on becoming &quot;aware&quot; of unauthorized access after the fact rather than a monitoring capability flagging the anomalous access in real time.</td>
+<td><strong>SI-4</strong> — System Monitoring</td>
+</tr>
+<tr>
+<td>6</td>
+<td>The attacker stood up and used convincing lookalike login domains within the same operational window, with no boundary control catching or blocking the fraudulent domain before employees reached it.</td>
+<td><strong>SC-7</strong> — Boundary Protection</td>
+</tr>
+</tbody>
+</table>
+
+        
+            <h3>What Held</h3>
+            <ul>
+<li><strong>Cloudflare's mandatory FIDO2 hardware security keys.</strong> Every Cloudflare employee authenticates with a physical hardware key rather than a text-message or app-based code. Because that key's cryptographic response is bound to the real site's actual origin, it simply could not complete a valid handshake against the attacker's lookalike domain — even for the handful of employees who were fooled enough to type in their password.</li>
+<li><strong>Cloudflare's own public account of rapid containment.</strong> Cloudflare has stated that no internal systems were compromised in this incident, despite facing the identical phishing script used against Twilio weeks later.</li>
+<li><strong>Be honest about the limit of both.</strong> This was one specific, deliberately mandated control, not a difference in how careful either company's employees were — people at both organizations fell for the same message. Twilio, and the roughly 130-plus other organizations Group-IB tied to this campaign, mostly did not have hardware-key authentication in place at the time, which is the entire reason the same attack produced two very different outcomes.</li>
+</ul>
+
+        
+            <h3>Sources</h3>
+            <ul>
+<li><a href="https://www.twilio.com/en-us/blog/august-2022-social-engineering-attack" target="_blank" rel="noopener noreferrer">Incident Report: Employee and Customer Account Compromise — Twilio (official)</a> (primary)</li>
+<li><a href="https://blog.cloudflare.com/2022-07-sms-phishing-attacks/" target="_blank" rel="noopener noreferrer">The mechanics of a sophisticated phishing scam and how we stopped it — Cloudflare (official)</a> (primary)</li>
+<li><a href="https://securityaffairs.com/134851/hacking/0ktapus-phishing-campaign.html" target="_blank" rel="noopener noreferrer">0ktapus phishing campaign: Twilio hackers targeted 136 other organizations — Security Affairs, reporting on Group-IB's research</a></li>
+<li><a href="https://thehackernews.com/2022/08/hackers-behind-twilio-breach-also_10.html" target="_blank" rel="noopener noreferrer">Hackers behind Twilio data breach also targeted Cloudflare employees — The Hacker News</a></li>
+<li><a href="https://www.helpnetsecurity.com/2022/08/09/twilio-phished-data-breach/" target="_blank" rel="noopener noreferrer">Twilio confirms data breach after its employees got phished — Help Net Security</a></li>
+</ul>
+<hr />
+<p><strong>Tomorrow's Thread:</strong> Day 49 moves to the internet-facing edge exploitation family — CitrixBleed (CVE-2023-4966), a session-token-theft flaw in Citrix NetScaler with a mature public postmortem, distinct from today's identity/credential-compromise family.</p>
+
+        
+    </article>
+    
+    <article class="brief-section" id="security-advice">
+        <p class="brief-kicker">Senior Security Advice</p>
+        <h2>Eliminate SQL Injection with Parameterized Queries</h2>
+        
+            <h3>The Advice</h3>
+            <p>Every query that touches a database must be built with parameterized queries (prepared statements), never by concatenating user input into a SQL string.</p>
+
+        
+            <h3>Why It Matters</h3>
+            <p>SQL injection lets an attacker rewrite the meaning of a database query by slipping SQL syntax into a form field, URL parameter, or API request. Done well, it can dump an entire customer database, bypass login screens outright, or let an attacker modify and delete records they were never authorized to touch. Without this control, the vulnerable code path isn't a corner case — it's any place user input ever reaches a query, including &quot;internal&quot; admin tools nobody thought to lock down.</p>
+<p>CISA and the FBI called this out directly: despite SQL injection being documented and well understood for more than two decades, it remains a prevalent vulnerability class, showing up again and again in widely deployed software — including in a managed file transfer product whose SQLi flaw was exploited to compromise thousands of downstream organizations in a single campaign. That's the incident class this advice stops: one overlooked query, one breach that ripples through every customer who trusted that vendor.</p>
+
+        
+            <h3>How to Implement It</h3>
+            <ol>
+<li>Set the default: every database access layer in the codebase uses parameterized queries or prepared statements, where the SQL structure is fixed and user input is only ever passed as bound data, never as text spliced into the query.</li>
+<li>For the rare case where dynamic SQL is unavoidable (dynamic sort columns, table names), use strict allow-list validation against a fixed set of known-safe values — never escape-and-hope.</li>
+<li>Enforce it in CI, not just in code review: run static analysis (SAST) tuned to flag string-built queries and string concatenation feeding into database calls, and fail the build on a match.</li>
+<li>Verify it's actually working, not just present in style guidelines: run an authenticated dynamic scan (DAST) or a manual injection test against every new endpoint that touches a database before it ships, and periodically re-test production endpoints, since a single refactor can reintroduce string-built SQL.</li>
+<li>Apply least privilege to the database account the application uses, so that even a missed injection path can't read or write tables outside what that specific service actually needs.</li>
+</ol>
+
+        
+            <h3>The Pushback You&#39;ll Hear</h3>
+            <p>&quot;Our ORM already protects us, we don't write raw SQL.&quot; The senior-engineer rebuttal: most ORMs are safe by default, but nearly every one of them has an escape hatch — a raw query method, a <code>.where()</code> call that accepts a literal string, a reporting feature bolted on later — and that's exactly where injection reappears. &quot;The ORM handles it&quot; is a claim to verify with a scanner, not a reason to skip checking.</p>
+
+        
+            <h3>Sources</h3>
+            <ul>
+<li><a href="https://cisa.gov/resources-tools/resources/secure-design-alert-eliminating-sql-injection-vulnerabilities-software" target="_blank" rel="noopener noreferrer">Secure by Design Alert: Eliminating SQL Injection Vulnerabilities in Software (CISA)</a></li>
+<li><a href="https://cheatsheetseries.owasp.org/cheatsheets/SQL_Injection_Prevention_Cheat_Sheet.html" target="_blank" rel="noopener noreferrer">SQL Injection Prevention Cheat Sheet (OWASP)</a></li>
+</ul>
+
+        
+    </article>
+    
+    <article class="brief-section" id="tech-news">
+        <p class="brief-kicker">Tech News</p>
+        
+        
+            
+            <p>Atlassian just told every customer running Confluence, Jira, or Bitbucket on their own servers to patch right now or cut that server off from the internet — because one flaw lets an outside attacker pull files out of eight different products with zero login required. Two stories today: that Atlassian advisory, and a Microsoft Exchange bug that lets a logged-in employee read a coworker's email without permission.</p>
+<p>Start with Atlassian. According to Atlassian's own security advisory, published October 5th, the flaw — Common Vulnerabilities and Exposures number 2026-21589 — is a path traversal bug carrying a near-maximum severity score of nine point three out of ten. It hits the Data Center edition, the self-hosted version companies run and patch on their own servers, across eight products at once: Bitbucket, Confluence, Jira Software, Jira Service Management, Bamboo, Crowd, Crucible, and Fisheye. An attacker who already knows the exact name and path of a file can pull it off the server with no credentials at all; they can't browse the file system blind, but if they guess right, nothing stops them. Atlassian says it hasn't found evidence of exploitation yet, and its cloud customers were already protected before this ever became public. My read: Bitbucket and Bamboo are the pipes your code flows through on the way to production. When one advisory hits eight products across your CI/CD stack at once, &quot;patch when convenient&quot; isn't on the table — you patch immediately or you pull that server off the internet until you can.</p>
+<p>Next up, Microsoft. According to multiple researchers tracking the advisory, CVE-2026-96940 is a high-severity flaw, rated eight point eight, in on-premises Exchange Server. Microsoft found this one internally — no outside researcher, no active exploitation reported. The bug lets an attacker who's already logged into your Exchange organization open a completely different employee's mailbox and read their mail, because of a weak authorization check: the system confirms who you are but doesn't properly check what you're allowed to see once you're in. Exchange Online, the cloud version, already got a server-side fix; it's the self-hosted versions that still need patching. My take: this is the textbook gap between authentication and authorization. Logging in proves you're someone. It never proves you're allowed to read everyone's mail.</p>
+<p>Both stories this week trace back to the same gap: a system that checked who was knocking, but not what they were actually allowed to do once the door opened.</p>
+
+        
+            <h3>Sources</h3>
+            <ul>
+<li><a href="https://confluence.atlassian.com/security/cve-2026-21589-arbitrary-file-access-vulnerability-impacts-multiple-products-1870495748.html" target="_blank" rel="noopener noreferrer">CVE-2026-21589 - Arbitrary File Access Vulnerability impacts Multiple Products — Atlassian (official advisory)</a></li>
+<li><a href="https://www.helpnetsecurity.com/2026/10/06/atlassian-data-center-cve-2026-21589/" target="_blank" rel="noopener noreferrer">Atlassian urges immediate patching of critical Data Center file access vulnerability (CVE-2026-21589) — Help Net Security</a></li>
+<li><a href="https://gbhackers.com/atlassian-cve-2026-21589-flaw/" target="_blank" rel="noopener noreferrer">Atlassian CVE-2026-21589 Flaw Exposes Files in Jira and Confluence Data Center — GBHackers</a></li>
+<li><a href="https://socprime.com/blog/cve-2026-96940-microsoft-exchange-vulnerability-allows-unauthorized-mailbox-access/" target="_blank" rel="noopener noreferrer">CVE-2026-96940: Microsoft Exchange Vulnerability Allows Unauthorized Mailbox Access — SOC Prime</a></li>
+<li><a href="https://thecybersecguru.com/exploits/cve-2026-96940-microsoft-exchange-vulnerability/" target="_blank" rel="noopener noreferrer">CVE-2026-96940: Microsoft Exchange Flaw Lets Attackers Read Mailboxes — The CyberSec Guru</a></li>
+</ul>
+
+        
+    </article>
+    
+    <section class="brief-subscribe" id="subscribe">
+    <h2>Get The Daily Brief by email</h2>
+    <p>One short email each morning. Unsubscribe anytime.</p>
+    <form action="https://buttondown.com/api/emails/embed-subscribe/cybercider" method="post">
+        <label for="bd-email">Email address</label>
+        <input type="email" name="email" id="bd-email" required autocomplete="email" placeholder="you@example.com">
+        <button type="submit">Subscribe</button>
+    </form>
+</section>
+</main>
+
+    <footer><p class="copyright">The Daily Brief · Eddie Camacho</p></footer>
+<!-- cf-web-analytics (managed by tools/inject_analytics.py) -->
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "f728a20b49cc4a0fbe02cde72f03301c"}'></script>
+</body>
+</html>
