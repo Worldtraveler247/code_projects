@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="dark">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'self' https://static.cloudflareinsights.com; connect-src 'self' https://cloudflareinsights.com; img-src 'self' data:; form-action https://buttondown.com; base-uri 'none'; object-src 'none'">
+    <meta name="description" content="The Daily Brief for Thursday, October 8, 2026: security incidents, senior security advice, engineering explainers, and tech news.">
+    <title>The Daily Brief · Oct 8, 2026</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="icon" href="../../../favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="../../../style.css">
+    <link rel="stylesheet" href="../../newsletter.css">
+</head>
+<body class="brief-page">
+    <a href="#main-content" class="skip-nav">Skip to main content</a>
+    <nav class="brief-nav">
+        <a href="../../../index.html">← App Hub</a>
+        <a href="../../">All issues</a>
+    </nav>
+    
+<header class="brief-masthead">
+    <p class="brief-eyebrow">THE DAILY BRIEF</p>
+    <h1>Thursday, October 8, 2026</h1>
+    <ol class="brief-toc">
+        <li><a href="#current-events">Current Events</a></li><li><a href="#security-advice">Senior Security Advice</a></li><li><a href="#tech-news">Tech News</a></li>
+    </ol>
+</header>
+<main id="main-content" class="brief">
+    
+    <article class="brief-section" id="current-events">
+        <p class="brief-kicker">Current Events</p>
+        <h2>The FortiManager &#34;FortiJump&#34; Zero-Day (CVE-2024-47575)</h2>
+        
+            
+            <p>If you've ever assumed a management appliance sitting inside your network is automatically trustworthy because only legitimate devices are supposed to talk to it, here's the incident that should end that assumption. In 2024, a Fortinet management server would register and run commands for any device that simply claimed to be a Fortinet device -- no login, no ownership check -- and attackers had been doing exactly that for four months before anyone noticed. Here's how it actually happened.</p>
+<p>FortiManager is Fortinet's central console: one box that pushes configuration out to a whole fleet of FortiGate firewalls. Those firewalls talk back to it over a dedicated protocol called FGFM -- FortiGate-to-FortiManager protocol -- on port 541. According to Fortinet's own advisory and a joint investigation with Google Mandiant, the daemon handling that protocol, fgfmd, would accept a connection and a device-registration request from any client holding a valid Fortinet device certificate. And a Fortinet device certificate turns out to be something any FortiGate has -- including one an attacker owns and controls. There was no check confirming the connecting device actually belonged to, or had ever been authorized by, the organization running that FortiManager.</p>
+<p>Here's the chain. Mandiant traced a threat cluster it calls UNC5820 to the very first exploitation attempts on June 27th, 2024 -- months before Fortinet or the public knew anything was wrong. Once registered, that attacker-controlled device could run commands on FortiManager itself and on every FortiGate it managed. UNC5820 used that access to systematically pull down configuration files -- IP addresses, network topology, and user credentials, hashed with Fortinet's own FortiOS256 scheme, for every device under that FortiManager's control.</p>
+<p>Root cause, in one sentence: a protocol whose entire job is remote command execution across an organization's firewall fleet was missing the one check that mattered -- confirming the connecting device was actually this organization's device, not merely a device of the same brand.</p>
+<p>Here's what actually contained it, and I want to be honest about what's still unresolved. Mandiant found no evidence the stolen configuration data was ever used for lateral movement into any of the more than fifty affected organizations' networks. Why not, exactly, is not fully explained in public reporting -- it may be that FortiOS256-hashed credentials slowed attackers down, or that this particular actor's goal was pure collection rather than follow-on access. I'd rather say that's genuinely unclear than hand you a tidy explanation that isn't sourced. What is clear: once Fortinet and Mandiant understood the bug, Fortinet shipped patched releases and CISA added the CVE to its Known Exploited Vulnerabilities catalog the same day, October 23rd, 2024 -- turning this into a hard, tracked three-week deadline for federal agencies instead of an optional advisory nobody reads.</p>
+<p>Here's what a senior engineer, or a senior ISSO, would change in how they work because of this. Never treat a management protocol's built-in device identity as a substitute for actual authorization -- a certificate proves a device is a Fortinet device, it does not prove it is your device. In a RHEL 9 or AWS lab, that means putting any management-plane service, even one that already does its own certificate-based handshake, behind an identity allowlist checked after that handshake -- and then actually testing a connection from outside that allowlist to confirm it gets rejected, instead of assuming a valid certificate was ever the whole security model.</p>
+
+        
+            <h3>Timeline</h3>
+            <table>
+<thead>
+<tr>
+<th>Date</th>
+<th>Event</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>~June 27, 2024</td>
+<td>Earliest known exploitation: Mandiant later identifies inbound FGFM connections from IP 45.32.41.202 to multiple internet-facing FortiManager devices on TCP/541 — the first observed use of CVE-2024-47575 by the threat cluster Mandiant tracks as UNC5820.</td>
+</tr>
+<tr>
+<td>June–Sept 2024</td>
+<td>UNC5820 registers attacker-controlled devices with internet-exposed FortiManager servers using only a valid Fortinet device certificate, then exfiltrates configuration files — IPs, network topology, and FortiOS256-hashed user credentials — for the FortiGate devices each server manages.</td>
+</tr>
+<tr>
+<td>~Oct 2024</td>
+<td>Fortinet and Google Mandiant jointly investigate; signs of the activity are found on 50+ FortiManager devices across multiple industries.</td>
+</tr>
+<tr>
+<td>Oct 23, 2024</td>
+<td>Fortinet publishes PSIRT advisory FG-IR-24-423 for CVE-2024-47575 (CVSS 9.8, missing authentication for critical function in the fgfmd daemon), shipping patched FortiManager releases (7.6.1, 7.4.5, 7.2.8, 7.0.13, 6.4.15, and corresponding FortiManager Cloud builds).</td>
+</tr>
+<tr>
+<td>Oct 23, 2024</td>
+<td>CISA adds CVE-2024-47575 to its Known Exploited Vulnerabilities catalog, setting a November 13, 2024 remediation deadline for federal civilian agencies.</td>
+</tr>
+</tbody>
+</table>
+<p><em>Note: Mandiant's own reporting states it found no evidence the exfiltrated configuration/credential data was used for lateral movement into victim networks, but does not publicly explain why; this script treats that as an open question rather than a resolved one.</em></p>
+
+        
+            <h3>Control Failures</h3>
+            <table>
+<thead>
+<tr>
+<th>#</th>
+<th>Failure</th>
+<th>NIST SP 800-53 Rev 5 Control Family</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>The fgfmd daemon accepted device-registration and command requests from any client holding a validly-signed Fortinet device certificate, with no check that the device belonged to or was authorized by the receiving organization.</td>
+<td><strong>IA-3</strong> — Device Identification and Authentication</td>
+</tr>
+<tr>
+<td>2</td>
+<td>FortiManager's FGFM management interface was reachable from the public internet on many deployments, rather than restricted to a known, organization-controlled management network.</td>
+<td><strong>SC-7</strong> — Boundary Protection</td>
+</tr>
+<tr>
+<td>3</td>
+<td>A remote-access management channel whose entire purpose is pushing configuration to firewalls had no secondary authorization gate — such as a device allowlist — layered on top of certificate validation.</td>
+<td><strong>AC-17</strong> — Remote Access</td>
+</tr>
+<tr>
+<td>4</td>
+<td>No monitoring flagged a previously-unseen device registering and then immediately pulling bulk configuration and credential exports from a management server.</td>
+<td><strong>SI-4</strong> — System Monitoring</td>
+</tr>
+<tr>
+<td>5</td>
+<td>Exploitation ran undetected for roughly four months (late June to October 2024) before Fortinet and Mandiant identified and disclosed it.</td>
+<td><strong>CA-7</strong> — Continuous Monitoring</td>
+</tr>
+<tr>
+<td>6</td>
+<td>Device configuration exports bundled user account credentials directly alongside network topology data, rather than keeping authenticator material under separately scoped, more tightly controlled access.</td>
+<td><strong>IA-5</strong> — Authenticator Management</td>
+</tr>
+</tbody>
+</table>
+
+        
+            <h3>What Held</h3>
+            <ul>
+<li><strong>FortiOS256 credential hashing.</strong> Exfiltrated user credentials were hashed, not stored or exported in plaintext — a possible, though not confirmed, reason the stolen data was never observed being used for further access.</li>
+<li><strong>No observed lateral movement.</strong> Mandiant's own investigation found no evidence UNC5820 used the stolen configuration or credential data to move further into any of the 50+ affected organizations' networks.</li>
+<li><strong>Same-day coordinated disclosure and a hard federal deadline.</strong> Fortinet's patch and CISA's KEV addition landed the same day, October 23, 2024, converting &quot;patch when convenient&quot; into a tracked November 13 deadline for federal agencies.</li>
+<li><strong>Be honest about the limit of all three.</strong> None of this explains why exploitation went undetected for four months, and &quot;no evidence of lateral movement&quot; is not the same as &quot;lateral movement was prevented by a control&quot; — it may simply be that this actor chose not to, or hadn't yet. Naming that gap, instead of claiming a clean save, is the senior move.</li>
+</ul>
+
+        
+            <h3>Sources</h3>
+            <ul>
+<li><a href="https://fortiguard.fortinet.com/psirt/FG-IR-24-423" target="_blank" rel="noopener noreferrer">PSIRT Advisory FG-IR-24-423 — Fortinet (official)</a> (primary)</li>
+<li><a href="https://www.cisa.gov/news-events/alerts/2024/10/23/cisa-adds-one-known-exploited-vulnerability-catalog" target="_blank" rel="noopener noreferrer">CISA Adds One Known Exploited Vulnerability to Catalog — CISA</a> (primary)</li>
+<li><a href="https://nvd.nist.gov/vuln/detail/CVE-2024-47575" target="_blank" rel="noopener noreferrer">CVE-2024-47575 Detail — NVD, National Institute of Standards and Technology</a> (primary)</li>
+<li><a href="https://cloud.google.com/blog/topics/threat-intelligence/fortimanager-zero-day-exploitation-cve-2024-47575" target="_blank" rel="noopener noreferrer">FortiManager Zero-Day Exploitation (CVE-2024-47575) — Google Cloud / Mandiant Threat Intelligence</a> (primary)</li>
+<li><a href="https://www.bleepingcomputer.com/news/security/mandiant-says-new-fortinet-fortimanager-flaw-has-been-exploited-since-june/" target="_blank" rel="noopener noreferrer">Mandiant Says New Fortinet FortiManager Flaw Has Been Exploited Since June — BleepingComputer</a></li>
+<li><a href="https://securityaffairs.com/170189/hacking/fortijump-flaw-exploited-since-june-2024.html" target="_blank" rel="noopener noreferrer">FortiJump Flaw CVE-2024-47575 Has Been Exploited in Zero-Day Attacks Since June 2024 — Security Affairs</a></li>
+<li><a href="https://thehackernews.com/2024/10/fortinet-warns-of-critical.html" target="_blank" rel="noopener noreferrer">Fortinet Warns of Critical FortiManager Vulnerability — The Hacker News</a></li>
+</ul>
+<hr />
+<p><strong>Tomorrow's Thread:</strong> Day 50 moves to the software supply-chain family — the September 2025 &quot;Shai-Hulud&quot; self-propagating npm worm, which compromised packages including <code>@ctrl/tinycolor</code> and used stolen CI/CD tokens to republish itself into further packages, distinct from today's edge-exploitation family; this specific incident has not yet been source-verified against primary npm/GitHub security advisories and should be confirmed before Day 50's script is written.</p>
+
+        
+    </article>
+    
+    <article class="brief-section" id="security-advice">
+        <p class="brief-kicker">Senior Security Advice</p>
+        <h2>Restrict and Control Removable Media Access</h2>
+        
+            <h3>The Advice</h3>
+            <p>Set removable media - USB drives, external hard disks, memory cards - to deny-by-default: block unauthorized devices, require encryption on anything approved, and disable autorun so plugging in a drive can never execute code on its own.</p>
+
+        
+            <h3>Why It Matters</h3>
+            <p>Removable media is a direct line past your network perimeter. Without a control here, two failure modes show up constantly: exfiltration, where someone copies a customer database or source code to a personal drive and walks out the door with no network alert ever firing; and malware delivery, where an infected drive - picked up at a conference, left in a parking lot, handed over by a &quot;vendor&quot; - auto-executes the moment it's inserted, before antivirus gets a look at it.</p>
+<p>The best-known illustration of the threat class is Stuxnet, which spread into air-gapped industrial control networks via infected USB drives specifically because those networks had no direct internet path - removable media was the only way in. That's the pattern: wherever network controls are strong, removable media becomes the bypass route, which is exactly why it needs its own control instead of riding on &quot;the network is segmented, we're fine.&quot;</p>
+
+        
+            <h3>How to Implement It</h3>
+            <ol>
+<li>Configure endpoint policy to deny USB mass storage by default, allowing only devices registered to a named, accountable owner - NIST SP 800-53's media-use control (MP-7) requires exactly this: restrict or prohibit media types, and never allow a portable storage device with no identifiable owner.</li>
+<li>Disable autorun and autoplay for removable media fleet-wide, on every OS you run - CIS Controls v8 Safeguard 10.3 calls this out by name, and it's a one-time group policy / configuration management push, not a per-device chore.</li>
+<li>Require encryption on any removable media that is approved for use (CIS Safeguard 3.9), so a lost or stolen drive is an inconvenience, not a breach.</li>
+<li>Turn on automatic anti-malware scanning the moment media is inserted or connected (CIS Safeguard 10.4).</li>
+<li>Verify it's actually enforced, not just configured: pull your EDR or DLP console weekly for blocked-device events, and once a quarter plug a test USB drive into a sample of managed endpoints yourself to confirm the block fires - a policy sitting unapplied in a GPO is worse than no policy, because everyone assumes it's working.</li>
+</ol>
+
+        
+            <h3>The Pushback You&#39;ll Hear</h3>
+            <p>&quot;Our people need USB drives to get work done - this will break things.&quot; The senior-engineer rebuttal: the control isn't &quot;no USB, ever,&quot; it's default-deny with a fast approval path for devices tied to an owner. And most of what people actually use USB drives for - sharing a file, moving data between systems - is better served by a sanctioned, logged transfer method anyway, which gives you an audit trail a USB drive never will.</p>
+
+        
+            <h3>Sources</h3>
+            <ul>
+<li><a href="https://csf.tools/reference/nist-sp-800-53/r5/mp/mp-7/" target="_blank" rel="noopener noreferrer">MP-7: Media Use (NIST SP 800-53, via csf.tools)</a></li>
+<li><a href="https://opensecurityarchitecture.org/frameworks/cis-controls-v8" target="_blank" rel="noopener noreferrer">CIS Critical Security Controls Version 8 overview, Safeguards 3.9, 10.3, 10.4</a></li>
+<li><a href="https://essentialguide.docs.cisecurity.org/en/latest/bp/removable_media.html" target="_blank" rel="noopener noreferrer">CIS Safeguard 10.3 - Disable Autorun and Autoplay for Removable Media</a></li>
+</ul>
+
+        
+    </article>
+    
+    <article class="brief-section" id="tech-news">
+        <p class="brief-kicker">Tech News</p>
+        
+        
+            
+            <p>Federal investigators say a four-month-old credential-harvesting campaign against Fortinet firewalls never actually went away — and if your organization runs one of those boxes, that's your cue to check it today, not next sprint. Two stories today: a law-enforcement warning that an old Fortinet compromise is still live, and a second one about an artificial intelligence model finding security flaws faster than defenders can patch them.</p>
+<p>Start with Fortinet. Back in June, the Cybersecurity and Infrastructure Security Agency, or CISA, issued an emergency advisory after a Russian-speaking criminal group was found holding roughly 87,000 working administrator and virtual private network, or VPN, credentials for Fortinet firewalls, spread across close to 200 countries. According to reporting this month, the Federal Bureau of Investigation and the Secret Service are now warning those same credentials are still being used, months after CISA told every affected organization to reset passwords and turn on multi-factor authentication. Here's the detail that should bother you: the attackers didn't need an exotic zero-day. They pulled login details out of old configuration files tied to flaws patched five months earlier, then cracked weak admin passwords that had been sitting there the whole time. My read: a patch closes the door, but if nobody rotates the credentials that were exposed before the door was shut, the attacker just walks back in with the key they already have. If your team manages firewalls or VPN gateways, a credential reset isn't a one-time incident-response step; it has to be the default move every single time a device-level vulnerability gets patched.</p>
+<p>Which brings us to Anthropic. The company says a research effort called Project Glasswing — pairing an unreleased, more capable version of its Claude model with partners including Amazon, Microsoft, Cisco, and the Linux Foundation — has now surfaced roughly 129,000 verified software vulnerabilities since April, including bugs that sat undiscovered in major operating systems and open-source tools for decades. Anthropic says it's expanding access to that model to more vetted cybersecurity teams this month, specifically so defenders can find these flaws before attackers using similar tools do. My take: the technology is almost beside the point. The real story for anyone in operations is capacity — when one research program can surface that many flaws in a few months, patch management can't stay a quarterly process. Vulnerability scanning and patch pipelines both need to assume a much higher volume, starting now.</p>
+<p>Both stories point the same direction: finding or fixing a flaw was never the finish line — rotating what's exposed and scaling how fast you patch are what actually close the gap.</p>
+
+        
+            <h3>Sources</h3>
+            <ul>
+<li><a href="https://thehackernews.com/2026/06/cisa-warns-fortinet-customers-as.html" target="_blank" rel="noopener noreferrer">CISA Warns Fortinet Customers as FortiBleed Credential Exposure Spreads — The Hacker News</a></li>
+<li><a href="https://www.securityweek.com/fortibleed-86000-fortinet-device-credentials-compromised/" target="_blank" rel="noopener noreferrer">FortiBleed: 86,000+ Fortinet Device Credentials Compromised — SecurityWeek</a></li>
+<li><a href="https://thehackernews.com/2026/10/fbi-warns-fortibleed-remains-active.html" target="_blank" rel="noopener noreferrer">FBI Warns FortiBleed Remains Active After Amassing 86,644 Fortinet Device Credentials — The Hacker News</a></li>
+<li><a href="https://thehackernews.com/2026/10/anthropic-expands-claude-access-for.html" target="_blank" rel="noopener noreferrer">Anthropic Expands Claude Access for Vetted Cyber Teams as Glasswing Finds 129,000 Flaws — The Hacker News</a></li>
+<li><a href="https://www.theregister.com/2026/04/15/project_glasswing_cves/" target="_blank" rel="noopener noreferrer">Project Glasswing CVEs — The Register</a></li>
+<li><a href="https://cloudsecurityalliance.org/artifacts/project-glasswing-ai-discovery-outpaces-open-source-patching-capacity" target="_blank" rel="noopener noreferrer">Project Glasswing: AI Discovery Outpaces Open Source Patching Capacity — Cloud Security Alliance</a></li>
+</ul>
+
+        
+    </article>
+    
+    <section class="brief-subscribe" id="subscribe">
+    <h2>Get The Daily Brief by email</h2>
+    <p>One short email each morning. Unsubscribe anytime.</p>
+    <form action="https://buttondown.com/api/emails/embed-subscribe/cybercider" method="post">
+        <label for="bd-email">Email address</label>
+        <input type="email" name="email" id="bd-email" required autocomplete="email" placeholder="you@example.com">
+        <button type="submit">Subscribe</button>
+    </form>
+</section>
+</main>
+
+    <footer><p class="copyright">The Daily Brief · Eddie Camacho</p></footer>
+<!-- cf-web-analytics (managed by tools/inject_analytics.py) -->
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "f728a20b49cc4a0fbe02cde72f03301c"}'></script>
+</body>
+</html>
