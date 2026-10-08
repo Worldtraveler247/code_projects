@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="dark">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'self' https://static.cloudflareinsights.com; connect-src 'self' https://cloudflareinsights.com; img-src 'self' data:; form-action https://buttondown.com; base-uri 'none'; object-src 'none'">
+    <meta name="description" content="The Daily Brief for Friday, October 9, 2026: security incidents, senior security advice, engineering explainers, and tech news.">
+    <title>The Daily Brief · Oct 9, 2026</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="icon" href="../../../favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="../../../style.css">
+    <link rel="stylesheet" href="../../newsletter.css">
+</head>
+<body class="brief-page">
+    <a href="#main-content" class="skip-nav">Skip to main content</a>
+    <nav class="brief-nav">
+        <a href="../../../index.html">← App Hub</a>
+        <a href="../../">All issues</a>
+    </nav>
+    
+<header class="brief-masthead">
+    <p class="brief-eyebrow">THE DAILY BRIEF</p>
+    <h1>Friday, October 9, 2026</h1>
+    <ol class="brief-toc">
+        <li><a href="#current-events">Current Events</a></li><li><a href="#security-advice">Senior Security Advice</a></li><li><a href="#tech-news">Tech News</a></li>
+    </ol>
+</header>
+<main id="main-content" class="brief">
+    
+    <article class="brief-section" id="current-events">
+        <p class="brief-kicker">Current Events</p>
+        <h2>The Shai-Hulud npm Supply Chain Worm</h2>
+        
+            
+            <p>Here's an incident that shows what happens when stealing one password doesn't just compromise one account -- it reprograms a worm to go steal more. Here's how it actually happened.</p>
+<p>In mid-September 2025, researchers discovered malicious code hidden inside tinycolor, a popular JavaScript color-manipulation package downloaded millions of times a month through npm, the world's largest JavaScript package registry. According to GitHub's own account and the GitLab Advisory Database, that package was altered on September fourteenth by someone who had gained control of a legitimate maintainer's publishing access. Within days, researchers were calling the payload &quot;Shai-Hulud&quot; -- a self-replicating worm, named after the giant sandworm in the novel Dune.</p>
+<p>Here's the mechanic. Every time a developer or a build server ran &quot;npm install&quot; on an infected package, npm automatically executed a hidden postinstall script bundled inside it -- no approval step, no sandbox, just code running with whatever privileges that install already had. That script quietly ran a repackaged copy of TruffleHog, a legitimate open-source secret scanner, to hunt the local filesystem and environment variables for npm publishing tokens, GitHub personal access tokens, and cloud API keys for Amazon Web Services, Google Cloud, and Microsoft Azure. Whatever it found was uploaded, using the victim's own stolen GitHub token, to a new public repository the malware itself created and named, fittingly, &quot;Shai-Hulud.&quot; Then, if it had found a valid npm publish token, the worm used it immediately to push trojanized versions of every other package that same maintainer could publish -- turning one compromised developer into the next infection point, automatically, with no attacker even watching.</p>
+<p>Root cause, in one sentence: npm's install process runs arbitrary maintainer-supplied code with full local privileges by default, so one stolen publishing credential wasn't just a leaked password -- it was a working key to re-arm the worm against the next maintainer's packages.</p>
+<p>Here's what actually contained this. GitHub has stated it removed more than five hundred compromised packages from the registry and blocked re-uploads matching known indicators of compromise within roughly a day of being notified. Independent researchers, including Semgrep and the maintainers of the GitLab Advisory Database, published technical indicators just as fast, letting defenders elsewhere block the worm before it reached them. On September twenty-third, the Cybersecurity and Infrastructure Security Agency issued its own alert, turning &quot;maybe rotate your tokens&quot; into a direct instruction to rotate every developer credential immediately.</p>
+<p>Be honest about the limit here. None of that un-exfiltrated the secrets already stolen before detection, and the actual structural fix -- GitHub requiring two-factor authentication for local publishing and moving toward short-lived, identity-based trusted publishing instead of long-lived tokens -- did not ship until mid-December, three months later.</p>
+<p>Here's what a senior engineer would change in how they work because of this. Never let a package install run unreviewed code against a real credential store by default. In a RHEL 9 or Podman lab, that means running npm install with the ignore-scripts flag as the default posture for any build or CI environment, and separately testing that a postinstall script still executes, and can still read environment secrets, the moment that flag is left off.</p>
+
+        
+            <h3>Timeline</h3>
+            <table>
+<thead>
+<tr>
+<th>Date</th>
+<th>Event</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Sept 14, 2025</td>
+<td>A malicious version of <code>@ctrl/tinycolor</code> (8M+ monthly downloads) is published to npm after a legitimate maintainer's publishing credentials are compromised; a hidden postinstall script begins harvesting secrets from every machine that installs it.</td>
+</tr>
+<tr>
+<td>Sept 15, 2025</td>
+<td>The GitLab Advisory Database publishes entry MAL-2025-47141 for <code>@ctrl/tinycolor</code>; security firm Semgrep publishes its own advisory describing the worm's secret-scanning payload. Early counts put affected packages at 180-190+.</td>
+</tr>
+<tr>
+<td>Sept 16, 2025</td>
+<td>Secondary reporting describes the largest propagation wave, including close to 100 packages inside CrowdStrike's own <code>@crowdstrike</code> npm namespace (figure from vendor/press coverage, not independently confirmed by this script against a CrowdStrike statement).</td>
+</tr>
+<tr>
+<td>Sept 17, 2025</td>
+<td>GitLab Advisory Database entry updated as investigation continues.</td>
+</tr>
+<tr>
+<td>Sept 22-23, 2025</td>
+<td>GitHub states it removed more than 500 compromised packages from the npm registry and blocked re-uploads matching known indicators of compromise (IoCs).</td>
+</tr>
+<tr>
+<td>Sept 23, 2025</td>
+<td>CISA publishes the alert &quot;Widespread Supply Chain Compromise Impacting npm Ecosystem,&quot; instructing organizations to rotate all developer credentials and pin to package versions published before Sept 16, 2025.</td>
+</tr>
+<tr>
+<td>Dec 15, 2025</td>
+<td>GitHub publishes &quot;Our plan for a more secure npm supply chain,&quot; committing to mandatory two-factor authentication for local publishing, 7-day lifetimes for granular access tokens, and expanded OIDC-based Trusted Publishing to reduce reliance on long-lived tokens.</td>
+</tr>
+</tbody>
+</table>
+<p><em>Note: reporting on affected-package counts differs — Semgrep's early figure was 187+, other outlets cite 180+ or 500+; the 500+ figure traces to GitHub's own stated removal count, which this script treats as the most authoritative since it is the registry operator's own action, not a researcher's external scan. A second, separate wave nicknamed &quot;Shai-Hulud 2.0&quot; is reported by multiple vendors to have begun around November 24, 2025; this script covers only the September 2025 wave, which has the more mature primary-source record, and does not independently verify the November wave's details.</em></p>
+
+        
+            <h3>Control Failures</h3>
+            <table>
+<thead>
+<tr>
+<th>#</th>
+<th>Failure</th>
+<th>NIST SP 800-53 Rev 5 Control Family</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>npm's install process executes an arbitrary, maintainer-supplied postinstall script with no sandboxing or default restriction the moment a package is installed.</td>
+<td><strong>CM-7</strong> — Least Functionality</td>
+</tr>
+<tr>
+<td>2</td>
+<td>npm publishing access was commonly held as a long-lived, broadly-scoped token rather than a short-lived or hardware-bound credential, so one stolen token was reusable against every package it covered.</td>
+<td><strong>IA-5</strong> — Authenticator Management</td>
+</tr>
+<tr>
+<td>3</td>
+<td>Local/CLI package publishing did not require two-factor authentication at the time, so a single compromised credential was sufficient to push a malicious release with no second factor to stop it.</td>
+<td><strong>IA-2</strong> — Identification and Authentication (Organizational Users)</td>
+</tr>
+<tr>
+<td>4</td>
+<td>Compromised build and developer environments had unrestricted outbound access, letting the payload exfiltrate harvested secrets directly to a public GitHub repository over the GitHub API with nothing blocking that egress.</td>
+<td><strong>SC-7</strong> — Boundary Protection</td>
+</tr>
+<tr>
+<td>5</td>
+<td>Malicious package versions were published and distributed to the registry with no human review gate between the compromised account's publish action and millions of downstream installs.</td>
+<td><strong>CM-3</strong> — Configuration Change Control</td>
+</tr>
+<tr>
+<td>6</td>
+<td>Downstream projects installed new package versions trusting the registry alone, with no provenance or integrity verification distinguishing a trojanized release from a normal one.</td>
+<td><strong>SI-7</strong> — Software, Firmware, and Information Integrity</td>
+</tr>
+</tbody>
+</table>
+
+        
+            <h3>What Held</h3>
+            <ul>
+<li><strong>GitHub's rapid takedown.</strong> GitHub states it removed more than 500 compromised packages and blocked re-uploads matching known indicators of compromise within roughly a day of being notified on September 14.</li>
+<li><strong>Fast, public, independent disclosure.</strong> Semgrep and the GitLab Advisory Database published technical indicators of compromise within a day of the first malicious publish, letting defenders elsewhere block the worm before their own environments were hit.</li>
+<li><strong>A same-week federal alert.</strong> CISA's September 23 alert turned an ecosystem-specific advisory into a direct, government-level instruction to rotate every developer credential immediately — not just for npm users, but for anyone touching the same token types.</li>
+<li><strong>Be honest about the limit of all three.</strong> None of this un-exfiltrated secrets already stolen before detection on September 14-15, and the structural fix that removes the enabling condition — mandatory 2FA for local publishing and a move away from long-lived tokens — did not ship until December 15, three months after the worm was first found. Containment and root-cause remediation happened on very different timelines, and naming that gap is the senior move.</li>
+</ul>
+
+        
+            <h3>Sources</h3>
+            <ul>
+<li><a href="https://www.cisa.gov/news-events/alerts/2025/09/23/widespread-supply-chain-compromise-impacting-npm-ecosystem" target="_blank" rel="noopener noreferrer">Widespread Supply Chain Compromise Impacting npm Ecosystem — CISA</a> (primary)</li>
+<li><a href="https://github.blog/security/supply-chain-security/our-plan-for-a-more-secure-npm-supply-chain/" target="_blank" rel="noopener noreferrer">Our plan for a more secure npm supply chain — GitHub (official)</a> (primary)</li>
+<li><a href="https://advisories.gitlab.com/pkg/npm/@ctrl/tinycolor/MAL-2025-47141/" target="_blank" rel="noopener noreferrer">MAL-2025-47141: Malicious code in @ctrl/tinycolor (npm) — GitLab Advisory Database</a> (primary)</li>
+<li><a href="https://app.semgrep.dev/blog/2025/security-advisory-npm-packages-using-secret-scanning-tools-to-steal-credentials" target="_blank" rel="noopener noreferrer">Security Advisory: NPM Packages Using Secret Scanning Tools to Steal Credentials — Semgrep</a> (primary)</li>
+<li><a href="https://krebsonsecurity.com/2025/09/self-replicating-worm-hits-180-software-packages/" target="_blank" rel="noopener noreferrer">Self-Replicating Worm Hits 180+ Software Packages — Krebs on Security</a></li>
+<li><a href="https://www.bleepingcomputer.com/news/security/self-propagating-supply-chain-attack-hits-187-npm-packages" target="_blank" rel="noopener noreferrer">Self-propagating supply chain attack hits 187 npm packages — BleepingComputer</a></li>
+</ul>
+<hr />
+<p><strong>Tomorrow's Thread:</strong> Day 51 moves to the operational/change-management family — the October 4, 2021 Facebook/Meta global outage, caused by a BGP configuration change during routine maintenance that withdrew Facebook's own DNS routes from the internet, distinct from today's software-supply-chain family; it has not yet been source-verified against Meta's own engineering postmortem and should be confirmed before Day 51's script is written.</p>
+
+        
+    </article>
+    
+    <article class="brief-section" id="security-advice">
+        <p class="brief-kicker">Senior Security Advice</p>
+        <h2>Run Periodic Access Reviews and Disable Dormant Accounts</h2>
+        
+            <h3>The Advice</h3>
+            <p>Review every user's access on a fixed schedule and disable any account that has gone quiet, so privilege that no one still needs cannot sit there waiting to be abused.</p>
+
+        
+            <h3>Why It Matters</h3>
+            <p>Access rarely gets removed on its own. People change teams, finish projects, take leave, or leave the company, and the permissions they picked up along the way keep working long after the reason for them is gone. That buildup is called access creep, and it does two kinds of damage: it hands an attacker who compromises any one of those accounts a bigger blast radius than the person's current job would ever justify, and it leaves dormant, forgotten accounts sitting around as an easy, low-noise target, since nobody notices if a login that hasn't been used in months suddenly gets used again. Insider-threat and breach investigations repeatedly turn up the same root cause: a former employee's account, or a side permission nobody remembered granting, that was never switched off.</p>
+
+        
+            <h3>How to Implement It</h3>
+            <ol>
+<li>Build a current account inventory first, covering every system, not just the identity provider - CIS Controls v8 Safeguard 5.1 treats this inventory as the prerequisite for everything else on this list.</li>
+<li>Set an organization-defined review cadence in writing (quarterly is a common baseline) and run it against that inventory, checking each account's access against what its owner's current role actually requires - this is the review NIST SP 800-53's AC-2 account-management control calls for.</li>
+<li>Automatically flag and disable dormant accounts - CIS Safeguard 5.3 sets 45 days of inactivity as its baseline threshold, and most identity platforms can enforce that on a timer without a human chasing it down.</li>
+<li>Route every finding through a named approver per account, not a blanket &quot;looks fine&quot; sign-off, and track each one to a closed ticket: access removed, or access justified and documented.</li>
+<li>Verify the control is actually working: pull a last-activity report at the end of each cycle and confirm the dormant-account count went to near zero, then spot-check a handful of &quot;reviewed and kept&quot; accounts to confirm the stated justification still matches what the account can actually touch.</li>
+</ol>
+
+        
+            <h3>The Pushback You&#39;ll Hear</h3>
+            <p>&quot;We just did a review last quarter, this is redundant.&quot; The senior-engineer rebuttal: access creep starts again the moment the review ends, because role changes and offboarding keep happening in between cycles. The review isn't a one-time cleanup, it's a recurring control precisely because the thing it's checking for never stops accumulating.</p>
+
+        
+            <h3>Sources</h3>
+            <ul>
+<li><a href="https://csrc.nist.gov/CSRC/media/Projects/risk-management/800-53%20Downloads/800-53r5/SP_800-53_v5_1-derived-OSCAL.pdf" target="_blank" rel="noopener noreferrer">NIST SP 800-53 Revision 5 control catalog, AC-2 Account Management</a></li>
+<li><a href="https://cas.docs.cisecurity.org/en/latest/source/Controls5/" target="_blank" rel="noopener noreferrer">CIS Controls v8, Control 5 (Account Management), Safeguard 5.3 - Disable Dormant Accounts</a></li>
+</ul>
+
+        
+    </article>
+    
+    <article class="brief-section" id="tech-news">
+        <p class="brief-kicker">Tech News</p>
+        
+        
+            
+            <p>A Danish technical university just told as many as 200,000 current and former students and staff that attackers got into the very system built to manage who's allowed to log in — and they didn't need a zero-day to do it, just a working set of stolen credentials. If identity and access management is anywhere near your job description, that sentence alone should bother you. Two stories today: that university's identity-system breach, and Google's October Android security bulletin, which landed with a flaw that needs zero clicks to work.</p>
+<p>Let's start in Denmark. According to the Technical University of Denmark's own breach notification, attackers used compromised login credentials to get into DTUBasen — the identity and access management system, or IAM system, that holds records on the university's current and former users. DTU says the database covers close to 40,000 active accounts and roughly 160,000 former ones, and the university still can't say exactly what was downloaded. Sitting inside it: Danish CPR numbers — the civil registration number every resident carries for life — full names, home addresses, and for a lot of people, next-of-kin details too. DTU has reported the incident to Denmark's data protection authority and is notifying affected people directly. My read: an identity and access management system isn't just another app on the network — it's the directory every other system trusts to say who's real. When that one system gets walked into with stolen-but-valid credentials, you're not looking at one breach, you're looking at every downstream system that trusted its word. Segmenting admin access to the IAM layer itself, and alerting on any login pattern that system has never seen before, belongs higher on the priority list than almost anything else you manage.</p>
+<p>Next up, Google. The October Android security bulletin, published October 5th, patches a couple dozen vulnerabilities, and the headline one is critical: a flaw in the System component that lets an attacker escalate straight to full local privileges, with no extra starting access and zero user interaction required. My take: &quot;zero user interaction&quot; is the detail that should change your priority order. A well-trained user who never clicks a bad link doesn't help you here — the only real control is getting the patch pushed before anyone pairs this with a way to reach the device remotely. If you manage a mobile fleet for a client or an agency, patch compliance on this one belongs at the top of next week's dashboard, not buried in a monthly summary.</p>
+<p>Different systems, same lesson: a login or a device being &quot;legitimate&quot; always needs a second check behind it, because both of today's stories show what happens the moment that second check is missing or too slow.</p>
+
+        
+            <h3>Sources</h3>
+            <ul>
+<li><a href="https://www.dtu.dk/english/NewsArchive/2026/10/Cyberattack-on-DTU_Notification-of-a-personal-data-breach" target="_blank" rel="noopener noreferrer">Cyberattack on DTU: Notification of a personal data breach — DTU (official notice)</a></li>
+<li><a href="https://www.bleepingcomputer.com/news/security/danish-university-dtu-breach-exposes-data-of-up-to-200-000-people/" target="_blank" rel="noopener noreferrer">Danish university DTU breach exposes data of up to 200,000 people — BleepingComputer</a></li>
+<li><a href="https://cybernews.com/news/dtu-university-hacked-200000-people-potentially-exposed/" target="_blank" rel="noopener noreferrer">Major Danish university hacked, 200,000 people potentially exposed — Cybernews</a></li>
+<li><a href="https://source.android.com/docs/security/bulletin/2026/2026-10-01" target="_blank" rel="noopener noreferrer">Android Security Bulletin — October 2026 — source.android.com (official bulletin)</a></li>
+</ul>
+
+        
+    </article>
+    
+    <section class="brief-subscribe" id="subscribe">
+    <h2>Get The Daily Brief by email</h2>
+    <p>One short email each morning. Unsubscribe anytime.</p>
+    <form action="https://buttondown.com/api/emails/embed-subscribe/cybercider" method="post">
+        <label for="bd-email">Email address</label>
+        <input type="email" name="email" id="bd-email" required autocomplete="email" placeholder="you@example.com">
+        <button type="submit">Subscribe</button>
+    </form>
+</section>
+</main>
+
+    <footer><p class="copyright">The Daily Brief · Eddie Camacho</p></footer>
+<!-- cf-web-analytics (managed by tools/inject_analytics.py) -->
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "f728a20b49cc4a0fbe02cde72f03301c"}'></script>
+</body>
+</html>
