@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'none';">
+  <title>How It's Built — Ansible Facts Trainer | Eddie's App Hub</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Inter:wght@400;500;600&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../how-it-works.css">
+</head>
+<body>
+<a href="index.html" style="position:fixed;top:12px;left:12px;z-index:9999;background:rgba(10,10,20,0.85);backdrop-filter:blur(6px);color:#4af7ff;border:1px solid #4af7ff;border-radius:20px;padding:6px 14px;font-family:sans-serif;font-size:13px;text-decoration:none;font-weight:600;">← Back to the trainer</a>
+
+<div class="hiw-page">
+
+  <header class="hiw-header">
+    <div class="hiw-icon">📋</div>
+    <h1>Ansible Facts Trainer — How It's Built</h1>
+    <p class="hiw-tagline">Look the fact up in a terminal, edit the playbook, and run it, the way you would on the exam.</p>
+  </header>
+
+  <section class="hiw-section">
+    <h2>Overview</h2>
+    <p>
+      Ansible gathers facts about every host it manages: hostname, addresses, memory, operating system.
+      Using them correctly takes three skills at once: finding the right fact, reaching into nested data,
+      and writing valid YAML with Jinja2 braces. This trainer drills all three against a real
+      <code>ansible -m setup</code> capture from a CentOS Stream 9 lab host. Nothing runs on a server;
+      every answer is checked in the browser.
+    </p>
+  </section>
+
+  <section class="hiw-section">
+    <h2>Tech Stack</h2>
+    <div class="hiw-badges">
+      <span class="hiw-badge">HTML</span>
+      <span class="hiw-badge">CSS</span>
+      <span class="hiw-badge">JavaScript modules</span>
+      <span class="hiw-badge">js-yaml</span>
+      <span class="hiw-badge">Node test runner</span>
+      <span class="hiw-badge">Python</span>
+    </div>
+    <ul class="hiw-caption-list">
+      <li><strong>HTML and CSS</strong> — a practice terminal beside a playbook editor with line numbers and syntax color. The panes stack on a phone.</li>
+      <li><strong>JavaScript modules</strong> — the validator is a separate file with no screen access, so the same code runs in the browser and in the tests.</li>
+      <li><strong>js-yaml</strong> — a YAML parser, copied into the repository at a pinned version with its checksum recorded. Nothing loads from a content delivery network.</li>
+      <li><strong>Node test runner</strong> — 189 tests using Node's built-in <code>node --test</code>. No packages to install.</li>
+      <li><strong>Python</strong> — a one-off script that sanitizes the raw capture before it is published.</li>
+    </ul>
+  </section>
+
+  <section class="hiw-section">
+    <h2>How Each Part Works</h2>
+
+    <div class="hiw-file-block">
+      <h3><code>validator.js</code> — the resolver</h3>
+      <p>
+        The core of the app. It reads a fact lookup one step at a time and walks the capture.
+        It never calls <code>eval()</code>. It mirrors one Ansible quirk exactly: every fact loses its
+        <code>ansible_</code> prefix inside <code>ansible_facts</code> except <code>ansible_local</code>.
+        Because it walks real data, every correct spelling passes:
+        bracket notation, dot notation, and the legacy <code>ansible_hostname</code> form.
+      </p>
+      <pre class="hiw-code">// One step is .key, ['key'], "key" in brackets, or [0]
+const STEP_RE = /^\s*(?:\.([A-Za-z_][A-Za-z0-9_]*|\d+)|\[\s*(?:'([^']*)'|"([^"]*)"|(\d+))\s*\])/;
+
+// Object.hasOwn keeps inherited names such as "constructor" from resolving.
+if (!Object.hasOwn(current, key)) {
+  const hint = suggest(key, Object.keys(current));
+  return fail('UNDEFINED_FACT', `No fact named '${key}' ... Did you mean '${hint}'?`);
+}</pre>
+    </div>
+
+    <div class="hiw-file-block">
+      <h3><code>validator.js</code> — the task check</h3>
+      <p>
+        An answer passes through a pipeline: size guard, YAML parse, shape check, fact resolution, verdict.
+        Each stage fails with its own named error, so the feedback says what is wrong and how to fix it.
+        A passing answer shows the line a real run would print.
+      </p>
+      <pre class="hiw-code">// Pass rule: every fact the challenge requires was actually read.
+const missing = challenge.requires.filter(
+  (required) =&gt; !evaluated.paths.some((path) =&gt; samePath(path, required)));
+
+// The classic mistake gets its own explanation:
+//   msg: {{ ansible_facts['hostname'] }}     &lt;- YAML reads the braces as a mapping
+//   msg: "{{ ansible_facts['hostname'] }}"   &lt;- quoted, so it is text</pre>
+    </div>
+
+    <div class="hiw-file-block">
+      <h3><code>shell.js</code> and <code>pager.js</code> — the practice terminal</h3>
+      <p>
+        There is no facts cheat sheet. You look facts up the way you do at a control node:
+        <code>ansible servera -m setup</code>, piped to <code>less</code> or <code>grep</code>.
+        The output is the real capture, line for line, in the exact format Ansible prints. Nothing
+        is executed: each command is parsed into words and answered from fixed text. The
+        <code>-a 'filter=...'</code> argument slices the stored text into fact blocks instead of
+        re-serializing it, so spacing and number formatting stay as Ansible wrote them.
+        <code>less</code> is a small state machine with no screen access, which is what makes
+        paging and searching testable.
+      </p>
+      <pre class="hiw-code">// Basic grep treats + ? | ( ) { } as plain characters unless -E is given.
+return flags.E ? pattern : pattern.replace(/[+?|(){}]/g, '\\$&amp;');
+
+// pager.js: one key in, one new state out.
+case ' ': case 'f': case 'PageDown':
+  return { state: clamp(state, state.top + state.page), quit: false };</pre>
+    </div>
+
+    <div class="hiw-file-block">
+      <h3><code>jinja.js</code> — an expression evaluator, checked against real Ansible</h3>
+      <p>
+        The exam-style scenarios need conditions, loops, arithmetic, and filters, so the trainer
+        has its own Jinja2 expression evaluator: a tokenizer, a parser with Jinja2's precedence,
+        and a tree walker. It never calls <code>eval()</code>. It follows Python's rules, not
+        JavaScript's: <code>1 == '1'</code> is false, <code>7 / 2</code> is <code>3.5</code>,
+        <code>round(2.5)</code> is <code>2.0</code>, and a missing key stays "undefined" until
+        something uses it, which is what makes <code>| default('NONE')</code> work.
+      </p>
+      <p>
+        An evaluator that disagrees with Ansible would teach wrong answers, so a test renders
+        240 expressions with both this code and the real Ansible templating engine and fails on
+        any difference. The first run of that test found eight. Two were not obvious: Ansible
+        keeps backslashes in string literals exactly as written, and Python rounds from a
+        number's exact binary value, so <code>round(2.675, 2)</code> is <code>2.67</code>.
+      </p>
+      <pre class="hiw-code">// tests/jinja-differential.test.mjs
+// Rule: if Ansible renders it, the trainer renders the same text, or says plainly
+// that the construct is outside its scope. If Ansible fails, the trainer fails too.
+if (real.ok !== mine.ok || (real.ok &amp;&amp; real.text !== mine.text)) mismatches.push(expression);</pre>
+    </div>
+
+    <div class="hiw-file-block">
+      <h3><code>executor.js</code> and <code>exam-challenges.js</code> — graded by end state</h3>
+      <p>
+        An exam task describes a required end state, not a syntax. So the scenarios run every task
+        against a small model of the host (packages, files, services) and then check what is left:
+        is <code>httpd</code> installed, does <code>/root/hwreport.txt</code> hold the right lines.
+        Each playbook is also run silently against a second, differently configured host. A
+        playbook that installs <code>httpd</code> unconditionally passes on servera and fails on
+        the Debian host, which is exactly how a hard-coded answer fails on a real exam.
+      </p>
+      <pre class="hiw-code">variants: [{
+  label: 'a Debian-family host',
+  patch: { os_family: 'Debian', distribution: 'Ubuntu', pkg_mgr: 'apt' },
+  expect: [{ type: 'package', name: 'httpd', installed: false, label: 'httpd is not installed' }],
+}],</pre>
+    </div>
+
+    <div class="hiw-file-block">
+      <h3><code>difficulty.js</code> — the scaffolding comes off as you improve</h3>
+      <p>
+        The first challenge gives you the whole playbook with one blank. Each challenge you pass
+        without help removes one more pre-written row from the next one: first the
+        <code>msg:</code> line, then the module, then the task name, then <code>tasks:</code>,
+        <code>hosts:</code>, and the play line, until you start from an empty file, as on the
+        exam. Using Show answer gives one row back. The prompt always lists what is missing.
+      </p>
+      <pre class="hiw-code">// Rows come off from the bottom up: the ones nearest your own work go first.
+const kept = rows.slice(0, rows.length - applied);
+const removed = rows.slice(rows.length - applied).reverse();</pre>
+    </div>
+
+    <div class="hiw-file-block">
+      <h3><code>runner.js</code> — the simulated run</h3>
+      <p>
+        You edit a whole playbook file, not a fragment. The runner checks the play (hosts, tasks,
+        gather_facts), hands the task to the validator, and then writes what
+        <code>ansible-playbook</code> would print: the PLAY and TASK banners, the result, and the
+        recap. An undefined fact fails the way it does on a real host, with a <code>fatal</code>
+        line and <code>failed=1</code>, in Ansible's own wording and colors: green for ok, red
+        for failures and load errors. Piped output is uncolored, as it is in a real shell. The
+        terminal is labelled "simulated" because the text is produced in the browser, not by Ansible.
+      </p>
+      <pre class="hiw-code">// The terminal shows what Ansible would do. The coach line gives the verdict.
+// A task can run cleanly and still read the wrong fact.
+if (verdict.ok || verdict.code === 'WRONG_FACT') {
+  return stop(verdict, ...opening, ...taskBanner, verdict.rendered, ...closing(gathered + 1, 0));
+}</pre>
+    </div>
+
+    <div class="hiw-file-block">
+      <h3><code>validator.js</code> — three filters, on purpose</h3>
+      <p>
+        The capstone needs the address on the lab network, which is not the default-route address.
+        So the resolver supports exactly <code>select('match', ...)</code>, <code>first</code>, and
+        <code>list</code>. It mirrors two Jinja2 behaviors that catch people out: <code>match</code>
+        is anchored at the start of the string, and <code>select</code> alone returns a generator
+        that cannot be printed.
+      </p>
+      <pre class="hiw-code">// match is anchored at the start of the string, like Python's re.match.
+pattern = new RegExp(args[0] === 'match' ? `^(?:${args[1]})` : args[1]);</pre>
+    </div>
+
+    <div class="hiw-file-block">
+      <h3><code>highlight.js</code> — syntax color without a library</h3>
+      <p>
+        A textarea cannot color its own text. The editor stacks a transparent textarea on a
+        colored copy of the same text, with identical font metrics. The tokenizer is lossless:
+        joining its tokens reproduces the input exactly, which is what keeps the colors aligned
+        with the characters you type. A test checks that property on awkward inputs.
+      </p>
+      <pre class="hiw-code">test('tokenizing is lossless for every input', () =&gt; {
+  assert.equal(tokenizeYaml(text).map((t) =&gt; t.text).join(''), text);
+});</pre>
+    </div>
+
+    <div class="hiw-file-block">
+      <h3><code>tools/sanitize_facts.py</code> and the leak gate</h3>
+      <p>
+        The capture came from a real machine, so it held real identifiers. The sanitizer replaces MAC
+        addresses, the IPv6 addresses derived from them, the machine ID, SSH host keys, the public
+        resolver address, and the account name. A test then checks the published file against an
+        allowlist. The test describes what clean data looks like, so it holds no real value itself.
+      </p>
+      <pre class="hiw-code">// tests/sanitization.test.mjs
+test('every MAC address is in the documentation range', () =&gt; {
+  for (const mac of macs) {
+    assert.ok(/^00:00:5e:00:53:/i.test(mac) || mac === '00:00:00:00:00:00');
+  }
+});</pre>
+    </div>
+
+    <div class="hiw-file-block">
+      <h3><code>app.js</code></h3>
+      <p>
+        Screen logic only: it draws the terminal and its pager, keeps the editor's color layer and
+        line numbers in step with the text, sends the playbook to the runner, and saves progress
+        in the browser. All output is written as text, never as HTML,
+        so nothing typed into the editor can inject markup.
+      </p>
+      <pre class="hiw-code">// textContent, never innerHTML
+$('terminal').textContent = terminal;</pre>
+    </div>
+  </section>
+
+  <section class="hiw-section">
+    <h2>File Map</h2>
+    <pre class="hiw-file-map">ansible-facts-trainer/
+├── index.html            ← markup, styles, Content-Security-Policy
+├── app.js                ← screen logic: terminal, editor, buttons, progress
+├── shell.js              ← parses commands: ansible, grep, head, less
+├── pager.js              ← a small model of less
+├── runner.js             ← checks the play, writes the simulated run, grades scenarios
+├── difficulty.js         ← removes one more starter row per unaided pass
+├── jinja.js              ← Jinja2 expression evaluator, Python semantics
+├── executor.js           ← simulated host and modules: debug, set_fact, copy, dnf, service
+├── terminal-color.js     ← decides what is green, red, purple, or cyan
+├── validator.js          ← pure functions: parse, resolve, filter, judge
+├── highlight.js          ← lossless YAML tokenizer for the color layer
+├── challenges.js         ← the 16 fundamentals as data
+├── exam-challenges.js    ← the 10 exam-style scenarios as data
+├── facts.js              ← the sanitized capture, as a playbook sees it (generated)
+├── setup-output.js       ← the same capture as `ansible -m setup` prints it (generated)
+├── how-it-works.html     ← this page
+├── vendor/
+│   ├── js-yaml.mjs       ← pinned YAML parser
+│   └── README.md         ← version, source, checksum
+├── tools/
+│   └── sanitize_facts.py ← raw capture → facts.js + setup-output.js
+└── tests/
+    ├── sanitization.test.mjs  ← allowlist gate on the published facts
+    ├── sanitizer.test.mjs     ← sanitizer run against an invented capture
+    ├── validator.test.mjs
+    ├── runner.test.mjs
+    ├── shell.test.mjs
+    ├── scenarios.test.mjs
+    ├── difficulty.test.mjs
+    ├── jinja-differential.test.mjs  ← compares with the real Ansible engine
+    ├── reference_templar.py         ← the oracle that test calls
+    ├── terminal-color.test.mjs
+    ├── highlight.test.mjs
+    └── challenges.test.mjs</pre>
+  </section>
+
+  <section class="hiw-section">
+    <h2>Replicate It Yourself</h2>
+    <ol class="hiw-steps">
+      <li>
+        <span>
+          Capture the facts from a host you manage: <code>ansible servera -m ansible.builtin.setup &gt; raw.json</code>.
+          Keep the raw file out of your repository. Reference:
+          <a href="https://docs.ansible.com/ansible/latest/collections/ansible/builtin/setup_module.html" target="_blank" rel="noopener">the setup module</a>.
+        </span>
+      </li>
+      <li>
+        <span>
+          Sanitize it before publishing. Replace hardware addresses, machine IDs, host keys, public
+          addresses, and account names, then write a test that fails if any of them come back.
+        </span>
+      </li>
+      <li>
+        <span>
+          Parse answers with a real YAML parser, not regular expressions, and resolve fact lookups by
+          walking the data. Reference:
+          <a href="https://docs.ansible.com/ansible/latest/playbook_guide/playbooks_vars_facts.html" target="_blank" rel="noopener">Ansible facts and magic variables</a>.
+        </span>
+      </li>
+      <li>
+        <span>
+          Keep the checking logic in a file with no screen access and test it with
+          <code>node --test</code>. Reference:
+          <a href="https://nodejs.org/api/test.html" target="_blank" rel="noopener">Node.js test runner</a>.
+        </span>
+      </li>
+      <li>
+        <span>
+          Set a strict Content-Security-Policy and write output with <code>textContent</code>. Reference:
+          <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/CSP" target="_blank" rel="noopener">MDN Content Security Policy</a>.
+        </span>
+      </li>
+    </ol>
+  </section>
+
+</div>
+</body>
+</html>

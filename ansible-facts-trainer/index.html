@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="dark">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <meta name="description" content="Ansible Facts Trainer — find the fact, edit the playbook, and run it to see what Ansible would print. Built on a real ansible_facts capture.">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'self';">
+    <title>Ansible Facts Trainer · Eddie's Portfolio</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Inter:wght@400;500;600&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <script type="module" src="app.js"></script>
+    <style>
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --bg:#07010f; --cyan:#4af7ff; --purple:#7b2fff; --green:#00e676;
+            --amber:#fbbf24; --red:#ff5c7c; --text:#dde0f0; --muted:#8a90aa;
+            --border:rgba(74,247,255,0.16); --card:rgba(255,255,255,0.03);
+            --mono:'Fira Code', ui-monospace, Menlo, monospace;
+            color-scheme: dark;
+        }
+        body { background: var(--bg); color: var(--text); font-family: 'Inter', system-ui, sans-serif; min-height: 100vh; }
+        .skip { position:absolute; left:-999px; top:0; background:var(--cyan); color:#000; padding:8px 14px; border-radius:0 0 8px 0; z-index:50; }
+        .skip:focus { left:0; }
+        .sr-only { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
+
+        .top-nav { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:16px 24px; border-bottom:1px solid var(--border); position:sticky; top:0; background:rgba(7,1,15,0.92); backdrop-filter:blur(12px); z-index:10; }
+        .nav-left { display:flex; align-items:center; gap:12px; min-width:0; }
+        .back-btn, .hiw-btn { display:inline-flex; align-items:center; gap:6px; padding:7px 14px; border:1px solid var(--border); border-radius:8px; text-decoration:none; font-size:0.78rem; font-weight:500; white-space:nowrap; }
+        .back-btn { color:var(--muted); }
+        .back-btn:hover { color:var(--cyan); border-color:var(--cyan); }
+        .hiw-btn { color:var(--cyan); }
+        .hiw-btn:hover { background:rgba(74,247,255,0.07); border-color:var(--cyan); }
+        .app-title { font-family:'Orbitron', system-ui; font-size:0.85rem; color:var(--cyan); letter-spacing:2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+        main { max-width:1360px; margin:0 auto; padding:32px 24px 80px; }
+        h1 { font-family:'Orbitron', system-ui; font-size:clamp(1.5rem,4vw,2.2rem); color:#fff; margin-bottom:6px; }
+        .subtitle { color:var(--muted); font-size:0.9rem; margin-bottom:24px; line-height:1.5; }
+        code, pre { font-family:var(--mono); }
+        .subtitle code { color:var(--cyan); }
+
+        .panes { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:20px; align-items:start; }
+        .pane { background:var(--card); border:1px solid var(--border); border-radius:14px; padding:18px; min-width:0; }
+        .pane h2 { font-family:'Orbitron', system-ui; font-size:0.8rem; letter-spacing:2px; color:var(--cyan); text-transform:uppercase; margin-bottom:12px; }
+
+        button:focus-visible { outline:2px solid var(--cyan); outline-offset:2px; }
+        .terminal:focus-visible { outline:1px dashed var(--cyan); outline-offset:-2px; }
+        #editor:focus-visible { outline:2px solid var(--cyan); outline-offset:-2px; }
+        .steps { margin:0 0 12px 1.2em; font-size:0.84rem; line-height:1.55; color:var(--text); }
+        .steps li { margin-bottom:4px; }
+        .steps code, .help code { color:var(--cyan); font-size:0.92em; }
+        .quick { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px; }
+        .quick button { font-family:var(--mono); font-size:0.72rem; padding:6px 10px; color:var(--muted); }
+        .status { display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; font-size:0.78rem; color:var(--muted); margin-bottom:12px; }
+        #tier { color:var(--purple); font-weight:600; filter:brightness(1.6); }
+        #prompt { font-size:1rem; line-height:1.55; margin-bottom:14px; white-space:pre-line; }
+        #jump { width:100%; margin-bottom:12px; padding:8px 10px; background:#0c0718; color:var(--text); border:1px solid var(--border); border-radius:8px; font:inherit; font-size:0.82rem; }
+        #jump:focus-visible { outline:2px solid var(--cyan); outline-offset:2px; }
+        .editor-window, .terminal-window { border:1px solid var(--border); border-radius:10px; overflow:hidden; background:#0a0613; }
+        .title-bar { display:flex; align-items:center; gap:12px; padding:8px 12px; background:#140c22; border-bottom:1px solid var(--border); }
+        .dots { display:inline-flex; gap:6px; }
+        .dots i { width:10px; height:10px; border-radius:50%; display:block; }
+        .dots i:nth-child(1) { background:#ff5f57; } .dots i:nth-child(2) { background:#febc2e; } .dots i:nth-child(3) { background:#28c840; }
+        .file-tab { font-family:var(--mono); font-size:0.76rem; color:var(--muted); }
+        .editor-body { display:flex; height:21.5em; font-size:0.84rem; }
+        /* The gutter, the colored layer, and the textarea must share every text metric,
+           or the colors drift away from the characters being typed. */
+        .gutter, .highlight, #editor { font-family:var(--mono); font-size:inherit; line-height:1.6; tab-size:2; font-variant-ligatures:none; letter-spacing:0; margin:0; }
+        .gutter { flex:0 0 auto; min-width:3.2em; padding:12px 10px 12px 12px; text-align:right; color:#4d4666; background:#0d0818; border-right:1px solid rgba(255,255,255,0.05); overflow:hidden; user-select:none; }
+        .code { position:relative; flex:1 1 auto; min-width:0; }
+        .highlight, #editor { position:absolute; inset:0; padding:12px; white-space:pre; overflow:auto; border:0; }
+        .highlight { color:var(--text); overflow:hidden; pointer-events:none; }
+        #editor { width:100%; height:100%; background:transparent; color:transparent; caret-color:var(--cyan); resize:none; border-radius:0; }
+        #editor::selection { background:rgba(74,247,255,0.28); color:transparent; }
+        .tok-key { color:#7dd3fc; } .tok-punct { color:#8a90aa; } .tok-dash { color:#f472b6; } .tok-doc { color:#8a90aa; }
+        .tok-str { color:#a5e075; } .tok-jinja { color:#fbbf24; } .tok-num { color:#c4a7ff; } .tok-comment { color:#6b7089; font-style:italic; }
+        .status-bar { display:flex; justify-content:space-between; gap:12px; padding:5px 12px; font-family:var(--mono); font-size:0.7rem; color:var(--muted); background:#140c22; border-top:1px solid var(--border); }
+        /* The prompt sits inside the scrolling area, directly under the last line of output. */
+        .terminal-scroll { height:29.5rem; overflow:auto; }
+        /* Long lines wrap at the window edge, as they do in a real terminal. */
+        .terminal { margin:0; padding:12px 14px 0; font-size:0.76rem; line-height:1.5; color:#dcdfe8; white-space:pre-wrap; overflow-wrap:anywhere; }
+        /* Ansible's own terminal colors. */
+        .t-ok { color:#4ade80; } .t-fatal { color:#ff6b6b; } .t-warn { color:#d58cff; } .t-skip { color:#56d4dd; } .t-changed { color:#e5c07b; }
+        .terminal:empty { padding-bottom:0; }
+        .prompt-line { display:flex; flex-wrap:wrap; align-items:baseline; padding:0 14px 12px; font-family:var(--mono); font-size:0.76rem; line-height:1.5; }
+        .ps1 { color:#7ee787; white-space:pre; flex:0 0 auto; }
+        #command { flex:1 1 8ch; min-width:8ch; background:transparent; border:0; outline:0; color:#fff; font:inherit; caret-color:var(--cyan); padding:0; }
+        .terminal-window:focus-within { border-color:var(--cyan); }
+        .terminal-window.paging .ps1 { color:#04121a; background:#dcdfe8; padding:0 4px; }
+        .pager-keys { display:flex; flex-wrap:wrap; gap:8px; padding:0 14px 12px; }
+        .pager-keys button { font-size:0.74rem; padding:6px 10px; }
+        .coach { margin-top:12px; padding:12px 14px; border-radius:8px; font-family:'Inter', system-ui, sans-serif; font-size:0.86rem; line-height:1.55; white-space:pre-wrap; overflow-wrap:anywhere; border:1px solid transparent; }
+        .coach:empty { display:none; }
+        .coach.pass { border-color:var(--green); background:rgba(0,230,118,0.07); color:#b9f6ca; }
+        .coach.fail { border-color:var(--red); background:rgba(255,92,124,0.07); color:#ffc2cd; }
+        .help { font-size:0.74rem; color:var(--muted); margin:6px 0 14px; }
+        .buttons, .nav-buttons { display:flex; flex-wrap:wrap; gap:10px; }
+        .nav-buttons { margin-top:18px; padding-top:14px; border-top:1px solid var(--border); }
+        button { padding:9px 16px; border-radius:8px; border:1px solid var(--border); background:transparent; color:var(--text); font:inherit; font-size:0.84rem; font-weight:500; cursor:pointer; }
+        button:hover { border-color:var(--cyan); color:var(--cyan); }
+        button.primary { background:var(--cyan); color:#04121a; border-color:var(--cyan); font-weight:600; }
+        button.primary:hover { color:#04121a; filter:brightness(1.1); }
+        #reset { margin-left:auto; color:var(--muted); }
+
+        #hint-text { margin-top:12px; padding:10px 14px; border-left:3px solid var(--amber); color:var(--text); font-size:0.86rem; line-height:1.5; }
+        #answer { margin-top:12px; padding:12px 14px; border:1px dashed var(--border); border-radius:8px; font-size:0.82rem; line-height:1.6; white-space:pre-wrap; overflow-wrap:anywhere; }
+        [hidden] { display:none !important; }
+
+        @media (max-width: 860px) {
+            .panes { grid-template-columns:minmax(0,1fr); }
+            .pane.challenge { order:-1; }
+            .terminal-scroll { height:22rem; }
+            .editor-body { font-size:0.78rem; }
+            .top-nav, main { padding-left:16px; padding-right:16px; }
+        }
+    </style>
+</head>
+<body>
+    <a class="skip" href="#main">Skip to content</a>
+    <nav class="top-nav">
+        <div class="nav-left">
+            <a class="back-btn" href="../index.html">← App Hub</a>
+            <span class="app-title">ANSIBLE FACTS TRAINER</span>
+        </div>
+        <a class="hiw-btn" href="how-it-works.html">📖 How It's Built</a>
+    </nav>
+
+    <main id="main">
+        <h1>Ansible Facts Trainer</h1>
+        <p class="subtitle">Work the way you will on the exam: look the fact up with <code>ansible servera -m setup</code>, edit the playbook, and run it. The facts are a real capture from <code>servera</code>, a CentOS Stream 9 lab host, with identifying values replaced.</p>
+
+        <div class="panes">
+            <section class="pane" aria-labelledby="terminal-heading">
+                <h2 id="terminal-heading">Control node terminal</h2>
+                <ol class="steps">
+                    <li>List the host's facts, as you would on the exam: <code>ansible servera -m setup</code></li>
+                    <li>Too long to read? Page it with <code>| less</code>, or search it with <code>| grep -i word</code>.</li>
+                    <li>In a playbook, facts live in <code>ansible_facts</code> without the <code>ansible_</code> prefix: <code>ansible_hostname</code> becomes <code>ansible_facts['hostname']</code>.</li>
+                </ol>
+                <div class="quick" aria-label="Example commands">
+                    <button type="button" data-command="ansible servera -m setup | less">setup | less</button>
+                    <button type="button" data-command="ansible servera -m setup | grep -i ipv4">setup | grep -i ipv4</button>
+                    <button type="button" data-command="clear">clear</button>
+                </div>
+                <div id="terminal-window" class="terminal-window">
+                    <div class="title-bar">
+                        <span class="dots" aria-hidden="true"><i></i><i></i><i></i></span>
+                        <span class="file-tab">student@ansible: ~/my-project-directory · simulated</span>
+                    </div>
+                    <div id="scroll" class="terminal-scroll">
+                        <pre id="screen" class="terminal" role="log" aria-label="Terminal output" tabindex="0"></pre>
+                        <div class="prompt-line">
+                            <label id="ps1" class="ps1" for="command"></label>
+                            <input id="command" type="text" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" aria-describedby="terminal-help">
+                        </div>
+                    </div>
+                    <div id="pager-keys" class="pager-keys" hidden>
+                        <button type="button" data-key=" ">Page down (space)</button>
+                        <button type="button" data-key="b">Page up (b)</button>
+                        <button type="button" data-key="q">Quit (q)</button>
+                    </div>
+                </div>
+                <p id="terminal-help" class="help">In <code>less</code>: space next page, b back, /word search, n next match, q quit. Up arrow recalls a command. After a run, check the host with <code>ansible servera -a 'cat /root/hwreport.txt'</code> or <code>-a 'rpm -q httpd'</code>. The facts are your real capture with identifying values replaced.</p>
+            </section>
+
+            <section class="pane challenge" aria-labelledby="challenge-heading">
+                <div class="status"><span id="tier"></span><span id="progress"></span></div>
+                <h2 id="challenge-heading">Challenge</h2>
+                <label class="sr-only" for="jump">Go to challenge</label>
+                <select id="jump"></select>
+                <p id="prompt"></p>
+                <div class="editor-window">
+                    <div class="title-bar">
+                        <span class="dots" aria-hidden="true"><i></i><i></i><i></i></span>
+                        <span id="file-tab" class="file-tab">facts.yml</span>
+                    </div>
+                    <div class="editor-body">
+                        <pre id="gutter" class="gutter" aria-hidden="true"></pre>
+                        <div class="code">
+                            <pre id="highlight" class="highlight" aria-hidden="true"></pre>
+                            <label class="sr-only" for="editor">Playbook editor</label>
+                            <textarea id="editor" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" wrap="off"></textarea>
+                        </div>
+                    </div>
+                    <div class="status-bar"><span>YAML · Spaces: 2</span><span id="cursor">Ln 1, Col 1</span></div>
+                </div>
+                <p class="help">Tab inserts two spaces. Enter keeps the indentation. Ctrl+Enter or ⌘+Enter runs the playbook. Shift+Tab leaves the editor. The run output appears in the terminal. Each challenge you pass on your own removes one more starter line from the next; using Show answer gives one back.</p>
+                <div class="buttons">
+                    <button id="run" class="primary" type="button">▶ Run playbook</button>
+                    <button id="hint" type="button">Hint</button>
+                    <button id="reveal" type="button">Show answer</button>
+                    <button id="reset-file" type="button">Reset file</button>
+                </div>
+                <pre id="coach" class="coach" role="status" aria-live="polite"></pre>
+                <p id="hint-text" hidden></p>
+                <pre id="answer" hidden></pre>
+                <div class="nav-buttons">
+                    <button id="prev" type="button">← Previous</button>
+                    <button id="next" type="button">Next →</button>
+                    <button id="reset" type="button">Reset progress</button>
+                </div>
+            </section>
+        </div>
+    </main>
+</body>
+</html>
