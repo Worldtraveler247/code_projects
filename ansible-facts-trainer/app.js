@@ -11,6 +11,7 @@ import { adjustLevel, scaffold, TOP_LEVEL } from './difficulty.js';
 
 const STORAGE_KEY = 'ansible-facts-trainer:solved:v1';
 const LEVEL_KEY = 'ansible-facts-trainer:level:v1';
+const GUIDE_KEY = 'ansible-facts-trainer:guide:v1';
 const TIER_NAMES = { 1: 'Fill in the fact', 2: 'Write a task', 3: 'Combine facts', 4: 'Capstone', 5: 'Exam-style scenario' };
 const MAX_SCROLLBACK = 4000;
 const PAGER_HEIGHT = 24;
@@ -296,8 +297,25 @@ for (const button of document.querySelectorAll('[data-command]')) {
     if (pager) pagerPress('q');
     submit(button.dataset.command);
     command.focus({ preventScroll: true });
+    // The reading guide's button sits above the terminal, which may be off screen.
+    $('terminal-window').scrollIntoView({ block: 'nearest', behavior: 'smooth' });
   });
 }
+
+// The reading guide starts open; once closed it stays closed across visits.
+const guide = $('guide');
+try {
+  if (localStorage.getItem(GUIDE_KEY) === 'closed') guide.open = false;
+} catch {
+  // Storage is blocked: the guide stays open.
+}
+guide.addEventListener('toggle', () => {
+  try {
+    localStorage.setItem(GUIDE_KEY, guide.open ? 'open' : 'closed');
+  } catch {
+    // Storage is unavailable: the choice lasts for this page view only.
+  }
+});
 
 // ---- Wiring ------------------------------------------------------------------
 
