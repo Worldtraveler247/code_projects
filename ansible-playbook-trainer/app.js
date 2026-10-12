@@ -4,6 +4,7 @@ import { createEditor, getText, handleKey, insertText } from './editor.js';
 import { check } from './checker.js';
 import { describe, nextHint } from './model.js';
 import { EXERCISES, LEVELS } from './exercises.js';
+import { charClasses, segments } from './highlight.js';
 
 const PROGRESS_KEY = 'ansible-playbook-trainer:progress:v1';
 const GUIDE_KEY = 'ansible-playbook-trainer:guide:v1';
@@ -103,25 +104,7 @@ function segment(parent, className, text) {
 
 function renderLine(text, cursorCol) {
   const line = node('span', 'vim-text');
-  const lead = text.match(/^ */)[0].length;
-  const classes = new Array(text.length).fill('');
-  for (let i = 0; i < lead; i += 1) classes[i] = 'lead';
-  const body = text.slice(lead);
-  if (body.startsWith('#')) {
-    for (let i = lead; i < text.length; i += 1) classes[i] = 'tok-comment';
-  } else {
-    let at = lead;
-    if (body.startsWith('- ') || body === '-' || body === '---') {
-      const length = body === '---' ? 3 : 1;
-      for (let i = 0; i < length; i += 1) classes[at + i] = 'tok-dash';
-      at += body === '---' ? 3 : 2;
-    }
-    const key = text.slice(at).match(/^[A-Za-z_][\w.-]*(?=:( |$))/);
-    if (key) {
-      for (let i = 0; i < key[0].length; i += 1) classes[at + i] = 'tok-key';
-      classes[at + key[0].length] = 'tok-punct';
-    }
-  }
+  const classes = charClasses(text);
   // Leading spaces are drawn as dots so the indentation can be counted.
   const glyph = (i) => (classes[i] === 'lead' ? '·' : text[i]);
   let run = '';
@@ -160,6 +143,11 @@ function renderEditor() {
     row.append(node('span', 'vim-mark', ' '), node('span', 'vim-num', '~'));
     el.rows.append(row);
   }
+  // Vim's cursorcolumn: a band through the cursor's column, down every line of the file.
+  const column = node('div', 'cursor-column');
+  column.style.setProperty('--col', String(editor.col));
+  column.style.setProperty('--lines', String(editor.lines.length));
+  if (editor.mode !== 'command') el.rows.append(column);
   const current = el.rows.children[editor.row];
   if (current && document.activeElement === el.vim) current.scrollIntoView({ block: 'nearest', inline: 'nearest' });
 
@@ -308,6 +296,35 @@ el.reset.addEventListener('click', () => {
   writeStore(PROGRESS_KEY, { passed: [] });
   load(0);
 });
+
+// Colours the example in the guide and draws a band per indentation level, so the
+// nesting can be read at a glance. Without scripts the plain text is still there.
+function decorateExample(pre) {
+  const lines = pre.textContent.split('\n');
+  const depth = (line) => line.match(/^ */)[0].length / 2;
+  const bands = (parent, count) => {
+    for (let level = 0; level < count; level += 1) parent.append(node('span', `band band-${level % 4}`, '  '));
+  };
+  pre.replaceChildren();
+  lines.forEach((line, i) => {
+    const row = node('span', 'code-row');
+    if (line.trim() === '') {
+      // Carry the bands across a blank line, as an editor does.
+      const before = lines.slice(0, i).reverse().find((other) => other.trim() !== '') || '';
+      const after = lines.slice(i + 1).find((other) => other.trim() !== '') || '';
+      bands(row, Math.floor(Math.min(depth(before), depth(after))));
+    } else {
+      bands(row, Math.floor(depth(line)));
+      segments(line).forEach((part) => {
+        if (part.cls !== 'lead') row.append(node('span', part.cls, part.text));
+      });
+    }
+    row.append('\n');
+    pre.append(row);
+  });
+}
+
+decorateExample($('example'));
 
 el.guide.open = readStore(GUIDE_KEY, true) !== false;
 el.guide.addEventListener('toggle', () => writeStore(GUIDE_KEY, el.guide.open));

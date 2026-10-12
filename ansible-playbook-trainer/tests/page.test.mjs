@@ -28,7 +28,7 @@ test('every element the script looks up exists on the page', () => {
 });
 
 test('the annotated example in the guide is the capstone, and it passes the checker', () => {
-  const pre = PAGE.match(/<pre tabindex="0" aria-label="Annotated example playbook">([\s\S]*?)<\/pre>/);
+  const pre = PAGE.match(/<pre id="example" tabindex="0" aria-label="Annotated example playbook">([\s\S]*?)<\/pre>/);
   assert.ok(pre);
   const text = decode(pre[1]);
   const capstone = EXERCISES.find((exercise) => exercise.id === 'capstone');
