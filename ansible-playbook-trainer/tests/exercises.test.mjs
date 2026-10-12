@@ -16,6 +16,25 @@ test('there are 20 exercises, five per level, with unique ids', () => {
   assert.deepEqual(levels, levels.slice().sort(), 'levels only go up');
 });
 
+test('every play is a full skeleton from exercise 1, and its tasks use a variable', () => {
+  for (const exercise of EXERCISES) {
+    for (const play of exercise.plays) {
+      for (const key of ['name', 'hosts', 'become', 'gather_facts', 'tasks']) {
+        assert.ok(key in play, `${exercise.id} lacks ${key}`);
+      }
+      assert.ok('vars' in play || 'vars_files' in play, `${exercise.id} defines no variables`);
+      assert.ok(play.tasks.length >= 1);
+      assert.match(JSON.stringify(play.tasks), /\{\{ \w+/, `${exercise.id} never uses a variable`);
+    }
+  }
+});
+
+test('the exercises grow: the last of each level is longer than the first exercise', () => {
+  const size = (exercise) => renderModel(exercise.plays).length;
+  assert.ok(size(EXERCISES[19]) > size(EXERCISES[10]));
+  assert.ok(size(EXERCISES[10]) > size(EXERCISES[0]));
+});
+
 for (const exercise of EXERCISES) {
   test(`${exercise.id}: the model answer is real YAML for the same data`, () => {
     assert.deepEqual(load(modelText(exercise.plays)), exercise.plays);

@@ -1,9 +1,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { check, parseLine } from '../checker.js';
-import { EXERCISES } from '../exercises.js';
+import { FIXTURES } from './fixtures.mjs';
 
-const byId = (id) => EXERCISES.find((exercise) => exercise.id === id);
+const byId = (id) => FIXTURES.find((exercise) => exercise.id === id);
 const lineOf = (text, exercise, needle) => {
   const index = text.split('\n').findIndex((line) => line.includes(needle));
   return check(text, exercise).lines[index];

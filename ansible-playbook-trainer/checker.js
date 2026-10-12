@@ -41,6 +41,7 @@ const KEY_NOTES = {
     gather_facts: 'It controls whether Ansible collects facts before the first task.',
     remote_user: 'It sets the account Ansible logs in as.',
     vars: 'It opens a dictionary of variables; each variable goes at 4 spaces.',
+    vars_files: 'It opens a list of files that hold variables; each path goes at 4 spaces with a dash.',
     tasks: 'It opens the list of tasks. Each task starts with a dash at 4 spaces, and they run in the order written.',
     handlers: 'It opens the list of handlers: tasks that run only when another task notifies them.',
   },

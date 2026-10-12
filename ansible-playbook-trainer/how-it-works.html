@@ -111,20 +111,21 @@ if (container.kind === 'args' &amp;&amp; TASK_ONLY.has(key)) { /* red: when belo
     <div class="hiw-file-block">
       <h3><code>exercises.js</code> and <code>model.js</code> — one source for three outputs</h3>
       <p>
-        An exercise is only data: the playbook to produce. The work order shown to the learner, the
+        An exercise is only data: the playbook to produce. Every one, from the first, is a complete skeleton: play keys, variables and at least one task that uses a variable. The work order shown to the learner, the
         model answer and the hints are all generated from it, so a work order can never ask for
         something the checker does not accept. The work order is written in words, not YAML, so the
         learner has to decide the columns and dashes.
       </p>
       <pre class="hiw-code">{
   id: 'task-when',
-  level: 4,
+  level: 3,
   title: 'A condition with when',
   plays: [{
     name: 'Install the web server', hosts: 'servera', become: true, gather_facts: true,
+    vars: { web_package: 'httpd' },
     tasks: [{
-      name: 'Install httpd on Red Hat systems',
-      'ansible.builtin.dnf': { name: 'httpd', state: 'present' },
+      name: 'Install the web server on Red Hat systems',
+      'ansible.builtin.dnf': { name: '{{ web_package }}', state: 'present' },
       when: "ansible_facts['os_family'] == 'RedHat'",
     }],
   }],
