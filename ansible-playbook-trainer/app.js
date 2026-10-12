@@ -315,8 +315,16 @@ function decorateExample(pre) {
       bands(row, Math.floor(Math.min(depth(before), depth(after))));
     } else {
       bands(row, Math.floor(depth(line)));
-      segments(line).forEach((part) => {
-        if (part.cls !== 'lead') row.append(node('span', part.cls, part.text));
+      const parts = segments(line);
+      parts.forEach((part, index) => {
+        if (part.cls === 'lead') return;
+        const next = parts[index + 1];
+        // The gap before a note becomes a faint dashed leader, so the eye can follow it across.
+        if (next && next.cls === 'tok-comment' && part.text.trim() === '' && part.text.length > 3) {
+          row.append(' ', node('span', 'leader', part.text.slice(2)), ' ');
+        } else {
+          row.append(node('span', part.cls, part.text));
+        }
       });
     }
     row.append('\n');
