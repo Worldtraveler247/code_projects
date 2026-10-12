@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="dark">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'self' https://static.cloudflareinsights.com; connect-src 'self' https://cloudflareinsights.com; img-src 'self' data:; form-action https://buttondown.com; base-uri 'none'; object-src 'none'">
+    <meta name="description" content="The Daily Brief for Tuesday, October 13, 2026: security incidents, senior security advice, engineering explainers, and tech news.">
+    <title>The Daily Brief · Oct 13, 2026</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="icon" href="../../../favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="../../../style.css">
+    <link rel="stylesheet" href="../../newsletter.css">
+</head>
+<body class="brief-page">
+    <a href="#main-content" class="skip-nav">Skip to main content</a>
+    <nav class="brief-nav">
+        <a href="../../../index.html">← App Hub</a>
+        <a href="../../">All issues</a>
+    </nav>
+    
+<header class="brief-masthead">
+    <p class="brief-eyebrow">THE DAILY BRIEF</p>
+    <h1>Tuesday, October 13, 2026</h1>
+    <ol class="brief-toc">
+        <li><a href="#current-events">Current Events</a></li><li><a href="#security-advice">Senior Security Advice</a></li><li><a href="#tech-news">Tech News</a></li>
+    </ol>
+</header>
+<main id="main-content" class="brief">
+    
+    <article class="brief-section" id="current-events">
+        <p class="brief-kicker">Current Events</p>
+        <h2>The XZ Utils Backdoor</h2>
+        
+            
+            <p>Imagine a single volunteer, working patiently for over two years to earn the trust of an open-source project, so that one day he could quietly slip a backdoor into a piece of software installed on practically every Linux server on Earth -- and the only thing that stopped him was one engineer noticing his own laptop felt fifty milliseconds slower than it should. That's not a hypothetical. That's the XZ Utils backdoor, and it's one of the closest calls in the history of open-source software. Here's how it actually happened.</p>
+<p>XZ Utils is a compression library -- it shrinks files -- and it's so widely used that it's quietly baked into almost every major Linux distribution. According to the oss-security mailing list post that broke this open, a contributor using the name &quot;Jia Tan&quot; started submitting code to the project back in 2021. Over roughly two years, through patient, legitimate-looking contributions, and -- according to independent analysis of the project's mailing list -- some help from other accounts pressuring the original, overworked maintainer to hand over control, &quot;Jia Tan&quot; became XZ Utils's primary maintainer. Nobody voted on that. It just happened gradually, the way trust in open source usually does.</p>
+<p>Then, in February and March of 2024, that access got used. Versions 5.6.0 and 5.6.1 of XZ Utils shipped with malicious code hidden inside them. Here's the clever part: the backdoor was never visible in the project's public source-code repository at all. It only existed inside the official release tarballs -- the pre-packaged download files most Linux distributions actually build from instead of the raw repository. Hidden test files, combined with obfuscated build scripts, quietly patched the compiled library during the build process itself. Once installed, that tampered library could hook into OpenSSH's login process on affected systems and give a remote attacker holding the right private key a hidden way to run commands as that system's own user -- no valid password required.</p>
+<p>Root cause, in one sentence: a project with enormous reach had, in practice, a single burned-out volunteer maintainer, and a patient attacker spent two years turning that single point of trust into a single point of failure.</p>
+<p>Here's what held, and it's the detail worth remembering cold. A Microsoft engineer and PostgreSQL contributor named Andres Freund noticed that SSH logins on a Debian testing system were using more CPU than they should and taking about half a second longer than normal. Out of simple curiosity, he investigated -- and found the backdoor. Reporting differs on exactly how close this came to wider exposure, but it's well established that the backdoor had only reached rolling and testing branches of a handful of distributions, never a stable release of Debian, Ubuntu, or Red Hat Enterprise Linux. Catching it there, before it reached long-term-support distributions, is the whole reason this is a famous near miss and not a famous breach.</p>
+<p>So what does that mean for you? A senior engineer treats &quot;who maintains this dependency, and how many of them are there&quot; as an actual supply-chain question, not a footnote -- because this incident proves that a healthy-looking project with thousands of users can still be, underneath, one tired person away from being taken over.</p>
+
+        
+            <h3>Timeline</h3>
+            <table>
+<thead>
+<tr>
+<th>Date</th>
+<th>Event</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>~Nov 2021</td>
+<td>A contributor using the name &quot;Jia Tan&quot; begins submitting code to the XZ Utils project, per independent analysis of the project's public commit and mailing-list history conducted after the backdoor's discovery.</td>
+</tr>
+<tr>
+<td>2022–2023</td>
+<td>&quot;Jia Tan&quot; is gradually granted co-maintainer and then primary-maintainer access, following a period of legitimate-looking contributions and, per community mailing-list threads reviewed afterward, pressure from other accounts on the original maintainer to share control.</td>
+</tr>
+<tr>
+<td>Feb 24, 2024</td>
+<td>XZ Utils version 5.6.0, containing the backdoor, is released as an official tarball.</td>
+</tr>
+<tr>
+<td>Mar 9, 2024</td>
+<td>Version 5.6.1 is released, still containing the backdoor.</td>
+</tr>
+<tr>
+<td>Mar 29, 2024</td>
+<td>Andres Freund reports anomalous CPU usage and added SSH login latency on a Debian Sid (testing) system to the oss-security mailing list, identifying the backdoor; CISA publishes its alert the same day, and the flaw is assigned CVE-2024-3094 with a CVSS score of 10.0.</td>
+</tr>
+<tr>
+<td>Mar 29–30, 2024</td>
+<td>Fedora, Debian, Arch, openSUSE, Kali, and other distributions that had pulled 5.6.0/5.6.1 into rolling or testing branches revert to a safe version; CISA and vendors recommend downgrading to XZ Utils 5.4.6.</td>
+</tr>
+</tbody>
+</table>
+<p><em>Note: reporting on the exact social-engineering timeline — specifically which other accounts pressured the original maintainer, and whether they were sockpuppets of the same actor — is based on community analysis conducted after the fact, not an admission or a court finding, and some details of &quot;Jia Tan&quot;'s real identity and motive remain unconfirmed.</em></p>
+
+        
+            <h3>Control Failures</h3>
+            <table>
+<thead>
+<tr>
+<th>#</th>
+<th>Failure</th>
+<th>NIST SP 800-53 Rev 5 Control Family</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>A single, apparently overworked volunteer maintainer was the sole gatekeeper for a dependency used across nearly every major Linux distribution, with no organizational review of who else held or was gaining commit access.</td>
+<td><strong>SR-6</strong> — Supplier Assessments and Reviews</td>
+</tr>
+<tr>
+<td>2</td>
+<td>The malicious code existed only in official release tarballs and was never present in the public, reviewable Git repository, defeating ordinary source-code review as a control.</td>
+<td><strong>SI-7</strong> — Software, Firmware, and Information Integrity</td>
+</tr>
+<tr>
+<td>3</td>
+<td>Obfuscated build scripts and hidden test files altered the compiled library at build time, with no process verifying that a built artifact actually matched its claimed source.</td>
+<td><strong>SA-10 / SR-11</strong> — Developer Configuration Management / Component Authenticity</td>
+</tr>
+<tr>
+<td>4</td>
+<td>A compression library with no inherent need for authentication-path access was linked, through packaging choices in several distributions, into OpenSSH's login process.</td>
+<td><strong>CM-7</strong> — Least Functionality</td>
+</tr>
+<tr>
+<td>5</td>
+<td>Detection depended entirely on one engineer's informal curiosity about a half-second performance regression, rather than any organizational or automated anomaly-detection process.</td>
+<td><strong>SI-4</strong> — System Monitoring</td>
+</tr>
+</tbody>
+</table>
+
+        
+            <h3>What Held</h3>
+            <ul>
+<li><strong>Rolling-release exposure limited the blast radius.</strong> The backdoor only reached testing and unstable branches — Debian Sid, Fedora Rawhide-adjacent builds, and similar — because that's where bleeding-edge package versions land first. It never reached a stable release of Debian, Ubuntu LTS, or Red Hat Enterprise Linux, which is the entire reason this is remembered as a near miss.</li>
+<li><strong>One engineer's manual curiosity, backed by a transparent ecosystem.</strong> Freund's discovery wasn't the product of an automated control — it was a person noticing something felt wrong and being able to dig into open, inspectable source and build logs to prove it. Naming that distinction — a lucky catch, not a designed one — is the senior move, rather than claiming the system worked as intended.</li>
+</ul>
+
+        
+            <h3>Sources</h3>
+            <ul>
+<li><a href="https://www.cisa.gov/news-events/alerts/2024/03/29/reported-supply-chain-compromise-affecting-xz-utils-data-compression-library-cve-2024-3094" target="_blank" rel="noopener noreferrer">Reported Supply Chain Compromise Affecting XZ Utils Data Compression Library, CVE-2024-3094 — CISA (primary)</a></li>
+<li><a href="https://nvd.nist.gov/vuln/detail/CVE-2024-3094" target="_blank" rel="noopener noreferrer">CVE-2024-3094 — NVD, National Institute of Standards and Technology (primary)</a></li>
+<li><a href="https://access.redhat.com/security/cve/CVE-2024-3094" target="_blank" rel="noopener noreferrer">CVE-2024-3094 — Red Hat Customer Portal (primary; confirms Red Hat Enterprise Linux was not affected)</a></li>
+<li><a href="https://www.helpnetsecurity.com/2024/03/29/cve-2024-3094-linux-backdoor/" target="_blank" rel="noopener noreferrer">Beware! Backdoor found in XZ utilities used by many Linux distros (CVE-2024-3094) — Help Net Security</a></li>
+<li><a href="https://www.wiz.io/blog/cve-2024-3094-critical-rce-vulnerability-found-in-xz-utils" target="_blank" rel="noopener noreferrer">Backdoor in XZ Utils allows RCE: everything you need to know — Wiz</a></li>
+<li><a href="https://www.ncsc.gov.ie/pdfs/2403290139_Critical_vulnerability_in_XZ_Utils.pdf" target="_blank" rel="noopener noreferrer">Critical vulnerability in XZ Utils — National Cyber Security Centre, Ireland</a></li>
+</ul>
+<hr />
+<p><strong>Tomorrow's Thread:</strong> Day 26 moves to the identity and credential-compromise family — the Snowflake customer breach of 2024, where credential stuffing against accounts with no multi-factor authentication exposed data at more than 160 customers, distinct from today's software supply-chain family.</p>
+
+        
+    </article>
+    
+    <article class="brief-section" id="security-advice">
+        <p class="brief-kicker">Senior Security Advice</p>
+        <h2>Keep Offline, Immutable Backups and Prove You Can Restore From Them</h2>
+        
+            <h3>The Advice</h3>
+            <p>Keep at least one backup copy offline or immutable and logically separate from your production credentials, and schedule a real restore test on a calendar — a backup nobody has restored from is just an unverified hope.</p>
+
+        
+            <h3>Why It Matters</h3>
+            <p>A backup's entire job is to survive the day production doesn't. If every backup lives on the same network, behind the same domain admin credentials, as the systems it's protecting, it isn't a separate safety net — it's just another folder the attacker can reach. This is the exact failure mode behind modern ransomware: the intrusion isn't &quot;encrypt some files,&quot; it's &quot;get domain admin, find the backup server, and encrypt or delete the backups first,&quot; so the victim has no option but to pay. CISA's #StopRansomware Guide, built with the FBI and NSA, calls out maintaining offline, encrypted backups as a core prevention measure for exactly this reason. NIST SP 800-53's CP-9 control goes further than &quot;have a backup&quot; — it requires protecting the confidentiality and integrity of that backup data, and its CP-9(3) enhancement calls for storing critical backup copies in a separate facility from the operational system. None of that matters if nobody ever tries to restore from it; CP-10, System Recovery and Reconstitution, exists because a backup that silently stopped working six months ago is discovered at the worst possible time — mid-incident, under pressure, with no fallback left.</p>
+
+        
+            <h3>How to Implement It</h3>
+            <ol>
+<li>Map what's actually being backed up against what the business can't lose — user data, system state, configuration, and security-relevant documentation all count, not just the obvious file shares.</li>
+<li>Put at least one copy somewhere a compromised domain admin account can't touch: offline media, a separate cloud account with its own credentials, or an immutable/object-lock storage tier that can't be altered or deleted within its retention window.</li>
+<li>Protect the backups themselves — encrypt at rest, and limit who holds the credentials or keys that can delete or overwrite them. The backup's access list should be shorter than production's, not the same list.</li>
+<li>Schedule restore tests on a calendar, not &quot;whenever someone remembers&quot; — restore a real system or dataset to a clean environment and confirm the business can actually run on what came back.</li>
+<li>Verify the control, don't just trust the green checkmark: confirm the backup job is restoring the data it claims to, time how long a full restore actually takes against your recovery time objective, and check that the credentials protecting the backup are genuinely distinct from the ones an attacker would steal first.</li>
+</ol>
+
+        
+            <h3>The Pushback You&#39;ll Hear</h3>
+            <p>&quot;We already have nightly backups running, this is solved.&quot; Running jobs and recoverable data are not the same thing. A backup job can report success for months while quietly backing up corrupted files, or sit reachable by the same compromised admin account as production — and you won't find out until the moment you need it most. The fix isn't more backup jobs, it's proof: an isolated copy and a restore that was actually timed and verified.</p>
+
+        
+            <h3>Sources</h3>
+            <ul>
+<li><a href="https://www.cisa.gov/stopransomware/ransomware-guide" target="_blank" rel="noopener noreferrer">#StopRansomware Guide</a> - CISA, FBI, NSA, and MS-ISAC</li>
+<li><a href="https://csrc.nist.gov/pubs/sp/800/53/r5/upd1/final" target="_blank" rel="noopener noreferrer">NIST SP 800-53 Rev. 5, CP-9: System Backup</a></li>
+<li><a href="https://csrc.nist.gov/pubs/sp/800/53/r5/upd1/final" target="_blank" rel="noopener noreferrer">NIST SP 800-53 Rev. 5, CP-10: System Recovery and Reconstitution</a></li>
+</ul>
+
+        
+    </article>
+    
+    <article class="brief-section" id="tech-news">
+        <p class="brief-kicker">Tech News</p>
+        
+        
+            
+            <p>Citrix just patched a flaw that scores 9.5 out of 10 in its NetScaler boxes — the same product line that's had exploited zero-days twice already this year. If your organization runs NetScaler for remote access or single sign-on, tonight's lead story is yours. Two stories: that Citrix patch, and attackers already breaking into backup servers through a flaw the vendor hasn't actually fixed yet.</p>
+<p>Start with Citrix. According to Citrix's own security bulletin, CTX697191, published October 8th, the company disclosed CVE-2026-107406: a critical memory-overflow flaw in NetScaler ADC and NetScaler Gateway that can let an unauthenticated attacker run arbitrary code or crash the appliance outright. It hits any instance configured as a SAML service provider or identity provider — a common setup for single sign-on. Citrix says it has no evidence of exploitation yet. Here's why that's thin comfort: this is the third NetScaler flaw disclosed in roughly six weeks, after two other zero-days, tracked as CVE-2026-88771 and CVE-2026-88772, were already being exploited before patches even existed back in September. My read: when a vendor's authentication appliance has that kind of track record, you don't wait for &quot;actively exploited&quot; to show up in the next bulletin. You check today whether SAML is even enabled on boxes that don't need it, and you patch on the vendor's clock, not your change board's.</p>
+<p>Next up, backup servers. According to Huntress's own incident research, attackers started chaining two flaws in Ahsay's cloud backup software, AhsayCBS, on October 7th — an authentication bypass, CVE-2026-105133, paired with a command-injection bug in its replication component, CVE-2026-105134, which scores 9.3. Chain them together and an attacker walks in with no valid login and runs their own commands. Huntress had already confirmed five organizations hit within a day, with attackers dropping webshells and a cryptocurrency miner disguised as Microsoft Edge. Here's the part that should bother you most: Ahsay's own advisory says the issue is fixed in version 10.3.4. Huntress tested 10.3.4 and found it's still vulnerable. There is no real patch available right now — only Huntress's advice to lock down the management interface and go hunting for compromise. My take: backup infrastructure is the one system you're counting on to recover from everything else that goes wrong, which makes an unauthenticated path into it one of the worst possible places for an unpatched flaw to sit.</p>
+<p>Same thread both stories tonight: the system protecting your identity and the system protecting your data both deserve a second look at exactly who can reach them right now.</p>
+
+        
+            <h3>Sources</h3>
+            <ul>
+<li><a href="https://support.citrix.com/external/article/CTX697191/" target="_blank" rel="noopener noreferrer">Citrix NetScaler ADC and Citrix NetScaler Gateway Security Bulletin for CVE-2026-107406 — Citrix (official)</a></li>
+<li><a href="https://thehackernews.com/2026/10/new-netscaler-zero-day-exploited-in.html" target="_blank" rel="noopener noreferrer">New NetScaler Zero-Day Exploited in Targeted Attacks Can Knock SAML Deployments Offline — The Hacker News</a></li>
+<li><a href="https://www.bleepingcomputer.com/news/security/citrix-warns-admins-to-patch-new-netscaler-rce-flaw-immediately" target="_blank" rel="noopener noreferrer">Citrix warns admins to patch new NetScaler RCE flaw immediately — BleepingComputer</a></li>
+<li><a href="https://www.huntress.com/blog/ahsaycbs-flaws-exploit" target="_blank" rel="noopener noreferrer">Threat Actors Exploit Critical AhsayCBS Flaws to Drop Webshells and XMRig Cryptominer — Huntress</a></li>
+<li><a href="https://bleepingcomputer.com/news/security/unpatched-ahsaycbs-flaws-exploited-to-deploy-webshells-mine-crypto" target="_blank" rel="noopener noreferrer">Attackers exploit AhsayCBS flaws to deploy webshells, mine crypto — BleepingComputer</a></li>
+<li><a href="https://securityweek.com/unpatched-ahsaycbs-vulnerabilities-exploited-in-the-wild" target="_blank" rel="noopener noreferrer">Unpatched AhsayCBS vulnerabilities exploited in the wild — SecurityWeek</a></li>
+</ul>
+
+        
+    </article>
+    
+    <section class="brief-subscribe" id="subscribe">
+    <h2>Get The Daily Brief by email</h2>
+    <p>One short email each morning. Unsubscribe anytime.</p>
+    <form action="https://buttondown.com/api/emails/embed-subscribe/cybercider" method="post">
+        <label for="bd-email">Email address</label>
+        <input type="email" name="email" id="bd-email" required autocomplete="email" placeholder="you@example.com">
+        <button type="submit">Subscribe</button>
+    </form>
+</section>
+</main>
+
+    <footer><p class="copyright">The Daily Brief · Eddie Camacho</p></footer>
+<!-- cf-web-analytics (managed by tools/inject_analytics.py) -->
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "f728a20b49cc4a0fbe02cde72f03301c"}'></script>
+</body>
+</html>
