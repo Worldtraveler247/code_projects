@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'none';">
+  <title>How It's Built — Ansible Playbook Trainer | Eddie's App Hub</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Inter:wght@400;500;600&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../how-it-works.css">
+</head>
+<body>
+<a href="index.html" style="position:fixed;top:12px;left:12px;z-index:9999;background:rgba(10,10,20,0.85);backdrop-filter:blur(6px);color:#4af7ff;border:1px solid #4af7ff;border-radius:20px;padding:6px 14px;font-family:sans-serif;font-size:13px;text-decoration:none;font-weight:600;">← Back to the trainer</a>
+
+<div class="hiw-page">
+
+  <header class="hiw-header">
+    <div class="hiw-icon">📐</div>
+    <h1>Ansible Playbook Trainer — How It's Built</h1>
+    <p class="hiw-tagline">Write twenty playbooks from an empty file, with a reason for the indentation of every line.</p>
+  </header>
+
+  <section class="hiw-section">
+    <h2>Overview</h2>
+    <p>
+      Most playbook errors a beginner hits are not Ansible errors. They are placement errors: a key two
+      spaces too deep, a missing dash, a task keyword tucked under the module. This trainer drills
+      placement on its own. Each exercise is a plain-language work order; the learner types the playbook
+      in a Vim-style editor, and every finished line is marked correct or not, with the reason. Nothing
+      runs on a server, and no playbook is executed.
+    </p>
+  </section>
+
+  <section class="hiw-section">
+    <h2>Tech Stack</h2>
+    <div class="hiw-badges">
+      <span class="hiw-badge">HTML</span>
+      <span class="hiw-badge">CSS</span>
+      <span class="hiw-badge">JavaScript modules</span>
+      <span class="hiw-badge">js-yaml</span>
+      <span class="hiw-badge">Node test runner</span>
+    </div>
+    <ul class="hiw-caption-list">
+      <li><strong>HTML and CSS</strong> — one page: the layout guide, the work order, and the editor. The panes stack on a narrow screen.</li>
+      <li><strong>JavaScript modules</strong> — the editor and the checker have no screen access, so the same code runs in the browser and in the tests.</li>
+      <li><strong>js-yaml</strong> — a YAML parser, copied into the repository at a pinned version with its checksum recorded. Nothing loads from a content delivery network.</li>
+      <li><strong>Node test runner</strong> — Node's built-in <code>node --test</code>. No packages to install.</li>
+    </ul>
+  </section>
+
+  <section class="hiw-section">
+    <h2>How Each Part Works</h2>
+
+    <div class="hiw-file-block">
+      <h3><code>editor.js</code> — a small modal editor</h3>
+      <p>
+        The subset of Vim needed to write a playbook: normal, insert and command modes, the common
+        motions, <code>dd</code>, <code>yy</code>, <code>p</code>, undo, and <code>:w</code> to check.
+        It is a state object and one function that takes a key and changes the state. Tab inserts spaces
+        to the next 2-space step and Enter keeps the current indentation, which is how Vim is normally
+        set up for YAML. A real tab character can never reach the file.
+      </p>
+      <pre class="hiw-code">// One key in, one state change out. The page only draws the result.
+export function handleKey(state, key) {
+  state.message = '';
+  if (state.mode === 'insert') return insertKey(state, key);
+  if (state.mode === 'command') return commandKey(state, key);
+  return normalKey(state, key);
+}</pre>
+    </div>
+
+    <div class="hiw-file-block">
+      <h3><code>checker.js</code> — judging one line at a time</h3>
+      <p>
+        A YAML parser can only say whether a finished file is valid. A learner needs to know which
+        line is wrong while the file is still half written. So the checker reads the buffer top to
+        bottom and keeps a stack of the levels that are open: the playbook, a play, its
+        <code>vars</code>, a task list, a task, a module's arguments. Each line is matched to the level
+        its indentation selects, and that level decides what the line is allowed to be.
+      </p>
+      <p>
+        The same walk gives every line a path into the data, such as play 1, <code>tasks</code>, item 2,
+        <code>ansible.builtin.copy</code>, <code>mode</code>. Comparing the value at that path with the
+        exercise gives three verdicts: correct, wrong place, or right place with the wrong value.
+        Because the comparison is by path and not by line number, the keys of a play or a task may be
+        written in any order.
+      </p>
+      <pre class="hiw-code">// A dedent closes every level deeper than the line.
+while (parsed.indent &lt; top().indent) stack.pop();
+
+// Stepping in is only legal straight after a key with no value.
+if (parsed.indent &gt; top().indent) { /* red: nothing opened this level */ }
+
+// A task keyword under the module is valid YAML but wrong Ansible, so it is named.
+if (container.kind === 'args' &amp;&amp; TASK_ONLY.has(key)) { /* red: when belongs at 6 */ }</pre>
+    </div>
+
+    <div class="hiw-file-block">
+      <h3>Two checks must agree before an exercise passes</h3>
+      <p>
+        A hand-written line reader could disagree with real YAML. So passing needs two things: the
+        line checker reports nothing wrong and nothing missing, and <code>js-yaml</code> parses the
+        whole buffer to exactly the data the exercise expects. If the two ever disagree, the exercise
+        does not pass.
+      </p>
+      <pre class="hiw-code">const passed = bad === 0 &amp;&amp; warn === 0 &amp;&amp; missing.length === 0
+  &amp;&amp; docSeen &amp;&amp; deepEqual(load(text), expected);</pre>
+    </div>
+
+    <div class="hiw-file-block">
+      <h3><code>exercises.js</code> and <code>model.js</code> — one source for three outputs</h3>
+      <p>
+        An exercise is only data: the playbook to produce. The work order shown to the learner, the
+        model answer and the hints are all generated from it, so a work order can never ask for
+        something the checker does not accept. The work order is written in words, not YAML, so the
+        learner has to decide the columns and dashes.
+      </p>
+      <pre class="hiw-code">{
+  id: 'task-when',
+  level: 4,
+  title: 'A condition with when',
+  plays: [{
+    name: 'Install the web server', hosts: 'servera', become: true, gather_facts: true,
+    tasks: [{
+      name: 'Install httpd on Red Hat systems',
+      'ansible.builtin.dnf': { name: 'httpd', state: 'present' },
+      when: "ansible_facts['os_family'] == 'RedHat'",
+    }],
+  }],
+}</pre>
+    </div>
+
+    <div class="hiw-file-block">
+      <h3>Tests</h3>
+      <p>
+        Every exercise is tested four ways. The model answer must pass with every line marked correct.
+        The same answer with all keys in reverse order must also pass. Moving any single line in or out
+        by one level must fail. And typing the model one line at a time must never show an error, with
+        the hint always naming the next line. The editor has its own tests for each key.
+      </p>
+      <pre class="hiw-code">node --test 'ansible-playbook-trainer/tests/*.test.mjs'</pre>
+    </div>
+  </section>
+
+  <section class="hiw-section">
+    <h2>Security</h2>
+    <ul class="hiw-caption-list">
+      <li><strong>Content-Security-Policy</strong> — <code>script-src 'self'</code>: no inline script and nothing from another site.</li>
+      <li><strong>No <code>innerHTML</code></strong> — everything the learner types is put on the page as text, never as markup.</li>
+      <li><strong>No network calls</strong> — progress is kept in the browser's local storage and nowhere else.</li>
+      <li><strong>Pinned dependency</strong> — the one library is vendored with its checksum.</li>
+    </ul>
+  </section>
+
+  <section class="hiw-section">
+    <h2>Limits</h2>
+    <ul class="hiw-caption-list">
+      <li><strong>Structure only</strong> — it checks where lines go and what they hold. It does not run Ansible or check that a module accepts an argument.</li>
+      <li><strong>One layout</strong> — it enforces 2 spaces per level with list items indented under their key, the style of the Ansible documentation. YAML itself allows others.</li>
+      <li><strong>A subset of Vim</strong> — no visual mode, counts or search.</li>
+      <li><strong>Keyboard needed</strong> — the editor is built for a physical keyboard.</li>
+    </ul>
+  </section>
+
+</div>
+</body>
+</html>
