@@ -167,33 +167,33 @@
             <div class="guide-body">
                 <p>A playbook is a <strong>list of plays</strong>. Each play is a <strong>dictionary</strong> of keys such as <code>hosts</code> and <code>tasks</code>. Two marks carry all of the structure: a dash and a space (<code>- </code>) starts an item in a list, and <code>key:</code> starts an entry in a dictionary. Indentation says what belongs to what, and every level is exactly 2 spaces.</p>
 
-<pre id="example" tabindex="0" aria-label="Annotated example playbook">---  <span class="note"># column 1, line 1: a YAML document starts here</span>
-- name: Deploy a hardened web server  <span class="note"># dash at column 1 opens PLAY 1; name is its label in the output</span>
-  hosts: servera  <span class="note"># 2 spaces: belongs to the play. WHO to run on. The only required play key</span>
-  become: true  <span class="note"># 2 spaces: escalate to root with sudo, for every task in this play</span>
-  gather_facts: true  <span class="note"># 2 spaces: collect facts first so ansible_facts is populated</span>
-  vars:  <span class="note"># 2 spaces: opens a dictionary of variables for this play</span>
-    web_packages:  <span class="note"># 4 spaces: one variable; nothing after the colon means "value is below"</span>
-      - httpd  <span class="note"># 6 spaces + dash: first item in the list</span>
-      - mod_ssl  <span class="note"># same column as httpd, so it is a sibling item</span>
-    web_service: httpd  <span class="note"># 4 spaces: back out one level, so this is a second variable</span>
-  tasks:  <span class="note"># 2 spaces: opens the LIST of work. Order in here is execution order</span>
-    - name: Install web packages  <span class="note"># 4 spaces + dash: opens TASK 1</span>
-      ansible.builtin.dnf:  <span class="note"># 6 spaces: the module. Exactly one per task. WHAT to do</span>
-        name: "{{ web_packages }}"  <span class="note"># 8 spaces: argument to the module; quotes are required when a value starts with {{</span>
-        state: present  <span class="note"># 8 spaces: the desired state, not a command</span>
-      when: ansible_facts['os_family'] == 'RedHat'  <span class="note"># 6 spaces: belongs to the TASK, not the module. No {{ }} in when</span>
+<pre id="example" tabindex="0" aria-label="Annotated example playbook">---                                                     <span class="note"># ← column 1, line 1: a YAML document starts here</span>
+- name: Deploy a hardened web server                    <span class="note"># ← dash at column 1 opens PLAY 1; name is its label in the output</span>
+  hosts: servera                                        <span class="note"># ← 2 spaces: belongs to the play. WHO to run on. The only required play key</span>
+  become: true                                          <span class="note"># ← 2 spaces: escalate to root with sudo, for every task in this play</span>
+  gather_facts: true                                    <span class="note"># ← 2 spaces: collect facts first so ansible_facts is populated</span>
+  vars:                                                 <span class="note"># ← 2 spaces: opens a dictionary of variables for this play</span>
+    web_packages:                                       <span class="note"># ← 4 spaces: one variable; nothing after the colon means "value is below"</span>
+      - httpd                                           <span class="note"># ← 6 spaces + dash: first item in the list</span>
+      - mod_ssl                                         <span class="note"># ← same column as httpd, so it is a sibling item</span>
+    web_service: httpd                                  <span class="note"># ← 4 spaces: back out one level, so this is a second variable</span>
+  tasks:                                                <span class="note"># ← 2 spaces: opens the LIST of work. Order in here is execution order</span>
+    - name: Install web packages                        <span class="note"># ← 4 spaces + dash: opens TASK 1</span>
+      ansible.builtin.dnf:                              <span class="note"># ← 6 spaces: the module. Exactly one per task. WHAT to do</span>
+        name: "{{ web_packages }}"                      <span class="note"># ← 8 spaces: argument to the module; quotes are required when a value starts with {{</span>
+        state: present                                  <span class="note"># ← 8 spaces: the desired state, not a command</span>
+      when: ansible_facts['os_family'] == 'RedHat'      <span class="note"># ← 6 spaces: belongs to the TASK, not the module. No {{ }} in when</span>
 
-    - name: Hide the Apache version banner  <span class="note"># dash at 4 spaces again: TASK 1 is closed, TASK 2 opens</span>
+    - name: Hide the Apache version banner              <span class="note"># ← dash at 4 spaces again: TASK 1 is closed, TASK 2 opens</span>
       ansible.builtin.copy:
         dest: /etc/httpd/conf.d/security.conf
-        content: |  <span class="note"># pipe: keep the following lines exactly, line breaks included</span>
+        content: |                                      <span class="note"># ← pipe: keep the following lines exactly, line breaks included</span>
           ServerTokens Prod
           ServerSignature Off
         owner: root
         group: root
-        mode: '0644'  <span class="note"># quoted so YAML keeps it as text and the leading zero survives</span>
-      notify: Restart web service  <span class="note"># 6 spaces: task level. Runs the handler ONLY if this task reports a change</span>
+        mode: '0644'                                    <span class="note"># ← quoted so YAML keeps it as text and the leading zero survives</span>
+      notify: Restart web service                       <span class="note"># ← 6 spaces: task level. Runs the handler ONLY if this task reports a change</span>
 
     - name: Start and enable the web service
       ansible.builtin.service:
@@ -201,8 +201,8 @@
         state: started
         enabled: true
 
-  handlers:  <span class="note"># 2 spaces: sibling of tasks, so it belongs to the play</span>
-    - name: Restart web service  <span class="note"># must match the notify text character for character</span>
+  handlers:                                             <span class="note"># ← 2 spaces: sibling of tasks, so it belongs to the play</span>
+    - name: Restart web service                         <span class="note"># ← must match the notify text character for character</span>
       ansible.builtin.service:
         name: "{{ web_service }}"
         state: restarted</pre>
