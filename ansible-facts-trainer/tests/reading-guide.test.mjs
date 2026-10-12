@@ -53,3 +53,14 @@ test('the transcription example on the page resolves to the value it claims', ()
   assert.ok(PAGE.includes(EXPRESSION), 'the page shows the expression');
   assert.ok(PAGE.includes('dm-name-cs-root'), 'the page shows the value');
 });
+
+test('the annotated block shows the whole fact, line for line as the capture prints it', () => {
+  const block = PAGE.match(/<pre[^>]*aria-label="Annotated ansible_device_links, every line">([\s\S]*?)<\/pre>/);
+  assert.ok(block, 'the page has the annotated block');
+  const shown = block[1].split('\n').map((line) => line.replace(/<span class="note">.*<\/span>/, '').trimEnd());
+  const open = LINES.indexOf(OPENER);
+  const close = LINES.findIndex((line, index) => index > open && /^ {8}\}/.test(line));
+  // The page drops the capture's 8 leading spaces and adds the next fact's opener as the last line.
+  const captured = LINES.slice(open, close + 2).map((line) => line.slice(8));
+  assert.deepEqual(shown, captured);
+});

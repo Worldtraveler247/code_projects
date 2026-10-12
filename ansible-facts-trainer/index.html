@@ -153,18 +153,44 @@
             <summary>How to read the setup output</summary>
             <div class="guide-body">
                 <p>A dictionary starts at the <code>{</code> that follows its key and ends at the matching <code>}</code> that sits at the same indentation as that key. In <code>servera</code>'s output, <code>ansible_device_links</code> opens on one line and closes at the <code>},</code> directly above <code>"ansible_devices"</code>.</p>
-                <p>That fact, collapsed to its skeleton:</p>
-<pre tabindex="0" aria-label="Annotated skeleton of ansible_device_links">"ansible_device_links": {        <span class="note">← opens (8 spaces in the real output)</span>
-    "ids": {                     <span class="note">← child dictionary opens</span>
-        "dm-0": [ ... ],         <span class="note">← list</span>
-        "dm-1": [ ... ],
-        "sda3": [ ... ]          <span class="note">← no comma: last item in "ids"</span>
-    },                           <span class="note">← "ids" closes; comma means a sibling follows</span>
-    "labels": {},                <span class="note">← empty dictionary, opens and closes on one line</span>
-    "masters": { ... },
-    "uuids": { ... }             <span class="note">← no comma: last item in ansible_device_links</span>
-},                               <span class="note">← ansible_device_links closes; comma means a sibling follows</span>
-"ansible_devices": {             <span class="note">← next fact, same indentation, so it is a sibling</span></pre>
+                <p>That fact, every line of it, with notes:</p>
+<pre tabindex="0" aria-label="Annotated ansible_device_links, every line">"ansible_device_links": {                 <span class="note">← opens (8 spaces in the real output)</span>
+    "ids": {                              <span class="note">← child dictionary opens</span>
+        "dm-0": [                         <span class="note">← list opens</span>
+            "dm-name-cs-root",            <span class="note">← item [0]: the value the playbook example below reaches</span>
+            "dm-uuid-LVM-PLACEHOLDER01"   <span class="note">← item [1]; no comma: last item in the list</span>
+        ],                                <span class="note">← "dm-0" closes; comma means a sibling follows</span>
+        "dm-1": [
+            "dm-name-cs-swap",
+            "dm-uuid-LVM-PLACEHOLDER02"
+        ],
+        "sda3": [
+            "lvm-pv-uuid-PLACEHOLDER01"   <span class="note">← a list with one item is still a list</span>
+        ]                                 <span class="note">← no comma: last item in "ids"</span>
+    },                                    <span class="note">← "ids" closes; comma means a sibling follows</span>
+    "labels": {},                         <span class="note">← empty dictionary, opens and closes on one line</span>
+    "masters": {
+        "sda3": [
+            "dm-0",                       <span class="note">← a value here, not a key: plain text inside a list</span>
+            "dm-1"
+        ]
+    },
+    "uuids": {
+        "dm-0": [
+            "00000000-0000-4000-8000-000000000002"
+        ],
+        "dm-1": [
+            "00000000-0000-4000-8000-000000000003"
+        ],
+        "sda1": [
+            "0000-0001"
+        ],
+        "sda2": [
+            "00000000-0000-4000-8000-000000000004"
+        ]
+    }                                     <span class="note">← no comma: last item in ansible_device_links</span>
+},                                        <span class="note">← ansible_device_links closes; comma means a sibling follows</span>
+"ansible_devices": {                      <span class="note">← next fact, same indentation, so it is a sibling</span></pre>
 
                 <h3>Four rules that cover nearly all of it</h3>
                 <ul>
