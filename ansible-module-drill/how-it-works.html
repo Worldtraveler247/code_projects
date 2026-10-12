@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'none';">
+  <title>How It's Built — Ansible Module Drill | Eddie's App Hub</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Inter:wght@400;500;600&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../how-it-works.css">
+</head>
+<body>
+<a href="index.html" style="position:fixed;top:12px;left:12px;z-index:9999;background:rgba(10,10,20,0.85);backdrop-filter:blur(6px);color:#4af7ff;border:1px solid #4af7ff;border-radius:20px;padding:6px 14px;font-family:sans-serif;font-size:13px;text-decoration:none;font-weight:600;">← Back to the drill</a>
+
+<div class="hiw-page">
+
+  <header class="hiw-header">
+    <div class="hiw-icon">🎯</div>
+    <h1>Ansible Module Drill — How It's Built</h1>
+    <p class="hiw-tagline">Thirty-one modules, five rounds each, against a ten-minute clock.</p>
+  </header>
+
+  <section class="hiw-section">
+    <h2>Overview</h2>
+    <p>
+      Reading a module's documentation is not the same as being able to use it under time pressure.
+      This game turns one study routine into five scored rounds: look the module up, write the task,
+      predict what Ansible will report, reverse the task, and read the error from a broken version.
+      A browser cannot run Ansible, so every result is scripted. The design question was therefore how
+      to keep scripted answers honest, and the answer is that as much as possible is taken from
+      Ansible itself and checked by tests.
+    </p>
+  </section>
+
+  <section class="hiw-section">
+    <h2>Tech Stack</h2>
+    <div class="hiw-badges">
+      <span class="hiw-badge">HTML</span>
+      <span class="hiw-badge">CSS</span>
+      <span class="hiw-badge">JavaScript modules</span>
+      <span class="hiw-badge">ansible-doc</span>
+      <span class="hiw-badge">Node test runner</span>
+    </div>
+    <ul class="hiw-caption-list">
+      <li><strong>HTML and CSS</strong> — one page with two views: the board of modules and the drill.</li>
+      <li><strong>JavaScript modules</strong> — the rules live in <code>game.js</code>, which has no screen access, so the same code runs in the browser and in the tests.</li>
+      <li><strong>ansible-doc</strong> — the source of every option name, required flag and list of choices.</li>
+      <li><strong>Node test runner</strong> — Node's built-in <code>node --test</code>. No packages to install.</li>
+    </ul>
+  </section>
+
+  <section class="hiw-section">
+    <h2>How Each Part Works</h2>
+
+    <div class="hiw-file-block">
+      <h3><code>specs.js</code> — facts taken from Ansible, not typed by hand</h3>
+      <p>
+        A small tool runs <code>ansible-doc -j</code> for each module and keeps only facts: the option
+        names, their types, choices, defaults, aliases, and which are required. No documentation text
+        is copied. The "tick the required options" question and the documentation panel are both
+        drawn from this file, so they cannot disagree with the installed Ansible.
+      </p>
+      <pre class="hiw-code">node ansible-module-drill/tools/build-specs.mjs</pre>
+    </div>
+
+    <div class="hiw-file-block">
+      <h3><code>messages.js</code> — error messages recorded from a real run</h3>
+      <p>
+        The last round shows an error and asks which line caused it. Those messages were not written
+        by hand. A second tool builds each broken task, runs it with Ansible against the local machine
+        in check mode, and records what Ansible printed. A bad argument fails during argument
+        validation, before the module does any work, so the run changes nothing.
+      </p>
+      <p>
+        Recording them exposed three things a hand-written version would have got wrong. The order of
+        the valid choices in a message is the module's order, not the documentation's. A misspelt
+        option that replaces a required one is reported as a missing argument, not an unsupported one.
+        And <code>copy</code>, <code>template</code> and <code>unarchive</code> check their main
+        arguments themselves, with their own wording.
+      </p>
+      <pre class="hiw-code">node ansible-module-drill/tools/capture-faults.mjs</pre>
+    </div>
+
+    <div class="hiw-file-block">
+      <h3><code>modules.js</code> — one entry per module</h3>
+      <p>
+        Each drill is plain data: the starting state, the task to write, the three predicted results
+        with a reason for each, the task that reverses it, and the faults. Adding a module means
+        adding an entry, not code.
+      </p>
+      <pre class="hiw-code">{
+  id: 'user', area: 'users', fqcn: 'ansible.builtin.user',
+  given: 'No account named drilluser exists on servera.',
+  args: { name: 'drilluser', comment: 'Module drill account', shell: '/bin/bash', state: 'present' },
+  predict: STANDARD,   // changed under --check, changed on run 1, ok on run 2
+  reverse: { goal: 'Remove the account and its home directory.',
+             args: { name: 'drilluser', state: 'absent', remove: true } },
+  faults: [{ kind: 'choice', option: 'state', value: 'gone' },
+           { kind: 'unsupported', option: 'shell', typo: 'shel' }],
+}</pre>
+    </div>
+
+    <div class="hiw-file-block">
+      <h3>The predictions</h3>
+      <p>
+        Most modules follow one pattern: changed under <code>--check</code>, changed on the first
+        run, ok on the second. The drill is most useful where a module breaks it. <code>at</code> does
+        not support check mode, so the task is skipped. <code>unarchive</code> skips a tar archive in
+        check mode. <code>state: restarted</code> reports changed on every run. <code>command</code>
+        is idempotent only with <code>creates</code> or <code>removes</code>. Each of these was read
+        from the module's source, and ten of the file-based drills were also run locally to confirm
+        the three results.
+      </p>
+    </div>
+
+    <div class="hiw-file-block">
+      <h3>The editor and the checker are shared</h3>
+      <p>
+        The two typing rounds import the Vim-style editor and the line-by-line checker from the
+        Ansible Playbook Trainer unchanged. The play header is already in the file, so the time goes
+        on the module and not on the frame around it. In the reverse round the editor opens with the
+        task you just wrote, and you edit it into its opposite.
+      </p>
+      <pre class="hiw-code">import { createEditor, handleKey } from '../ansible-playbook-trainer/editor.js';
+import { check } from '../ansible-playbook-trainer/checker.js';</pre>
+    </div>
+
+    <div class="hiw-file-block">
+      <h3>Scoring</h3>
+      <p>
+        Accuracy comes before pace. A wrong answer, a failed check or a hint is one miss; showing the
+        answer is three. Three stars need no misses inside ten minutes, two stars allow two misses,
+        and finishing earns one. Opening the documentation panel costs nothing, because looking a
+        module up is the habit the drill is meant to build.
+      </p>
+      <pre class="hiw-code">export function stars(misses, seconds) {
+  if (misses === 0 &amp;&amp; seconds &lt;= PAR_SECONDS) return 3;
+  return misses &lt;= 2 ? 2 : 1;
+}</pre>
+    </div>
+
+    <div class="hiw-file-block">
+      <h3>Tests</h3>
+      <p>
+        Every module is tested four ways. Its two tasks must use only real options, valid choices and
+        every required option. Both model answers must pass the checker. Each fault must be a real
+        fault: a value that is not a valid choice, a key the module does not accept under any alias, or
+        an option that is truly required. And the recorded message must be the one Ansible prints for
+        that kind of fault. A typo in the data fails the tests instead of reaching the page.
+      </p>
+      <pre class="hiw-code">node --test 'ansible-module-drill/tests/*.test.mjs'</pre>
+    </div>
+  </section>
+
+  <section class="hiw-section">
+    <h2>Security</h2>
+    <ul class="hiw-caption-list">
+      <li><strong>Content-Security-Policy</strong> — <code>script-src 'self'</code>: no inline script and nothing from another site.</li>
+      <li><strong>No <code>innerHTML</code></strong> — everything the player types is put on the page as text, never as markup, and nothing typed is ever executed.</li>
+      <li><strong>No network calls</strong> — best scores are kept in the browser's local storage and nowhere else. Stored values are validated when they are read back.</li>
+      <li><strong>No secrets in the practice data</strong> — no drill sets a password; the user drill explains that a password belongs in a vault as a hash. URLs use HTTPS on a reserved example domain, and a test enforces both.</li>
+      <li><strong>Safe defaults are the model answers</strong> — signature checks stay on, file modes are quoted, and destructive options such as <code>state: absent</code> on a disk carry a warning.</li>
+    </ul>
+  </section>
+
+  <section class="hiw-section">
+    <h2>Limits</h2>
+    <ul class="hiw-caption-list">
+      <li><strong>Nothing is executed</strong> — the results are scripted. The finish screen lists the commands for repeating each drill on a real lab, and that step is the one that counts.</li>
+      <li><strong>One version</strong> — the facts and messages come from ansible-core 2.20, ansible.posix 2.1 and community.general 12.5. An older release may word a message differently or lack a newer option.</li>
+      <li><strong>Two messages are derived</strong> — on a systemd host the <code>service</code> module hands its task to <code>systemd</code>, which cannot be reproduced on a Mac, so those two messages are composed from systemd's recorded ones. The <code>debug</code> message is worded as ansible-core 2.14 prints it.</li>
+      <li><strong>One model answer</strong> — the checker accepts the keys in any order, but the values must match the work order.</li>
+      <li><strong>Keyboard needed</strong> — the two typing rounds are built for a physical keyboard.</li>
+    </ul>
+  </section>
+
+</div>
+</body>
+</html>
