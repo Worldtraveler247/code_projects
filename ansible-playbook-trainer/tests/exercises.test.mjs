@@ -98,4 +98,16 @@ for (const exercise of EXERCISES) {
     };
     visit(exercise.plays);
   });
+
+  test(`${exercise.id}: each brief row sits at its line's column in the model answer`, () => {
+    const lines = renderModel(exercise.plays).map((line) => line.text);
+    const keyLines = lines.map((text) => text.replace(/^( *)- /, '$1  '));
+    for (const row of describe(exercise.plays)) {
+      const lead = ' '.repeat(row.indent);
+      if (row.dash) assert.ok(lines.some((text) => text.startsWith(`${lead}- `)), `no dash at column ${row.indent} for ${row.label}`);
+      if (!row.key && !row.module) continue;
+      const key = row.module ? row.value.split(',')[0] : row.label;
+      assert.ok(keyLines.some((text) => text.startsWith(`${lead}${key}:`)), `${key} is not at column ${row.indent}`);
+    }
+  });
 }

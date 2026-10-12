@@ -68,11 +68,16 @@
         #focus { font-size:0.88rem; line-height:1.55; padding:10px 14px; border-left:3px solid var(--purple); background:rgba(123,47,255,0.08); border-radius:0 8px 8px 0; margin-bottom:14px; }
         .brief-title { font-size:0.78rem; color:var(--muted); margin-bottom:6px; }
         #brief { list-style:none; font-size:0.86rem; line-height:1.5; margin-bottom:14px; }
-        #brief li { padding-top:3px; padding-bottom:3px; overflow-wrap:anywhere; }
-        #brief li.brief-head { color:#fff; font-weight:600; margin-top:6px; }
-        #brief code { color:var(--cyan); font-size:0.92em; }
-        #brief pre { margin-top:4px; padding:8px 10px; border:1px dashed var(--border); border-radius:8px; font-size:0.8rem; color:var(--cyan); overflow-x:auto; }
+        /* Each row carries the guide's indentation bands, so the bands run unbroken down the list. */
+        #brief li { display:flex; overflow-wrap:anywhere; }
+        #brief li.brief-head { color:#fff; font-weight:600; }
+        #brief .band { flex:0 0 14px; height:auto; }
+        .brief-text { flex:1; min-width:0; padding:3px 0 3px 8px; }
+        .brief-head .brief-text { padding-top:9px; }
+        #brief code { font-size:0.92em; }
+        #brief pre { margin-top:4px; padding:8px 10px; border:1px dashed var(--border); border-radius:8px; font-size:0.8rem; color:#f0b88a; overflow-x:auto; }
         .brief-label { color:var(--text); }
+        .brief-head .brief-label { color:#fff; }
 
         .buttons { display:flex; flex-wrap:wrap; gap:10px; }
         .buttons.end { margin-top:18px; padding-top:14px; border-top:1px solid var(--border); }
@@ -274,7 +279,7 @@
                 <select id="exercise-select" aria-label="Choose an exercise"></select>
                 <h3 id="title"></h3>
                 <p id="focus"></p>
-                <p class="brief-title">Write a playbook that contains exactly this. Start from line 1 with the document marker.</p>
+                <p class="brief-title">Write a playbook that contains exactly this. Start from line 1 with the document marker. Each colored bar is two spaces of indentation, as in the example above.</p>
                 <ul id="brief"></ul>
                 <div class="buttons">
                     <button id="check-btn" class="primary" type="button">Check (:w)</button>

@@ -90,60 +90,62 @@ function safeLoad(text) {
   }
 }
 
-// The work order: [{ depth, label, value?, lines? }], written in plain words, not YAML.
+// The work order: [{ indent, label, value?, lines?, heading?, dash?, key?, module? }], written
+// in plain words, not YAML. indent is the column the line takes in the model answer, so the
+// page can draw the same indentation bands as the guide's example.
 export function describe(plays) {
   const out = [];
 
-  function field(depth, key, value) {
+  function field(indent, key, value) {
     if (Array.isArray(value)) {
       if (value.every((item) => !isObject(item))) {
-        out.push({ depth, label: `${key} is a list, in this order`, value: value.map(valueText).join(', ') });
+        out.push({ indent, label: `${key} is a list, in this order`, value: value.map(valueText).join(', ') });
       } else {
-        out.push({ depth, label: `${key} is a list of items` });
+        out.push({ indent, label: `${key} is a list of items` });
         value.forEach((item, i) => {
-          out.push({ depth: depth + 1, label: `item ${i + 1}` });
-          Object.keys(item).forEach((inner) => field(depth + 2, inner, item[inner]));
+          out.push({ indent: indent + 2, label: `item ${i + 1}`, dash: true });
+          Object.keys(item).forEach((inner) => field(indent + 4, inner, item[inner]));
         });
       }
     } else if (isObject(value)) {
-      out.push({ depth, label: `${key} holds these keys` });
-      Object.keys(value).forEach((inner) => field(depth + 1, inner, value[inner]));
+      out.push({ indent, label: `${key} holds these keys` });
+      Object.keys(value).forEach((inner) => field(indent + 2, inner, value[inner]));
     } else if (typeof value === 'string' && value.includes('\n')) {
-      out.push({ depth, label: `${key} is these exact lines of text`, lines: value.replace(/\n$/, '').split('\n') });
+      out.push({ indent, label: `${key} is these exact lines of text`, lines: value.replace(/\n$/, '').split('\n') });
     } else {
-      out.push({ depth, label: key, value: valueText(value) });
+      out.push({ indent, label: key, value: valueText(value), key: true });
     }
   }
 
-  function taskList(depth, word, tasks) {
+  function taskList(indent, word, tasks) {
     tasks.forEach((task, i) => {
-      out.push({ depth, label: `${word} ${i + 1}`, heading: true });
+      out.push({ indent, label: `${word} ${i + 1}`, heading: true, dash: true });
       Object.keys(task).forEach((key) => {
         if (TASK_KEYS.has(key)) {
-          field(depth + 1, key, task[key]);
+          field(indent + 2, key, task[key]);
         } else if (isObject(task[key])) {
-          out.push({ depth: depth + 1, label: 'module', value: key });
-          out.push({ depth: depth + 1, label: 'module arguments' });
-          Object.keys(task[key]).forEach((arg) => field(depth + 2, arg, task[key][arg]));
+          out.push({ indent: indent + 2, label: 'module', value: key, module: true });
+          out.push({ indent: indent + 2, label: 'module arguments' });
+          Object.keys(task[key]).forEach((arg) => field(indent + 4, arg, task[key][arg]));
         } else {
-          out.push({ depth: depth + 1, label: 'module', value: `${key}, with the value ${valueText(task[key])}` });
+          out.push({ indent: indent + 2, label: 'module', value: `${key}, with the value ${valueText(task[key])}`, module: true });
         }
       });
     });
   }
 
   plays.forEach((play, i) => {
-    out.push({ depth: 0, label: plays.length > 1 ? `Play ${i + 1}` : 'The play', heading: true });
+    out.push({ indent: 0, label: plays.length > 1 ? `Play ${i + 1}` : 'The play', heading: true, dash: true });
     Object.keys(play).forEach((key) => {
       if (key === 'vars') {
-        out.push({ depth: 1, label: 'variables (vars)' });
-        Object.keys(play.vars).forEach((name) => field(2, name, play.vars[name]));
+        out.push({ indent: 2, label: 'variables (vars)' });
+        Object.keys(play.vars).forEach((name) => field(4, name, play.vars[name]));
       } else if (key === 'tasks') {
-        taskList(1, 'Task', play.tasks);
+        taskList(4, 'Task', play.tasks);
       } else if (key === 'handlers') {
-        taskList(1, 'Handler', play.handlers);
+        taskList(4, 'Handler', play.handlers);
       } else {
-        field(1, key, play[key]);
+        field(2, key, play[key]);
       }
     });
   });

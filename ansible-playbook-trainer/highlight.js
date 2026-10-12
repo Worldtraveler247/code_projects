@@ -19,7 +19,7 @@ function commentStart(text, from) {
   return text.length;
 }
 
-function valueClass(value) {
+export function valueClass(value) {
   if (value === '') return '';
   if (/^[|>][+-]?$/.test(value)) return 'tok-pipe';
   if (/^["']/.test(value)) return 'tok-str';

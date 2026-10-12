@@ -4,7 +4,7 @@ import { createEditor, getText, handleKey, insertText } from './editor.js';
 import { check } from './checker.js';
 import { describe, nextHint } from './model.js';
 import { EXERCISES, LEVELS } from './exercises.js';
-import { charClasses, segments } from './highlight.js';
+import { charClasses, segments, valueClass } from './highlight.js';
 
 const PROGRESS_KEY = 'ansible-playbook-trainer:progress:v1';
 const GUIDE_KEY = 'ansible-playbook-trainer:guide:v1';
@@ -77,10 +77,19 @@ function renderBrief() {
   el.brief.replaceChildren();
   describe(exercise.plays).forEach((row) => {
     const item = node('li', row.heading ? 'brief-head' : '');
-    item.style.paddingLeft = `${row.depth * 18}px`;
-    item.append(node('span', 'brief-label', row.value === undefined && !row.lines ? row.label : `${row.label}: `));
-    if (row.value !== undefined) item.append(node('code', '', row.value));
-    if (row.lines) item.append(node('pre', '', row.lines.join('\n')));
+    // One band per two spaces of the line's place in the answer, as in the guide's example.
+    for (let level = 0; level < row.indent / 2; level += 1) item.append(node('span', `band band-${level % 4}`));
+    const text = node('span', 'brief-text');
+    if (row.dash) text.append(node('span', 'tok-dash', '- '));
+    const label = row.value === undefined && !row.lines ? row.label : `${row.label}: `;
+    text.append(node('span', row.key ? 'tok-key' : 'brief-label', label));
+    if (row.value !== undefined) {
+      // A Jinja2 value is typed in quotes, so it takes the colour of a string.
+      const cls = row.module ? 'tok-key' : valueClass(row.value.includes('{{') ? `"${row.value}"` : row.value);
+      text.append(node('code', cls, row.value));
+    }
+    if (row.lines) text.append(node('pre', '', row.lines.join('\n')));
+    item.append(text);
     el.brief.append(item);
   });
 }
