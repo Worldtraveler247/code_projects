@@ -285,7 +285,9 @@ export function check(text, exercise) {
         container.module = key;
       }
     }
-    if (container.kind === 'args' && (TASK_ONLY.has(key) || PLAY_ONLY.has(key))) {
+    // gather_subset is a play keyword and also a real argument of the setup module.
+    const misplaced = (TASK_ONLY.has(key) || PLAY_ONLY.has(key)) && !(key === 'gather_subset' && container.label.endsWith('setup'));
+    if (container.kind === 'args' && misplaced) {
       const home = TASK_ONLY.has(key) ? 'It modifies the whole task, so it sits at 6 spaces, level with the module' : 'It is a play key, so it sits at 2 spaces';
       set(index, 'bad', `At 8 spaces \`${key}\` becomes an argument to \`${container.label}\`, which does not accept it. ${home}.`);
       return;

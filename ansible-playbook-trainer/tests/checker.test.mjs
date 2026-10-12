@@ -206,3 +206,12 @@ test('a comment after a value or after a pipe is ignored', () => {
   ].join('\n');
   assert.equal(check(text, block).passed, true);
 });
+
+test('gather_subset is accepted as an argument of the setup module, and still refused under others', () => {
+  const play = (module) => ({
+    plays: [{ name: 'Gather facts', hosts: 'servera', tasks: [{ name: 'Gather', [module]: { gather_subset: 'network' } }] }],
+  });
+  const text = (module) => `---\n- name: Gather facts\n  hosts: servera\n  tasks:\n    - name: Gather\n      ${module}:\n        gather_subset: network`;
+  assert.equal(check(text('ansible.builtin.setup'), play('ansible.builtin.setup')).passed, true);
+  assert.equal(check(text('ansible.builtin.dnf'), play('ansible.builtin.dnf')).bad, 1);
+});
