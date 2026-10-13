@@ -208,6 +208,20 @@ pattern = new RegExp(args[0] === 'match' ? `^(?:${args[1]})` : args[1]);</pre>
     </div>
 
     <div class="hiw-file-block">
+      <h3><code>cursor.js</code> — Vim's cursorline and cursorcolumn</h3>
+      <p>
+        A thin caret is easy to lose in a transparent textarea. The editor lights the caret's row
+        and column and draws a block cursor where they cross, as Vim does with
+        <code>set cursorline cursorcolumn</code>. Follow the lit column up the file to see which
+        lines yours lines up with. One function turns the caret offset into a line and a screen
+        column; the stylesheet does the rest with <code>ch</code> units, which are exact in a
+        monospace font.
+      </p>
+      <pre class="hiw-code">locateCaret('---\n  hosts: all', 6);
+// { line: 2, column: 3, cell: 2 }</pre>
+    </div>
+
+    <div class="hiw-file-block">
       <h3><code>tools/sanitize_facts.py</code> and the leak gate</h3>
       <p>
         The capture came from a real machine, so it held real identifiers. The sanitizer replaces MAC
@@ -242,6 +256,7 @@ $('terminal').textContent = terminal;</pre>
 ├── index.html            ← markup, styles, Content-Security-Policy
 ├── app.js                ← screen logic: terminal, editor, buttons, progress
 ├── shell.js              ← parses commands: ansible, grep, head, less
+├── cursor.js             ← finds the caret's line and screen column
 ├── pager.js              ← a small model of less
 ├── runner.js             ← checks the play, writes the simulated run, grades scenarios
 ├── difficulty.js         ← removes one more starter row per unaided pass

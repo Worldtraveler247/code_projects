@@ -3,6 +3,7 @@ import { SETUP_OUTPUT } from './setup-output.js';
 import { CHALLENGES } from './challenges.js';
 import { PLAYBOOK_FILE, runPlaybook } from './runner.js';
 import { tokenizeYaml } from './highlight.js';
+import { locateCaret } from './cursor.js';
 import { execute, PROMPT } from './shell.js';
 import { createPager, pagerKey, pagerSearch, pagerView } from './pager.js';
 import { colorize } from './terminal-color.js';
@@ -66,17 +67,32 @@ function el(tag, className, text) {
 
 const editor = $('editor');
 
+// The lit row, the lit column and the block cursor live in a layer that does not scroll,
+// so their offsets subtract the editor's scroll position.
+function placeMarks() {
+  const marks = $('cursor-marks').style;
+  marks.setProperty('--sx', `${editor.scrollLeft}px`);
+  marks.setProperty('--sy', `${editor.scrollTop}px`);
+}
+
 function updateCursor() {
-  const before = editor.value.slice(0, editor.selectionStart);
-  const line = before.split('\n').length;
-  const column = before.length - before.lastIndexOf('\n');
+  // With text selected, the caret is at the end the selection is growing from.
+  const offset = editor.selectionDirection === 'backward' ? editor.selectionStart : editor.selectionEnd;
+  const { line, column, cell } = locateCaret(editor.value, offset);
   $('cursor').textContent = `Ln ${line}, Col ${column}`;
+  const marks = $('cursor-marks').style;
+  marks.setProperty('--line', String(line - 1));
+  marks.setProperty('--cell', String(cell));
+  placeMarks();
+  const numbers = $('gutter').children;
+  for (let i = 0; i < numbers.length; i += 1) numbers[i].classList.toggle('current', i === line - 1);
 }
 
 function syncScroll() {
   $('highlight').scrollTop = editor.scrollTop;
   $('highlight').scrollLeft = editor.scrollLeft;
   $('gutter').scrollTop = editor.scrollTop;
+  placeMarks();
 }
 
 function paintEditor() {
@@ -85,7 +101,7 @@ function paintEditor() {
   // A trailing newline has no height in a <pre>; the extra space keeps the last line.
   $('highlight').replaceChildren(...spans, document.createTextNode(' '));
   const lineCount = text.split('\n').length;
-  $('gutter').textContent = Array.from({ length: lineCount }, (_, i) => i + 1).join('\n');
+  $('gutter').replaceChildren(...Array.from({ length: lineCount }, (_, i) => el('span', '', String(i + 1))));
   syncScroll();
   updateCursor();
 }
@@ -370,6 +386,10 @@ $('reset').addEventListener('click', () => {
 editor.addEventListener('input', paintEditor);
 editor.addEventListener('scroll', syncScroll);
 for (const type of ['keyup', 'click', 'select', 'focus']) editor.addEventListener(type, updateCursor);
+// keyup fires once when a held arrow key is released; this follows the caret while it moves.
+document.addEventListener('selectionchange', () => {
+  if (document.activeElement === editor) updateCursor();
+});
 editor.addEventListener('keydown', (event) => {
   const plain = !event.shiftKey && !event.ctrlKey && !event.metaKey && !event.altKey;
   if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
