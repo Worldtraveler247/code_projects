@@ -219,6 +219,18 @@
                 <p>Counting braces by eye fails on long output. Ask for only the one fact. The reply is that fact alone inside the <code>ansible_facts</code> wrapper, followed by <code>discovered_interpreter_python</code>, which Ansible always reports.</p>
                 <button type="button" data-command="ansible servera -m ansible.builtin.setup -a 'filter=ansible_device_links'">ansible servera -m ansible.builtin.setup -a 'filter=ansible_device_links'</button>
 
+                <h3>Use the same filter to find what you are looking for</h3>
+                <p>The filter takes any fact name. To see only the date and time on <code>servera</code>:</p>
+                <button type="button" data-command="ansible servera -m ansible.builtin.setup -a 'filter=ansible_date_time'">ansible servera -m ansible.builtin.setup -a 'filter=ansible_date_time'</button>
+                <ul>
+                    <li><strong>Less to read.</strong> The full output is close to 800 lines. This reply is under 30, so the whole fact fits on one screen with no paging.</li>
+                    <li><strong>It shows the exact key names.</strong> You do not have to remember whether the key is <code>weekday</code> or <code>day_of_week</code>. Read it off the reply, then write <code>ansible_facts['date_time']['weekday']</code>.</li>
+                    <li><strong>It shows the type of each value.</strong> Every value in this fact is in quotes, so <code>"day": "09"</code> is text, not a number. Add <code>| int</code> before you compare it with a number.</li>
+                    <li><strong>A wrong name gives an empty reply, not an error.</strong> If only <code>discovered_interpreter_python</code> comes back, the name matched nothing. Check the spelling.</li>
+                </ul>
+                <p>If you know only part of the name, use <code>*</code> as a wildcard and let Ansible list every fact that matches:</p>
+                <button type="button" data-command="ansible servera -m ansible.builtin.setup -a 'filter=ansible_date*'">ansible servera -m ansible.builtin.setup -a 'filter=ansible_date*'</button>
+
                 <h3>From the output to a playbook</h3>
                 <p>Each level you step down in the output becomes one pair of square brackets in the expression. To reach the first id of <code>dm-0</code>:</p>
                 <div class="table-scroll">

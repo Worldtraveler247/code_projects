@@ -64,3 +64,19 @@ test('the annotated block shows the whole fact, line for line as the capture pri
   const captured = LINES.slice(open, close + 2).map((line) => line.slice(8));
   assert.deepEqual(shown, captured);
 });
+
+test('the date_time filter buttons on the page return what the guide says they return', () => {
+  const env = { setupOutput: SETUP_OUTPUT, host: HOST, fqdn: `${HOST}.ytt.lab` };
+  for (const filter of ['ansible_date_time', 'ansible_date*']) {
+    const command = `ansible servera -m ansible.builtin.setup -a 'filter=${filter}'`;
+    assert.ok(PAGE.includes(`data-command="${command}"`), `the page offers ${filter} as a button`);
+    const out = execute(command, env).text.split('\n');
+    assert.equal(out[2], '        "ansible_date_time": {');
+    assert.ok(out.length < 30, 'the reply is under 30 lines, as the guide claims');
+    assert.ok(out.includes('            "weekday": "Friday",'));
+  }
+  assert.ok(SETUP_OUTPUT.split('\n').length > 750, 'the full output is close to 800 lines');
+  assert.ok(Object.values(FACTS.date_time).every((value) => typeof value === 'string'), 'every value is text');
+  const miss = execute("ansible servera -m ansible.builtin.setup -a 'filter=ansible_nope'", env).text;
+  assert.ok(miss.includes('discovered_interpreter_python') && !miss.includes('ansible_nope'));
+});
