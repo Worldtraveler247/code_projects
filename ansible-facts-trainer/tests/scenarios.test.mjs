@@ -13,10 +13,10 @@ const run = (id, tasks) => runPlaybook(play(tasks), byId(id), FACTS, HOST);
 const failed = (r) => r.verdict.checks.filter((c) => !c.ok).map((c) => c.label);
 
 test('the scenarios extend the challenge list past the original sixteen', () => {
-  assert.equal(EXAM_CHALLENGES.length, 10);
-  assert.equal(CHALLENGES.length, 26);
+  assert.equal(EXAM_CHALLENGES.length, 15);
+  assert.equal(CHALLENGES.length, 31);
   assert.deepEqual(CHALLENGES.slice(16).map((c) => c.id), EXAM_CHALLENGES.map((c) => c.id));
-  assert.equal(new Set(CHALLENGES.map((c) => c.id)).size, 26);
+  assert.equal(new Set(CHALLENGES.map((c) => c.id)).size, 31);
 });
 
 test('every scenario is a complete record and is checked on a second host', () => {
@@ -51,6 +51,8 @@ test('every expected value on servera is the real value in the capture', () => {
   assert.deepEqual(FACTS.interfaces.filter((i) => i !== 'lo').sort().map((i) => `${i}: ${FACTS[i].ipv4.address}`), ['enp0s8: 10.0.2.15', 'enp0s9: 192.168.50.11']);
   assert.equal(`${FACTS.default_ipv4.address} ${FACTS.fqdn} ${FACTS.hostname}`, '10.0.2.15 servera.ytt.lab servera');
   assert.equal(FACTS.ansible_local.video.info.owner, 'student');
+  assert.deepEqual([FACTS.memtotal_mb, FACTS.swaptotal_mb], [567, 2047]);
+  assert.deepEqual([FACTS.selinux.status, FACTS.selinux.mode], ['enabled', 'enforcing']);
 });
 
 // ---- conditional install -----------------------------------------------------------------
@@ -266,4 +268,122 @@ test('the host can be inspected after a run, the way you would verify your own w
   assert.deepEqual(hostCommand(newHost(), 'rpm -q httpd'), { rc: 1, text: 'package httpd is not installed' });
   assert.equal(hostCommand(newHost(), 'systemctl is-active sshd').text, 'active');
   assert.equal(hostCommand(newHost(), 'rm -rf /').rc, 127);
+});
+
+// ---- five more conditional installs ------------------------------------------------------
+
+const install = (pkg, when) => `- name: i\n  ansible.builtin.dnf:\n    name: ${pkg}\n    state: present\n  when: ${when}\n`;
+
+test('distribution list: equivalent correct answers pass', () => {
+  for (const when of [
+    "ansible_facts['distribution'] in ['CentOS', 'Rocky', 'RedHat']",
+    "ansible_distribution == 'CentOS' or ansible_distribution == 'Rocky' or ansible_distribution == 'RedHat'",
+  ]) assert.equal(run('exam-distribution-list', install('nginx', when)).verdict.ok, true, when);
+});
+
+test('distribution list: testing the family instead of the distribution fails the Fedora host', () => {
+  const r = run('exam-distribution-list', install('nginx', "ansible_facts['os_family'] == 'RedHat'"));
+  assert.equal(r.verdict.code, 'WRONG_STATE');
+  assert.equal(failed(r).length, 1);
+  assert.match(failed(r)[0], /Fedora host/);
+});
+
+test('distribution list: naming only CentOS fails the Rocky host', () => {
+  const r = run('exam-distribution-list', install('nginx', "ansible_facts['distribution'] == 'CentOS'"));
+  assert.match(failed(r).join('|'), /Rocky host/);
+});
+
+test('memory and swap: the model conditions pass as a list or joined with and', () => {
+  for (const when of [
+    "ansible_facts['memtotal_mb'] >= 512 and ansible_facts['swaptotal_mb'] > 0",
+    "\n    - ansible_facts['memtotal_mb'] > 511\n    - ansible_facts['swaptotal_mb'] != 0",
+  ]) assert.equal(run('exam-memory-swap', install('tmux', when)).verdict.ok, true, when);
+});
+
+test('memory and swap: > instead of >= fails the host with exactly 512 MB', () => {
+  const r = run('exam-memory-swap', install('tmux', "ansible_facts['memtotal_mb'] > 512 and ansible_facts['swaptotal_mb'] > 0"));
+  assert.equal(r.verdict.code, 'WRONG_STATE');
+  assert.equal(failed(r).length, 1);
+  assert.match(failed(r)[0], /exactly 512 MB/);
+});
+
+test('memory and swap: leaving out the swap check fails the host with no swap', () => {
+  const r = run('exam-memory-swap', install('tmux', "ansible_facts['memtotal_mb'] >= 512"));
+  assert.equal(failed(r).length, 1);
+  assert.match(failed(r)[0], /no swap/);
+});
+
+test('version range: equivalent correct answers pass', () => {
+  for (const when of [
+    "ansible_facts['os_family'] == 'RedHat' and 9 <= ansible_facts['distribution_major_version'] | int <= 10",
+    "ansible_facts['os_family'] == 'RedHat' and ansible_facts['distribution_major_version'] in ['9', '10']",
+    "\n    - ansible_os_family == 'RedHat'\n    - ansible_distribution_major_version | int in [9, 10]",
+  ]) assert.equal(run('exam-version-range', install('podman', when)).verdict.ok, true, when);
+});
+
+test('version range: comparing the version as text skips servera, because "9" is not below "10" as text', () => {
+  const r = run('exam-version-range', install('podman', "ansible_facts['os_family'] == 'RedHat' and '9' <= ansible_facts['distribution_major_version'] <= '10'"));
+  assert.equal(r.verdict.code, 'WRONG_STATE');
+  assert.equal(r.verdict.checks[0].ok, false);
+  assert.match(r.terminal, /^skipping: \[servera\]$/m);
+});
+
+test('version range: a lower bound with no upper bound fails the version 11 host', () => {
+  const r = run('exam-version-range', install('podman', "ansible_facts['os_family'] == 'RedHat' and ansible_facts['distribution_major_version'] | int >= 9"));
+  assert.equal(failed(r).length, 1);
+  assert.match(failed(r)[0], /version 11/);
+});
+
+test('version range: forgetting the family check fails the Debian host', () => {
+  const r = run('exam-version-range', install('podman', "ansible_facts['distribution_major_version'] | int in [9, 10]"));
+  assert.equal(failed(r).length, 1);
+  assert.match(failed(r)[0], /Debian/);
+});
+
+test('selinux gate: equivalent correct answers pass', () => {
+  for (const when of [
+    "\n    - ansible_facts['selinux']['status'] == 'enabled'\n    - ansible_facts['selinux']['mode'] == 'enforcing'",
+    "ansible_facts['selinux']['status'] == 'enabled' and ansible_facts['selinux']['mode'] == 'enforcing'",
+    "ansible_facts['selinux']['mode'] | default('') == 'enforcing'",
+    "ansible_facts.selinux.mode is defined and ansible_facts.selinux.mode == 'enforcing'",
+  ]) assert.equal(run('exam-selinux-gate', install('policycoreutils-python-utils', when)).verdict.ok, true, when);
+});
+
+test('selinux gate: testing the mode alone fails on the host where SELinux is disabled and mode is missing', () => {
+  const r = run('exam-selinux-gate', install('policycoreutils-python-utils', "ansible_facts['selinux']['mode'] == 'enforcing'"));
+  assert.equal(r.verdict.code, 'WRONG_STATE');
+  assert.equal(failed(r).length, 1);
+  assert.match(failed(r)[0], /SELinux disabled, the playbook fails: .*mode/);
+});
+
+test('selinux gate: testing the status alone fails the permissive host', () => {
+  const r = run('exam-selinux-gate', install('policycoreutils-python-utils', "ansible_facts['selinux']['status'] == 'enabled'"));
+  assert.equal(failed(r).length, 1);
+  assert.match(failed(r)[0], /permissive/);
+});
+
+test('or condition: equivalent correct answers pass', () => {
+  for (const when of [
+    "ansible_facts['distribution'] != 'CentOS' or ansible_facts['distribution_major_version'] | int < 9",
+    "not (ansible_facts['distribution'] == 'CentOS' and ansible_facts['distribution_major_version'] | int >= 9)",
+  ]) assert.equal(run('exam-or-condition', install('tree', when)).verdict.ok, true, when);
+});
+
+test('or condition: a when list means and, which fails the CentOS 8 and Rocky 9 hosts', () => {
+  const r = run('exam-or-condition', install('tree', "\n    - ansible_facts['distribution'] != 'CentOS'\n    - ansible_facts['distribution_major_version'] | int < 9"));
+  assert.equal(r.verdict.code, 'WRONG_STATE');
+  assert.equal(r.verdict.checks[0].ok, true);
+  assert.match(failed(r).join('|'), /CentOS 8 host/);
+  assert.match(failed(r).join('|'), /Rocky 9 host/);
+});
+
+test('or condition: comparing the version as text installs on CentOS 10', () => {
+  const r = run('exam-or-condition', install('tree', "ansible_facts['distribution'] != 'CentOS' or ansible_facts['distribution_major_version'] < '9'"));
+  assert.equal(failed(r).length, 1);
+  assert.match(failed(r)[0], /CentOS 10 host/);
+});
+
+test('or condition: installing everywhere fails servera itself', () => {
+  const r = run('exam-or-condition', '- name: i\n  dnf:\n    name: tree\n');
+  assert.equal(r.verdict.checks[0].ok, false);
 });
