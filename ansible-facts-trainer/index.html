@@ -22,6 +22,9 @@
             color-scheme: dark;
         }
         body { background: var(--bg); color: var(--text); font-family: 'Inter', system-ui, sans-serif; min-height: 100vh; }
+        /* Fira Code and Inter both join pairs such as >= and != into one glyph. A learner has to type the
+           two characters, so every element shows them as typed. Buttons and inputs do not inherit this. */
+        *, *::before, *::after { font-variant-ligatures:none; }
         .skip { position:absolute; left:-999px; top:0; background:var(--cyan); color:#000; padding:8px 14px; border-radius:0 0 8px 0; z-index:50; }
         .skip:focus { left:0; }
         .sr-only { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
@@ -136,7 +139,8 @@
         button.primary:hover { color:#04121a; filter:brightness(1.1); }
         #reset { margin-left:auto; color:var(--muted); }
 
-        #hint-text { margin-top:12px; padding:10px 14px; border-left:3px solid var(--amber); color:var(--text); font-size:0.86rem; line-height:1.5; }
+        #hint-text { margin-top:12px; padding:10px 14px; border-left:3px solid var(--amber); color:var(--text); font-size:0.86rem; line-height:1.7; }
+        #hint-text code { color:var(--cyan); font-size:0.95em; white-space:pre-wrap; overflow-wrap:anywhere; padding:1px 5px; border-radius:4px; background:#0a0613; }
         #answer { margin-top:12px; padding:12px 14px; border:1px dashed var(--border); border-radius:8px; font-size:0.82rem; line-height:1.6; white-space:pre-wrap; overflow-wrap:anywhere; }
         [hidden] { display:none !important; }
 
@@ -251,6 +255,33 @@
                     <li>Inside <code>ansible_facts</code> the key loses its <code>ansible_</code> prefix: <code>ansible_device_links</code> becomes <code>device_links</code>.</li>
                     <li>Braces took a key name in quotes; the brackets took a position number, and counting starts at 0.</li>
                     <li>Write <code>['dm-0']</code>, not <code>.dm-0</code>. With a dot, Jinja2 reads the hyphen as a minus sign.</li>
+                </ul>
+
+                <h3>Compare a fact with a number</h3>
+                <p>The quotes in the output tell you the type. A value in quotes is text. A value without quotes is a number.</p>
+                <button type="button" data-command="ansible servera -m setup | grep -E 'major_version|memtotal'">ansible servera -m setup | grep -E 'major_version|memtotal'</button>
+                <p>The major version comes back as <code>"9"</code>, in quotes, so it is text and has to be converted before it is compared with a number:</p>
+<pre tabindex="0" aria-label="Example condition">when: ansible_facts['distribution_major_version'] | int &gt;= 9</pre>
+                <ul>
+                    <li><strong><code>| int</code> is a filter.</strong> The pipe hands the value on its left to <code>int</code>, which turns the text <code>"9"</code> into the number <code>9</code>. The filter runs before the comparison, so no parentheses are needed.</li>
+                    <li><strong>Text cannot be compared with a number.</strong> Without the filter, <code>"9" &gt;= 9</code> is an error and the task fails.</li>
+                    <li><strong>Text is compared with text one character at a time.</strong> <code>"10" &gt;= "9"</code> is false, because <code>1</code> comes before <code>9</code>.</li>
+                    <li><strong>Take the operator from the words of the task.</strong> "9 or higher" and "at least 9" include 9, so write <code>&gt;= 9</code>. "Higher than 9" leaves 9 out, so write <code>&gt; 9</code>.</li>
+                    <li><strong>Values are case-sensitive.</strong> The output says <code>"CentOS"</code>, so <code>== 'Centos'</code> is false on every host. Copy the value from the output instead of typing it from memory.</li>
+                    <li><strong><code>| int</code> never reports an error.</strong> Text that is not a number becomes <code>0</code>, silently.</li>
+                </ul>
+                <p>A value with no quotes, such as <code>ansible_memtotal_mb</code>, is a number already and needs no filter.</p>
+
+                <h3>When a task needs root</h3>
+                <p>The play connects to <code>servera</code> as <code>student</code>, an ordinary user. That is enough to read facts and print messages. It is not enough to install a package, manage a service, or write a file outside <code>/home/student</code>. Those tasks need <code>become: true</code>:</p>
+<pre tabindex="0" aria-label="Example play header">- name: Exam-style task
+  hosts: all
+  become: true      <span class="note"># run the tasks as root, through sudo</span>
+  tasks:</pre>
+                <ul>
+                    <li>Put it at the play level, in line with <code>hosts</code>, to cover every task. It can also go on a single task.</li>
+                    <li>Without it, <code>dnf</code> stops with <code>This command has to be run under the root user.</code> and a file under <code>/root</code> or <code>/etc</code> stops with <code>Destination /root not writable</code>.</li>
+                    <li>A task that is skipped by its <code>when:</code> never asks for root, so a missing <code>become</code> can hide on one host and fail on the next.</li>
                 </ul>
             </div>
         </details>

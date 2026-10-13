@@ -265,7 +265,7 @@ function playVars(play, facts, host) {
 function failureMessage(error, source, index, gather) {
   const position = taskPosition(source, index);
   const where = `\n\n${locate(source, position.line, position.column).join('\n')}\n`;
-  if (!(error instanceof JinjaError)) return { code: 'TASK_FAILED', coach: error.result.msg, result: error.result };
+  if (!(error instanceof JinjaError)) return { code: 'TASK_FAILED', coach: error.coach ?? error.result.msg, result: error.result };
   const cause = error.ansible;
   if (error.kind === 'unsupported') return { code: 'UNSUPPORTED_FILTER', coach: error.message, notRun: true };
   if (error.condition !== undefined) {
@@ -294,7 +294,7 @@ function runScenario({ source, play, tasks, challenge, facts, host, gather, open
 
   const runOn = (hostFacts) => {
     const visible = gather ? hostFacts : {};
-    return executeTasks(prepareTasks(tasks).tasks, { facts: visible, host, state: newHost(), vars: playVars(play, visible, host) });
+    return executeTasks(prepareTasks(tasks).tasks, { facts: visible, host, state: newHost(), vars: playVars(play, visible, host), play });
   };
 
   let run;

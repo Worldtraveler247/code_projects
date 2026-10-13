@@ -8,6 +8,7 @@ import { execute, PROMPT } from './shell.js';
 import { createPager, pagerKey, pagerSearch, pagerView } from './pager.js';
 import { colorize } from './terminal-color.js';
 import { hostCommand, newHost } from './executor.js';
+import { splitCode } from './rich.js';
 import { adjustLevel, scaffold, TOP_LEVEL } from './difficulty.js';
 
 const STORAGE_KEY = 'ansible-facts-trainer:solved:v1';
@@ -355,7 +356,12 @@ $('jump').addEventListener('change', () => go(Number($('jump').value) - index));
 $('prev').addEventListener('click', () => go(-1));
 $('next').addEventListener('click', () => go(1));
 $('hint').addEventListener('click', () => {
-  $('hint-text').textContent = `Hint: ${CHALLENGES[index].hint}`;
+  $('hint-text').replaceChildren(...splitCode(`Hint: ${CHALLENGES[index].hint}`).map((run) => {
+    if (!run.code) return document.createTextNode(run.text);
+    const code = document.createElement('code');
+    code.textContent = run.text;
+    return code;
+  }));
   $('hint-text').hidden = false;
 });
 $('reveal').addEventListener('click', () => {

@@ -6,10 +6,12 @@ import { FACTS, HOST } from '../facts.js';
 import { patchFacts, runPlaybook } from '../runner.js';
 import { hostCommand, newHost } from '../executor.js';
 
-const HEADER = '---\n- name: Exam-style task\n  hosts: all\n  tasks:\n';
+const HEADER = '---\n- name: Exam-style task\n  hosts: all\n  become: true\n  tasks:\n';
+const NO_BECOME = HEADER.replace('  become: true\n', '');
 const byId = (id) => EXAM_CHALLENGES.find((c) => c.id === id);
 const play = (tasks) => HEADER + tasks.split('\n').map((line) => (line.trim() ? `    ${line}` : line)).join('\n');
 const run = (id, tasks) => runPlaybook(play(tasks), byId(id), FACTS, HOST);
+const runAs = (header, id, tasks) => runPlaybook(play(tasks).replace(HEADER, header), byId(id), FACTS, HOST);
 const failed = (r) => r.verdict.checks.filter((c) => !c.ok).map((c) => c.label);
 
 test('the scenarios extend the challenge list past the original sixteen', () => {
@@ -210,7 +212,7 @@ test('custom fact: the fallback is required on a host with no custom facts', () 
 // ---- play and task structure ----------------------------------------------------------------
 
 test('multiple tasks, play vars, register, and ignore_errors work together', () => {
-  const text = '---\n- name: p\n  hosts: all\n  vars:\n    pkg: httpd\n    label: "pkg={{ pkg }}"\n  tasks:\n'
+  const text = '---\n- name: p\n  hosts: all\n  become: true\n  vars:\n    pkg: httpd\n    label: "pkg={{ pkg }}"\n  tasks:\n'
     + '    - name: one\n      dnf:\n        name: "{{ pkg }}"\n      register: result\n      when: ansible_facts["os_family"] == "RedHat"\n'
     + '    - name: two\n      debug:\n        msg: "{{ label }} changed={{ result.changed }}"\n      when: result is not skipped | default(true)\n';
   const r = runPlaybook(text, byId('exam-conditional-install'), FACTS, HOST);
@@ -246,7 +248,7 @@ test('a failing task stops the play and reports where it is in the file', () => 
   assert.match(r.terminal, /TASK \[first\]/);
   assert.match(r.terminal, /TASK \[second\]/);
   assert.doesNotMatch(r.terminal, /TASK \[third\]/);
-  assert.match(r.terminal, /facts\.yml': line 8, column 7/);
+  assert.match(r.terminal, /facts\.yml': line 9, column 7/);
   assert.match(r.terminal, /ok=2 +changed=0 +unreachable=0 +failed=1/);
 });
 
@@ -386,4 +388,84 @@ test('or condition: comparing the version as text installs on CentOS 10', () => 
 test('or condition: installing everywhere fails servera itself', () => {
   const r = run('exam-or-condition', '- name: i\n  dnf:\n    name: tree\n');
   assert.equal(r.verdict.checks[0].ok, false);
+});
+
+// ---- privilege escalation ----------------------------------------------------------------
+
+const PHP = "- name: i\n  ansible.builtin.dnf:\n    name: php\n    state: present\n  when:\n    - ansible_facts['distribution'] == 'CentOS'\n    - ansible_facts['distribution_major_version'] | int >= 9\n";
+const NEEDS_ROOT = /needs root.*become: true/s;
+
+test('become: dnf without become fails the way dnf fails for an ordinary user', () => {
+  const r = runAs(NO_BECOME, 'exam-version-gate', PHP);
+  assert.equal(r.verdict.code, 'TASK_FAILED');
+  assert.match(r.verdict.message, NEEDS_ROOT);
+  assert.match(r.terminal, /^fatal: \[servera\]: FAILED! => \{"changed": false, "msg": "This command has to be run under the root user\.", "results": \[\]\}$/m);
+  assert.match(r.terminal, /failed=1/);
+});
+
+test('become: the same answer passes with become on the play or on the task, in any true spelling', () => {
+  assert.equal(run('exam-version-gate', PHP).verdict.ok, true);
+  assert.equal(runAs(NO_BECOME, 'exam-version-gate', PHP.replace('  when:', '  become: true\n  when:')).verdict.ok, true);
+  assert.equal(runAs(HEADER.replace('become: true', 'become: yes'), 'exam-version-gate', PHP).verdict.ok, true);
+  assert.equal(runAs(HEADER.replace('become: true', 'become: true\n  become_user: root'), 'exam-version-gate', PHP).verdict.ok, true);
+});
+
+test('become: a task can turn it off again, and becoming another ordinary user is not root', () => {
+  assert.equal(run('exam-version-gate', PHP.replace('  when:', '  become: false\n  when:')).verdict.code, 'TASK_FAILED');
+  assert.equal(runAs(HEADER.replace('become: true', 'become: false'), 'exam-version-gate', PHP).verdict.code, 'TASK_FAILED');
+  assert.equal(runAs(HEADER.replace('become: true', 'become: true\n  become_user: apache'), 'exam-version-gate', PHP).verdict.code, 'TASK_FAILED');
+});
+
+test('become: a skipped task never needs root, so the failure shows only where the task runs', () => {
+  const r = runAs(NO_BECOME, 'exam-or-condition', "- name: i\n  dnf:\n    name: tree\n  when: ansible_facts['distribution'] != 'CentOS' or ansible_facts['distribution_major_version'] | int < 9\n");
+  assert.equal(r.verdict.code, 'WRONG_STATE');
+  assert.equal(r.verdict.checks[0].ok, true);
+  assert.match(failed(r).join('|'), /CentOS 8 host, the playbook fails: This command has to be run under the root user\./);
+});
+
+test('become: writing a file under /root or /etc without become fails as copy fails', () => {
+  const r = runAs(NO_BECOME, 'exam-hosts-line', '- name: w\n  copy:\n    dest: /root/hosts.line\n    content: "x\\n"\n');
+  assert.equal(r.verdict.code, 'TASK_FAILED');
+  assert.match(r.verdict.message, NEEDS_ROOT);
+  assert.match(r.terminal, /^fatal: \[servera\]: FAILED! => \{"changed": false, "msg": "Destination \/root not writable"\}$/m);
+  const motd = runAs(NO_BECOME, 'exam-low-memory', '- name: w\n  copy:\n    dest: /etc/motd\n    content: "Low memory host\\n"\n');
+  assert.match(motd.terminal, /"msg": "Destination \/etc not writable"/);
+});
+
+test('become: the connecting user can write its own files without become', () => {
+  for (const dest of ['/home/student/note.txt', '/tmp/note.txt']) {
+    const r = runAs(NO_BECOME, 'exam-hosts-line', `- name: w\n  copy:\n    dest: ${dest}\n    content: "x\\n"\n`);
+    assert.equal(r.verdict.code, 'WRONG_STATE', dest);
+    assert.match(r.terminal, /^changed: \[servera\]$/m);
+  }
+});
+
+test('become: starting a service without become fails as systemd fails', () => {
+  const tasks = '- name: s\n  ansible.builtin.service:\n    name: chronyd\n    state: restarted\n';
+  const r = runAs(NO_BECOME, 'exam-conditional-install', tasks);
+  assert.equal(r.verdict.code, 'TASK_FAILED');
+  assert.match(r.verdict.message, NEEDS_ROOT);
+  assert.match(r.terminal, /"msg": "Unable to restart service chronyd: Failed to restart chronyd\.service: Interactive authentication required\./);
+  assert.notEqual(run('exam-conditional-install', tasks).verdict.code, 'TASK_FAILED');
+});
+
+test('become: debug and set_fact never need it', () => {
+  for (const id of ['exam-missing-disk', 'exam-set-fact', 'exam-loop-mounts', 'exam-loop-interfaces']) {
+    const c = byId(id);
+    assert.ok(!c.solution.includes('become'), `${id} does not need become`);
+    assert.equal(runPlaybook(c.solution, c, FACTS, HOST).verdict.ok, true, id);
+  }
+});
+
+test('become: every model answer that changes the host has become: true, and fails without it', () => {
+  const privileged = EXAM_CHALLENGES.filter((c) => /ansible\.builtin\.(dnf|copy|service)/.test(c.solution));
+  assert.equal(privileged.length, 11);
+  for (const c of privileged) {
+    assert.match(c.solution, /^  become: true$/m, c.id);
+    assert.ok(!c.starter.includes('become'), `${c.id}: the starter leaves become for the learner to write`);
+    assert.match(c.hint, /become: true/, `${c.id}: the hint mentions become`);
+    const without = runPlaybook(c.solution.replace('  become: true\n', ''), c, FACTS, HOST);
+    assert.equal(without.verdict.ok, false, c.id);
+    assert.match(JSON.stringify(without.verdict), /root/, c.id);
+  }
 });

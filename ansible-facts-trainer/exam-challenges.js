@@ -11,7 +11,12 @@
 const HEADER = '---\n- name: Exam-style task\n  hosts: all\n  tasks:\n';
 const EMPTY_PLAY = `${HEADER}    `;
 const indent = (text) => text.split('\n').map((line) => (line ? `    ${line}` : line)).join('\n');
-const playbook = (tasks) => HEADER + indent(tasks);
+// The play connects as an ordinary user. A task that installs a package, manages a service, or
+// writes outside that user's home needs root, so its model answer carries become: true. The
+// starter does not: writing that line is part of the answer.
+const NEEDS_ROOT = /^- name: .*\n {2}ansible\.builtin\.(dnf|copy|service):/m;
+const playbook = (tasks) => (NEEDS_ROOT.test(tasks) ? HEADER.replace('  tasks:', '  become: true\n  tasks:') : HEADER) + indent(tasks);
+const BECOME_HINT = ' This task changes the system, so the play needs `become: true`, at the same level as `hosts`.';
 export const DELETE = '__DELETE__';
 
 export const EXAM_CHALLENGES = [
@@ -21,7 +26,7 @@ export const EXAM_CHALLENGES = [
     tier: 5,
     kind: 'scenario',
     prompt: 'Write a playbook that installs the httpd package, but only on hosts in the Red Hat family. Hosts in any other family must be left unchanged.',
-    hint: "Run: ansible servera -m setup | grep os_family. Put a when: on the install task. A condition is a bare expression, with no {{ }} around it: when: ansible_facts['os_family'] == 'RedHat'.",
+    hint: "Run: `ansible servera -m setup | grep os_family`. Put a `when:` on the install task. A condition is a bare expression, with no `{{ }}` around it: `when: ansible_facts['os_family'] == 'RedHat'`.",
     starter: EMPTY_PLAY,
     solution: playbook([
       '- name: Install httpd on Red Hat family hosts',
@@ -44,7 +49,7 @@ export const EXAM_CHALLENGES = [
     tier: 5,
     kind: 'scenario',
     prompt: 'Write a playbook that installs the php package only on hosts running CentOS with a major version of 9 or higher. A CentOS 8 host, or a host running a different distribution, must not get the package.',
-    hint: "Run: ansible servera -m setup | grep distribution. Look closely at the major version: it is in quotes, so it is text, not a number. Comparing text with a number fails; convert it first with | int. Two conditions can be written as a list under when:, which means both must hold.",
+    hint: "Run: `ansible servera -m setup | grep distribution`. Look closely at the major version: it is in quotes, so it is text, not a number. Comparing text with a number fails; convert it first with `| int`. \"9 or higher\" includes 9 itself, so the test is `>= 9`, not `> 9`. Copy the distribution name from the output exactly: the comparison is case-sensitive, so `'Centos'` does not match `'CentOS'`. Two conditions can be written as a list under `when:`, which means both must hold.",
     starter: EMPTY_PLAY,
     solution: playbook([
       '- name: Install php on CentOS 9 and later',
@@ -81,7 +86,7 @@ export const EXAM_CHALLENGES = [
     tier: 5,
     kind: 'scenario',
     prompt: 'Write a playbook that creates /root/hwreport.txt on each host with exactly these four lines, filled in from that host\'s facts:\n\nHOST=<short hostname>\nMEMORY=<total memory in MB>\nDISK_SIZE_SDA=<size of sda>\nDISK_SIZE_SDB=<size of sdb>\n\nIf a host has no sdb disk, that line must read DISK_SIZE_SDB=NONE.',
-    hint: "Run: ansible servera -m setup -a 'filter=ansible_devices' | grep -E 'sd|size'. Write the file with copy and content: | (a block of lines). For the missing disk, a lookup that fails can fall back to a value: ansible_facts['devices']['sdb']['size'] | default('NONE').",
+    hint: "Run: `ansible servera -m setup -a 'filter=ansible_devices' | grep -E 'sd|size'`. Write the file with `copy` and `content: |` (a block of lines). For the missing disk, a lookup that fails can fall back to a value: `ansible_facts['devices']['sdb']['size'] | default('NONE')`.",
     starter: EMPTY_PLAY,
     solution: playbook([
       '- name: Write the hardware report',
@@ -113,7 +118,7 @@ export const EXAM_CHALLENGES = [
     tier: 5,
     kind: 'scenario',
     prompt: 'Write a playbook that prints the message "Disk sdb does not exist" on any host that has no sdb device. On a host that does have sdb, the playbook must print nothing.',
-    hint: "Run: ansible servera -m setup -a 'filter=ansible_devices' | grep '^            \"'. The devices fact is a dictionary keyed by device name. Test for a key with: when: \"'sdb' not in ansible_facts['devices']\". The whole condition needs quotes because it starts with a quote.",
+    hint: "Run: `ansible servera -m setup -a 'filter=ansible_devices' | grep '^            \"'`. The devices fact is a dictionary keyed by device name. Test for a key with: `when: \"'sdb' not in ansible_facts['devices']\"`. The whole condition needs quotes because it starts with a quote.",
     starter: EMPTY_PLAY,
     solution: playbook([
       '- name: Report a missing sdb disk',
@@ -135,7 +140,7 @@ export const EXAM_CHALLENGES = [
     tier: 5,
     kind: 'scenario',
     prompt: 'Write a playbook that creates /etc/motd containing the single line "Low memory host" on any host with less than 1024 MB of total memory. Hosts with 1024 MB or more must not get the file.',
-    hint: "Run: ansible servera -m setup | grep memtotal. The value has no quotes, so it is already a number and can be compared directly: when: ansible_facts['memtotal_mb'] < 1024.",
+    hint: "Run: `ansible servera -m setup | grep memtotal`. The value has no quotes, so it is already a number and can be compared directly: `when: ansible_facts['memtotal_mb'] < 1024`.",
     starter: EMPTY_PLAY,
     solution: playbook([
       '- name: Warn on low memory hosts',
@@ -165,7 +170,7 @@ export const EXAM_CHALLENGES = [
     tier: 5,
     kind: 'scenario',
     prompt: 'Write a playbook with two tasks. The first stores the host\'s total memory in gigabytes, rounded to two decimal places, in a variable named mem_gb. The second prints "Memory: <mem_gb> GB" using that variable. On servera that is "Memory: 0.55 GB".',
-    hint: "Total memory is in megabytes, so divide by 1024 and round: (ansible_facts['memtotal_mb'] / 1024) | round(2). The parentheses matter, because a filter binds tighter than division. Store it with ansible.builtin.set_fact.",
+    hint: "Total memory is in megabytes, so divide by 1024 and round: `(ansible_facts['memtotal_mb'] / 1024) | round(2)`. The parentheses matter, because a filter binds tighter than division. Store it with `ansible.builtin.set_fact`.",
     starter: EMPTY_PLAY,
     solution: playbook([
       '- name: Work out memory in gigabytes',
@@ -196,7 +201,7 @@ export const EXAM_CHALLENGES = [
     tier: 5,
     kind: 'scenario',
     prompt: 'Write a playbook that prints one message for every mounted filesystem on the host, in the form "<mount point> uses <filesystem type>". On servera the three messages are "/ uses xfs", "/boot uses xfs", and "/boot/efi uses vfat".',
-    hint: "Run: ansible servera -m setup -a 'filter=ansible_mounts' | grep -E 'mount|fstype'. mounts is a list of dictionaries. Loop over it with loop: \"{{ ansible_facts['mounts'] }}\" and read each entry as item.mount and item.fstype.",
+    hint: "Run: `ansible servera -m setup -a 'filter=ansible_mounts' | grep -E 'mount|fstype'`. `mounts` is a list of dictionaries. Loop over it with `loop: \"{{ ansible_facts['mounts'] }}\"` and read each entry as `item.mount` and `item.fstype`.",
     starter: EMPTY_PLAY,
     solution: playbook([
       '- name: Report every mounted filesystem',
@@ -226,7 +231,7 @@ export const EXAM_CHALLENGES = [
     tier: 5,
     kind: 'scenario',
     prompt: 'Write a playbook that prints "<interface>: <IPv4 address>" for every network interface on the host except the loopback interface, lo. On servera the messages are "enp0s8: 10.0.2.15" and "enp0s9: 192.168.50.11".',
-    hint: "Run: ansible servera -m setup | grep -A4 ansible_interfaces, then: ansible servera -m setup -a 'filter=ansible_enp0s8'. Each interface has its own fact named after it. Inside the loop the name is in item, so the lookup uses a variable as the key: ansible_facts[item]['ipv4']['address']. Skip lo with when: item != 'lo'.",
+    hint: "Run: `ansible servera -m setup | grep -A4 ansible_interfaces`, then: `ansible servera -m setup -a 'filter=ansible_enp0s8'`. Each interface has its own fact named after it. Inside the loop the name is in `item`, so the lookup uses a variable as the key: `ansible_facts[item]['ipv4']['address']`. Skip `lo` with `when: item != 'lo'`.",
     starter: EMPTY_PLAY,
     solution: playbook([
       '- name: Report the address of each interface',
@@ -256,7 +261,7 @@ export const EXAM_CHALLENGES = [
     tier: 5,
     kind: 'scenario',
     prompt: 'Write a playbook that creates /root/hosts.line on each host containing one line in /etc/hosts format: the default IPv4 address, the fully qualified domain name, and the short hostname, separated by single spaces. On servera the line is "10.0.2.15 servera.ytt.lab servera".',
-    hint: "Run: ansible servera -m setup | grep -E 'fqdn|hostname' and ansible servera -m setup -a 'filter=ansible_default_ipv4'. Put all three lookups in one content: string, and end it with \\n so the file ends with a newline.",
+    hint: "Run: `ansible servera -m setup | grep -E 'fqdn|hostname'` and `ansible servera -m setup -a 'filter=ansible_default_ipv4'`. Put all three lookups in one `content:` string, and end it with `\\n` so the file ends with a newline.",
     starter: EMPTY_PLAY,
     solution: playbook([
       '- name: Write the hosts line',
@@ -278,7 +283,7 @@ export const EXAM_CHALLENGES = [
     tier: 5,
     kind: 'scenario',
     prompt: 'servera has a custom fact file that sets an owner. Write a playbook that creates /root/owner.txt containing "Owner: <owner>", where the owner comes from the custom fact. On a host with no custom facts, the file must contain "Owner: unknown". On servera the content is "Owner: student".',
-    hint: "Run: ansible servera -m setup -a 'filter=ansible_local'. Custom facts live under ansible_local, the one fact that keeps its ansible_ prefix inside ansible_facts. Follow it down to owner, and give it a fallback with | default('unknown') for hosts that have no custom facts.",
+    hint: "Run: `ansible servera -m setup -a 'filter=ansible_local'`. Custom facts live under `ansible_local`, the one fact that keeps its `ansible_` prefix inside `ansible_facts`. Follow it down to `owner`, and give it a fallback with `| default('unknown')` for hosts that have no custom facts.",
     starter: EMPTY_PLAY,
     solution: playbook([
       '- name: Record the owner from the custom fact',
@@ -300,7 +305,7 @@ export const EXAM_CHALLENGES = [
     tier: 5,
     kind: 'scenario',
     prompt: 'Write a playbook that installs the nginx package only on hosts whose distribution is CentOS, Rocky, or RedHat. A host running any other distribution must not get the package, even one in the same OS family.',
-    hint: "Run: ansible servera -m setup | grep -E 'distribution\"|os_family'. The family is too wide for this task: Fedora is in the RedHat family too. Test the distribution against a list with in: when: ansible_facts['distribution'] in ['CentOS', 'Rocky', 'RedHat'].",
+    hint: "Run: `ansible servera -m setup | grep -E 'distribution\"|os_family'`. The family is too wide for this task: Fedora is in the RedHat family too. Test the distribution against a list with `in`: `when: ansible_facts['distribution'] in ['CentOS', 'Rocky', 'RedHat']`.",
     starter: EMPTY_PLAY,
     solution: playbook([
       '- name: Install nginx on the three named distributions',
@@ -335,7 +340,7 @@ export const EXAM_CHALLENGES = [
     tier: 5,
     kind: 'scenario',
     prompt: 'Write a playbook that installs the tmux package only on hosts that have at least 512 MB of total memory and also have swap space. A host with less than 512 MB, or with no swap at all, must not get the package.',
-    hint: "Run: ansible servera -m setup | grep -E 'memtotal|swaptotal'. Neither value is in quotes, so both are numbers already and need no | int. \"At least 512\" includes 512 itself, so the test is >=, not >. A host with no swap reports swaptotal_mb as 0.",
+    hint: "Run: `ansible servera -m setup | grep -E 'memtotal|swaptotal'`. Neither value is in quotes, so both are numbers already and need no `| int`. \"At least 512\" includes 512 itself, so the test is `>=`, not `>`. A host with no swap reports `swaptotal_mb` as `0`.",
     starter: EMPTY_PLAY,
     solution: playbook([
       '- name: Install tmux where there is enough memory and some swap',
@@ -372,7 +377,7 @@ export const EXAM_CHALLENGES = [
     tier: 5,
     kind: 'scenario',
     prompt: 'Write a playbook that installs the podman package only on hosts in the Red Hat family whose major version is 9 or 10. Older and newer versions, and hosts in any other family, must not get the package.',
-    hint: "Run: ansible servera -m setup | grep -E 'os_family|major_version'. The major version is in quotes, so it is text. As text, \"9\" is not below \"10\", because text is compared one character at a time and \"9\" comes after \"1\". Convert with | int before comparing, and give the range both a lower and an upper bound.",
+    hint: "Run: `ansible servera -m setup | grep -E 'os_family|major_version'`. The major version is in quotes, so it is text. As text, \"9\" is not below \"10\", because text is compared one character at a time and \"9\" comes after \"1\". Convert with `| int` before comparing, and give the range both a lower and an upper bound.",
     starter: EMPTY_PLAY,
     solution: playbook([
       '- name: Install podman on Red Hat family versions 9 and 10',
@@ -415,7 +420,7 @@ export const EXAM_CHALLENGES = [
     tier: 5,
     kind: 'scenario',
     prompt: 'Write a playbook that installs the policycoreutils-python-utils package only on hosts where SELinux is enabled and in enforcing mode. Hosts in permissive mode, and hosts with SELinux disabled, must not get the package, and the playbook must not fail on them.',
-    hint: "Run: ansible servera -m setup -a 'filter=ansible_selinux'. The fact is a dictionary, so step into it: ansible_facts['selinux']['status']. A host with SELinux disabled reports only the status and has no mode key, so asking it for the mode is an error. List the status condition first: Ansible stops at the first condition that is false and never reads the second.",
+    hint: "Run: `ansible servera -m setup -a 'filter=ansible_selinux'`. The fact is a dictionary, so step into it: `ansible_facts['selinux']['status']`. A host with SELinux disabled reports only the status and has no `mode` key, so asking it for the mode is an error. List the status condition first: Ansible stops at the first condition that is false and never reads the second.",
     starter: EMPTY_PLAY,
     solution: playbook([
       '- name: Install the SELinux tools on enforcing hosts',
@@ -447,7 +452,7 @@ export const EXAM_CHALLENGES = [
     tier: 5,
     kind: 'scenario',
     prompt: 'Write a playbook that installs the tree package on every host except those running CentOS with a major version of 9 or higher. A CentOS 8 host gets the package, and so does a host running a different distribution at any version. servera is CentOS 9, so it must not get the package.',
-    hint: "Run: ansible servera -m setup | grep distribution. A host qualifies if either thing is true: it is not CentOS, or its version is below 9. A list under when: means every condition must hold, which is the wrong logic here. Write one expression joined with or, and convert the version with | int.",
+    hint: "Run: `ansible servera -m setup | grep distribution`. A host qualifies if either thing is true: it is not CentOS, or its version is below 9. A list under `when:` means every condition must hold, which is the wrong logic here. Write one expression joined with `or`, and convert the version with `| int`.",
     starter: EMPTY_PLAY,
     solution: playbook([
       '- name: Install tree everywhere except CentOS 9 and later',
@@ -477,3 +482,8 @@ export const EXAM_CHALLENGES = [
     ],
   },
 ];
+
+// Said once here, not in eleven hints: which scenarios need root follows from the model answer.
+for (const challenge of EXAM_CHALLENGES) {
+  if (challenge.solution.includes('  become: true\n')) challenge.hint += BECOME_HINT;
+}

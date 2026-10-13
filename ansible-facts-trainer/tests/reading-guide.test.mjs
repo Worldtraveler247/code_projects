@@ -80,3 +80,29 @@ test('the date_time filter buttons on the page return what the guide says they r
   const miss = execute("ansible servera -m ansible.builtin.setup -a 'filter=ansible_nope'", env).text;
   assert.ok(miss.includes('discovered_interpreter_python') && !miss.includes('ansible_nope'));
 });
+
+test('the guide\'s rule about quotes and numbers matches the capture', () => {
+  const env = { setupOutput: SETUP_OUTPUT, host: HOST, fqdn: `${HOST}.ytt.lab` };
+  const command = "ansible servera -m setup | grep -E 'major_version|memtotal'";
+  assert.ok(PAGE.includes(`data-command="${command}"`), 'the page offers the command as a button');
+  assert.deepEqual(execute(command, env).text.split('\n').map((line) => line.trim()), [
+    '"ansible_distribution_major_version": "9",',
+    '"ansible_memtotal_mb": 567,',
+  ]);
+  assert.equal(typeof FACTS.distribution_major_version, 'string');
+  assert.equal(typeof FACTS.memtotal_mb, 'number');
+  assert.equal(FACTS.distribution, 'CentOS');
+  assert.ok(PAGE.includes("ansible_facts['distribution_major_version'] | int &gt;= 9"));
+});
+
+test('the guide names the user the play connects as and the line that makes a task root', () => {
+  assert.equal(FACTS.user_id, 'student');
+  assert.equal(FACTS.user_dir, '/home/student');
+  for (const text of ['become: true', 'This command has to be run under the root user.', 'Destination /root not writable']) {
+    assert.ok(PAGE.includes(text), text);
+  }
+});
+
+test('no element joins two typed characters into one glyph', () => {
+  assert.match(PAGE, /\*, \*::before, \*::after \{ font-variant-ligatures:none; \}/);
+});

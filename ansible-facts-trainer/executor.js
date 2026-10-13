@@ -90,8 +90,22 @@ export function prepareTasks(tasks) {
 // ---- Module failures look like Ansible's ------------------------------------------------
 
 class TaskFailure extends Error {
-  constructor(result) { super(result.msg); this.result = result; }
+  constructor(result, coach) { super(result.msg); this.result = result; this.coach = coach; }
 }
+
+// The play connects as an ordinary user. Changing the system takes root, which a task has only
+// when become is true on the task or, failing that, on the play, and become_user is root.
+const REMOTE_USER = 'student';
+const USER_WRITABLE = [`/home/${REMOTE_USER}/`, '/tmp/', '/var/tmp/'];
+const NEEDS_ROOT = `This task needs root, and the play connects as ${REMOTE_USER}, an ordinary user. Add become: true to the play, at the same level as hosts.`;
+
+function runsAsRoot(task, play) {
+  const become = task.become ?? play.become ?? false;
+  const user = task.become_user ?? play.become_user ?? 'root';
+  return asBool(become) && pyStr(user) === 'root';
+}
+
+const needRoot = (root, result) => { if (!root) throw new TaskFailure({ changed: false, ...result }, NEEDS_ROOT); };
 
 const fail = (msg, extra = {}) => { throw new TaskFailure({ changed: false, ...extra, msg }); };
 
@@ -115,7 +129,7 @@ function renderDeep(value, context) {
 
 const asBool = (value) => (typeof value === 'boolean' ? value : ['yes', 'true', 'on', '1'].includes(String(value).toLowerCase()));
 
-function runModule(prepared, context, state, host) {
+function runModule(prepared, context, state, host, root) {
   const args = renderDeep(prepared.args, context);
   switch (prepared.module) {
     case 'debug': {
@@ -142,6 +156,9 @@ function runModule(prepared, context, state, host) {
       if (!Object.hasOwn(args, 'content')) fail('src (or content) is required');
       const dest = pyStr(args.dest);
       if (!dest.startsWith('/')) fail(`dest must be an absolute path on the managed host, got: ${dest}`, { trainer: true });
+      if (!USER_WRITABLE.some((dir) => dest.startsWith(dir))) {
+        needRoot(root, { msg: `Destination ${dest.slice(0, dest.lastIndexOf('/')) || '/'} not writable` });
+      }
       const content = typeof args.content === 'string' ? args.content : toJson(args.content);
       const next = { content, owner: pyStr(args.owner ?? 'root'), group: pyStr(args.group ?? 'root'), mode: pyStr(args.mode ?? '0644') };
       const before = state.files.get(dest);
@@ -156,6 +173,7 @@ function runModule(prepared, context, state, host) {
       if (!['present', 'installed', 'latest', 'absent', 'removed'].includes(wanted)) {
         fail(`value of state must be one of: absent, installed, latest, present, removed, got: ${wanted}`);
       }
+      needRoot(root, { msg: 'This command has to be run under the root user.', results: [] });
       const install = !['absent', 'removed'].includes(wanted);
       const unknown = names.filter((name) => install && !REPOSITORY.includes(name) && !state.packages.has(name));
       if (unknown.length) {
@@ -181,10 +199,14 @@ function runModule(prepared, context, state, host) {
         if (!['started', 'stopped', 'restarted', 'reloaded'].includes(wanted)) {
           fail(`value of state must be one of: reloaded, restarted, started, stopped, got: ${wanted}`);
         }
+        const verb = wanted.replace(/p?ed$/, '');
+        needRoot(root, { msg: `Unable to ${verb} service ${name}: Failed to ${verb} ${name}.service: Interactive authentication required.\nSee system logs and 'systemctl status ${name}.service' for details.\n` });
         next.active = wanted !== 'stopped';
         changed = wanted === 'restarted' || wanted === 'reloaded' || next.active !== before.active;
       }
       if (Object.hasOwn(args, 'enabled')) {
+        const verb = asBool(args.enabled) ? 'enable' : 'disable';
+        needRoot(root, { msg: `Unable to ${verb} service ${name}: Failed to ${verb} unit: Interactive authentication required.\n` });
         next.enabled = asBool(args.enabled);
         changed = changed || next.enabled !== before.enabled;
       }
@@ -229,7 +251,7 @@ function conditionHolds(when, context) {
  * Run prepared tasks. Returns { events, counts, state, failed }.
  * An event is { label, lines, status } where lines are the text the task prints.
  */
-export function executeTasks(prepared, { facts, host, state = newHost(), vars = {} }) {
+export function executeTasks(prepared, { facts, host, state = newHost(), vars = {}, play = {} }) {
   const context = buildContext(facts, host, vars);
   state.vars = { ...vars };
   const counts = { ok: 0, changed: 0, skipped: 0, failed: 0 };
@@ -262,7 +284,7 @@ export function executeTasks(prepared, { facts, host, state = newHost(), vars = 
           continue;
         }
         anyRan = true;
-        const result = runModule(item, context, state, host);
+        const result = runModule(item, context, state, host, runsAsRoot(task, play));
         results.push({ changed: result.changed, failed: false, ...(result.output ?? {}) });
         anyChanged = anyChanged || result.changed;
         const word = result.changed ? 'changed' : 'ok';
