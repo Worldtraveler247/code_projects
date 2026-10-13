@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="dark">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'self' https://static.cloudflareinsights.com; connect-src 'self' https://cloudflareinsights.com; img-src 'self' data:; form-action https://buttondown.com; base-uri 'none'; object-src 'none'">
+    <meta name="description" content="The Daily Brief for Wednesday, October 14, 2026: security incidents, senior security advice, engineering explainers, and tech news.">
+    <title>The Daily Brief · Oct 14, 2026</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="icon" href="../../../favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="../../../style.css">
+    <link rel="stylesheet" href="../../newsletter.css">
+</head>
+<body class="brief-page">
+    <a href="#main-content" class="skip-nav">Skip to main content</a>
+    <nav class="brief-nav">
+        <a href="../../../index.html">← App Hub</a>
+        <a href="../../">All issues</a>
+    </nav>
+    
+<header class="brief-masthead">
+    <p class="brief-eyebrow">THE DAILY BRIEF</p>
+    <h1>Wednesday, October 14, 2026</h1>
+    <ol class="brief-toc">
+        <li><a href="#current-events">Current Events</a></li><li><a href="#security-advice">Senior Security Advice</a></li><li><a href="#tech-news">Tech News</a></li>
+    </ol>
+</header>
+<main id="main-content" class="brief">
+    
+    <article class="brief-section" id="current-events">
+        <p class="brief-kicker">Current Events</p>
+        <h2>The MGM Resorts and Caesars Entertainment Breaches</h2>
+        
+            
+            <p>Picture an attacker who never writes a single line of exploit code. Instead, they call your own IT help desk, sound exactly like one of your employees, and talk a human being into handing over the keys. In September 2023, that one phone call took down slot machines, hotel key cards, and reservation systems across two of the biggest casino operators in Las Vegas, within days of each other. Here's how it actually happened.</p>
+<p>Caesars Entertainment was hit first. According to Caesars' own regulatory filing with the Securities and Exchange Commission, attackers used a social-engineering attack on an outsourced IT support vendor to get access to Caesars' loyalty-program systems, stealing a database containing driver's license and Social Security numbers for a large number of members. Caesars' filing says it took steps to ensure the stolen data was deleted, which multiple news outlets reported meant paying the attackers a ransom -- reporting pointed to a figure in the tens of millions of dollars, roughly half of an original hundred-million-dollar demand. Caesars kept its casino floor running throughout.</p>
+<p>Then, days later, the same style of attack hit MGM Resorts -- but MGM made the opposite call. According to the joint advisory the FBI and CISA published afterward, the group behind both intrusions, tracked as Scattered Spider, found an MGM employee's information on LinkedIn, called the company's help desk impersonating that employee, and talked a technician into resetting credentials -- no password cracked, no software flaw exploited, just a convincing phone call. That access escalated into MGM's identity systems, and the attackers deployed ransomware tied to the BlackCat, or ALPHV, group. MGM chose not to pay. Slot machines went dark, digital hotel room keys stopped working, and reservation and payment systems stayed down for roughly ten days before MGM rebuilt them from the ground up. MGM later told investors the incident cost the company roughly a hundred million dollars.</p>
+<p>Root cause, in one sentence: two companies had technically sound password and multi-factor policies on paper, and a human being on a help desk call was the control that actually decided whether those policies meant anything that day.</p>
+<p>Here's what held, and it's worth naming precisely because this is mostly a failure story. Nevada's gaming-compliance systems -- the actual slot machine payout and financial-integrity systems regulators require casinos to keep separated from general corporate IT -- were not reported as manipulated at either company. The outage was a denial of service to the business, not a theft from it, which points to at least some real segmentation between regulated gaming systems and the everyday IT the attackers actually broke into.</p>
+<p>So what does that mean for you? A senior engineer treats the help desk itself as part of the identity perimeter, not a shortcut around it -- because this incident proves that the strongest multi-factor policy on paper is only as strong as the one human being authorized to reset it without a second channel to confirm who's actually calling.</p>
+
+        
+            <h3>Timeline</h3>
+            <table>
+<thead>
+<tr>
+<th>Date</th>
+<th>Event</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>~Aug 27, 2023</td>
+<td>Attackers linked to Scattered Spider socially engineer an outsourced IT support vendor used by Caesars Entertainment, gaining access to Caesars' loyalty-program database, per Caesars' SEC Form 8-K.</td>
+</tr>
+<tr>
+<td>Early Sept 2023</td>
+<td>Caesars pays a ransom reported by multiple outlets at roughly half of an initial $100 million demand, in exchange for assurances the stolen loyalty-program data would be deleted.</td>
+</tr>
+<tr>
+<td>Sept 7, 2023</td>
+<td>Caesars files its Form 8-K disclosing the incident to the SEC.</td>
+</tr>
+<tr>
+<td>Sept 10, 2023</td>
+<td>Scattered Spider impersonates an MGM Resorts employee in a call to MGM's IT help desk, obtaining a credential reset that leads to broader access, per the FBI/CISA joint advisory.</td>
+</tr>
+<tr>
+<td>Sept 11–12, 2023</td>
+<td>MGM detects the intrusion and shuts down portions of its network to contain it; ALPHV/BlackCat ransomware is deployed; MGM properties report slot machine, hotel key, and reservation outages. MGM files its own Form 8-K.</td>
+</tr>
+<tr>
+<td>~Sept 20, 2023</td>
+<td>MGM reports most systems restored after roughly ten days of disruption.</td>
+</tr>
+<tr>
+<td>Nov 16, 2023</td>
+<td>FBI and CISA publish joint advisory AA23-320A on Scattered Spider's tactics, later revised in 2025.</td>
+</tr>
+</tbody>
+</table>
+<p><em>Note: the exact ransom figure Caesars paid is sourced to reporting on people familiar with the matter, not to Caesars' own public statement, which confirmed only that it took steps to protect the data. Scattered Spider's responsibility for the Caesars intrusion specifically rests on researcher and law-enforcement attribution; a person claiming to represent the group told one outlet it had no involvement in the Caesars attack, so that attribution is flagged here rather than treated as admitted fact.</em></p>
+
+        
+            <h3>Control Failures</h3>
+            <table>
+<thead>
+<tr>
+<th>#</th>
+<th>Failure</th>
+<th>NIST SP 800-53 Rev 5 Control Family</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>IT help desk staff reset credentials and multi-factor enrollment based on a phone call alone, with no secondary, out-of-band verification of the caller's identity.</td>
+<td><strong>IA-5</strong> — Authenticator Management</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Help desk personnel were not equipped to recognize a targeted impersonation attempt built from information gathered on LinkedIn.</td>
+<td><strong>AT-2</strong> — Literacy Training and Awareness</td>
+</tr>
+<tr>
+<td>3</td>
+<td>A single reset at the help desk escalated into broad access across identity and hospitality-management systems, rather than being scoped to one account's minimum needs.</td>
+<td><strong>AC-6</strong> — Least Privilege</td>
+</tr>
+<tr>
+<td>4</td>
+<td>A third-party IT support vendor's access into Caesars' environment was not matched by documented oversight of what that vendor's staff could do or approve on Caesars' behalf.</td>
+<td><strong>SR-3</strong> — Supply Chain Controls and Processes</td>
+</tr>
+<tr>
+<td>5</td>
+<td>Neither company's monitoring caught the privilege escalation and lateral movement following the credential reset before ransomware deployment and mass data theft had already occurred.</td>
+<td><strong>SI-4</strong> — System Monitoring</td>
+</tr>
+<tr>
+<td>6</td>
+<td>Recovery from backups and rebuilt systems took roughly ten days at MGM, pointing to recovery procedures that had not been exercised at this scale beforehand.</td>
+<td><strong>CP-10</strong> — System Recovery and Reconstitution</td>
+</tr>
+</tbody>
+</table>
+
+        
+            <h3>What Held</h3>
+            <ul>
+<li><strong>Regulated gaming-compliance systems reportedly stayed intact.</strong> Nevada's gaming regulations require casinos to keep slot-machine payout and financial-integrity systems segmented from general corporate IT. No public reporting from either incident describes manipulated payouts or falsified gaming transactions — the attack denied service to the business rather than defrauding it, which is evidence that segmentation held even while the help desk did not.</li>
+<li><strong>MGM's refusal to pay, backed by a working recovery process.</strong> MGM rebuilt affected systems from backups rather than funding the attackers, which took roughly ten days but meant the outcome wasn't contingent on an attacker honoring a promise to delete stolen data — the position Caesars was left in instead.</li>
+<li><strong>Say the limit of both of these out loud.</strong> &quot;No evidence of manipulated gaming systems&quot; is a statement about what's been publicly reported, not a guarantee nothing more occurred, and Caesars' choice to pay doesn't resolve whether the stolen loyalty-program data was actually destroyed as promised — naming that uncertainty, instead of calling either response a clean win, is the senior move.</li>
+</ul>
+
+        
+            <h3>Sources</h3>
+            <ul>
+<li><a href="https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&amp;CIK=0000789570&amp;type=8-K" target="_blank" rel="noopener noreferrer">MGM Resorts International Form 8-K filings — U.S. Securities and Exchange Commission (primary)</a></li>
+<li><a href="https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&amp;CIK=0001590895&amp;type=8-K" target="_blank" rel="noopener noreferrer">Caesars Entertainment Form 8-K filings — U.S. Securities and Exchange Commission (primary)</a></li>
+<li><a href="https://www.cisa.gov/news-events/cybersecurity-advisories/aa23-320a" target="_blank" rel="noopener noreferrer">#StopRansomware Advisory: Scattered Spider — CISA and FBI Joint Cybersecurity Advisory AA23-320A (primary)</a></li>
+<li><a href="https://www.darkreading.com/attacks-breaches/mgm-caesars-sec-disclosures-cybersecurity-incidents" target="_blank" rel="noopener noreferrer">MGM, Caesars File SEC Disclosures on Cybersecurity Incidents — Dark Reading</a></li>
+<li><a href="https://kvia.com/news/us-world/2023/09/15/caesars-and-mgm-grapple-with-hacks-as-cybersecurity-in-vegas-is-under-scrutiny/" target="_blank" rel="noopener noreferrer">Caesars and MGM grapple with hacks as cybersecurity in Vegas is under scrutiny — Associated Press via KVIA</a></li>
+<li><a href="https://www.pokernews.com/news/2023/09/groups-claims-credit-for-mgm-cyberattack-44472.htm" target="_blank" rel="noopener noreferrer">Group claims credit for MGM cyberattack; Caesars confirms earlier attack — PokerNews</a></li>
+</ul>
+<p><strong>Tomorrow's Thread:</strong> Day 27 moves to the container and orchestration escape family — the Leaky Vessels vulnerabilities (CVE-2024-21626 and related runc/BuildKit flaws) that let a malicious container break out to the host, distinct from today's identity/credential-compromise family.</p>
+
+        
+    </article>
+    
+    <article class="brief-section" id="security-advice">
+        <p class="brief-kicker">Senior Security Advice</p>
+        <h2>Use AWS Organizations Service Control Policies as Org-Wide Guardrails</h2>
+        
+            <h3>The Advice</h3>
+            <p>Attach Service Control Policies at the AWS Organizations level so no single compromised or careless account can disable logging, leave your approved regions, or touch the root user — no matter what IAM permissions that account grants internally.</p>
+
+        
+            <h3>Why It Matters</h3>
+            <p>IAM policies live inside an account, and anyone who reaches administrator access in that account can edit or delete them. That is exactly the failure mode in real cloud breaches: an attacker escalates to IAM admin in one account, then turns off CloudTrail, disables GuardDuty, or spins up resources in a region nobody is watching — all while staying fully &quot;authorized&quot; according to that account's own policies. A single account was never supposed to be able to override the controls the security team put in place. AWS Organizations' Service Control Policies (SCPs) close that gap: they are guardrails set in the management account that cap what every IAM user and role in a member account can do, and a member account cannot loosen or remove them on its own.</p>
+
+        
+            <h3>How to Implement It</h3>
+            <ol>
+<li>Enable &quot;all features&quot; in AWS Organizations — SCPs only take effect under that mode, not under consolidated billing alone.</li>
+<li>Design an OU structure, then attach deny-style guardrail SCPs at the OU level: deny disabling CloudTrail, GuardDuty, or Config; deny API calls outside your approved regions; deny all but a tightly controlled break-glass path to the root user.</li>
+<li>Test every new SCP in a sandbox OU first. AWS explicitly warns against attaching untested SCPs to the organization root, because a mistake there can lock out legitimate work across every account at once.</li>
+<li>Verify the control is actually enforced, not just attached: have someone attempt the denied action and confirm it fails, then check CloudTrail for the <code>AccessDenied</code> entries that cite the SCP rather than an IAM policy.</li>
+<li>Review the SCP set on a schedule — confirm every OU and account still has at least one SCP attached and that none have quietly been scoped down as new services or teams were onboarded.</li>
+</ol>
+
+        
+            <h3>The Pushback You&#39;ll Hear</h3>
+            <p>&quot;We already lock this down with IAM policies — why do we need another layer?&quot; Because IAM policies are only as strong as the account they live in. If an attacker or a careless admin gets IAM-admin rights inside that account, they can rewrite or delete those policies outright. An SCP is controlled only from the management account, so even full admin control of a member account can't touch it — that separation is the entire point of a guardrail instead of a permission.</p>
+
+        
+            <h3>Sources</h3>
+            <ul>
+<li><a href="https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_scps.html" target="_blank" rel="noopener noreferrer">Service control policies (SCPs) - AWS Organizations User Guide</a> - AWS</li>
+<li><a href="https://aws.amazon.com/blogs/mt/enforcing-enterprise-wide-preventive-controls-with-aws-organizations" target="_blank" rel="noopener noreferrer">Enforcing enterprise-wide preventive controls with AWS Organizations</a> - AWS Cloud Operations Blog</li>
+</ul>
+
+        
+    </article>
+    
+    <article class="brief-section" id="tech-news">
+        <p class="brief-kicker">Tech News</p>
+        
+        
+            
+            <p>Two of your software vendors just shipped emergency patches on the same day, for two completely different reasons — and if you're running either one, tonight's the night to stop scrolling and go check. Two stories: a perfect-10 flaw in GitLab that needs no login at all, and a perfect-10 flaw in SAP that quietly hands your OAuth credentials to a stranger.</p>
+<p>Start with GitLab. According to GitLab's own security release, published October 12th, the company patched CVE-2026-97229, a critical, maximum-severity flaw — a 10.0 out of 10 — in the regex engine behind its CI/CD pipelines. The bug is an integer overflow: send it a crafted value, and it miscounts memory instead of rejecting the input, which an unauthenticated attacker can turn into full remote code execution on a self-managed GitLab server. No password, no API token, nothing. GitLab.com's own cloud service was already patched before the advisory went out; this hits only people running GitLab themselves, Community or Enterprise Edition. Sources differ slightly on the exact patched version numbers for each branch, so check GitLab's own release notes rather than any single news writeup. My read: a 10.0 in your CI/CD platform isn't just a GitLab problem — your pipeline is the thing building and signing everything else you ship, so an attacker who owns it owns your entire software supply chain, not just one server.</p>
+<p>Next up, SAP. According to SAP's October security patch day, the company fixed CVE-2026-89111, another maximum-severity flaw, this time a server-side request forgery in SAP's OAuth2 implementation. Here's the mechanic: the login flow trusts a parameter called the tenant subdomain to decide where to send the OAuth token request. An attacker who controls that parameter can redirect the request to their own server instead — and walk away with real client credentials, not a password guess, an actual valid token. SAP's own advisory suggests restricting that parameter to an allow-list as a stopgap until you patch. My take: this is the same lesson as always with SSRF — any time your server fetches a URL on someone else's say-so, that someone can point it at your own credentials instead of the internet.</p>
+<p>Same thread both stories tonight: a maximum-severity score doesn't care whether the product is open-source or enterprise software you pay for — unauthenticated and no-login-required means the clock starts the moment the advisory goes public, not the moment someone proves it's being exploited.</p>
+
+        
+            <h3>Sources</h3>
+            <ul>
+<li><a href="https://about.gitlab.com/releases/" target="_blank" rel="noopener noreferrer">GitLab Releases — GitLab (official)</a></li>
+<li><a href="https://www.rapid7.com/blog/post/etr-cve-2026-97229-critical-unauthenticated-remote-code-execution-in-gitlab/" target="_blank" rel="noopener noreferrer">CVE-2026-97229: Critical Unauthenticated Remote Code Execution in GitLab — Rapid7</a></li>
+<li><a href="https://itdaily.com/news/software/gitlab-bug-19-4-2/" target="_blank" rel="noopener noreferrer">Critical GitLab flaw allows unauthenticated attackers to execute code — ITdaily</a></li>
+<li><a href="https://bleepingcomputer.com/news/security/sap-warns-of-maximum-severity-oauth2-ssrf-security-flaw" target="_blank" rel="noopener noreferrer">SAP warns of maximum severity OAuth2 SSRF security flaw — BleepingComputer</a></li>
+</ul>
+
+        
+    </article>
+    
+    <section class="brief-subscribe" id="subscribe">
+    <h2>Get The Daily Brief by email</h2>
+    <p>One short email each morning. Unsubscribe anytime.</p>
+    <form action="https://buttondown.com/api/emails/embed-subscribe/cybercider" method="post">
+        <label for="bd-email">Email address</label>
+        <input type="email" name="email" id="bd-email" required autocomplete="email" placeholder="you@example.com">
+        <button type="submit">Subscribe</button>
+    </form>
+</section>
+</main>
+
+    <footer><p class="copyright">The Daily Brief · Eddie Camacho</p></footer>
+<!-- cf-web-analytics (managed by tools/inject_analytics.py) -->
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "f728a20b49cc4a0fbe02cde72f03301c"}'></script>
+</body>
+</html>
