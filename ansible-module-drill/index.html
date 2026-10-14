@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="color-scheme" content="dark">
     <meta name="referrer" content="strict-origin-when-cross-origin">
-    <meta name="description" content="Ansible Module Drill — a five-round, ten-minute drill for each of 31 Ansible modules: look it up, write the task, predict the result, reverse it, and read the error.">
+    <meta name="description" content="Ansible Module Drill — study the real ansible-doc EXAMPLES for each of 31 Ansible modules, then a five-round, ten-minute drill for each of 31 Ansible modules: look it up, write the task, predict the result, reverse it, and read the error.">
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'self';">
     <title>Ansible Module Drill · Eddie's Portfolio</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -192,6 +192,40 @@
         #result { margin-bottom:12px; }
 
         /* Finish */
+        /* Study sheet, shown before the drill */
+        #study { max-width:1000px; }
+        #study-summary { color:var(--muted); font-size:0.95rem; line-height:1.55; margin:-6px 0 16px; }
+        #study .pane { margin-bottom:18px; }
+        #study .pane > p { font-size:0.88rem; line-height:1.6; max-width:90ch; }
+        #study .pane > p + * { margin-top:12px; }
+        #study .pane code, #study-real code { color:var(--cyan); font-family:var(--mono); font-size:0.92em; }
+        #study-real { font-size:0.88rem; line-height:1.55; padding:10px 14px; border-left:3px solid var(--amber); background:rgba(251,191,36,0.07); border-radius:0 8px 8px 0; margin-bottom:16px; }
+        #study-needs { list-style:none; display:flex; flex-wrap:wrap; gap:8px; }
+        #study-needs li { font-family:var(--mono); font-size:0.84rem; padding:6px 12px; border:1px solid rgba(251,191,36,0.45); border-radius:999px; color:var(--amber); }
+        #study-needs li.none { border-color:var(--border); color:var(--muted); font-family:inherit; }
+        .opt-table { border-collapse:collapse; font-size:0.82rem; min-width:40rem; width:100%; }
+        .opt-table th, .opt-table td { text-align:left; padding:7px 14px 7px 0; border-bottom:1px solid rgba(255,255,255,0.06); vertical-align:top; line-height:1.5; }
+        .opt-table th { color:var(--muted); font-weight:500; }
+        .opt-table .o-name { font-family:var(--mono); white-space:nowrap; color:#fff; }
+        .opt-table .o-name.req { color:var(--amber); font-weight:600; }
+        .opt-table .o-alias { display:block; font-size:0.72rem; color:var(--muted); font-weight:400; }
+        .opt-table .o-count { font-family:var(--mono); white-space:nowrap; color:var(--green); }
+        .opt-table .o-count.zero { color:var(--muted); }
+        .opt-table .o-type { font-family:var(--mono); font-size:0.76rem; color:#c4a7ff; }
+        #study-rest { margin-top:14px; }
+        #study-rest summary { cursor:pointer; font-size:0.86rem; color:var(--cyan); padding:6px 0; }
+        #study-rest summary:focus-visible { outline:2px solid var(--cyan); outline-offset:2px; border-radius:6px; }
+        #study-examples { list-style:none; display:grid; gap:14px; }
+        .example { border:1px solid var(--border); border-radius:10px; background:#0a0613; overflow:hidden; }
+        .example-head { display:flex; flex-wrap:wrap; align-items:baseline; gap:8px 12px; padding:10px 14px; border-bottom:1px solid var(--border); }
+        .example-num { font-family:var(--mono); font-size:0.74rem; color:var(--muted); }
+        .example-title { font-size:0.86rem; color:#fff; font-weight:500; flex:1 1 20rem; }
+        .example-tag { font-size:0.7rem; padding:2px 8px; border-radius:999px; border:1px solid var(--border); color:var(--muted); }
+        .example-code { padding:12px 14px; font-family:var(--mono); font-size:0.78rem; line-height:1.6; overflow-x:auto; white-space:pre; color:#dcdfe8; }
+        .example-uses { padding:8px 14px 10px; font-size:0.74rem; color:var(--muted); border-top:1px solid rgba(255,255,255,0.05); }
+        .example-uses code { color:var(--green); font-family:var(--mono); }
+        #study-start { border-color:rgba(74,247,255,0.4); }
+
         #panel-done { max-width:900px; }
         #done-stars { font-size:2.4rem; letter-spacing:8px; color:#3d3757; margin-bottom:6px; }
         #done-stars .on { color:var(--amber); }
@@ -222,7 +256,7 @@
 
     <main id="main">
         <h1>Ansible Module Drill</h1>
-        <p class="subtitle">One module, five rounds, ten minutes. Look the module up, write the task, predict what Ansible will report, reverse it, then read the error from a broken version. Thirty-one modules across ten exam objective areas. Nothing is run on a real machine, so the results are scripted; repeat each drill on your lab afterwards.</p>
+        <p class="subtitle">Pick a module and study it first: what it needs to run, the options it is used with, and every real example from its <code>ansible-doc</code> page. Then drill it: five rounds, ten minutes. Look the module up, write the task, predict what Ansible will report, reverse it, then read the error from a broken version. Thirty-one modules across ten exam objective areas. Nothing is run on a real machine, so the results are scripted; repeat each drill on your lab afterwards.</p>
 
         <section id="board" aria-labelledby="board-h">
             <h2 id="board-h" class="skip">Modules</h2>
@@ -235,7 +269,7 @@
             <details id="guide" class="guide">
                 <summary class="label">How a drill works</summary>
                 <div class="guide-body">
-                    <p>Each module is one drill. The clock starts when you open it and the target is ten minutes.</p>
+                    <p>Each module opens on a study sheet built from <code>ansible-doc</code>: the required options, the options the real examples use, and every example from the module's EXAMPLES section, word for word. Read it, then press <strong>Start the drill</strong>. The clock starts then, and the target is ten minutes.</p>
                     <div class="table-scroll">
                         <table>
                             <thead><tr><th>Round</th><th>What you do</th><th>What it trains</th></tr></thead>
@@ -258,6 +292,60 @@
             </details>
 
             <div id="areas"></div>
+        </section>
+
+        <section id="study" aria-labelledby="study-title" hidden>
+            <div class="drill-head">
+                <button id="study-back" type="button">← All modules</button>
+                <h2 id="study-title"></h2>
+                <button id="study-skip" type="button">Skip to the drill ↓</button>
+            </div>
+            <p id="study-summary"></p>
+            <p id="study-real" hidden></p>
+
+            <div class="pane">
+                <h3 class="label">1. Look it up the way you will on the exam</h3>
+                <pre id="study-term" class="term"></pre>
+                <p>In the pager that <code>ansible-doc</code> opens, type <code>/EXAMPLES</code> and press <kbd>Enter</kbd> to jump straight to the examples, <code>n</code> for the next match, and <code>q</code> to quit. In the short form (<code>-s</code>), a line that starts with <code>=</code> is required and <code>-</code> is optional.</p>
+            </div>
+
+            <div class="pane">
+                <h3 class="label">2. What it needs to run</h3>
+                <p id="study-needs-note"></p>
+                <ul id="study-needs"></ul>
+            </div>
+
+            <div class="pane">
+                <h3 class="label">3. The options the real examples use</h3>
+                <p id="study-common-note"></p>
+                <div class="table-scroll">
+                    <table class="opt-table">
+                        <thead><tr><th>Option</th><th>In examples</th><th>Type, choices, default</th><th>What it does (ansible-doc)</th></tr></thead>
+                        <tbody id="study-common"></tbody>
+                    </table>
+                </div>
+                <details id="study-rest">
+                    <summary id="study-rest-label"></summary>
+                    <div class="table-scroll">
+                        <table class="opt-table">
+                            <thead><tr><th>Option</th><th>In examples</th><th>Type, choices, default</th><th>What it does (ansible-doc)</th></tr></thead>
+                            <tbody id="study-rest-body"></tbody>
+                        </table>
+                    </div>
+                </details>
+            </div>
+
+            <div class="pane">
+                <h3 id="study-examples-h" class="label">4. The real EXAMPLES</h3>
+                <p id="study-examples-note"></p>
+                <ol id="study-examples"></ol>
+            </div>
+
+            <div id="study-start" class="pane">
+                <h3 class="label">5. Start the drill</h3>
+                <p>Five rounds against a ten-minute clock: look it up, write the task, predict the result, reverse it, read the error. The clock starts when you press the button. The study sheet is not available inside the drill, but the <code>ansible-doc -s</code> panel is, as on the exam.</p>
+                <div class="buttons"><button id="study-go" class="primary" type="button">Start the drill →</button></div>
+            </div>
         </section>
 
         <section id="drill" aria-labelledby="mod-title" hidden>
@@ -337,6 +425,7 @@
                 <div class="buttons">
                     <button id="next-mod-btn" class="primary" type="button">Next module →</button>
                     <button id="again-btn" type="button">Drill it again</button>
+                    <button id="restudy-btn" type="button">Study it again</button>
                     <button id="board-btn" type="button">All modules</button>
                 </div>
             </div>

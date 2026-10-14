@@ -25,7 +25,7 @@
     <h2>Overview</h2>
     <p>
       Reading a module's documentation is not the same as being able to use it under time pressure.
-      This game turns one study routine into five scored rounds: look the module up, write the task,
+      Each module opens on a study sheet built from its real <code>ansible-doc</code> page, then the game turns one study routine into five scored rounds: look the module up, write the task,
       predict what Ansible will report, reverse the task, and read the error from a broken version.
       A browser cannot run Ansible, so every result is scripted. The design question was therefore how
       to keep scripted answers honest, and the answer is that as much as possible is taken from
@@ -43,9 +43,9 @@
       <span class="hiw-badge">Node test runner</span>
     </div>
     <ul class="hiw-caption-list">
-      <li><strong>HTML and CSS</strong> — one page with two views: the board of modules and the drill.</li>
+      <li><strong>HTML and CSS</strong> — one page with three views: the board of modules, the study sheet, and the drill.</li>
       <li><strong>JavaScript modules</strong> — the rules live in <code>game.js</code>, which has no screen access, so the same code runs in the browser and in the tests.</li>
-      <li><strong>ansible-doc</strong> — the source of every option name, required flag and list of choices.</li>
+      <li><strong>ansible-doc</strong> — the source of every option name, required flag, list of choices, and every example on the study sheet.</li>
       <li><strong>Node test runner</strong> — Node's built-in <code>node --test</code>. No packages to install.</li>
     </ul>
   </section>
@@ -62,6 +62,21 @@
         drawn from this file, so they cannot disagree with the installed Ansible.
       </p>
       <pre class="hiw-code">node ansible-module-drill/tools/build-specs.mjs</pre>
+    </div>
+
+    <div class="hiw-file-block">
+      <h3><code>examples.js</code> — the study sheet, copied from <code>ansible-doc</code></h3>
+      <p>
+        A second tool reads the same <code>ansible-doc -j</code> output and keeps the module's one-line
+        summary, the first sentence of each option's description, and the EXAMPLES section word for word,
+        split into its separate tasks. For each example it records which options are passed to the
+        module, whether as YAML keys, <code>key=value</code> pairs, an <code>args:</code> block or an ad hoc
+        <code>-a</code> string. The study sheet ranks options by that count, so "the most common options"
+        is measured from Ansible's own examples rather than guessed. Examples that call a different module
+        (a <code>debug</code> after a <code>stat</code>, for instance) are kept and marked as supporting tasks.
+        Ansible's documentation is GPL-3.0-or-later and the page says where each example came from.
+      </p>
+      <pre class="hiw-code">node ansible-module-drill/tools/build-examples.mjs</pre>
     </div>
 
     <div class="hiw-file-block">

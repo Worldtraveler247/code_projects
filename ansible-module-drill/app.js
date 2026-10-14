@@ -1,4 +1,4 @@
-// Page wiring: the board of modules, the five rounds of a drill, and the editor.
+// Page wiring: the board of modules, the study sheet, the five rounds of a drill, and the editor.
 // The editor, checker and syntax colours are the Playbook Trainer's, imported as they are.
 
 import { createEditor, getText, handleKey, insertText } from '../ansible-playbook-trainer/editor.js';
@@ -6,10 +6,11 @@ import { check } from '../ansible-playbook-trainer/checker.js';
 import { describe, nextHint } from '../ansible-playbook-trainer/model.js';
 import { charClasses, valueClass } from '../ansible-playbook-trainer/highlight.js';
 import { AREAS, MODULES } from './modules.js';
+import { SOURCE } from './specs.js';
 import {
   OUTCOMES, PAR_SECONDS, REVEAL_COST, ROUNDS, better, clock, collectionOf, collectionQuestion, docSummary,
   faultCase, labCommands, modelLines, predictQuestion, requiredCorrect, requiredQuestion, reverseFqcn,
-  reversePlays, shortName, stars, starterText, writePlays,
+  reversePlays, shortName, stars, starterText, studySheet, writePlays,
 } from './game.js';
 
 const PROGRESS_KEY = 'ansible-module-drill:progress:v1';
@@ -33,7 +34,13 @@ const el = {
   summary: $('summary'), result: $('result'), keys: $('key-row'),
   done: $('panel-done'), doneStars: $('done-stars'), doneLine: $('done-line'), doneRule: $('done-rule'),
   doneInsight: $('done-insight'), doneReverse: $('done-reverse'), doneLab: $('done-lab'),
-  nextMod: $('next-mod-btn'), again: $('again-btn'), toBoard: $('board-btn'),
+  nextMod: $('next-mod-btn'), again: $('again-btn'), toBoard: $('board-btn'), restudy: $('restudy-btn'),
+  study: $('study'), studyBack: $('study-back'), studyTitle: $('study-title'), studySkip: $('study-skip'),
+  studySummary: $('study-summary'), studyReal: $('study-real'), studyTerm: $('study-term'),
+  studyNeedsNote: $('study-needs-note'), studyNeeds: $('study-needs'), studyCommonNote: $('study-common-note'),
+  studyCommon: $('study-common'), studyRest: $('study-rest'), studyRestLabel: $('study-rest-label'),
+  studyRestBody: $('study-rest-body'), studyExamplesNote: $('study-examples-note'), studyExamples: $('study-examples'),
+  studyStart: $('study-start'), studyGo: $('study-go'),
 };
 
 function readStore(key, fallback) {
@@ -71,6 +78,7 @@ for (const mod of MODULES) {
 }
 
 let drill = null;
+let studying = null;
 let ticker = null;
 let editor = createEditor();
 let editorRound = null;
@@ -122,11 +130,123 @@ function renderBoard() {
 function showBoard() {
   stopClock();
   drill = null;
+  studying = null;
   quizKeys = null;
   el.drill.hidden = true;
+  el.study.hidden = true;
   el.board.hidden = false;
   history.replaceState(null, '', location.pathname + location.search);
   renderBoard();
+}
+
+// ---- Study sheet ----
+
+// Each line of an example gets the editor's syntax colours.
+function codeBlock(code) {
+  const pre = node('pre', 'example-code');
+  code.split('\n').forEach((text, i) => {
+    if (i > 0) pre.append('\n');
+    const classes = charClasses(text);
+    let run = '';
+    let runClass = classes[0];
+    const flush = () => { if (run) pre.append(runClass && runClass !== 'lead' ? node('span', runClass, run) : run); run = ''; };
+    for (let j = 0; j < text.length; j += 1) {
+      if (classes[j] !== runClass) { flush(); runClass = classes[j]; }
+      run += text[j];
+    }
+    flush();
+  });
+  return pre;
+}
+
+function optionRows(body, rows, total) {
+  body.replaceChildren();
+  rows.forEach((row) => {
+    const tr = node('tr');
+    const name = node('td', `o-name${row.required ? ' req' : ''}`, `${row.required ? '=' : '-'} ${row.name}`);
+    if (row.aliases.length) name.append(node('span', 'o-alias', `alias: ${row.aliases.join(', ')}`));
+    tr.append(
+      name,
+      node('td', `o-count${row.count ? '' : ' zero'}`, `${row.count} of ${total}`),
+      node('td', 'o-type', row.detail),
+      node('td', '', row.description),
+    );
+    body.append(tr);
+  });
+}
+
+function versionOf(fqcn) {
+  const collection = collectionOf(fqcn);
+  if (collection === 'ansible.posix') return `ansible.posix ${SOURCE.posix}`;
+  if (collection === 'community.general') return `community.general ${SOURCE.general}`;
+  return `ansible-core ${SOURCE.core}`;
+}
+
+function showStudy(mod) {
+  stopClock();
+  drill = null;
+  quizKeys = null;
+  studying = mod;
+  const sheet = studySheet(mod.fqcn);
+  el.board.hidden = true;
+  el.drill.hidden = true;
+  el.study.hidden = false;
+  el.studyTitle.textContent = mod.fqcn;
+  el.studySummary.textContent = `${sheet.summary}.`;
+  el.studyReal.hidden = !sheet.realName;
+  if (sheet.realName) {
+    el.studyReal.replaceChildren(
+      'Its documentation is filed under ', node('code', '', sheet.realName),
+      ', so the examples below call it by that name. It is the same module: ',
+      node('code', '', mod.fqcn), ' is its older name, and both work in a playbook.',
+    );
+  }
+  fillTerm(el.studyTerm, [
+    { cls: 'prompt', text: `$ ansible-doc ${mod.fqcn}` },
+    { text: '  (full page, then /EXAMPLES)' },
+    { cls: 'prompt', text: `$ ansible-doc -s ${mod.fqcn}` },
+    { text: '  (short form: every option, = required, - optional)' },
+  ]);
+
+  el.studyNeeds.replaceChildren();
+  if (sheet.required.length) {
+    el.studyNeedsNote.textContent = `${plural(sheet.required.length, 'option')} must be in every ${shortName(mod.fqcn)} task. Ansible stops with "missing required arguments" without ${sheet.required.length === 1 ? 'it' : 'them'}.`;
+    sheet.required.forEach((row) => el.studyNeeds.append(node('li', '', `= ${row.name}`)));
+  } else {
+    const top = sheet.common.slice(0, 3).map((row) => row.name);
+    el.studyNeedsNote.textContent = `No option is required: the module runs with none. What a task means comes from the options you add${top.length ? `, and the examples lean on ${top.join(', ')}` : ''}.`;
+    el.studyNeeds.append(node('li', 'none', 'nothing is required'));
+  }
+
+  const total = sheet.examples.length;
+  el.studyCommonNote.textContent = `Counted across the ${plural(total, 'example')} on the module's page. The options at the top are the ones to know cold.`;
+  optionRows(el.studyCommon, sheet.common, total);
+  el.studyRest.hidden = sheet.rest.length === 0;
+  el.studyRest.open = false;
+  el.studyRestLabel.textContent = `The other ${plural(sheet.rest.length, 'option')} (none of the examples use them)`;
+  optionRows(el.studyRestBody, sheet.rest, total);
+
+  el.studyExamplesNote.textContent = `Every example from the EXAMPLES section of ansible-doc ${mod.fqcn} (${versionOf(mod.fqcn)}), word for word. Ansible's documentation is GPL-3.0-or-later.`;
+  el.studyExamples.replaceChildren();
+  sheet.examples.forEach((example, i) => {
+    const item = node('li', 'example');
+    const head = node('div', 'example-head');
+    head.append(node('span', 'example-num', `#${i + 1}`), node('span', 'example-title', example.title));
+    if (!example.calls) head.append(node('span', 'example-tag', 'supporting task'));
+    else if (/^#.*\s-m\s/m.test(example.code) && !/^- /m.test(example.code)) head.append(node('span', 'example-tag', 'ad hoc command'));
+    item.append(head, codeBlock(example.code));
+    const uses = node('p', 'example-uses');
+    if (!example.calls) uses.append('Uses a different module, to set up or read the result of the examples around it.');
+    else if (example.uses.length) {
+      uses.append('Options: ');
+      example.uses.forEach((name, j) => { if (j) uses.append(', '); uses.append(node('code', '', name)); });
+    } else uses.append('Called with no options.');
+    item.append(uses);
+    el.studyExamples.append(item);
+  });
+
+  history.replaceState(null, '', `#${mod.id}`);
+  window.scrollTo(0, 0);
 }
 
 // ---- Drill frame ----
@@ -164,7 +284,9 @@ function startDrill(mod) {
   stopClock();
   drill = { mod, round: 0, step: 0, misses: 0, started: Date.now(), finished: null };
   ticker = setInterval(renderMeters, 1000);
+  studying = null;
   el.board.hidden = true;
+  el.study.hidden = true;
   el.drill.hidden = false;
   el.modTitle.textContent = mod.fqcn;
   el.given.textContent = `Starting state: ${mod.given}`;
@@ -604,13 +726,20 @@ function finish() {
 
 el.areas.addEventListener('click', (event) => {
   const card = event.target.closest('button[data-module]');
-  if (card) startDrill(MODULES.find((mod) => mod.id === card.dataset.module));
+  if (card) showStudy(MODULES.find((mod) => mod.id === card.dataset.module));
 });
-el.resume.addEventListener('click', () => startDrill(nextUp().mod));
+el.resume.addEventListener('click', () => showStudy(nextUp().mod));
+el.studyBack.addEventListener('click', showBoard);
+el.studyGo.addEventListener('click', () => startDrill(studying));
+el.studySkip.addEventListener('click', () => {
+  el.studyStart.scrollIntoView({ block: 'start' });
+  el.studyGo.focus({ preventScroll: true });
+});
+el.restudy.addEventListener('click', () => showStudy(drill.mod));
 el.back.addEventListener('click', showBoard);
 el.toBoard.addEventListener('click', showBoard);
 el.again.addEventListener('click', () => startDrill(drill.mod));
-el.nextMod.addEventListener('click', () => startDrill(nextUp().mod));
+el.nextMod.addEventListener('click', () => showStudy(nextUp().mod));
 el.quizNext.addEventListener('click', advance);
 
 document.addEventListener('keydown', (event) => {
@@ -632,7 +761,7 @@ el.reset.addEventListener('click', () => {
   renderBoard();
 });
 
-// A link such as index.html#user opens that module's drill directly.
+// A link such as index.html#user opens that module's study sheet.
 const linked = MODULES.find((mod) => mod.id === location.hash.slice(1));
-if (linked) startDrill(linked);
+if (linked) showStudy(linked);
 else renderBoard();

@@ -1,9 +1,11 @@
 // The rules of the drill, with no screen access, so the same code runs in the browser and
-// under the Node tests. Everything shown to the player is derived from modules.js and specs.js.
+// under the Node tests. Everything shown to the player is derived from modules.js, specs.js and
+// examples.js (the real EXAMPLES from ansible-doc).
 
 import { renderModel } from '../ansible-playbook-trainer/model.js';
 import { SPECS } from './specs.js';
 import { MESSAGES } from './messages.js';
+import { DOCS } from './examples.js';
 
 export const ROUNDS = ['Look up', 'Write', 'Predict', 'Reverse', 'Break'];
 export const PAR_SECONDS = 600;
@@ -113,6 +115,38 @@ export function docSummary(fqcn) {
       if (option.default !== undefined) parts.push(`default: ${option.default}`);
       return { name, required: Boolean(option.required), detail: parts.join(' · ') };
     });
+}
+
+// ---- Study sheet, shown before the drill ----
+
+function optionRow(fqcn, name, count) {
+  const option = specOf(fqcn)[name];
+  const parts = [option.type];
+  if (option.choices) parts.push(`one of: ${option.choices.join(', ')}`);
+  if (option.default !== undefined) parts.push(`default: ${option.default}`);
+  return {
+    name, count, required: Boolean(option.required), aliases: option.aliases || [],
+    detail: parts.join(' · '), description: DOCS[fqcn].options[name] || '',
+  };
+}
+
+// Required options first, then the rest by how many of the real examples use them.
+export function studySheet(fqcn) {
+  const doc = DOCS[fqcn];
+  const counts = {};
+  for (const example of doc.examples) for (const name of example.uses) counts[name] = (counts[name] || 0) + 1;
+  const rows = Object.keys(specOf(fqcn)).map((name) => optionRow(fqcn, name, counts[name] || 0));
+  const order = (a, b) => Number(b.required) - Number(a.required) || b.count - a.count || a.name.localeCompare(b.name);
+  return {
+    fqcn,
+    summary: doc.summary,
+    realName: doc.realName || null,
+    required: rows.filter((row) => row.required).sort(order),
+    common: rows.filter((row) => row.required || row.count > 0).sort(order),
+    rest: rows.filter((row) => !row.required && row.count === 0).sort(order),
+    examples: doc.examples,
+    calling: doc.examples.filter((example) => example.calls).length,
+  };
 }
 
 // ---- Round 3: predict ----
