@@ -187,13 +187,13 @@
   tasks:                                                <span class="note"># ← 2 spaces: opens the LIST of work. Order in here is execution order</span>
     - name: Install web packages                        <span class="note"># ← 4 spaces + dash: opens TASK 1</span>
       ansible.builtin.dnf:                              <span class="note"># ← 6 spaces: the module. Exactly one per task. WHAT to do</span>
-        name: "{{ web_packages }}"                      <span class="note"># ← 8 spaces: argument to the module; quotes are required when a value starts with {{</span>
-        state: present                                  <span class="note"># ← 8 spaces: the desired state, not a command</span>
+        name: "{{ web_packages }}"                      <span class="note"># ← 8 spaces: OPTION name, then its VALUE. Option + value = one argument to dnf. Quote a value that starts with {{</span>
+        state: present                                  <span class="note"># ← 8 spaces: OPTION state, VALUE present: the desired state, not a command</span>
       when: ansible_facts['os_family'] == 'RedHat'      <span class="note"># ← 6 spaces: belongs to the TASK, not the module. No {{ }} in when</span>
 
     - name: Hide the Apache version banner              <span class="note"># ← dash at 4 spaces again: TASK 1 is closed, TASK 2 opens</span>
       ansible.builtin.copy:
-        dest: /etc/httpd/conf.d/security.conf
+        dest: /etc/httpd/conf.d/security.conf           <span class="note"># ← 8 spaces: options of copy. Each one is listed in ansible-doc ansible.builtin.copy</span>
         content: |                                      <span class="note"># ← pipe: keep the following lines exactly, line breaks included</span>
           ServerTokens Prod
           ServerSignature Off
@@ -228,18 +228,34 @@
                             <tr><td><code>tasks:</code></td><td>2</td><td>Play key, holds a list</td><td>The work itself</td></tr>
                             <tr><td><code>- name:</code> (task)</td><td>4, then the dash</td><td>Opens one task</td><td>Each dash is a new task; the name is what you read when it fails</td></tr>
                             <tr><td>Module line</td><td>6</td><td>Task key</td><td>The action. One module per task, written with its full name</td></tr>
-                            <tr><td>Module arguments</td><td>8</td><td>Dictionary under the module</td><td>Parameters for that module only</td></tr>
+                            <tr><td>Module options (<code>option: value</code>)</td><td>8</td><td>Dictionary under the module: each key is an option, each option with its value is one argument</td><td>Tell that one module what to do. The option names come from the module, listed under OPTIONS in <code>ansible-doc</code></td></tr>
                             <tr><td><code>when:</code> <code>loop:</code> <code>register:</code> <code>notify:</code></td><td>6</td><td>Task keywords</td><td>They modify the task, so they line up with the module, not under it</td></tr>
                             <tr><td><code>handlers:</code></td><td>2</td><td>Play key, holds a list</td><td>Tasks that run only when notified, once, after the tasks finish</td></tr>
                         </tbody>
                     </table>
                 </div>
 
+                <h3>Options, arguments and keywords</h3>
+                <p>The lines under a module and the lines beside it look alike, but they belong to different owners. Take the first task above:</p>
+                <div class="table-scroll">
+                    <table>
+                        <thead><tr><th>Term</th><th>In the example</th><th>Where it sits</th><th>Who defines it</th></tr></thead>
+                        <tbody>
+                            <tr><td><strong>Module</strong></td><td><code>ansible.builtin.dnf:</code></td><td>6 spaces</td><td>A collection. One per task</td></tr>
+                            <tr><td><strong>Option</strong></td><td><code>name</code>, <code>state</code> (the keys)</td><td>8 spaces, left of the colon</td><td>The module. <code>ansible-doc</code> lists them under OPTIONS: <code>=</code> must be set, <code>-</code> may be set</td></tr>
+                            <tr><td><strong>Value</strong></td><td><code>"{{ web_packages }}"</code>, <code>present</code></td><td>Right of the colon</td><td>You. It must be a type the option accepts, and one of its choices if it has any</td></tr>
+                            <tr><td><strong>Argument</strong></td><td><code>state: present</code> (the whole line)</td><td>8 spaces</td><td>An option with the value you gave it, as passed to the module when the task runs</td></tr>
+                            <tr><td><strong>Task keyword</strong></td><td><code>name</code> (above the module), <code>when</code></td><td>6 spaces, beside the module</td><td>Ansible itself. Works the same for every module</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <p>People say "option", "argument" and "parameter" loosely, and Ansible's own messages use all three. Misspell an option and it reports <code>Unsupported parameters for (ansible.builtin.yum_repository) module: gpg_key</code>; leave out a required one and it reports <code>missing required arguments: path</code>. Both messages were recorded from real runs. The one line to hold on to: <strong>under the module is the module's business; beside the module is the task's.</strong> <code>name</code> appears in both places in the example, and the indentation alone tells you which it is.</p>
+
                 <h3>What can move, and what cannot</h3>
                 <ul>
                     <li><strong>Keys can come in any order.</strong> A play is a dictionary, so Ansible looks each key up by name. <code>tasks</code> above <code>hosts</code> works. Ansible runs the sections in its own fixed order regardless: variables, facts, tasks, then handlers.</li>
                     <li><strong>List items cannot be reordered.</strong> Tasks run top to bottom, so swapping two tasks changes what happens.</li>
-                    <li><strong>Indentation cannot change.</strong> It is how YAML knows what a line belongs to. Put <code>when</code> at 8 spaces instead of 6 and it becomes an argument to the module, which rejects it.</li>
+                    <li><strong>Indentation cannot change.</strong> It is how YAML knows what a line belongs to. Put <code>when</code> at 8 spaces instead of 6 and the module reads it as one of its options, which it does not have, so it fails with "Unsupported parameters".</li>
                     <li><strong>Spaces only, never tabs.</strong> YAML rejects a tab used for indentation.</li>
                 </ul>
                 <p>The usual order (<code>name</code>, <code>hosts</code>, <code>become</code>, <code>vars</code>, <code>tasks</code>, <code>handlers</code>) is a convention for the reader. The trainer accepts any order, so try it.</p>

@@ -329,8 +329,12 @@ function decorateExample(pre) {
         if (part.cls === 'lead') return;
         const next = parts[index + 1];
         // The gap before a note becomes a faint dashed leader, so the eye can follow it across.
-        if (next && next.cls === 'tok-comment' && part.text.trim() === '' && part.text.length > 3) {
+        const gap = next && next.cls === 'tok-comment' ? part.text.match(/ {4,}$/) : null;
+        if (gap && part.text.trim() === '') {
           row.append(' ', node('span', 'leader', part.text.slice(2)), ' ');
+        } else if (gap) {
+          // A plain value such as a path or `|` arrives with the gap still attached.
+          row.append(node('span', part.cls, part.text.slice(0, gap.index)), ' ', node('span', 'leader', gap[0].slice(2)), ' ');
         } else {
           row.append(node('span', part.cls, part.text));
         }
