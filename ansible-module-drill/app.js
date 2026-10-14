@@ -7,6 +7,7 @@ import { describe, nextHint } from '../ansible-playbook-trainer/model.js';
 import { charClasses, valueClass } from '../ansible-playbook-trainer/highlight.js';
 import { AREAS, MODULES } from './modules.js';
 import { SOURCE } from './specs.js';
+import { DOC_CORE, compactLines, focusOf, optionBlock, pageMap, requiredDrift, requiredLines, shortLines } from './docguide.js';
 import {
   OUTCOMES, PAR_SECONDS, REVEAL_COST, ROUNDS, better, clock, collectionOf, collectionQuestion, docSummary,
   faultCase, labCommands, modelLines, predictQuestion, requiredCorrect, requiredQuestion, reverseFqcn,
@@ -36,11 +37,15 @@ const el = {
   doneInsight: $('done-insight'), doneReverse: $('done-reverse'), doneLab: $('done-lab'),
   nextMod: $('next-mod-btn'), again: $('again-btn'), toBoard: $('board-btn'), restudy: $('restudy-btn'),
   study: $('study'), studyBack: $('study-back'), studyTitle: $('study-title'), studySkip: $('study-skip'),
-  studySummary: $('study-summary'), studyReal: $('study-real'), studyTerm: $('study-term'),
+  studySummary: $('study-summary'), studyReal: $('study-real'),
   studyNeedsNote: $('study-needs-note'), studyNeeds: $('study-needs'), studyCommonNote: $('study-common-note'),
   studyCommon: $('study-common'), studyRest: $('study-rest'), studyRestLabel: $('study-rest-label'),
   studyRestBody: $('study-rest-body'), studyExamplesNote: $('study-examples-note'), studyExamples: $('study-examples'),
   studyStart: $('study-start'), studyGo: $('study-go'),
+  readIntro: $('read-intro'), readDrift: $('read-drift'), readRoutine: $('read-routine'), readShortCmd: $('read-short-cmd'),
+  readFqcn: $('read-fqcn'), readCompact: $('read-compact'), readShortLabel: $('read-short-label'), readShort: $('read-short'),
+  readMore: $('read-short').parentElement, readPageCmd: $('read-page-cmd'), readPageNote: $('read-page-note'), readMap: $('read-map'),
+  readBlockName: $('read-block-name'), readBlockNote: $('read-block-note'), readBlock: $('read-block'),
 };
 
 function readStore(key, fallback) {
@@ -182,6 +187,111 @@ function versionOf(fqcn) {
   return `ansible-core ${SOURCE.core}`;
 }
 
+// Lines of real ansible-doc output, each coloured by what it is.
+function docText(target, lines) {
+  target.replaceChildren();
+  lines.forEach((line, i) => {
+    if (i > 0) target.append('\n');
+    target.append(node('span', `k-${line.kind}`, line.text));
+  });
+}
+
+// A command typed at the shell gets a $ prompt; a search typed inside the pager does not.
+function commandStep(lead, command, output, after, inPager = false) {
+  const item = node('li');
+  item.append(lead);
+  const term = node('pre', 'term doc-text');
+  term.append(node('span', inPager ? 'k-opt' : 'prompt', inPager ? command : `$ ${command}`));
+  output.forEach((line) => { term.append('\n'); term.append(line.cls ? node('span', line.cls, line.text) : line.text); });
+  item.append(term);
+  if (after) item.append(node('p', '', after));
+  return item;
+}
+
+// Section 1 of the study sheet: how to get from ansible-doc to a working task in thirty seconds.
+function showReading(mod) {
+  const { fqcn } = mod;
+  const name = shortName(fqcn);
+  const map = pageMap(fqcn);
+  const focus = focusOf(fqcn);
+  const required = requiredLines(fqcn);
+  const examples = map.rows.find((row) => row.jump === '/EXAMPLES');
+
+  el.readIntro.textContent = `On the exam there is no browser, only ansible-doc. Its two forms answer different questions: -s shows which options exist and which are required, and the full page shows what each option accepts and how real tasks use it. Everything below is the real output of ansible-doc ${DOC_CORE}, the version RHEL 9 ships, for ${fqcn}.`;
+
+  const drift = requiredDrift(fqcn);
+  el.readDrift.hidden = !drift.onlyOld.length && !drift.onlyNew.length;
+  if (!el.readDrift.hidden) {
+    const parts = [];
+    if (drift.onlyOld.length) parts.push(`On ansible-core ${DOC_CORE}, ${drift.onlyOld.join(', ')} ${drift.onlyOld.length === 1 ? 'is' : 'are'} required. Newer releases dropped that, and the rest of this sheet and the drill follow the newer release, so they do not mark ${drift.onlyOld.length === 1 ? 'it' : 'them'}. On the exam, set ${drift.onlyOld.length === 1 ? 'it' : 'them'}.`);
+    if (drift.onlyNew.length) parts.push(`Newer releases require ${drift.onlyNew.join(', ')}; ansible-core ${DOC_CORE} does not.`);
+    el.readDrift.textContent = parts.join(' ');
+  }
+
+  const steps = [
+    commandStep(
+      'Which options must the task set?',
+      `ansible-doc -s ${fqcn} | grep '(required)'`,
+      required.length ? required.map((text) => ({ text, cls: 'k-req' })) : [{ text: '(no output)', cls: 'k-cont' }],
+      required.length
+        ? `Set ${plural(required.length, 'option')} in every ${name} task, or Ansible stops with "missing required arguments".`
+        : `Nothing is required: ${name} runs with no options, so what the task does comes from the options you choose.`,
+    ),
+    commandStep(
+      'What does a working task look like?',
+      `ansible-doc ${fqcn}`,
+      [{ text: '/EXAMPLES', cls: 'k-opt' }],
+      examples
+        ? `Type /EXAMPLES and press Enter. EXAMPLES starts on line ${examples.line} of ${map.total}, near the end, so searching beats scrolling. Copy the shape of the example closest to your task.`
+        : 'Type /EXAMPLES and press Enter, then copy the shape of the example closest to your task.',
+    ),
+  ];
+  if (focus) {
+    const block = optionBlock(fqcn, focus);
+    const fields = block.filter((line) => line.kind === 'field').map((line) => ({ text: line.text.trim(), cls: 'k-field' }));
+    steps.push(commandStep(
+      `What values does an option accept? Still in the pager, search for the option by name, ${focus} here:`,
+      `/^- ${focus}`,
+      fields,
+      'The ^ anchors the search to the start of a line, so it lands on the option itself, not on a mention in some other description. Read the last lines of its block, shown above. Use /^= instead of /^- for a required option.',
+      true,
+    ));
+  }
+  steps.push(commandStep(
+    'Quit the pager and check your work before you run it:',
+    'ansible-playbook --syntax-check playbook.yml',
+    [],
+    'Press q to leave the pager. A syntax check catches indentation and misspelt keys in a second, without touching a host.',
+  ));
+  el.readRoutine.replaceChildren(...steps);
+
+  el.readShortCmd.textContent = `ansible-doc -s ${fqcn}`;
+  el.readFqcn.textContent = fqcn;
+  docText(el.readCompact, [{ text: `$ ansible-doc -s ${fqcn} | grep -v '^ *#'`, kind: 'prompt' }, ...compactLines(fqcn)]);
+  el.readCompact.firstChild.className = 'prompt';
+  const full = shortLines(fqcn);
+  el.readShortLabel.textContent = `The full -s output, word for word (${plural(full.length, 'line')})`;
+  el.readMore.open = false;
+  docText(el.readShort, full);
+
+  el.readPageCmd.textContent = `ansible-doc ${fqcn}`;
+  el.readPageNote.textContent = `${map.total} lines in a pager. Don't scroll: jump to the part that answers your question. The line numbers are from ansible-core ${DOC_CORE}.`;
+  el.readMap.replaceChildren(...map.rows.map((row) => {
+    const tr = node('tr');
+    tr.append(node('td', '', row.want), node('td', '', String(row.line)), node('td', '', row.jump), node('td', '', row.shows));
+    return tr;
+  }));
+
+  el.readBlockName.textContent = focus ? `- ${focus}` : '';
+  if (focus) {
+    el.readBlockNote.textContent = `This is the ${focus} block, exactly as the full page prints it. The prose explains. The lines in amber at the bottom answer most exam questions: choices are the only values allowed, default is what you get if you leave the option out (null means there is no fixed default), and type is what to write (bool means true or false).`;
+    docText(el.readBlock, optionBlock(fqcn, focus).map((line) => ({ ...line, kind: line.kind === 'field' ? 'field' : line.kind === 'head' ? 'opt' : 'cont' })));
+  }
+  el.readBlockName.parentElement.hidden = !focus;
+  el.readBlockNote.hidden = !focus;
+  el.readBlock.hidden = !focus;
+}
+
 function showStudy(mod) {
   stopClock();
   drill = null;
@@ -201,12 +311,7 @@ function showStudy(mod) {
       node('code', '', mod.fqcn), ' is its older name, and both work in a playbook.',
     );
   }
-  fillTerm(el.studyTerm, [
-    { cls: 'prompt', text: `$ ansible-doc ${mod.fqcn}` },
-    { text: '  (full page, then /EXAMPLES)' },
-    { cls: 'prompt', text: `$ ansible-doc -s ${mod.fqcn}` },
-    { text: '  (short form: every option, = required, - optional)' },
-  ]);
+  showReading(mod);
 
   el.studyNeeds.replaceChildren();
   if (sheet.required.length) {

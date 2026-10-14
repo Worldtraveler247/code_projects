@@ -80,6 +80,25 @@
     </div>
 
     <div class="hiw-file-block">
+      <h3><code>docpages.js</code> — how to read <code>ansible-doc</code> under exam pressure</h3>
+      <p>
+        The first section of every study sheet teaches the two forms of <code>ansible-doc</code> as they
+        appear on a RHEL 9 control node. A third tool runs <code>ansible-doc -s</code> and
+        <code>ansible-doc</code> from ansible-core 2.14, the version RHEL 9 ships, because 2.17 and later
+        print a different layout. It keeps the <code>-s</code> output word for word, and from the full page
+        the line number of each section and option plus the text of the option worth reading. Local paths
+        in the page header are cut back to the part every install shares.
+      </p>
+      <p>
+        Capturing the real output corrected two things. <code>-s</code> does not mark required options with
+        <code>=</code>; it prints a task skeleton and writes <code># (required)</code> in the comment, and the
+        <code>=</code> marker belongs to the full page's OPTIONS section. And on 2.14, <code>dnf</code>'s
+        <code>name</code> is required while newer releases dropped that, so the sheet says so for that module.
+      </p>
+      <pre class="hiw-code">ANSIBLE_DOC=/path/to/ansible-core-2.14/bin/ansible-doc node ansible-module-drill/tools/build-docpages.mjs</pre>
+    </div>
+
+    <div class="hiw-file-block">
       <h3><code>messages.js</code> — error messages recorded from a real run</h3>
       <p>
         The last round shows an error and asks which line caused it. Those messages were not written

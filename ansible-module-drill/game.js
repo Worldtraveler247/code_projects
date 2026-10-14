@@ -103,7 +103,7 @@ export function requiredCorrect(question, ticked) {
   return question.options.every((option) => option.required === ticked.includes(option.name));
 }
 
-// What `ansible-doc -s` would list, as [{ name, required, detail }], required options first.
+// The options as the full page's OPTIONS section marks them, as [{ name, required, detail }], required first.
 export function docSummary(fqcn) {
   const spec = specOf(fqcn);
   return Object.keys(spec)

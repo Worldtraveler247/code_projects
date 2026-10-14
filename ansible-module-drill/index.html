@@ -225,6 +225,27 @@
         .example-uses { padding:8px 14px 10px; font-size:0.74rem; color:var(--muted); border-top:1px solid rgba(255,255,255,0.05); }
         .example-uses code { color:var(--green); font-family:var(--mono); }
         #study-start { border-color:rgba(74,247,255,0.4); }
+        .read-h { font-size:0.9rem; color:#fff; margin:22px 0 10px; font-weight:600; }
+        .read-h code, #read-pane li code, #read-pane td code { color:var(--cyan); font-family:var(--mono); font-size:0.92em; }
+        #read-drift { font-size:0.88rem; line-height:1.55; padding:10px 14px; border-left:3px solid var(--amber); background:rgba(251,191,36,0.07); border-radius:0 8px 8px 0; }
+        #read-routine { padding-left:1.4rem; display:grid; gap:14px; font-size:0.88rem; line-height:1.55; }
+        #read-routine .term { margin:8px 0 0; }
+        .read-legend { padding-left:1.2rem; font-size:0.86rem; line-height:1.6; display:grid; gap:4px; margin-bottom:12px; }
+        .doc-text { white-space:pre; overflow-wrap:normal; font-family:var(--mono); font-size:0.76rem; }
+        .doc-text.tall { max-height:28em; overflow:auto; }
+        .doc-text .k-task, .read-legend .k-task { color:var(--green); }
+        .doc-text .k-module, .read-legend .k-module { color:#c4a7ff; }
+        .doc-text .k-opt, .read-legend .k-opt { color:var(--cyan); }
+        .doc-text .k-req, .read-legend .k-req { color:var(--amber); font-weight:600; }
+        .doc-text .k-cont { color:var(--muted); }
+        .doc-text .k-field { color:var(--amber); }
+        .read-legend span { font-family:var(--mono); font-size:0.8rem; }
+        .read-more summary { cursor:pointer; font-size:0.86rem; color:var(--cyan); padding:6px 0; }
+        .read-more summary:focus-visible { outline:2px solid var(--cyan); outline-offset:2px; border-radius:6px; }
+        .read-map td:nth-child(2) { font-family:var(--mono); color:var(--green); white-space:nowrap; }
+        .read-map td:nth-child(3) { font-family:var(--mono); color:var(--cyan); white-space:nowrap; }
+        .read-map td:nth-child(4) { font-family:var(--mono); font-size:0.76rem; color:var(--muted); }
+        .read-keys td:first-child { white-space:nowrap; width:9rem; }
 
         #panel-done { max-width:900px; }
         #done-stars { font-size:2.4rem; letter-spacing:8px; color:#3d3757; margin-bottom:6px; }
@@ -274,7 +295,7 @@
                         <table>
                             <thead><tr><th>Round</th><th>What you do</th><th>What it trains</th></tr></thead>
                             <tbody>
-                                <tr><td>1. Look up</td><td>Pick the module's full name, then tick its required options</td><td>Finding a module with <code>ansible-doc</code> and reading <code>=</code> against <code>-</code></td></tr>
+                                <tr><td>1. Look up</td><td>Pick the module's full name, then tick its required options</td><td>Finding a module with <code>ansible-doc</code> and spotting what is required: <code># (required)</code> in <code>-s</code>, <code>=</code> on the full page</td></tr>
                                 <tr><td>2. Write</td><td>Type the task in a Vim-style editor. The play header is already there</td><td>Recall of the option names, and placement</td></tr>
                                 <tr><td>3. Predict</td><td>Call the result of <code>--check</code>, the first run and the second run before you see it</td><td>Idempotence, and which modules break the pattern</td></tr>
                                 <tr><td>4. Reverse</td><td>Edit your task so that it undoes itself</td><td>The option that removes, and what it leaves behind</td></tr>
@@ -303,10 +324,55 @@
             <p id="study-summary"></p>
             <p id="study-real" hidden></p>
 
-            <div class="pane">
-                <h3 class="label">1. Look it up the way you will on the exam</h3>
-                <pre id="study-term" class="term"></pre>
-                <p>In the pager that <code>ansible-doc</code> opens, type <code>/EXAMPLES</code> and press <kbd>Enter</kbd> to jump straight to the examples, <code>n</code> for the next match, and <code>q</code> to quit. In the short form (<code>-s</code>), a line that starts with <code>=</code> is required and <code>-</code> is optional.</p>
+            <div class="pane" id="read-pane">
+                <h3 class="label">1. Read ansible-doc fast, the way you will on the exam</h3>
+                <p id="read-intro"></p>
+                <p id="read-drift" hidden></p>
+
+                <h4 class="read-h">The 30-second routine</h4>
+                <ol id="read-routine"></ol>
+
+                <h4 class="read-h">The short form: <code id="read-short-cmd"></code></h4>
+                <p>It prints a task skeleton, not a manual. How to read it:</p>
+                <ul class="read-legend">
+                    <li><span class="k-task">Line 1</span> <code>- name:</code> is the module's one-line description, ready to use as a task name.</li>
+                    <li><span class="k-module">Line 2</span> is the module's short name. Write the full name (<code id="read-fqcn"></code>) in your playbook.</li>
+                    <li><span class="k-opt">Each key six spaces in</span> is an option. Everything after its <code>#</code> is the description, wrapped onto the lines below it.</li>
+                    <li><span class="k-req"># (required)</span> marks an option the task must set.</li>
+                    <li>It does <strong>not</strong> show types, choices or defaults. For those, use the full page below.</li>
+                </ul>
+                <p>The description lines make it long. Strip them and you are left with one line per option:</p>
+                <pre id="read-compact" class="term doc-text"></pre>
+                <details class="read-more">
+                    <summary id="read-short-label"></summary>
+                    <pre id="read-short" class="term doc-text tall"></pre>
+                </details>
+
+                <h4 class="read-h">The full page: <code id="read-page-cmd"></code></h4>
+                <p id="read-page-note"></p>
+                <div class="table-scroll">
+                    <table class="opt-table read-map">
+                        <thead><tr><th>You want</th><th>Line</th><th>Type in the pager</th><th>What the line says</th></tr></thead>
+                        <tbody id="read-map"></tbody>
+                    </table>
+                </div>
+
+                <h4 class="read-h">Reading one option: <code id="read-block-name"></code></h4>
+                <p id="read-block-note"></p>
+                <pre id="read-block" class="term doc-text"></pre>
+
+                <h4 class="read-h">Pager keys</h4>
+                <div class="table-scroll">
+                    <table class="opt-table read-keys">
+                        <tbody>
+                            <tr><td><code>/text</code> <kbd>Enter</kbd></td><td>Search forward. <code>/^= </code> finds the next required option, <code>/^- state</code> finds the state option.</td></tr>
+                            <tr><td><code>n</code> / <code>N</code></td><td>Next / previous match</td></tr>
+                            <tr><td><kbd>Space</kbd> / <code>b</code></td><td>Page down / page up</td></tr>
+                            <tr><td><code>g</code> / <code>G</code></td><td>Top / bottom of the page</td></tr>
+                            <tr><td><code>q</code></td><td>Quit, back to the shell</td></tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
 
             <div class="pane">
@@ -343,7 +409,7 @@
 
             <div id="study-start" class="pane">
                 <h3 class="label">5. Start the drill</h3>
-                <p>Five rounds against a ten-minute clock: look it up, write the task, predict the result, reverse it, read the error. The clock starts when you press the button. The study sheet is not available inside the drill, but the <code>ansible-doc -s</code> panel is, as on the exam.</p>
+                <p>Five rounds against a ten-minute clock: look it up, write the task, predict the result, reverse it, read the error. The clock starts when you press the button. The study sheet is not available inside the drill, but a summary of the module's options is, as <code>ansible-doc</code> is on the exam.</p>
                 <div class="buttons"><button id="study-go" class="primary" type="button">Start the drill →</button></div>
             </div>
         </section>
@@ -384,7 +450,7 @@
                     <p id="hint-text" hidden></p>
                     <details id="doc">
                         <summary id="doc-command"></summary>
-                        <p id="doc-note"><span class="req">=</span> required, <span class="opt">-</span> optional. On the lab this command also prints a description of each option.</p>
+                        <p id="doc-note"><span class="req">=</span> required, <span class="opt">-</span> optional, as in the OPTIONS section of the full page. On the lab this command also prints a description of each option.</p>
                         <ul id="doc-list"></ul>
                     </details>
                 </section>
