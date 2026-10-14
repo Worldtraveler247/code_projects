@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="dark">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'self' https://static.cloudflareinsights.com; connect-src 'self' https://cloudflareinsights.com; img-src 'self' data:; form-action https://buttondown.com; base-uri 'none'; object-src 'none'">
+    <meta name="description" content="The Daily Brief for Thursday, October 15, 2026: security incidents, senior security advice, engineering explainers, and tech news.">
+    <title>The Daily Brief · Oct 15, 2026</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="icon" href="../../../favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="../../../style.css">
+    <link rel="stylesheet" href="../../newsletter.css">
+</head>
+<body class="brief-page">
+    <a href="#main-content" class="skip-nav">Skip to main content</a>
+    <nav class="brief-nav">
+        <a href="../../../index.html">← App Hub</a>
+        <a href="../../">All issues</a>
+    </nav>
+    
+<header class="brief-masthead">
+    <p class="brief-eyebrow">THE DAILY BRIEF</p>
+    <h1>Thursday, October 15, 2026</h1>
+    <ol class="brief-toc">
+        <li><a href="#current-events">Current Events</a></li><li><a href="#security-advice">Senior Security Advice</a></li><li><a href="#tech-news">Tech News</a></li>
+    </ol>
+</header>
+<main id="main-content" class="brief">
+    
+    <article class="brief-section" id="current-events">
+        <p class="brief-kicker">Current Events</p>
+        <h2>Leaky Vessels (runc/BuildKit Container Escapes)</h2>
+        
+            
+            <p>Picture a container -- the thing that's supposed to be a sealed box, isolated from the host machine it's running on -- and now picture that box having a tiny crack in its wall that nobody noticed, because the crack wasn't in the box itself. It was in the tool that builds and runs the box in the first place. That's Leaky Vessels, a set of container escape flaws disclosed in early 2024, and the most serious one sits in a piece of software almost every container on Earth depends on without most engineers ever knowing its name: runc. Here's how it actually worked.</p>
+<p>runc is the low-level tool that actually creates and starts containers underneath Docker, Kubernetes, and basically every major container platform -- when you run a container, something eventually calls runc to do the real work of setting it up. Security researchers found that runc had an internal file-descriptor leak: a reference to a file or directory on the HOST system -- not inside the container -- that accidentally stayed open and reachable from inside the new container process. Normally a container can only see its own sealed-off filesystem. But if an attacker controlled the container image, or could run a command inside an existing container, they could reach through that leaked file descriptor and touch the host's actual filesystem -- in the worst case, overwriting a binary on the host itself. That's tracked as CVE-2024-21626, and three related flaws in BuildKit, the tool that builds container images, got their own CVE numbers for similar build-time breakout and file-deletion bugs.</p>
+<p>Root cause, in one sentence: a container's entire security model depends on genuinely sealing it off from the host, and a small, internal plumbing mistake in the open-source tool doing that sealing was enough to put a crack in boxes most people assumed were solid everywhere at once.</p>
+<p>Here's what held, and it's the reason this is remembered as a close call rather than a breach. The people who found it -- security researchers who privately reported it -- didn't post it to social media first. They coordinated with the runc maintainers and major cloud providers under embargo, so patches and updated managed-container services were largely ready before the technical details went public on January 31st, 2024. No major cloud provider or distribution reported in-the-wild exploitation before that disclosure. The fix shipped in runc 1.1.12.</p>
+<p>So what does that mean for you? A senior engineer treats the container RUNTIME itself -- not just the application running inside the container -- as something with its own patch cycle and its own CVE history, because this incident proves that the sealed box you're trusting for isolation is only as sealed as the specific version of the tool that built it.</p>
+
+        
+            <h3>Timeline</h3>
+            <table>
+<thead>
+<tr>
+<th>Date</th>
+<th>Event</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>~2023</td>
+<td>Security researchers, working with runc and BuildKit maintainers, identify a file-descriptor leak in runc and three related breakout/deletion flaws in BuildKit during private security research, per the coordinated-disclosure writeups published alongside the CVEs.</td>
+</tr>
+<tr>
+<td>Pre-Jan 2024</td>
+<td>Maintainers and major cloud providers (AWS, Google Cloud, Microsoft Azure) are notified under embargo and prepare patches and managed-service updates ahead of public disclosure.</td>
+</tr>
+<tr>
+<td>Jan 31, 2024</td>
+<td>Public disclosure: CVE-2024-21626 (runc, affecting v1.0.0-rc93 through versions before 1.1.12) and CVE-2024-23651, CVE-2024-23652, and CVE-2024-23653 (BuildKit, versions before 0.12.5) are published together under the collective name &quot;Leaky Vessels.&quot;</td>
+</tr>
+<tr>
+<td>Jan 31, 2024</td>
+<td>runc 1.1.12 and BuildKit 0.12.5 ship, closing the flaws; Red Hat publishes security bulletin RHSB-2024-001 confirming the runc issue as a core container-infrastructure flaw.</td>
+</tr>
+<tr>
+<td>Feb 2024</td>
+<td>Cloud providers confirm patched or auto-updated managed container services; no widespread in-the-wild exploitation is publicly reported.</td>
+</tr>
+</tbody>
+</table>
+<p><em>Note: some vendor writeups differ slightly on the exact date a specific managed cloud service (for example, one Google Cloud Kubernetes Engine patch note) rolled out its fix, with at least one source flagging a likely typo in a 2023-vs-2024 date on a vendor blog; the January 31, 2024 disclosure date itself is consistent across the CVE records and Red Hat's own bulletin.</em></p>
+
+        
+            <h3>Control Failures</h3>
+            <table>
+<thead>
+<tr>
+<th>#</th>
+<th>Failure</th>
+<th>NIST SP 800-53 Rev 5 Control Family</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>runc leaked an internal file descriptor referencing the host filesystem into the container's own process space, breaking the isolation boundary a container is supposed to guarantee.</td>
+<td><strong>SC-7</strong> — Boundary Protection</td>
+</tr>
+<tr>
+<td>2</td>
+<td>A malicious or compromised container image, or a command run via <code>runc exec</code>, could reach host-level file access with no additional privilege check at that boundary.</td>
+<td><strong>AC-6</strong> — Least Privilege</td>
+</tr>
+<tr>
+<td>3</td>
+<td>BuildKit's related flaws allowed an image-build process — something many CI/CD pipelines run automatically and frequently — to break out of its own sandbox.</td>
+<td><strong>CM-7</strong> — Least Functionality</td>
+</tr>
+<tr>
+<td>4</td>
+<td>The flaw existed in a foundational, widely-inherited piece of container infrastructure, meaning any organization's own code review had no visibility into it at all.</td>
+<td><strong>SA-11</strong> — Developer Testing and Evaluation</td>
+</tr>
+<tr>
+<td>5</td>
+<td>Detecting and fixing this class of bug depended entirely on the open-source maintainers' and researchers' own testing, not on any monitoring control an end-user organization could run itself.</td>
+<td><strong>SI-7</strong> — Software, Firmware, and Information Integrity</td>
+</tr>
+</tbody>
+</table>
+
+        
+            <h3>What Held</h3>
+            <ul>
+<li><strong>Coordinated, embargoed disclosure.</strong> The researchers who found Leaky Vessels reported it privately to runc and BuildKit maintainers and major cloud providers first, rather than publishing immediately. That gave vendors time to ship runc 1.1.12, BuildKit 0.12.5, and updated managed-container services largely in step with the public CVE disclosure on January 31, 2024.</li>
+<li><strong>No confirmed in-the-wild exploitation before the fix.</strong> Across the public reporting, no cloud provider or major distribution disclosed evidence of these specific flaws being exploited against real customers before patches were available — the kind of outcome embargoed disclosure is specifically meant to produce.</li>
+<li><strong>Say the limit of that out loud.</strong> &quot;No confirmed exploitation reported&quot; describes what vendors have publicly disclosed, not a guarantee that no one, anywhere, ever tried — naming that distinction, rather than calling the response a clean win, is the senior move.</li>
+</ul>
+
+        
+            <h3>Sources</h3>
+            <ul>
+<li><a href="https://access.redhat.com/security/vulnerability/RHSB-2024-001" target="_blank" rel="noopener noreferrer">RHSB-2024-001 Leaky Vessels - runc - (CVE-2024-21626) — Red Hat Customer Portal (primary)</a></li>
+<li><a href="https://www.wiz.io/vulnerability-database/cve/cve-2024-21626" target="_blank" rel="noopener noreferrer">CVE-2024-21626 — Wiz Vulnerability Database</a></li>
+<li><a href="https://www.wiz.io/blog/leaky-vessels-container-escape-vulnerabilities" target="_blank" rel="noopener noreferrer">Leaky Vessels: runC and BuildKit container escape vulnerabilities - everything you need to know — Wiz</a></li>
+<li><a href="https://paloaltonetworks.com/blog/cloud-security/leaky-vessels-vulnerabilities-container-escape" target="_blank" rel="noopener noreferrer">Container Escape: New Vulnerabilities Affecting Docker and RunC — Palo Alto Networks</a></li>
+</ul>
+<p><strong>Tomorrow's Thread:</strong> Day 28 moves to the AI and agent security family — malicious machine-learning models found on public model hubs that achieve remote code execution through unsafe deserialization (the pickle-format RCE risk) when a model is loaded, distinct from today's container and orchestration escape family.</p>
+
+        
+    </article>
+    
+    <article class="brief-section" id="security-advice">
+        <p class="brief-kicker">Senior Security Advice</p>
+        <h2>Eliminate Default Credentials Before Production</h2>
+        
+            <h3>The Advice</h3>
+            <p>Change or remove every default, vendor-supplied credential — on routers, IoT devices, databases, admin consoles, and cloud images — before that device or account ever touches a production network.</p>
+
+        
+            <h3>Why It Matters</h3>
+            <p>Default credentials are not a secret. Vendor manuals, support forums, and public credential lists all document the factory admin password for a given router, camera, or appliance model. An attacker does not need to guess or crack anything; they just try the documented default against every device they can reach. That is the exact mechanism behind the large IoT botnets that have conscripted hundreds of thousands of internet-connected devices simply by scanning for ones still running their factory password. It is also the pattern CISA called out when it warned that threat actors, including nation-state-linked groups, had compromised operational technology at U.S. critical infrastructure sites by targeting devices left on default credentials. Without this control, a single unboxed device or a quietly reset admin account becomes a standing, fully &quot;authorized&quot; door into the network — no exploit required.</p>
+
+        
+            <h3>How to Implement It</h3>
+            <ol>
+<li>Make &quot;no default credentials&quot; a blocking gate in device and account provisioning: nothing joins the network, or goes into the asset inventory as production-ready, until its default authenticator has been replaced.</li>
+<li>Generate a unique credential or certificate-based identity per device or account at setup time. Never let one shared factory password cover an entire fleet of the same model.</li>
+<li>For appliances and IoT gear that ship with a default login, force a mandatory change-on-first-use flow and keep the device off the network until that change is confirmed.</li>
+<li>Run recurring scans of your own asset inventory using published vendor default-credential lists, and treat any successful login with a default as a security incident, not a configuration finding to file away.</li>
+<li>Verify the control is actually working: pull a sample of production devices and accounts and attempt to log in with the vendor's documented defaults yourself. Every attempt should fail. A clean scan report with no spot-check behind it only tells you the scanner looked — not that the credential is really gone.</li>
+</ol>
+
+        
+            <h3>The Pushback You&#39;ll Hear</h3>
+            <p>&quot;This device sits on our internal network, not the internet, so the default password isn't a real risk.&quot; A senior engineer's answer: most intrusions don't start at the internet edge — they start with one compromised laptop, one phished user, or one exposed internal service, and from there the attacker moves laterally looking for exactly this kind of easy win. A default credential on an internal device is the resource that turns a small foothold into full control of that system. Network segmentation is a separate, complementary control; it's not a substitute for removing the credential itself.</p>
+
+        
+            <h3>Sources</h3>
+            <ul>
+<li><a href="https://cisa.gov/resources-tools/resources/secure-design-alert-how-manufacturers-can-protect-customers-eliminating-default-passwords" target="_blank" rel="noopener noreferrer">Secure by Design Alert: How Manufacturers Can Protect Customers by Eliminating Default Passwords</a> - CISA</li>
+<li><a href="https://cisa.gov/news-events/alerts/2023/12/15/cisa-secure-design-alert-urges-manufacturers-eliminate-default-passwords" target="_blank" rel="noopener noreferrer">CISA Secure by Design Alert Urges Manufacturers to Eliminate Default Passwords</a> - CISA</li>
+</ul>
+
+        
+    </article>
+    
+    <article class="brief-section" id="tech-news">
+        <p class="brief-kicker">Tech News</p>
+        
+        
+            
+            <p>If you've got Windows anywhere in your environment, or an Ivanti Connect Secure box handling remote access, the US government just told you — officially — that attackers are already walking through doors just like yours. Two stories tonight, and they landed in the same federal alert on the same day: a Windows flaw and an Ivanti VPN flaw, both now confirmed under active attack.</p>
+<p>Start with Windows. According to CISA's own alert, published October 13th, the agency added CVE-2026-96951 — a command injection vulnerability in Microsoft Windows — to its Known Exploited Vulnerabilities catalog. That catalog isn't a guess list. CISA only adds a CVE to it when the agency has direct evidence that attackers are exploiting it right now, not just that it's theoretically dangerous. Command injection means an attacker smuggles their own operating-system commands into a process that was only ever supposed to accept narrow, specific input, and the system runs them as if it had typed them itself. Federal civilian agencies now have a hard patch deadline on the books. My read: once something clears the bar for that catalog, it stops being a &quot;get to it this sprint&quot; item. It's a &quot;this is being used against real networks today&quot; item, and your own patch cadence should move at the same speed CISA's deadline does, clearance or no clearance.</p>
+<p>Next up, Ivanti. According to that same CISA alert, the agency also added CVE-2026-104935 — an authentication bypass in Ivanti Connect Secure — on the same day. Ivanti Connect Secure is remote-access VPN infrastructure, the kind of appliance that lets employees log into their desktops from outside the building, and it's used widely across government and defense-adjacent networks specifically because of that job. An authentication bypass means an attacker reaches whatever sits behind that login screen without ever producing valid credentials — no password guess, no stolen token, just a flaw that skips the check entirely. Ivanti's product line has a well-documented history of being targeted precisely because it's remote-access infrastructure: compromise the VPN appliance, and you're not attacking one account, you're attacking the front door everyone uses. My take: any authentication bypass in your remote-access layer jumps to the front of the patch queue, full stop — the blast radius isn't one user's credentials, it's everyone who authenticates through that box.</p>
+<p>Same thread both stories tonight: CISA doesn't add a CVE to that catalog on a hunch. Confirmed active exploitation is the bar, and once a flaw clears it, the clock you're racing against isn't your own change-management calendar anymore — it's the attacker's.</p>
+
+        
+            <h3>Sources</h3>
+            <ul>
+<li><a href="https://www.cisa.gov/news-events/alerts/2026/10/13/cisa-adds-two-known-exploited-vulnerabilities-catalog" target="_blank" rel="noopener noreferrer">CISA Adds Two Known Exploited Vulnerabilities to Catalog — CISA (official)</a></li>
+</ul>
+
+        
+    </article>
+    
+    <section class="brief-subscribe" id="subscribe">
+    <h2>Get The Daily Brief by email</h2>
+    <p>One short email each morning. Unsubscribe anytime.</p>
+    <form action="https://buttondown.com/api/emails/embed-subscribe/cybercider" method="post">
+        <label for="bd-email">Email address</label>
+        <input type="email" name="email" id="bd-email" required autocomplete="email" placeholder="you@example.com">
+        <button type="submit">Subscribe</button>
+    </form>
+</section>
+</main>
+
+    <footer><p class="copyright">The Daily Brief · Eddie Camacho</p></footer>
+<!-- cf-web-analytics (managed by tools/inject_analytics.py) -->
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "f728a20b49cc4a0fbe02cde72f03301c"}'></script>
+</body>
+</html>
