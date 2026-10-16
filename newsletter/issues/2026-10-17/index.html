@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="dark">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'self' https://static.cloudflareinsights.com; connect-src 'self' https://cloudflareinsights.com; img-src 'self' data:; form-action https://buttondown.com; base-uri 'none'; object-src 'none'">
+    <meta name="description" content="The Daily Brief for Saturday, October 17, 2026: security incidents, senior security advice, engineering explainers, and tech news.">
+    <title>The Daily Brief · Oct 17, 2026</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="icon" href="../../../favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="../../../style.css">
+    <link rel="stylesheet" href="../../newsletter.css">
+</head>
+<body class="brief-page">
+    <a href="#main-content" class="skip-nav">Skip to main content</a>
+    <nav class="brief-nav">
+        <a href="../../../index.html">← App Hub</a>
+        <a href="../../">All issues</a>
+    </nav>
+    
+<header class="brief-masthead">
+    <p class="brief-eyebrow">THE DAILY BRIEF</p>
+    <h1>Saturday, October 17, 2026</h1>
+    <ol class="brief-toc">
+        <li><a href="#current-events">Current Events</a></li><li><a href="#security-advice">Senior Security Advice</a></li><li><a href="#tech-news">Tech News</a></li>
+    </ol>
+</header>
+<main id="main-content" class="brief">
+    
+    <article class="brief-section" id="current-events">
+        <p class="brief-kicker">Current Events</p>
+        <h2>Fortinet FortiOS SSL-VPN &#34;XORtigate&#34; (CVE-2023-27997)</h2>
+        
+            
+            <p>Before you ever type a username into some VPN gateways, there's a brief window where the appliance is already running code on your behalf -- and in 2023, that window became one of the most exploited flaws on the internet. It's tracked as CVE-2023-27997, nicknamed XORtigate, and it hit FortiOS and FortiProxy, two of the most widely deployed SSL-VPN products on the planet. Here's how it actually worked.</p>
+<p>FortiOS's SSL-VPN component has to parse incoming connection data before a user ever authenticates, because that's simply how a VPN gateway functions -- it has to understand what's being asked of it before it can even display a login prompt. According to Fortinet's own security advisory, FG-IR-23-097, published June 12th, 2023, researchers found a heap-based buffer overflow sitting in exactly that pre-authentication parsing code. A heap overflow means the program writes more data into a block of memory than that block was ever sized to hold, and when an attacker controls what spills over the edge, they can often turn that overflow into their own code running on the device -- fully unauthenticated, fully remote. Fortinet rated it 9.8 out of 10.</p>
+<p>Root cause, in one sentence: a piece of code that by definition has to run before login even exists has no authentication check standing in front of it, so a memory-safety bug sitting there is a memory-safety bug with the front door already wide open.</p>
+<p>Here's what held, and it's worth naming precisely because the exploitation record itself is genuinely mixed. Fortinet's own advisory said the flaw &quot;may have been exploited in a limited number of cases&quot; at disclosure -- not a confirmed mass campaign on day one. Singapore's Cyber Security Agency reported active exploitation around that same window, and researchers have since tied broader abuse of this flaw to state-linked activity over the following two years. The control that actually mattered here is simple: Fortinet shipped patched builds the same day as the advisory, and published disabling SSL-VPN entirely as an official workaround for anyone who couldn't patch immediately. An organization that did either one was never exposed, no matter how the exploitation picture developed afterward.</p>
+<p>So what does that mean for you? A senior engineer treats a vendor's pre-authentication code path as inherently higher-risk than anything sitting behind a login, because this incident proves &quot;unauthenticated&quot; isn't a minor caveat on a CVE description -- it's the whole reason a 9.8 is a 9.8. On a RHEL and Podman lab, that means checking which services expose anything at all before login -- SSH with password auth, a web management interface, a VPN gateway -- and treating version currency on exactly those services as the single highest-priority patch item, not just another line in a monthly cycle.</p>
+
+        
+            <h3>Timeline</h3>
+            <table>
+<thead>
+<tr>
+<th>Date</th>
+<th>Event</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Prior to June 2023</td>
+<td>Researchers Charles Fol and Dany Bach of LEXFO identify a heap-based buffer overflow in FortiOS/FortiProxy SSL-VPN pre-authentication parsing code and report it to Fortinet, per Fortinet's advisory credits.</td>
+</tr>
+<tr>
+<td>June 12, 2023</td>
+<td>Fortinet publishes advisory FG-IR-23-097, assigns CVE-2023-27997, rates it CVSS 9.8 (critical), and ships patched FortiOS and FortiProxy builds the same day.</td>
+</tr>
+<tr>
+<td>June 12, 2023</td>
+<td>Fortinet states the flaw &quot;may have been exploited in a limited number of cases&quot;; Singapore's Cyber Security Agency issues its own alert describing active exploitation of the same flaw.</td>
+</tr>
+<tr>
+<td>2023–2025</td>
+<td>Threat-intelligence researchers continue attributing broader campaigns exploiting this flaw, and related FortiOS SSL-VPN bugs, to state-linked and ransomware-affiliated activity, per ongoing vendor and researcher reporting.</td>
+</tr>
+</tbody>
+</table>
+<p><em>Note: sources differ on exactly how widespread exploitation was at the moment of disclosure versus how it grew afterward — Fortinet's own &quot;limited number of cases&quot; language and Singapore CSA's &quot;actively exploited&quot; characterization were both issued the same week, and this script treats that as a genuine difference in assessment rather than resolving it one way.</em></p>
+
+        
+            <h3>Control Failures</h3>
+            <table>
+<thead>
+<tr>
+<th>#</th>
+<th>Failure</th>
+<th>NIST SP 800-53 Rev 5 Control Family</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>Pre-authentication SSL-VPN code accepted and parsed attacker-controlled input with no bounds checking on the resulting memory write.</td>
+<td><strong>SI-10</strong> — Information Input Validation</td>
+</tr>
+<tr>
+<td>2</td>
+<td>The vulnerable function executed before any authentication decision was made, so no access-control boundary separated an anonymous network request from memory-unsafe code.</td>
+<td><strong>SC-7</strong> — Boundary Protection</td>
+</tr>
+<tr>
+<td>3</td>
+<td>Memory-unsafe parsing logic in C-based appliance firmware had no automatic bounds enforcement of the kind a memory-safe language would provide by default.</td>
+<td><strong>SI-16</strong> — Memory Protection</td>
+</tr>
+<tr>
+<td>4</td>
+<td>Organizations without a current inventory of which appliances had SSL-VPN enabled had no fast way to confirm their own exposure when the advisory dropped.</td>
+<td><strong>CM-8</strong> — System Component Inventory</td>
+</tr>
+<tr>
+<td>5</td>
+<td>Where immediate patching wasn't possible, some organizations had no compensating network control in place, despite Fortinet publishing &quot;disable SSL-VPN&quot; as an official interim workaround.</td>
+<td><strong>CM-7</strong> — Least Functionality</td>
+</tr>
+</tbody>
+</table>
+
+        
+            <h3>What Held</h3>
+            <ul>
+<li><strong>Same-day patch availability.</strong> Fortinet shipped fixed builds the same day as the advisory — the fastest realistic path to closing exposure for anyone actively watching the vendor's advisory feed.</li>
+<li><strong>A documented workaround existed.</strong> Disabling SSL-VPN until patched was officially sanctioned by Fortinet, giving organizations without an immediate patch window a real compensating control instead of just an unprotected wait.</li>
+<li><strong>Say the limit of that out loud.</strong> &quot;Shipped a patch the same day&quot; describes availability, not adoption — plenty of appliances kept running vulnerable firmware for years afterward, which is exactly why this flaw kept resurfacing in exploitation reporting into 2025. Naming that gap between patch-released and patch-applied, rather than treating same-day availability as the end of the story, is the senior move.</li>
+</ul>
+
+        
+            <h3>Sources</h3>
+            <ul>
+<li><a href="https://fortiguard.com/psirt/FG-IR-23-097" target="_blank" rel="noopener noreferrer">Heap buffer overflow in sslvpn pre-authentication (FG-IR-23-097) — Fortinet PSIRT (primary)</a></li>
+<li><a href="https://www.csa.gov.sg/alerts-and-advisories/alerts/al-2023-078/" target="_blank" rel="noopener noreferrer">Critical Vulnerability in Fortinet's FortiOS and FortiProxy Products — Cyber Security Agency of Singapore</a></li>
+<li><a href="https://www.tenable.com/blog/cve-2023-27997-heap-based-buffer-overflow-in-fortinet-fortios-and-fortiproxy-ssl-vpn-xortigate" target="_blank" rel="noopener noreferrer">CVE-2023-27997: Heap-Based Buffer Overflow in Fortinet FortiOS and FortiProxy SSL-VPN (XORtigate) — Tenable</a></li>
+<li><a href="https://www.theregister.com/2023/06/12/fortinet_fixes_critical_rce_bug/" target="_blank" rel="noopener noreferrer">Fortinet fixes critical RCE bug — The Register</a></li>
+</ul>
+<p><strong>Tomorrow's Thread:</strong> Day 30 moves to the software supply-chain family — the SolarWinds SUNBURST breach, where attackers compromised a trusted software update to reach thousands of downstream networks at once, distinct from today's internet-facing edge exploitation family.</p>
+
+        
+    </article>
+    
+    <article class="brief-section" id="security-advice">
+        <p class="brief-kicker">Senior Security Advice</p>
+        <h2>Keep SELinux in Enforcing Mode on Every Production Host</h2>
+        
+            <h3>The Advice</h3>
+            <p>Run every production Linux host with SELinux set to Enforcing, and treat any host where it has been switched to Permissive or Disabled as an open security finding, not a convenience setting.</p>
+
+        
+            <h3>Why It Matters</h3>
+            <p>Standard Unix file permissions are discretionary: whoever owns a process decides what it can touch, and a compromised process inherits whatever that owner could already do. SELinux adds mandatory access control on top of that — a policy the process owner cannot override — so even a process running as root is confined to the narrow set of files, ports, and actions its security context actually needs. Without it, a single remote code execution bug in a web application has a much shorter path to full host compromise. This is the mechanic behind the web shell attacks that CISA and NSA have repeatedly warned organizations about: an attacker drops a small script through a vulnerable web app, and once that script can execute with the privileges of the web server process, it becomes a foothold for reading other users' files, pivoting to other services, or installing persistence. Mandatory access control doesn't stop the initial bug, but it denies the follow-on filesystem writes and process actions that turn one compromised app into a compromised host. The reason this control keeps slipping is almost always the same: SELinux denials are confusing, deadlines are tight, and <code>setenforce 0</code> makes the error go away in five seconds — so it gets disabled &quot;temporarily&quot; and never gets turned back on.</p>
+
+        
+            <h3>How to Implement It</h3>
+            <ol>
+<li>Bake <code>SELINUX=enforcing</code> into the golden image or build pipeline as the default, so new systems never launch in Permissive or Disabled mode in the first place.</li>
+<li>Never resolve a denial by disabling SELinux. Pull the AVC denial from the audit log, use <code>audit2allow</code> to draft a narrow custom policy module, test it, and load only that module.</li>
+<li>If an app genuinely needs a temporary exception to diagnose a problem, use Permissive mode on that one host for that one investigation — never as a standing production state — then return it to Enforcing.</li>
+<li>Treat SELinux state as a monitored configuration item, not a one-time setting: have configuration management (Ansible, Puppet, etc.) check <code>getenforce</code> on a schedule and alert on drift, the same way you'd alert on a disabled firewall.</li>
+<li>Verify it's actually working, not just reporting Enforcing: trigger an action the policy should deny — an unauthorized file write or domain transition in a test environment — and confirm it's blocked and logged as an AVC denial. A host that reports &quot;Enforcing&quot; but has never been tested against a real denial is an assumption, not a verified control.</li>
+</ol>
+
+        
+            <h3>The Pushback You&#39;ll Hear</h3>
+            <p>&quot;SELinux broke my app and I don't have time to write a policy, so I just disabled it.&quot; The senior response: that trade gives up MAC protection for every process on the host, forever, to avoid writing one scoped policy module for one app. Red Hat's own guidance is direct about this — Permissive mode exists for exactly this kind of debugging, and Disabled mode is &quot;strongly discouraged&quot; because it also stops SELinux from labeling files, which makes turning it back on later even harder. Reading one AVC denial and running <code>audit2allow</code> usually takes less time than the meeting where someone asks why the firewall is also off.</p>
+
+        
+            <h3>Sources</h3>
+            <ul>
+<li><a href="https://docs.redhat.com/en/documentation/red_hat_enterprise_linux/10/html/using_selinux/changing-selinux-states-and-modes" target="_blank" rel="noopener noreferrer">Changing SELinux states and modes - Using SELinux</a> - Red Hat (states Enforcing is the default and recommended mode, Permissive is for policy development/debugging and not recommended for production, and Disabled mode is strongly discouraged)</li>
+<li><a href="https://stigviewer.com/stig/red_hat_enterprise_linux_9/2024-06-04/finding/V-258078" target="_blank" rel="noopener noreferrer">DISA STIG Red Hat Enterprise Linux 9, Finding V-258078 / RHEL-09-431010</a> - DISA (High-severity finding if SELinux is not set to Enforcing via <code>getenforce</code> and <code>/etc/selinux/config</code>)</li>
+</ul>
+
+        
+    </article>
+    
+    <article class="brief-section" id="tech-news">
+        <p class="brief-kicker">Tech News</p>
+        
+        
+            
+            <p>If your mail security gateway could already be compromised, Cisco just told you something most vendors never say out loud: don't patch it — rebuild it from scratch. Two stories tonight, and both are about appliances sitting right at your network's edge, both now confirmed under active attack.</p>
+<p>Start with Cisco. According to Cisco's own security advisory, reported by BleepingComputer and The Hacker News, the company is warning that CVE-2026-76519, a critical, 9.8-out-of-10 flaw in Secure Email Gateway's Advanced Malware Protection feature, is being actively exploited — Cisco's own security team says it learned of real-world attacks this month. An attacker sends an email with a crafted attachment, and a relative path-traversal bug lets them write arbitrary files to the device and run commands as root. Here's the part that should get your attention: Cisco isn't telling affected customers to just upgrade and move on. Because an upgrade can wipe out the very logs you'd need to prove what happened, Cisco's guidance is to stand up a brand-new instance on a patched release, rebuild the configuration by hand instead of importing the old file, and rotate every credential and cryptographic key the device held. My read: when a vendor tells you not to trust an in-place patch to also serve as your incident response, that's the vendor admitting the compromise may already own the box — and chain-of-custody thinking, not just patch speed, is what separates a senior response from a junior one.</p>
+<p>Next up, Palo Alto Networks. According to Palo Alto's own security advisory and reporting from The Hacker News, the company patched CVE-2026-0322, a code-execution flaw in the PAN-OS web management interface that the advisory itself describes as showing &quot;very limited exploitation&quot; against firewalls that exposed that interface to begin with. CISA added it to the Known Exploited Vulnerabilities catalog on October 14th, with a remediation deadline for federal agencies landing today. The fix matters, but so does the exposure it depends on: Cloud NGFW and Prisma Access were never affected, because they don't expose that same management surface the way an on-premises PA-Series box can. My take: this is a reminder that &quot;patch the CVE&quot; and &quot;stop exposing the management interface to begin with&quot; are two different fixes, and only doing the first one leaves you one new bug away from the same conversation.</p>
+<p>Same thread both stories tonight: the appliances sitting at your network's edge are also the ones vendors build with the least assumption that an attacker is already watching — which is exactly why, when something goes wrong there, the fix is rarely just &quot;install the update.&quot;</p>
+<p>I'm Eddie Camacho.</p>
+
+        
+            <h3>Sources</h3>
+            <ul>
+<li><a href="https://bleepingcomputer.com/news/security/cisco-patches-actively-exploited-secure-email-gateway-zero-day" target="_blank" rel="noopener noreferrer">Cisco patches actively exploited Secure Email Gateway zero-day — BleepingComputer</a></li>
+<li><a href="https://thehackernews.com/2026/10/cisco-warns-of-active-attacks.html" target="_blank" rel="noopener noreferrer">Cisco warns of active attacks — The Hacker News</a></li>
+<li><a href="https://cyber.gc.ca/en/alerts-advisories/cisco-security-advisory-av26-1042" target="_blank" rel="noopener noreferrer">Cisco security advisory (AV26-1042) — Canadian Centre for Cyber Security</a></li>
+<li><a href="https://thehackernews.com/2026/10/palo-alto-networks-patches-pan-os.html" target="_blank" rel="noopener noreferrer">Palo Alto Networks patches PAN-OS authenticated RCE flaw amid active exploitation — The Hacker News</a></li>
+<li><a href="https://security.paloaltonetworks.com/CVE-2026-0322" target="_blank" rel="noopener noreferrer">Palo Alto Networks Security Advisories / CVE-2026-0322 — Palo Alto Networks</a></li>
+</ul>
+
+        
+    </article>
+    
+    <section class="brief-subscribe" id="subscribe">
+    <h2>Get The Daily Brief by email</h2>
+    <p>One short email each morning. Unsubscribe anytime.</p>
+    <form action="https://buttondown.com/api/emails/embed-subscribe/cybercider" method="post">
+        <label for="bd-email">Email address</label>
+        <input type="email" name="email" id="bd-email" required autocomplete="email" placeholder="you@example.com">
+        <button type="submit">Subscribe</button>
+    </form>
+</section>
+</main>
+
+    <footer><p class="copyright">The Daily Brief · Eddie Camacho</p></footer>
+<!-- cf-web-analytics (managed by tools/inject_analytics.py) -->
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "f728a20b49cc4a0fbe02cde72f03301c"}'></script>
+</body>
+</html>
