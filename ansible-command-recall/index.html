@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="dark">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <meta name="description" content="Ansible Command Recall — answer from memory the commands that set up an Ansible control node, ansible.cfg, the inventory, and ad hoc tasks. Answers are checked by meaning, so option order does not matter.">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'self';">
+    <title>Ansible Command Recall · Eddie's Portfolio</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Inter:wght@400;500;600&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <script type="module" src="app.js"></script>
+    <style>
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --bg:#07010f; --cyan:#4af7ff; --purple:#7b2fff; --green:#00e676;
+            --amber:#fbbf24; --red:#ff5c7c; --text:#dde0f0; --muted:#8a90aa;
+            --border:rgba(74,247,255,0.16); --card:rgba(255,255,255,0.03);
+            --mono:'Fira Code', ui-monospace, Menlo, monospace;
+            color-scheme: dark;
+        }
+        body { background: var(--bg); color: var(--text); font-family: 'Inter', system-ui, sans-serif; min-height: 100vh; }
+        .skip { position:absolute; left:-999px; top:0; background:var(--cyan); color:#000; padding:8px 14px; border-radius:0 0 8px 0; z-index:50; }
+        .skip:focus { left:0; }
+        [hidden] { display:none !important; }
+
+        .top-nav { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:16px 24px; border-bottom:1px solid var(--border); position:sticky; top:0; background:rgba(7,1,15,0.92); backdrop-filter:blur(12px); z-index:10; }
+        .nav-left { display:flex; align-items:center; gap:12px; min-width:0; }
+        .back-btn, .hiw-btn { display:inline-flex; align-items:center; gap:6px; padding:7px 14px; border:1px solid var(--border); border-radius:8px; text-decoration:none; font-size:0.78rem; font-weight:500; white-space:nowrap; }
+        .back-btn { color:var(--muted); }
+        .back-btn:hover { color:var(--cyan); border-color:var(--cyan); }
+        .hiw-btn { color:var(--cyan); }
+        .hiw-btn:hover { background:rgba(74,247,255,0.07); border-color:var(--cyan); }
+        .app-title { font-family:'Orbitron', system-ui; font-size:0.85rem; color:var(--cyan); letter-spacing:2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+        main { max-width:900px; margin:0 auto; padding:32px 24px 80px; }
+        h1 { font-family:'Orbitron', system-ui; font-size:clamp(1.5rem,4vw,2.2rem); color:#fff; margin-bottom:6px; }
+        .subtitle { color:var(--muted); font-size:0.9rem; margin-bottom:24px; line-height:1.5; max-width:72ch; }
+        code, pre, kbd, textarea { font-family:var(--mono); }
+        kbd { padding:1px 6px; border:1px solid var(--border); border-radius:5px; font-size:0.86em; color:var(--cyan); background:#0c0718; white-space:nowrap; }
+        .label { font-family:'Orbitron', system-ui; font-size:0.8rem; letter-spacing:2px; color:var(--cyan); text-transform:uppercase; }
+
+        button { padding:9px 16px; border-radius:8px; border:1px solid var(--border); background:transparent; color:var(--text); font:inherit; font-size:0.84rem; font-weight:500; cursor:pointer; }
+        button:hover:not(:disabled) { border-color:var(--cyan); color:var(--cyan); }
+        button:disabled { opacity:0.4; cursor:not-allowed; }
+        button:focus-visible, textarea:focus-visible { outline:2px solid var(--cyan); outline-offset:2px; }
+        button.primary { background:var(--cyan); color:#04121a; border-color:var(--cyan); font-weight:600; }
+        button.primary:hover:not(:disabled) { color:#04121a; filter:brightness(1.1); }
+        .buttons { display:flex; flex-wrap:wrap; gap:10px; align-items:center; }
+
+        /* ---- Board ---- */
+        .scoreline { display:flex; flex-wrap:wrap; align-items:center; gap:12px; margin-bottom:18px; }
+        #score { font-size:0.95rem; color:#fff; font-weight:600; }
+        #reset-btn { margin-left:auto; color:var(--muted); font-size:0.78rem; padding:7px 12px; }
+        .decks { display:grid; grid-template-columns:repeat(auto-fill, minmax(190px, 1fr)); gap:12px; margin-bottom:28px; }
+        .deck { display:flex; flex-direction:column; align-items:flex-start; gap:6px; text-align:left; padding:16px; border-radius:12px; background:var(--card); }
+        .deck-name { font-size:1rem; color:#fff; font-weight:600; }
+        .deck-count { font-size:0.78rem; color:var(--muted); }
+        .bar { width:100%; height:5px; border-radius:3px; background:#1a1430; overflow:hidden; margin-top:4px; }
+        .bar span { display:block; height:100%; background:var(--green); }
+        .deck.all { border-color:rgba(74,247,255,0.4); }
+
+        .list { background:var(--card); border:1px solid var(--border); border-radius:14px; }
+        .list summary { padding:14px 18px; cursor:pointer; }
+        .list-body { padding:0 18px 18px; }
+        .list-body h3 { font-size:0.9rem; color:#fff; margin:18px 0 8px; }
+        .qa { padding:10px 0; border-bottom:1px solid rgba(255,255,255,0.06); }
+        .qa p { font-size:0.86rem; line-height:1.5; margin-bottom:6px; }
+        .qa .known { color:var(--green); font-size:0.75rem; margin-left:6px; }
+
+        pre.answer { background:#0c0718; border:1px solid var(--border); border-radius:8px; padding:10px 12px; font-size:0.84rem; color:var(--cyan); white-space:pre-wrap; overflow-wrap:anywhere; }
+
+        /* ---- Play ---- */
+        .progress { display:flex; flex-wrap:wrap; gap:12px; align-items:center; font-size:0.8rem; color:var(--muted); margin-bottom:14px; }
+        .progress #quit-btn { margin-left:auto; font-size:0.78rem; padding:6px 12px; }
+        .deck-chip { font-size:0.72rem; color:var(--amber); border:1px solid rgba(251,191,36,0.35); border-radius:999px; padding:2px 10px; }
+        #question { font-size:1.15rem; line-height:1.5; color:#fff; margin-bottom:14px; }
+        #shown { margin-bottom:14px; }
+        #shown pre { color:var(--text); }
+        textarea { width:100%; background:#0c0718; color:#fff; border:1px solid var(--border); border-radius:10px; padding:12px 14px; font-size:0.92rem; line-height:1.5; resize:vertical; }
+        .hint { font-size:0.75rem; color:var(--muted); margin:8px 0 14px; }
+        #feedback { margin-top:20px; padding:16px 18px; border-radius:12px; border:1px solid var(--border); background:var(--card); }
+        #feedback.right { border-color:rgba(0,230,118,0.45); }
+        #feedback.wrong { border-color:rgba(255,92,124,0.45); }
+        #verdict { font-weight:600; margin-bottom:10px; }
+        #feedback.right #verdict { color:var(--green); }
+        #feedback.wrong #verdict { color:var(--red); }
+        #reason { font-size:0.86rem; line-height:1.5; color:var(--amber); margin-bottom:10px; }
+        #why { font-size:0.86rem; line-height:1.55; margin:12px 0; }
+        .flags { width:100%; border-collapse:collapse; font-size:0.82rem; margin-bottom:12px; }
+        .flags td { padding:5px 12px 5px 0; border-bottom:1px solid rgba(255,255,255,0.06); vertical-align:top; line-height:1.45; }
+        .flags td:first-child { font-family:var(--mono); color:var(--cyan); white-space:nowrap; }
+        #feedback .buttons { margin-top:12px; }
+
+        /* ---- Done ---- */
+        #done h2 { font-family:'Orbitron', system-ui; color:#fff; font-size:1.3rem; margin-bottom:10px; }
+        #done-summary { line-height:1.6; margin-bottom:16px; }
+        #done-missed { margin:0 0 18px 1.2em; line-height:1.6; font-size:0.88rem; }
+
+        @media (max-width: 640px) {
+            .top-nav, main { padding-left:16px; padding-right:16px; }
+            .app-title { display:none; }
+            .flags td:first-child { white-space:normal; }
+        }
+    </style>
+</head>
+<body>
+    <a class="skip" href="#main">Skip to content</a>
+    <nav class="top-nav">
+        <div class="nav-left">
+            <a class="back-btn" href="../index.html">← App Hub</a>
+            <span class="app-title">ANSIBLE COMMAND RECALL</span>
+        </div>
+        <a class="hiw-btn" href="how-it-works.html">📖 How It's Built</a>
+    </nav>
+
+    <main id="main">
+        <h1>Ansible Command Recall</h1>
+        <p class="subtitle">Each card asks for one command, config line or file. Type it from memory, the way you would at the prompt. Answers are compared by meaning: option order, <code>user</code> versus <code>ansible.builtin.user</code>, and <code>yes</code> versus <code>true</code> do not matter; curly quotes, en dashes and capital letters do, because the shell cares. A missed card comes back three cards later. A card counts as known after three right answers in a row.</p>
+
+        <section id="board" aria-labelledby="board-h">
+            <div class="scoreline">
+                <h2 id="board-h" class="label">Pick a deck</h2>
+                <span id="score"></span>
+                <button id="reset-btn" type="button">Reset progress</button>
+            </div>
+            <div id="decks" class="decks"></div>
+
+            <details class="list">
+                <summary class="label">Every question and answer</summary>
+                <div id="list-body" class="list-body"></div>
+            </details>
+        </section>
+
+        <section id="play" hidden aria-labelledby="question">
+            <div class="progress">
+                <span id="deck-chip" class="deck-chip"></span>
+                <span id="counter"></span>
+                <button id="quit-btn" type="button">End round</button>
+            </div>
+            <p id="question"></p>
+            <div id="shown" hidden><pre class="answer"></pre></div>
+            <label for="typed" class="skip">Your answer</label>
+            <textarea id="typed" rows="2" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off"></textarea>
+            <p id="hint" class="hint"></p>
+            <div class="buttons">
+                <button id="check-btn" class="primary" type="button">Check</button>
+                <button id="reveal-btn" type="button">Show answer</button>
+            </div>
+
+            <div id="feedback" hidden aria-live="polite">
+                <p id="verdict"></p>
+                <p id="reason" hidden></p>
+                <pre id="answer" class="answer"></pre>
+                <p id="why"></p>
+                <table id="flags" class="flags" hidden><tbody></tbody></table>
+                <div class="buttons">
+                    <button id="next-btn" class="primary" type="button">Next</button>
+                    <button id="override-btn" type="button" hidden>Count it: mine does the same thing</button>
+                </div>
+            </div>
+        </section>
+
+        <section id="done" hidden aria-labelledby="done-h">
+            <h2 id="done-h">Round over</h2>
+            <p id="done-summary"></p>
+            <ul id="done-missed"></ul>
+            <div class="buttons">
+                <button id="again-btn" class="primary" type="button">Play this deck again</button>
+                <button id="board-btn" type="button">Back to decks</button>
+            </div>
+        </section>
+    </main>
+</body>
+</html>

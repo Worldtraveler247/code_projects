@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'none';">
+  <title>How It's Built — Ansible Command Recall | Eddie's App Hub</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Inter:wght@400;500;600&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../how-it-works.css">
+</head>
+<body>
+<a href="index.html" style="position:fixed;top:12px;left:12px;z-index:9999;background:rgba(10,10,20,0.85);backdrop-filter:blur(6px);color:#4af7ff;border:1px solid #4af7ff;border-radius:20px;padding:6px 14px;font-family:sans-serif;font-size:13px;text-decoration:none;font-weight:600;">← Back to the cards</a>
+
+<div class="hiw-page">
+
+  <header class="hiw-header">
+    <div class="hiw-icon">⌨️</div>
+    <h1>Ansible Command Recall — How It's Built</h1>
+    <p class="hiw-tagline">Type the command from memory; the checker decides whether it means the same thing.</p>
+  </header>
+
+  <section class="hiw-section">
+    <h2>Overview</h2>
+    <p>
+      Recognising a command on a page is easier than producing it at an empty prompt. Each card asks one
+      question, such as "What is the command to open your Vim config file?", and you type the answer.
+      The hard part is the checker. A plain string comparison would mark
+      <code>ansible webservers -m ping -i inventory</code> wrong because the answer key puts <code>-i</code>
+      first, which teaches the wrong lesson. Ansible does not care about that order, so the checker does not
+      either. It does care about the mistakes that break a real shell: curly quotes pasted from a notes app,
+      an en dash in place of <code>--</code>, and capital letters.
+    </p>
+  </section>
+
+  <section class="hiw-section">
+    <h2>Tech Stack</h2>
+    <div class="hiw-badges">
+      <span class="hiw-badge">HTML</span>
+      <span class="hiw-badge">CSS</span>
+      <span class="hiw-badge">JavaScript modules</span>
+      <span class="hiw-badge">Node test runner</span>
+    </div>
+    <ul class="hiw-caption-list">
+      <li><strong>HTML and CSS</strong> — one page with three views: the decks, the card being asked, and the end of the round.</li>
+      <li><strong>JavaScript modules</strong> — <code>checker.js</code> and <code>game.js</code> have no screen access, so the same code runs in the browser and in the tests.</li>
+      <li><strong>Node test runner</strong> — Node's built-in <code>node --test</code>. No packages to install.</li>
+    </ul>
+  </section>
+
+  <section class="hiw-section">
+    <h2>How Each Part Works</h2>
+    <div class="hiw-file-block">
+      <h3><code>cards.js</code> — the question bank</h3>
+      <p>
+        Each card has a question, the answer, a one-line explanation, and for longer commands a table of what
+        each flag means. Cards are grouped in four decks: control node prep, <code>ansible.cfg</code>, the inventory,
+        and ad hoc commands. Adding a card means copying an entry; a test checks every field, rejects duplicate
+        ids, and rejects any answer containing a curly quote or dash.
+      </p>
+    </div>
+    <div class="hiw-file-block">
+      <h3><code>checker.js</code> — comparing by meaning</h3>
+      <p>
+        The typed line is split into words the way bash does it: quotes group words and are removed, and a
+        backslash escapes the next character, except inside single quotes. For <code>ansible</code> and
+        <code>ansible-inventory</code> the words are then rebuilt in a fixed order: the host pattern, the options
+        sorted, then any <code>&gt;</code> redirection. Long and short options are treated as one
+        (<code>--become</code> is <code>-b</code>), <code>ansible.builtin.user</code> is <code>user</code>, and leaving out
+        <code>-m command</code> is the same as writing it, because <code>command</code> is the default module.
+        The <code>-a</code> string is split into <code>key=value</code> pairs and sorted, with <code>yes</code>,
+        <code>true</code> and <code>on</code> treated alike. Free-form modules such as <code>command</code> keep their
+        string as typed.
+      </p>
+      <p>
+        Config and inventory cards are read as INI: each line is filed under its section, and the set of
+        lines is compared, so sections and lines may come in any order and <code>key=value</code> spacing is
+        ignored. Host-list cards compare a set of names, which is also the lesson: <code>serverb</code> is in two
+        groups but <code>all</code> lists it once.
+      </p>
+      <p>
+        When the answer is wrong for a reason the checker can name, it says so: curly quotes, an en dash, a
+        capital letter, or an unclosed quote. When it cannot name one, the player may count the answer anyway
+        with "mine does the same thing", because there is more than one right way to write most commands.
+      </p>
+    </div>
+    <div class="hiw-file-block">
+      <h3><code>game.js</code> — the round</h3>
+      <p>
+        A round shuffles the chosen deck. A missed card goes back into the queue three cards later, so it is
+        asked again before the round ends, and it does not count toward the first-try score. Progress per card
+        is kept as right, wrong and current streak; a card is known after three right answers in a row and a
+        miss resets the streak.
+      </p>
+    </div>
+  </section>
+
+  <section class="hiw-section">
+    <h2>Security</h2>
+    <ul class="hiw-caption-list">
+      <li><strong>Content-Security-Policy</strong> — <code>script-src 'self'</code>: no inline script and nothing from another site.</li>
+      <li><strong>No <code>innerHTML</code></strong> — everything typed is put on the page as text, never as markup, and nothing typed is executed. A test enforces this.</li>
+      <li><strong>No network calls</strong> — progress is kept in the browser's local storage only, and entries that do not match the expected shape are dropped when read back.</li>
+      <li><strong>Safe defaults in the answers</strong> — the sudoers card says to validate the file with <code>visudo -cf</code>, and the <code>host_key_checking</code> card says why it belongs in a lab and not in production.</li>
+    </ul>
+  </section>
+
+  <section class="hiw-section">
+    <h2>Limits</h2>
+    <ul class="hiw-caption-list">
+      <li><strong>Nothing is executed</strong> — run the commands on a lab afterwards; that is the step that counts.</li>
+      <li><strong>Not a full shell parser</strong> — variables, globs and command substitution are not expanded, and for commands other than <code>ansible</code> the words must match in order.</li>
+      <li><strong>One model answer per card</strong> — option order is free, but the values must match the question.</li>
+    </ul>
+  </section>
+
+</div>
+</body>
+</html>
