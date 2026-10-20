@@ -1,0 +1,169 @@
+{
+  "id": "cut-tr-03",
+  "number": 3,
+  "title": "Pull the fields that matter",
+  "tool": "cut + tr",
+  "briefing": [
+    "The scanner was the knock at the door. In `var/log/secure` someone with a password got in as `svc_backup`, a service account that has no business holding an interactive shell, and went straight to `sudo`.",
+    "Get the exact terminal and command from that `sudo` line. Copy them out with `cut`, not by eye: the same pipeline will run over ten thousand lines tomorrow."
+  ],
+  "lesson": [
+    {
+      "p": "`cut` slices each line into fields on ONE delimiter character and prints the fields you ask for. `tr` translates, squeezes, or deletes single characters as they stream through. Together they turn a log line into columns."
+    },
+    {
+      "flags": [
+        [
+          "cut -d',' -f2",
+          "split on commas, print field 2. The default delimiter is TAB, not space."
+        ],
+        [
+          "cut -f1,4 / -f2-5 / -f3-",
+          "a list of fields / a range / field 3 to the end of the line"
+        ],
+        [
+          "cut -c1-8",
+          "characters 1 to 8, for fixed-width text"
+        ],
+        [
+          "tr ',' '\\n'",
+          "translate every comma into a newline: one field per line"
+        ],
+        [
+          "tr -s ' '",
+          "squeeze each run of spaces into one, so space-aligned columns become single-space fields"
+        ],
+        [
+          "tr -d '\\r'",
+          "delete carriage returns: converts Windows CRLF line endings to Unix LF"
+        ],
+        [
+          "tr -s ' ;=' ' '",
+          "translate each of the three characters to a space and squeeze the runs: several delimiters become one"
+        ],
+        [
+          "cat -A",
+          "show invisible characters: `^M` is a carriage return, `$` marks the end of each line"
+        ]
+      ]
+    },
+    {
+      "note": "`cut` never treats two spaces as one delimiter. Columns padded with spaces (sar, ps, ls -l) give empty fields, so `-f4` lands on nothing. Squeeze with `tr -s ' '` first."
+    },
+    {
+      "note": "`cut` and `tr` read standard input. `cut FILE` works, but `tr` takes no file name: write `tr -d '\\r' < FILE`."
+    }
+  ],
+  "examples": [
+    {
+      "title": "Two fields from a web log",
+      "command": "cut -d' ' -f1,9 training/web.log | head -4",
+      "stages": [
+        {
+          "code": "cut -d' ' -f1,9",
+          "why": "Split on single spaces. In Apache's combined format, field 1 is the client IP and field 9 is the HTTP status."
+        },
+        {
+          "code": "| head -4",
+          "why": "First four lines only, enough to check the columns are the right ones."
+        }
+      ],
+      "output": "192.0.2.14 200\n192.0.2.27 200\n192.0.2.14 302\n203.0.113.9 404\n"
+    },
+    {
+      "title": "Number the columns of a CSV",
+      "command": "head -1 training/metrics.csv | tr ',' '\\n' | cat -n",
+      "stages": [
+        {
+          "code": "head -1 training/metrics.csv",
+          "why": "Only the header row."
+        },
+        {
+          "code": "| tr ',' '\\n'",
+          "why": "Each comma becomes a newline, so each column name sits on its own line."
+        },
+        {
+          "code": "| cat -n",
+          "why": "Number the lines. Now you know `cut -d, -f6` is net_tx_bytes without counting commas."
+        }
+      ],
+      "output": "     1\ttimestamp\n     2\thost\n     3\tcpu\n     4\tmem\n     5\tdisk_io\n     6\tnet_tx_bytes\n"
+    },
+    {
+      "title": "Squeeze spaced columns before cutting",
+      "command": "grep ' all ' training/sar.txt | tr -s ' ' | cut -d' ' -f1,4 | head -3",
+      "stages": [
+        {
+          "code": "grep ' all ' training/sar.txt",
+          "why": "Keep the data rows; the header and the blank line have no ` all `."
+        },
+        {
+          "code": "| tr -s ' '",
+          "why": "sar pads columns with runs of spaces. Without the squeeze, `cut -d' ' -f1,4` prints the time and an empty field, because fields 2-4 are the gaps between spaces."
+        },
+        {
+          "code": "| cut -d' ' -f1,4",
+          "why": "Now field 1 is the time and field 4 is %user (field 2 is AM/PM, field 3 is `all`)."
+        },
+        {
+          "code": "| head -3",
+          "why": "Three rows."
+        }
+      ],
+      "output": "09:10:01 12.40\n09:20:01 18.75\n09:30:01 64.20\n"
+    },
+    {
+      "title": "See the hidden carriage returns",
+      "command": "cut -d, -f3 training/hosts_windows.csv | cat -A",
+      "stages": [
+        {
+          "code": "cut -d, -f3",
+          "why": "The owner column, which is also the last one on each line."
+        },
+        {
+          "code": "| cat -A",
+          "why": "Every line ends in `^M$`: a carriage return, then the newline. The file came from Windows, and the `\\r` is now part of the last field."
+        }
+      ],
+      "output": "owner^M$\nops_alice^M$\nops_bob^M$\n"
+    },
+    {
+      "title": "Strip them, and anchored matches work again",
+      "command": "grep -c ',ops_bob$' training/hosts_windows.csv; tr -d '\\r' < training/hosts_windows.csv | grep -c ',ops_bob$'",
+      "stages": [
+        {
+          "code": "grep -c ',ops_bob$' training/hosts_windows.csv",
+          "why": "`$` anchors at the end of the line, but the line ends in `\\r`, so nothing matches: 0."
+        },
+        {
+          "code": "tr -d '\\r' < training/hosts_windows.csv",
+          "why": "Delete every carriage return. `tr` reads standard input, hence the `<`."
+        },
+        {
+          "code": "| grep -c ',ops_bob$'",
+          "why": "The same pattern now finds the line: 1."
+        }
+      ],
+      "output": "0\n1\n"
+    }
+  ],
+  "challenge": {
+    "question": "In var/log/secure, svc_backup ran exactly one command through sudo. On which terminal (the TTY= value), and what was the command (the COMMAND= value)?",
+    "format": "The TTY value, one space, then the command, for example pts/9 /usr/bin/id",
+    "answerHash": "54b35c1d21773bd476141796107a4c5f251940822c4871c90afd6c2736cf1ca8"
+  },
+  "hints": [
+    "Find the line first: `grep 'svc_backup : TTY' var/log/secure`. That is sudo's command record; the `pam_unix(sudo:session)` line next to it has no command.",
+    "The line mixes three separators: spaces, ` ; ` and `=`. `tr -s ' ;=' ' '` turns all of them into single spaces. Then count the fields and keep two with `cut -d' ' -f`.",
+    "grep 'svc_backup : TTY' var/log/secure | tr -s ' ;=' ' ' | cut -d' ' -f___,___"
+  ],
+  "debrief": {
+    "solution": "grep 'svc_backup : TTY' var/log/secure | tr -s ' ;=' ' ' | cut -d' ' -f9,15",
+    "alternative": "grep 'svc_backup : TTY' var/log/secure | tr ';' '\\n' | grep -E 'TTY=|COMMAND=' | cut -d= -f2 | tr '\\n' ' '",
+    "why": [
+      "`sudo /bin/bash` is the whole escalation: a root shell, after which sudo logs nothing else. Everything svc_backup did next was done as root, and only auditd (Level 8) still sees it.",
+      "A service account with a sudo rule that allows a shell is a classic finding. On RHEL, check `sudo -l -U svc_backup` and the files under `/etc/sudoers.d/`; a rule that names specific commands must never include a shell, an editor, or anything else that can start one.",
+      "The alternative turns each `;` into a newline, so the key=value pairs land on separate lines. That works for any key=value log, whatever order the keys come in. Counting fields is quicker, but breaks as soon as the line shape changes."
+    ]
+  }
+}

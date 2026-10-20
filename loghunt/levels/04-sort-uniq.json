@@ -1,0 +1,165 @@
+{
+  "id": "sort-uniq-04",
+  "number": 4,
+  "title": "Rank the guesses",
+  "tool": "sort + uniq",
+  "briefing": [
+    "Before the attacker got in as svc_backup, `var/log/secure` filled with failed SSH passwords from 203.0.113.66. A brute force has a shape: which accounts it hammered tells you which wordlist it used and what else on your estate is exposed.",
+    "Rank the usernames the attacker tried. The ranking is the deliverable, not a feeling about it."
+  ],
+  "lesson": [
+    {
+      "p": "`sort | uniq -c | sort -nr` is the most-used pipeline in log triage: sort so identical lines sit together, count each run, then sort the counts biggest first. `head` turns it into a top-N."
+    },
+    {
+      "flags": [
+        [
+          "sort",
+          "sort lines as text, byte by byte under LC_ALL=C"
+        ],
+        [
+          "sort -n / -r",
+          "numeric order / reverse order. `-nr` is biggest first."
+        ],
+        [
+          "sort -u",
+          "sort and drop duplicate lines in one step"
+        ],
+        [
+          "sort -t',' -k2,2n",
+          "split on commas and sort numerically on field 2 only. `-k2` without `,2` means from field 2 to the END of the line."
+        ],
+        [
+          "uniq",
+          "collapse ADJACENT identical lines into one; that is why input is sorted first"
+        ],
+        [
+          "uniq -c",
+          "prefix each line with how many times it repeated"
+        ],
+        [
+          "uniq -d / -u",
+          "print only lines that repeat / only lines that appear once"
+        ],
+        [
+          "head -N",
+          "keep the first N lines: the top N after `sort -nr`"
+        ]
+      ]
+    },
+    {
+      "note": "`uniq` only compares a line with the one before it. Unsorted input gives wrong counts and no error: `a b a` counts as three different lines."
+    },
+    {
+      "note": "Locale changes sort order. This VM runs with `LC_ALL=C`, which sorts by byte value: `A B a b`. A RHEL host defaults to `en_US.UTF-8`, which sorts `a A b B` and gives punctuation a lower weight, so the same file can sort differently on a colleague's shell, and tools that need sorted input (`uniq`, `comm`, `join`) quietly misbehave when the two sides were sorted under different locales. In scripts, set `LC_ALL=C` before sorting."
+    }
+  ],
+  "examples": [
+    {
+      "title": "Requests per client, busiest first",
+      "command": "cut -d' ' -f1 training/web.log | sort | uniq -c | sort -nr",
+      "stages": [
+        {
+          "code": "cut -d' ' -f1",
+          "why": "Just the client IP."
+        },
+        {
+          "code": "| sort",
+          "why": "Puts identical IPs next to each other so uniq can see them."
+        },
+        {
+          "code": "| uniq -c",
+          "why": "One line per IP, prefixed with its count."
+        },
+        {
+          "code": "| sort -nr",
+          "why": "Numeric, reversed: the noisiest client on top. Here it is the scanner, 203.0.113.9."
+        }
+      ],
+      "output": "      4 203.0.113.9\n      3 192.0.2.14\n      2 192.0.2.27\n      1 192.0.2.48\n"
+    },
+    {
+      "title": "Text order lies about numbers",
+      "command": "cut -d' ' -f10 training/web.log | grep -v -- '-' | sort -u",
+      "stages": [
+        {
+          "code": "cut -d' ' -f10",
+          "why": "Field 10 is the response size in bytes."
+        },
+        {
+          "code": "| grep -v -- '-'",
+          "why": "Drop `-`, which Apache writes when no body was sent. `--` ends grep's options, so the pattern `-` is not read as a flag."
+        },
+        {
+          "code": "| sort -u",
+          "why": "Sorted as text: 1840 comes before 196 because the character 8 sorts before 9, and 87 lands last."
+        }
+      ],
+      "output": "1840\n196\n199\n2210\n5312\n87\n"
+    },
+    {
+      "title": "The same list, numerically",
+      "command": "cut -d' ' -f10 training/web.log | grep -v -- '-' | sort -nu",
+      "stages": [
+        {
+          "code": "cut -d' ' -f10 training/web.log | grep -v -- '-'",
+          "why": "Same input as before."
+        },
+        {
+          "code": "| sort -nu",
+          "why": "`-n` compares whole numbers, `-u` keeps one of each. Now 87 is first and 5312 last."
+        }
+      ],
+      "output": "87\n196\n199\n1840\n2210\n5312\n"
+    },
+    {
+      "title": "Sort on one column",
+      "command": "sort -t' ' -k2,2n training/uids.txt",
+      "stages": [
+        {
+          "code": "-t' '",
+          "why": "Fields are separated by a single space."
+        },
+        {
+          "code": "-k2,2n",
+          "why": "Sort key is field 2 only, compared as a number. Without a key, sort would order by user name."
+        }
+      ],
+      "output": "alice 1001\nbob 1002\nsvc_backup 1003\ncarol 1004\n"
+    },
+    {
+      "title": "Names on both teams",
+      "command": "sort training/team_a.txt training/team_b.txt | uniq -d",
+      "stages": [
+        {
+          "code": "sort training/team_a.txt training/team_b.txt",
+          "why": "Merge both lists in sorted order; a name in both files now appears twice in a row."
+        },
+        {
+          "code": "| uniq -d",
+          "why": "Print only the lines that repeat: the overlap. `uniq -u` would print the names on exactly one team."
+        }
+      ],
+      "output": "bob\ndave\n"
+    }
+  ],
+  "challenge": {
+    "question": "Counting only the Failed password lines in var/log/secure that come from 203.0.113.66, which username did the attacker try most often, and how many times?",
+    "format": "The count, one space, then the username, the way uniq -c prints it, for example 12 admin",
+    "answerHash": "560994e345fa9d65d3bc0811c0768d6084727c714a92694b4d74c60f4b56672e"
+  },
+  "hints": [
+    "Keep only the attacker's failed passwords, isolate the username on each line, then count. Some lines say `for invalid user NAME from`, others `for NAME from`: the name is always the word just before ` from 203.0.113.66`.",
+    "`grep -oE '[^ ]+ from 203\\.0\\.113\\.66 '` prints the username plus the rest of the match; `cut -d' ' -f1` keeps the name. Then `sort | uniq -c | sort -nr | head -1`.",
+    "grep 'Failed password' var/log/secure | grep -oE '[^ ]+ from 203\\.0\\.113\\.66 ' | cut -d' ' -f1 | sort | uniq -c | sort -___ | head -1"
+  ],
+  "debrief": {
+    "solution": "grep 'Failed password' var/log/secure | grep -oE '[^ ]+ from 203\\.0\\.113\\.66 ' | cut -d' ' -f1 | sort | uniq -c | sort -nr | head -1",
+    "alternative": "grep -F 'from 203.0.113.66 ' var/log/secure | grep 'Failed password' | grep -oE '[a-z_]+ from' | cut -d' ' -f1 | sort | uniq -c | sort -k1,1nr | head -n1",
+    "why": [
+      "The top guess, ftpuser, was never going to work. svc_backup, the account that fell, got only 5 attempts. The ranking shows the wordlist, not the weak spot. Check that every guessed name either does not exist or has key-only SSH, then look at why svc_backup accepted a password at all.",
+      "On RHEL the fixes are in sshd's own configuration and in PAM: `PasswordAuthentication no` in a drop-in under `/etc/ssh/sshd_config.d/` (confirm the effective value with `sshd -T`), and `pam_faillock` to lock an account after repeated failures, which the RHEL STIG requires.",
+      "Before you trust `sort -nr | head -1`, check for ties: run it with `head -3`. postgres and jenkins tie at 7, one behind ftpuser at 8. If the top two were tied, `head -1` would silently pick one."
+    ]
+  }
+}

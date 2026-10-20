@@ -1,0 +1,160 @@
+{
+  "id": "odd-formats-08",
+  "number": 8,
+  "title": "Line up two clocks",
+  "tool": "sar + date",
+  "briefing": [
+    "auditd stamps events in Unix epoch seconds. sar prints a 12-hour clock with AM and PM. Neither looks like the other, and neither looks like syslog.",
+    "Put the dropper's start and the first sign of load on the same clock. That gap is how long the host ran the attacker's job before anything was measurable."
+  ],
+  "lesson": [
+    {
+      "p": "Two formats that break naive pipelines. `sar -u` prints space-aligned columns with the time split across two fields (`11:30:01` and `PM`). auditd writes `msg=audit(1773443985.897:18131)`: seconds since 1970-01-01 UTC, milliseconds, and a serial number. GNU `date` converts both."
+    },
+    {
+      "flags": [
+        [
+          "awk '$3 == \"all\"'",
+          "sar data rows: awk's default splitting handles the padding, so field 1 is the time, 2 is AM/PM, 3 is CPU, 4 is %user"
+        ],
+        [
+          "{...; exit}",
+          "stop awk at the first match: \"the first sample where...\""
+        ],
+        [
+          "date -u -d @1773443985",
+          "epoch seconds to a readable UTC time"
+        ],
+        [
+          "date -d '11:30:01 PM' +%T",
+          "a 12-hour time to 24-hour: 23:30:01"
+        ],
+        [
+          "date -u -d '13 Mar 2026 23:02:11' +%s",
+          "a readable time to epoch seconds, which sort numerically across formats"
+        ],
+        [
+          "+%F %T / +%s",
+          "output formats: `2026-03-13 23:19:45` / epoch seconds"
+        ],
+        [
+          "awk -F'[(.]'",
+          "split on `(` or `.`, so field 2 of an audit line is the epoch"
+        ]
+      ]
+    },
+    {
+      "code": "date -d '12:10:01 AM' +%T    # 00:10:01, ten past midnight\ndate -d '12:00:01 PM' +%T    # 12:00:01, noon\ndate -u -d @1773443985 '+%F %T'    # 2026-03-13 23:19:45"
+    },
+    {
+      "note": "12 AM is midnight and 12 PM is noon, so `12:10:01 AM` comes before `01:00:01 AM`. Sorting a 12-hour clock as text puts every PM sample in the wrong place. Convert to 24-hour (or epoch) first, then sort."
+    },
+    {
+      "note": "Use `date -u` for epochs. Without it, `date` prints in the local timezone: this VM is UTC, but your RHEL laptop or a server in another region may not be."
+    }
+  ],
+  "examples": [
+    {
+      "title": "sar columns with awk",
+      "command": "awk '$3 == \"all\" {print $1, $2, $4}' training/sar.txt",
+      "stages": [
+        {
+          "code": "$3 == \"all\"",
+          "why": "Data rows have `all` in the CPU column. The header has `CPU` there, and the Average line has `all` in field 2, so both are skipped."
+        },
+        {
+          "code": "{print $1, $2, $4}",
+          "why": "Time, AM/PM, and %user. No `tr -s` needed: awk's default separator is any run of spaces."
+        }
+      ],
+      "output": "09:10:01 AM 12.40\n09:20:01 AM 18.75\n09:30:01 AM 64.20\n09:40:01 AM 15.05\n"
+    },
+    {
+      "title": "The first sample over a threshold",
+      "command": "awk '$3 == \"all\" && $4 > 50 {print $1, $2; exit}' training/sar.txt",
+      "stages": [
+        {
+          "code": "$4 > 50",
+          "why": "%user above 50."
+        },
+        {
+          "code": "{print $1, $2; exit}",
+          "why": "Print the time and stop: only the first crossing matters."
+        }
+      ],
+      "output": "09:30:01 AM\n"
+    },
+    {
+      "title": "Pull the epoch out of audit records",
+      "command": "awk -F'[(.]' '{print $2}' training/audit.log",
+      "stages": [
+        {
+          "code": "-F'[(.]'",
+          "why": "The separator is a character class: `(` or `.`. The epoch sits between `audit(` and the first `.`."
+        },
+        {
+          "code": "{print $2}",
+          "why": "Field 2. The two last lines share an epoch: one SYSCALL and its EXECVE describe the same event, and the serial after the `:` (803) proves it."
+        }
+      ],
+      "output": "1773393001\n1773393075\n1773393122\n1773393122\n"
+    },
+    {
+      "title": "Epoch to readable time",
+      "command": "awk -F'[(.]' '{print $2}' training/audit.log | while read -r e; do date -u -d \"@$e\" '+%F %T'; done",
+      "stages": [
+        {
+          "code": "awk -F'[(.]' '{print $2}'",
+          "why": "The epochs, one per line."
+        },
+        {
+          "code": "| while read -r e; do ...; done",
+          "why": "Run `date` once per epoch. `-r` keeps backslashes literal; a habit worth having."
+        },
+        {
+          "code": "date -u -d \"@$e\" '+%F %T'",
+          "why": "`@` means seconds since the epoch; `-u` prints UTC."
+        }
+      ],
+      "output": "2026-03-13 09:10:01\n2026-03-13 09:11:15\n2026-03-13 09:12:02\n2026-03-13 09:12:02\n"
+    },
+    {
+      "title": "Check sar's Average against your own",
+      "command": "awk '$2 ~ /AM|PM/ && $3 == \"all\" {s += $4; n++} END {printf \"%.2f\\n\", s / n}' training/sar.txt; awk '/^Average/ {print $3}' training/sar.txt",
+      "stages": [
+        {
+          "code": "$2 ~ /AM|PM/ && $3 == \"all\"",
+          "why": "Only the timed data rows."
+        },
+        {
+          "code": "END {printf \"%.2f\\n\", s / n}",
+          "why": "The mean of %user."
+        },
+        {
+          "code": "awk '/^Average/ {print $3}'",
+          "why": "On the Average line the columns shift left by one (no AM/PM), so %user is field 3. The two numbers agree, which proves you parsed the right column."
+        }
+      ],
+      "output": "27.60\n27.60\n"
+    }
+  ],
+  "challenge": {
+    "question": "When did the dropper start (the timestamp of its EXECVE record in var/log/audit/audit.log), and what is the time of the first sample in metrics/sar_cpu.txt whose %user is above 50? Give both in 24-hour UTC.",
+    "format": "Two times as HH:MM:SS separated by one space, dropper first, for example 08:15:00 08:20:01",
+    "answerHash": "8702598f328672de36202a25d8ea1e9e6c17de01f947b0f4337d5e45bb47f4e4"
+  },
+  "hints": [
+    "Two lookups, then two conversions. The dropper's record is the one with `--pool` in it. In sar, `%user` is field 4 on data rows, and the first match is enough.",
+    "Epoch: `grep -- --pool` the audit log, then cut the number out of `audit(...)`, then `date -u -d @EPOCH +%T`. sar: `awk '$3 == \"all\" && $4 > 50 {print $1, $2; exit}'`, then `date -d 'HH:MM:SS PM' +%T`.",
+    "e=$(grep -- --pool var/log/audit/audit.log | awk -F'[(.]' '{print $2}'); s=$(awk '$3 == \"all\" && $4 > 50 {print $1, $2; exit}' metrics/sar_cpu.txt); echo \"$(date -u -d @$e +%T) $(date -d \"$s\" +%___)\""
+  ],
+  "debrief": {
+    "solution": "e=$(grep -- --pool var/log/audit/audit.log | awk -F'[(.]' '{print $2}'); s=$(awk '$3 == \"all\" && $4 > 50 {print $1, $2; exit}' metrics/sar_cpu.txt); echo \"$(date -u -d @$e +%T) $(date -d \"$s\" +%T)\"",
+    "alternative": "echo $(date -u -d @$(sed -n 's/.*audit(\\([0-9]*\\)\\..*a1=\"--pool\".*/\\1/p' var/log/audit/audit.log) +%T; awk '$3 == \"all\" && $4 > 50 {print $1, $2; exit}' metrics/sar_cpu.txt | xargs -I{} date -d {} +%T)",
+    "why": [
+      "The dropper started at 23:19:45 and the first sar sample over 50% is 23:30:01. sar samples every 10 minutes, so all it can tell you is that the load began somewhere between 23:20:01 and 23:30:01. The 5-minute metrics in Level 6 narrow that, and auditd gives the exact second. That is why you correlate sources: each one has a different resolution.",
+      "On RHEL, `sar -u -f /var/log/sa/sa13` reads the same data, and running it as `LC_ALL=C sar ...` prints a 24-hour clock, because sar takes its time format from the locale. Asking sar for the format you want is easier than converting AM and PM afterwards.",
+      "`ausearch -i --start '03/13/2026 23:00:00'` filters and decodes audit records by time on a live host. The epoch is still worth knowing: you will meet it in journald (`__REALTIME_TIMESTAMP`), cron logs, and most JSON logs."
+    ]
+  }
+}

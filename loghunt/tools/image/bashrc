@@ -1,0 +1,7 @@
+# Also set in /etc/profile.d/loghunt.sh; repeated here so every interactive shell gets them.
+export LC_ALL=C TZ=UTC PAGER=less LESS=-R
+PS1='\[\e[36m\]analyst@bastion-7\[\e[0m\]:\[\e[35m\]\w\[\e[0m\]\$ '
+HISTSIZE=1000
+# Append each command to ~/.bash_history as it runs, so the page's history panel can read it.
+PROMPT_COMMAND='history -a'
+cd ~/arena 2>/dev/null

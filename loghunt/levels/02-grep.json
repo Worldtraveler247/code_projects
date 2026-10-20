@@ -1,0 +1,165 @@
+{
+  "id": "grep-02",
+  "number": 2,
+  "title": "Read the scanner's footprints",
+  "tool": "grep",
+  "briefing": [
+    "The dropper in `tmp/.x` got onto the box somehow. Web servers are the usual front door, and a scanner leaves a trail: hundreds of requests in a few minutes, all with the same user agent.",
+    "Count how loud the scanner was. Rotated logs count too, even the compressed one nobody remembers to read."
+  ],
+  "lesson": [
+    {
+      "p": "`grep PATTERN FILE...` prints every line that contains a match. Plain patterns are basic regular expressions (BRE); `-E` switches to extended syntax, so `+ ? | ( )` work without backslashes. Quote the pattern so the shell leaves it alone."
+    },
+    {
+      "flags": [
+        [
+          "-i",
+          "ignore case: `nikto` also matches `Nikto` and `NIKTO`"
+        ],
+        [
+          "-v",
+          "invert: print the lines that do NOT match"
+        ],
+        [
+          "-c",
+          "print a count of matching lines instead of the lines; with several files you get one count per file"
+        ],
+        [
+          "-o",
+          "print only the matched text, one match per line"
+        ],
+        [
+          "-E",
+          "extended regular expressions: `[0-9]+`, `a|b`, `(x)?`"
+        ],
+        [
+          "-r",
+          "search every file under a directory"
+        ],
+        [
+          "-l",
+          "print only the names of files that contain a match"
+        ],
+        [
+          "-h",
+          "leave the file name off each line when several files are searched"
+        ],
+        [
+          "-A N / -B N / -C N",
+          "also print N lines after / before / around each match"
+        ],
+        [
+          "zgrep",
+          "the same flags, but it decompresses `.gz` files first; files that are not compressed are read as they are. One exception: GNU zgrep rejects `-r` (\"option not supported\")"
+        ]
+      ]
+    },
+    {
+      "note": "`grep` on a `.gz` file searches the compressed bytes, so it almost never matches and prints nothing. No error, no warning. Use `zgrep`, or `zcat -f FILES | grep`. `zcat -f` passes uncompressed files through untouched."
+    },
+    {
+      "note": "`grep -c` counts lines, not matches. A line with the pattern twice counts once. To count every match, use `grep -o PATTERN | wc -l`."
+    }
+  ],
+  "examples": [
+    {
+      "title": "Count matching lines",
+      "command": "grep -c 'Failed password' training/secure.log",
+      "stages": [
+        {
+          "code": "'Failed password'",
+          "why": "Quoted because of the space: without quotes the shell would hand grep two arguments, and `password` would be taken as a file name."
+        },
+        {
+          "code": "-c",
+          "why": "Print how many lines matched instead of the lines themselves."
+        }
+      ],
+      "output": "4\n"
+    },
+    {
+      "title": "Extract, then exclude",
+      "command": "grep -oE '^[0-9.]+' training/web.log | grep -v '^192\\.0\\.2\\.'",
+      "stages": [
+        {
+          "code": "grep -oE '^[0-9.]+'",
+          "why": "`-o` prints only the match: a run of digits and dots at the start of the line, which is the client IP in Apache's combined format."
+        },
+        {
+          "code": "| grep -v '^192\\.0\\.2\\.'",
+          "why": "`-v` drops the known-good 192.0.2.x clients. The dots are escaped because an unescaped `.` matches any character."
+        }
+      ],
+      "output": "203.0.113.9\n203.0.113.9\n203.0.113.9\n203.0.113.9\n"
+    },
+    {
+      "title": "Context around a match",
+      "command": "grep -B1 'Accepted password' training/secure.log",
+      "stages": [
+        {
+          "code": "'Accepted password'",
+          "why": "A password login that succeeded. Password logins are worth a second look on a host that should use keys."
+        },
+        {
+          "code": "-B1",
+          "why": "Also print one line before each match. Here that line is a failed password for the same user from the same port: a typo, then success."
+        }
+      ],
+      "output": "Mar 13 09:20:44 web-01 sshd[2260]: Failed password for ops_bob from 198.51.100.22 port 51544 ssh2\nMar 13 09:20:51 web-01 sshd[2260]: Accepted password for ops_bob from 198.51.100.22 port 51544 ssh2\n"
+    },
+    {
+      "title": "Which files mention a host",
+      "command": "grep -rl 'web-01' training | sort",
+      "stages": [
+        {
+          "code": "grep -rl 'web-01' training",
+          "why": "`-r` walks the directory; `-l` prints each matching file once instead of every matching line."
+        },
+        {
+          "code": "| sort",
+          "why": "`-r` lists files in directory order, which varies; sorting makes it stable."
+        }
+      ],
+      "output": "training/fw.log\ntraining/hosts_windows.csv\ntraining/metrics.csv\ntraining/sar.txt\ntraining/secure.log\n"
+    },
+    {
+      "title": "grep is blind inside .gz",
+      "command": "gzip -c training/web.log > /tmp/web.log.gz; grep -c curl /tmp/web.log.gz; zgrep -c curl /tmp/web.log.gz",
+      "stages": [
+        {
+          "code": "gzip -c training/web.log > /tmp/web.log.gz",
+          "why": "Make a compressed copy, the way logrotate does with `compress`. `-c` writes to stdout and leaves the original alone."
+        },
+        {
+          "code": "grep -c curl /tmp/web.log.gz",
+          "why": "Searches the compressed bytes: 0 matches, and no hint that anything is wrong."
+        },
+        {
+          "code": "zgrep -c curl /tmp/web.log.gz",
+          "why": "Decompresses first and finds every curl request."
+        }
+      ],
+      "output": "0\n4\n"
+    }
+  ],
+  "challenge": {
+    "question": "How many requests in the web server's access logs carry the Nikto scanner's user agent? Count across every file in var/log/httpd whose name starts with access_log, including the compressed rotation. Match the word nikto in any case.",
+    "format": "A single number, for example 42",
+    "answerHash": "536d2ac963ab373404b3441185386c6c8ea04b805a72bf1cb25c18bf75d07eb3"
+  },
+  "hints": [
+    "Find the scanner's lines first: `grep -i nikto` on one log. Then make sure every access_log file is searched, the `.gz` one included.",
+    "`zgrep` reads compressed and plain files alike. `-i` ignores case, `-h` drops the file names so the lines can be piped, and `wc -l` counts them. `grep -c` on several files gives one count per file, which you would have to add up.",
+    "zgrep -ih nikto var/log/httpd/access_log* | wc -___"
+  ],
+  "debrief": {
+    "solution": "zgrep -ih nikto var/log/httpd/access_log* | wc -l",
+    "alternative": "zcat -f var/log/httpd/access_log* | grep -ic nikto",
+    "why": [
+      "Plain `grep -ic nikto var/log/httpd/access_log*` finds 60 and silently skips the compressed file. The one line it misses is the scanner's first visit, two days before the burst: the earliest sighting of the attacker on this host. You will need it for the final report.",
+      "On RHEL, logrotate compresses old logs when `compress` is set in `/etc/logrotate.conf` or a drop-in under `/etc/logrotate.d/`. During triage, start with `zgrep` or `zcat -f` across the whole rotation set. A plain `grep` reads only the logs that happen to be uncompressed.",
+      "The glob `access_log*` stops at the access logs. `var/log/httpd/old_access.txt` is a gzip copy of `access_log.2.gz` under a misleading name, so `zcat -f var/log/httpd/*` over the whole directory would count the first visit twice. Check what a file really is with `file` before you trust its name."
+    ]
+  }
+}

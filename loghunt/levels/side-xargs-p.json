@@ -1,0 +1,141 @@
+{
+  "id": "side-xargs-p",
+  "title": "Trust the bytes, not the name",
+  "tool": "xargs -P",
+  "briefing": [
+    "Two files in this arena lie about what they are: one `.gz` is plain text, and one `.txt` is gzip. A forensic copy of a real host has thousands of files, so you check them in parallel, not one at a time.",
+    "Find every file under `~/arena` that really is gzip data, whatever it is called."
+  ],
+  "lesson": [
+    {
+      "p": "`xargs` reads names from standard input and runs a command with them as arguments. `-n1` runs the command once per name; `-P4` runs up to four of those at a time. With `-print0` and `-0`, names with spaces survive the trip (Level 1)."
+    },
+    {
+      "flags": [
+        [
+          "xargs CMD",
+          "run CMD with as many input names as fit on one command line"
+        ],
+        [
+          "-n1",
+          "one name per run of CMD"
+        ],
+        [
+          "-P4",
+          "up to 4 runs in parallel. `-P0` means as many as possible; `-P$(nproc)` matches the CPU count."
+        ],
+        [
+          "-0",
+          "input names are separated by NUL bytes (`find -print0`)"
+        ],
+        [
+          "-I{}",
+          "put the name wherever `{}` appears, one run per name"
+        ],
+        [
+          "sh -c '... \"$1\" ...' _",
+          "run a small script per name. The `_` fills `$0`, so the name lands in `$1`, quoted and safe."
+        ],
+        [
+          "gzip -t FILE",
+          "test FILE: exit 0 if it is valid gzip data, non-zero if not. Nothing is decompressed to disk."
+        ]
+      ]
+    },
+    {
+      "note": "Parallel jobs finish in whatever order they finish. The same command can print its lines in a different order every run. Always `sort` the output of `xargs -P` before you compare it with anything."
+    },
+    {
+      "note": "Never write `sh -c \"gzip -t $1\"` or `sh -c 'gzip -t {}'` with names you did not create. A file called `x; rm -rf ~` would run as a command. Pass the name as an argument (`\"$1\"`) instead."
+    }
+  ],
+  "examples": [
+    {
+      "title": "One run per file",
+      "command": "ls training/*.log | xargs -n1 wc -l",
+      "stages": [
+        {
+          "code": "ls training/*.log",
+          "why": "Four file names, one per line. Safe here because none has a space."
+        },
+        {
+          "code": "| xargs -n1 wc -l",
+          "why": "Run `wc -l` four times, once per name."
+        }
+      ],
+      "output": "4 training/audit.log\n6 training/fw.log\n10 training/secure.log\n10 training/web.log\n"
+    },
+    {
+      "title": "In parallel, then sorted",
+      "command": "find training -type f -name '*.txt' -print0 | xargs -0 -P4 -n1 wc -l | sort -k2",
+      "stages": [
+        {
+          "code": "find ... -print0 | xargs -0",
+          "why": "NUL-separated, so `report final.txt` stays one name."
+        },
+        {
+          "code": "-P4 -n1 wc -l",
+          "why": "Up to four `wc` processes at once, one file each."
+        },
+        {
+          "code": "| sort -k2",
+          "why": "Sort by the file name (field 2 onward) so the order is the same every run."
+        }
+      ],
+      "output": "1 training/drill/.hidden/todo.txt\n2 training/drill/notes.txt\n1 training/drill/report final.txt\n8 training/sar.txt\n4 training/shells.txt\n5 training/team_a.txt\n4 training/team_b.txt\n4 training/uids.txt\n"
+    },
+    {
+      "title": "Put the name in the middle",
+      "command": "ls training/team_*.txt | xargs -I{} sh -c 'printf \"%s: \" {}; head -1 {}'",
+      "stages": [
+        {
+          "code": "-I{}",
+          "why": "Replace `{}` with each name, one run per name."
+        },
+        {
+          "code": "sh -c 'printf \"%s: \" {}; head -1 {}'",
+          "why": "Two commands per file: the name, then its first line. Fine for names you made yourself; see the note about untrusted names."
+        }
+      ],
+      "output": "training/team_a.txt: alice\ntraining/team_b.txt: bob\n"
+    },
+    {
+      "title": "Test every file, safely",
+      "command": "find training -type f -print0 | xargs -0 -P4 -n1 sh -c 'gzip -t \"$1\" 2>/dev/null || echo \"not gzip: $1\"' _ | sort | head -3",
+      "stages": [
+        {
+          "code": "sh -c '...' _",
+          "why": "Each file arrives as `$1`, quoted, so spaces and odd characters are harmless."
+        },
+        {
+          "code": "gzip -t \"$1\" 2>/dev/null || echo \"not gzip: $1\"",
+          "why": "Test the file; hide gzip's complaint, and print our own line when the test fails."
+        },
+        {
+          "code": "| sort | head -3",
+          "why": "Stable order, first three. Nothing under training/ is gzip."
+        }
+      ],
+      "output": "not gzip: training/audit.log\nnot gzip: training/drill/.hidden/todo.txt\nnot gzip: training/drill/empty.log\n"
+    }
+  ],
+  "challenge": {
+    "question": "Which regular files under ~/arena are valid gzip data, whatever their names? Test every file.",
+    "format": "The paths as find . prints them, sorted, on one line separated by single spaces, for example ./a.gz ./b/c.dat",
+    "answerHash": "72294a4edb2024ea5b8c656a654f728aa71ea8e7d6e04886b2421f5af6f20513"
+  },
+  "hints": [
+    "Do not trust extensions: test the contents. `gzip -t FILE` succeeds only for real gzip data. Run it on every file that `find . -type f` lists.",
+    "`find . -type f -print0 | xargs -0 -P4 -n1 sh -c 'gzip -t \"$1\" 2>/dev/null && echo \"$1\"' _` prints each file that passes. Then `sort` (parallel output order varies) and `paste -sd' '`.",
+    "find . -type f -print0 | xargs -0 -P4 -n1 sh -c 'gzip -t \"$1\" 2>/dev/null && echo \"$1\"' _ | sort | paste -sd___"
+  ],
+  "debrief": {
+    "solution": "find . -type f -print0 | xargs -0 -P4 -n1 sh -c 'gzip -t \"$1\" 2>/dev/null && echo \"$1\"' _ | sort | paste -sd' '",
+    "alternative": "find . -type f -print0 | xargs -0 file | grep 'gzip compressed' | cut -d: -f1 | sort | paste -sd' '",
+    "why": [
+      "Two answers: the real rotation, `access_log.2.gz`, and `old_access.txt`, which is the same data under a misleading name. `opt/app/logs/debug.log.gz` is plain text and fails the test. A tool that picks files by extension would skip the one and choke on the other.",
+      "The two methods ask different questions. `file` reads the first bytes (gzip starts with 1f 8b), which is fast. `gzip -t` decompresses the whole stream and checks its CRC, so it also catches a truncated or corrupted archive. On evidence, the stronger check is worth the time; that is what `-P` buys back.",
+      "The same pattern hashes a forensic copy for chain of custody: `find . -type f -print0 | xargs -0 -P$(nproc) -n100 sha256sum | sort -k2 > manifest.sha256`. Sort it, or two runs over the same files will never compare equal."
+    ]
+  }
+}

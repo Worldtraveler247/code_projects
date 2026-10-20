@@ -1,0 +1,2 @@
+# Login shells read this file, not .bashrc.
+[ -f ~/.bashrc ] && . ~/.bashrc

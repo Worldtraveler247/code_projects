@@ -1,0 +1,17 @@
+{
+  "comment": "SHA-256 of every vendored file as committed. tests/vendor.test.mjs fails if any byte changes. See vendor/README.md for provenance.",
+  "files": {
+    "vendor/v86/libv86.mjs": "d8bf5ac66a7d1f3a106191ddc769c918fc0c8dbe36be8041f7cd874bb4c86162",
+    "vendor/v86/v86.wasm": "2fc5609ae837fcbc77147155de6f1014677ecab5369f5584ebc670e9d56e6510",
+    "vendor/v86/seabios.bin": "73e3f359102e3a9982c35fce98eb7cd08f18303ac7f1ba6ebfbe6cdc1c244d98",
+    "vendor/v86/vgabios.bin": "a4bc0d80cc3ca028c73dafa8fee396b8d054ce87ebd8abfbd31b06b437607880",
+    "vendor/v86/LICENSE": "3f61ba65e3215b09ef264ba8d777d73c19644309fbb705967634eb5147e500a0",
+    "vendor/xterm/xterm.mjs": "3fd3d0046d2604ea5860235e2f96625a2fab158dcf3d4cfb0f7c1655559a5d9a",
+    "vendor/xterm/xterm.css": "854a7c0fb70e8b1a083c16797ab827299fb18744f5ad34f227b48337e33293c6",
+    "vendor/xterm/addon-fit.mjs": "aa22c5f28e4d64118ac0e7d60276b3384188e59dd104c96e43760d6e2cedd771",
+    "vendor/xterm/LICENSE-xterm": "b569f629d00f2626a8100df2a1798210535621e42164dfd426a6fe5aac7b0ccd",
+    "vendor/xterm/LICENSE-addon-fit": "e256f01188af527e4d06d21d06fbf785ae9c50d4b328bf03cbe0ba7f0aa4228f",
+    "tools/v86/fs2json.py": "546b0ce7d0b172fa855587209318a8d473bce6de23fa327ceeb5b6c115fda23f",
+    "tools/v86/copy-to-sha256.py": "7bfb94736afbb9753b6deea922184eec2f9b205be0214bc5f9866cf990bfa77c"
+  }
+}

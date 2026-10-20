@@ -1,0 +1,45 @@
+# LOGHUNT guest: 32-bit Alpine with the GNU userland, booted by v86 from a 9p root.
+# Based on v86's tools/docker/alpine recipe (commit 6db8b15), trimmed and without networking.
+FROM docker.io/i386/alpine:3.21.0
+
+ENV KERNEL=virt
+
+# GNU tools replace the BusyBox applets of the same name, so learners get GNU behaviour and error text.
+RUN apk add --no-cache openrc alpine-base agetty linux-$KERNEL linux-firmware-none \
+        bash coreutils grep sed gawk findutils gzip diffutils util-linux-misc file less procps
+
+# ttyS0 is the learner's terminal (analyst), capped at 128 processes so a fork bomb stalls instead of
+# filling the guest; the cap is inherited through login, so no shell startup file can skip it. ttyS1 is a hidden root channel the page uses to seed and reset.
+RUN sed -i 's/^tty[0-9]/#&/' /etc/inittab \
+ && echo "ttyS0::respawn:/bin/sh -c 'ulimit -u 128; exec /sbin/agetty --autologin analyst --noclear -s ttyS0 115200 xterm-256color'" >> /etc/inittab \
+ && echo 'ttyS1::respawn:/sbin/agetty --autologin root --noclear -s ttyS1 115200 dumb' >> /etc/inittab
+
+RUN adduser -D -h /home/analyst -s /bin/bash analyst \
+ && passwd -l root && passwd -d analyst \
+ && chmod u-s /bin/bbsuid \
+ && mkdir -p /home/analyst/arena /var/lib/loghunt \
+ && chown analyst:analyst /home/analyst/arena
+
+RUN setup-hostname bastion-7 \
+ && echo 'bastion-7' > /etc/hostname
+
+COPY profile.sh /etc/profile.d/loghunt.sh
+COPY bashrc /home/analyst/.bashrc
+COPY bash_profile /home/analyst/.bash_profile
+COPY loghunt-seed /usr/local/sbin/loghunt-seed
+RUN chmod 0755 /usr/local/sbin/loghunt-seed && chown analyst:analyst /home/analyst/.bashrc /home/analyst/.bash_profile
+
+# No network service is enabled and the page never attaches a network device.
+# ~/arena is a RAM filesystem: in a browser every 9p read is a round trip through JavaScript, so logs
+# on the 9p root made grep and awk several times slower than in Node.
+RUN echo 'tmpfs /home/analyst/arena tmpfs rw,nosuid,nodev,size=96m,mode=0755,uid=1000,gid=1000 0 0' >> /etc/fstab
+
+RUN for i in devfs dmesg mdev; do rc-update add $i sysinit; done \
+ && for i in sysctl hostname bootmisc localmount; do rc-update add $i boot; done \
+ && rc-update add killprocs shutdown
+
+RUN mkinitfs -F "base virtio 9p" $(cat /usr/share/kernel/$KERNEL/kernel.release)
+
+# The initramfs already carries the virtio and 9p modules it needs. Nothing loads modules after boot
+# (no hwdrivers, no modules service), so the 20 MB module tree and the debug files never reach the browser.
+RUN rm -rf /lib/modules /boot/System.map-* /boot/config-*

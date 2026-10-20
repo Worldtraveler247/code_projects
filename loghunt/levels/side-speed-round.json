@@ -1,0 +1,121 @@
+{
+  "id": "side-speed-round",
+  "title": "Speed round: one awk vs. a pipeline",
+  "tool": "awk vs. pipes",
+  "briefing": [
+    "The incident commander wants two numbers for the web tier: how many 404s the server sent during the recon day, and how many different clients received them. You could answer with a five-stage pipeline, or with one `awk`.",
+    "Get the answer both ways and time them. Then decide which one you would put in a script."
+  ],
+  "lesson": [
+    {
+      "p": "Every stage of a pipeline is a separate process reading the whole stream. `awk` can filter, extract, count, and de-duplicate in one pass. Neither is always better: a pipeline is easy to build one stage at a time, and one awk is easier to run over a huge file."
+    },
+    {
+      "flags": [
+        [
+          "time CMD",
+          "bash's built-in timer: real (wall clock), user and sys (CPU) time for the whole pipeline. It prints to stderr."
+        ],
+        [
+          "!seen[$1]++",
+          "awk idiom: true the FIRST time a value is seen, false after. Unique values without sorting."
+        ],
+        [
+          "c[$9]++ ... END",
+          "count per key in one pass: the awk form of `sort | uniq -c`"
+        ],
+        [
+          "if (!seen[$1]++) n++",
+          "count distinct values while doing other work on the same line"
+        ],
+        [
+          "cut | sort | uniq -c",
+          "the pipeline form: three processes, and `sort` has to read everything before it prints anything"
+        ]
+      ]
+    },
+    {
+      "code": "time (cut -d' ' -f1 var/log/httpd/access_log.1 | sort -u | wc -l)\ntime awk '!seen[$1]++ {n++} END {print n}' var/log/httpd/access_log.1"
+    },
+    {
+      "note": "In this VM the awk version is about three times faster on access_log.1, mostly because it starts one process instead of three and never sorts. On a real 2 GB log the gap grows: `sort` needs memory and temporary files, and awk only keeps one array entry per distinct key. Time it on your data; do not assume."
+    }
+  ],
+  "examples": [
+    {
+      "title": "Distinct values: pipeline vs. awk",
+      "command": "cut -d' ' -f1 training/web.log | sort -u | wc -l; awk '!seen[$1]++ {n++} END {print n}' training/web.log",
+      "stages": [
+        {
+          "code": "cut -d' ' -f1 training/web.log | sort -u | wc -l",
+          "why": "Three processes: extract, sort and de-duplicate, count."
+        },
+        {
+          "code": "awk '!seen[$1]++ {n++} END {print n}'",
+          "why": "One process. `seen[$1]++` is 0 (false) the first time an IP appears, so `!` makes it true exactly once per IP."
+        }
+      ],
+      "output": "4\n4\n"
+    },
+    {
+      "title": "Unique lines in first-seen order",
+      "command": "awk '!seen[$1]++' training/web.log | cut -d' ' -f1",
+      "stages": [
+        {
+          "code": "awk '!seen[$1]++'",
+          "why": "With no action, awk prints the line: the first request from each IP, in the order they arrived. `sort -u` cannot keep that order."
+        },
+        {
+          "code": "| cut -d' ' -f1",
+          "why": "Just the IP."
+        }
+      ],
+      "output": "192.0.2.14\n192.0.2.27\n203.0.113.9\n192.0.2.48\n"
+    },
+    {
+      "title": "Counts per key: pipeline",
+      "command": "cut -d' ' -f9 training/web.log | sort | uniq -c",
+      "stages": [
+        {
+          "code": "cut -d' ' -f9 | sort | uniq -c",
+          "why": "The Level 4 counting pipeline on the status column."
+        }
+      ],
+      "output": "      3 200\n      1 302\n      1 304\n      1 403\n      3 404\n      1 500\n"
+    },
+    {
+      "title": "Counts per key: one awk",
+      "command": "awk '{c[$9]++} END {for (s in c) print c[s], s}' training/web.log | sort -k2",
+      "stages": [
+        {
+          "code": "{c[$9]++}",
+          "why": "One counter per status code, in a single pass."
+        },
+        {
+          "code": "END {for (s in c) print c[s], s} | sort -k2",
+          "why": "Print count then key, like `uniq -c`, sorted by key. Same numbers as the pipeline."
+        }
+      ],
+      "output": "3 200\n1 302\n1 304\n1 403\n3 404\n1 500\n"
+    }
+  ],
+  "challenge": {
+    "question": "In var/log/httpd/access_log.1, how many responses had status 404, and how many distinct client IPs received at least one 404?",
+    "format": "The two numbers separated by one space, count first, for example 120 9",
+    "answerHash": "22f3bc2933f4b964eacd1daea2acdef9ce69ea42ec2e5a0c9f4261b8f30bff2a"
+  },
+  "hints": [
+    "The status is field 9 and the client IP is field 1 (split on spaces). Count the lines where field 9 is 404, and count the different IPs on those lines.",
+    "One awk can do both in one pass: on lines where `$9 == 404`, add 1 to a counter, and add 1 to a second counter the first time each `$1` is seen (`if (!seen[$1]++)`). Print both in END.",
+    "awk '$9 == 404 {n++; if (!seen[$1]++) ips++} END {print n, ___}' var/log/httpd/access_log.1"
+  ],
+  "debrief": {
+    "solution": "awk '$9 == 404 {n++; if (!seen[$1]++) ips++} END {print n, ips}' var/log/httpd/access_log.1",
+    "alternative": "f=var/log/httpd/access_log.1; echo $(cut -d' ' -f9 $f | grep -cx 404) $(cut -d' ' -f1,9 $f | grep ' 404$' | cut -d' ' -f1 | sort -u | wc -l)",
+    "why": [
+      "201 404s, spread across 15 clients, but one client accounts for 51 of them: the scanner, 203.0.113.66 (`awk '$9 == 404 {print $1}' var/log/httpd/access_log.1 | sort | uniq -c | sort -nr | head -3`). A raw 404 count is a weak alert on its own; 404s per client over a short window is the signal that catches a scanner.",
+      "The pipeline reads the file twice and starts seven processes; the awk reads it once and starts one. For a one-off question that difference rarely matters. For a cron job or a monitoring check that runs every minute over a growing log, it does.",
+      "Write whichever version the next person can read. A pipeline you built stage by stage is easy to debug; an awk program with three arrays is not. When an awk one-liner grows past a line, put it in a file (`awk -f report.awk`) with a comment per block."
+    ]
+  }
+}

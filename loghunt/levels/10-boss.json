@@ -1,0 +1,146 @@
+{
+  "id": "boss-10",
+  "number": 10,
+  "title": "Write the incident line",
+  "tool": "correlation",
+  "briefing": [
+    "The incident commander wants one line for the report: who, as which account, since when, and where the data went. Every piece is somewhere in `~/arena`, in four different time formats.",
+    "\"Since when\" is the hard part. It is not when the alarm fired, or when the brute force started. It is the earliest moment this attacker's address shows up in ANY log on the host."
+  ],
+  "lesson": [
+    {
+      "p": "Correlation means putting events from different sources on one clock. Normalize every timestamp to epoch seconds (or to `YYYY-MM-DD HH:MM:SS` in UTC), tag each event with its source, merge, and `sort`. The first line is your first sighting."
+    },
+    {
+      "flags": [
+        [
+          "Apache: [12/Mar/2026:19:47:21 +0000]",
+          "turn `/` into spaces and the first `:` into a space; `date -d '12 Mar 2026 19:47:21'` reads the result"
+        ],
+        [
+          "syslog: Mar 13 23:02:11",
+          "no year and no timezone. Rearrange to `13 Mar 2026 23:02:11` and supply the year yourself."
+        ],
+        [
+          "auditd: audit(1773443985.897:18131)",
+          "epoch seconds; `date -u -d @1773443985`"
+        ],
+        [
+          "sar: 11:30:01 PM",
+          "the date is in the file header, the time is 12-hour; `date -d '11:30:01 PM'`"
+        ],
+        [
+          "date -u -d \"$d\" +%s",
+          "everything to epoch seconds, so one numeric sort orders all of it"
+        ],
+        [
+          "{ cmd1; cmd2; } | sort",
+          "a command group: merge the output of several pipelines into one stream"
+        ],
+        [
+          "while read -r a b c; do ...; done",
+          "split each line into variables for per-line work such as `date`"
+        ]
+      ]
+    },
+    {
+      "note": "Rotated and compressed logs hold the oldest events, and the oldest event is the one you are looking for. Read every rotation with `zcat -f`, and remember `old_access.txt` (Level 2): it is a gzip copy of a rotation under a misleading name. Counting it again does not change the earliest time, but it would double any count."
+    },
+    {
+      "note": "Every value in the report should come from a log line you can point to. Ideally, confirm each one from two independent sources: the exfil port appears in the firewall log AND on the dropper's command line."
+    }
+  ],
+  "examples": [
+    {
+      "title": "Apache time to UTC",
+      "command": "head -2 training/web.log | sed -E 's/^[^[]*\\[([0-9]+)\\/([A-Za-z]+)\\/([0-9]+):([0-9:]+) .*/\\1 \\2 \\3 \\4/' | while read -r d; do date -u -d \"$d\" '+%F %T'; done",
+      "stages": [
+        {
+          "code": "sed -E 's/^[^[]*\\[([0-9]+)\\/([A-Za-z]+)\\/([0-9]+):([0-9:]+) .*/\\1 \\2 \\3 \\4/'",
+          "why": "Capture day, month, year, and time from inside the brackets, and print them separated by spaces: `13 Mar 2026 09:00:01`."
+        },
+        {
+          "code": "while read -r d; do date -u -d \"$d\" '+%F %T'; done",
+          "why": "GNU date understands `13 Mar 2026 09:00:01` and reprints it as `2026-03-13 09:00:01`."
+        }
+      ],
+      "output": "2026-03-13 09:00:01\n2026-03-13 09:00:04\n"
+    },
+    {
+      "title": "syslog time to UTC",
+      "command": "head -2 training/secure.log | awk '{print $2, $1, 2026, $3}' | while read -r d; do date -u -d \"$d\" '+%F %T'; done",
+      "stages": [
+        {
+          "code": "awk '{print $2, $1, 2026, $3}'",
+          "why": "Reorder `Mar 13 09:10:01` into `13 Mar 2026 09:10:01`, adding the year that syslog leaves out."
+        },
+        {
+          "code": "date -u -d \"$d\" '+%F %T'",
+          "why": "Same output format as the Apache example, so the two can be merged."
+        }
+      ],
+      "output": "2026-03-13 09:10:01\n2026-03-13 09:11:15\n"
+    },
+    {
+      "title": "One address, three sources, one timeline",
+      "command": "{ grep '^203.0.113.9 ' training/web.log | sed -E 's/^[^[]*\\[([0-9]+)\\/([A-Za-z]+)\\/([0-9]+):([0-9:]+) .*/\\1 \\2 \\3 \\4 web/'; grep -h '203.0.113.9 ' training/secure.log training/fw.log | awk '{print $2, $1, 2026, $3, $5}'; } | while read -r d m y t src; do echo \"$(date -u -d \"$d $m $y $t\" '+%F %T') $src\"; done | sort | head -4",
+      "stages": [
+        {
+          "code": "{ ...; ...; }",
+          "why": "Two pipelines, one output stream. Each line is `day month year time source`."
+        },
+        {
+          "code": "grep '^203.0.113.9 ' training/web.log | sed ... web/",
+          "why": "Web hits from the address, tagged `web`."
+        },
+        {
+          "code": "grep -h '203.0.113.9 ' training/secure.log training/fw.log | awk ...",
+          "why": "sshd and firewall lines, tagged with the syslog program name (`sshd[...]:` or `kernel:`)."
+        },
+        {
+          "code": "| while read -r d m y t src; do ...; done | sort | head -4",
+          "why": "Normalize, sort, and read the earliest events. The firewall saw the address before the web server did."
+        }
+      ],
+      "output": "2026-03-13 09:00:05 kernel:\n2026-03-13 09:00:12 kernel:\n2026-03-13 09:01:12 web\n2026-03-13 09:01:13 web\n"
+    },
+    {
+      "title": "Two sources, one event",
+      "command": "date -u -d @$(grep 'addr=203.0.113.9 ' training/audit.log | awk -F'[(.]' '{print $2}') '+%b %d %T'; grep -m1 '203.0.113.9 ' training/secure.log | cut -c1-15",
+      "stages": [
+        {
+          "code": "grep 'addr=203.0.113.9 ' training/audit.log | awk -F'[(.]' '{print $2}'",
+          "why": "auditd's record of the failed login: its epoch."
+        },
+        {
+          "code": "date -u -d @... '+%b %d %T'",
+          "why": "Print it the way syslog does, `Mar 13 09:11:15`, so the two lines can be compared by eye."
+        },
+        {
+          "code": "grep -m1 '203.0.113.9 ' training/secure.log | cut -c1-15",
+          "why": "sshd's first line about the address; its first 15 characters are the syslog timestamp. Same second, two independent daemons: the event is confirmed."
+        }
+      ],
+      "output": "Mar 13 09:11:15\nMar 13 09:11:15\n"
+    }
+  ],
+  "challenge": {
+    "question": "Write the incident line: the attacker's IP address, the account they logged in as, the earliest time that IP appears in any log under ~/arena (UTC), and the destination port the data left on.",
+    "format": "IP|username|YYYY-MM-DD HH:MM:SS|port, for example 192.0.2.1|alice|2026-01-31 08:05:09|8080",
+    "answerHash": "6df7ff492ce500c9fa96da586a05f6eea99be8943c300046ad9399fece8d2691"
+  },
+  "hints": [
+    "You already have three of the four pieces: the scanner's IP (Level 2), the account that accepted a password from it (Levels 3-4), and the port on the dropper's command line (Level 7), which the firewall log should confirm. The fourth is the earliest sighting: find every file that mentions the IP (`zgrep -l`, compressed rotations included), then convert each file's timestamps to one format.",
+    "The IP appears in Apache logs (`[12/Mar/2026:...]`), syslog-format logs (`secure`, `fw.log`, with no year), `error_log`, and auditd (epoch). Convert each format to epoch seconds with `date -u -d ... +%s`, merge with `{ ...; ...; }`, `sort -n`, and take the first line. Check the compressed web rotation: plain grep never reads it.",
+    "ip=203.0.113.66; zcat -f var/log/httpd/access_log* | grep \"^$ip \" | sed -E 's/^[^[]*\\[([0-9]+)\\/([A-Za-z]+)\\/([0-9]+):([0-9:]+) .*/\\1 \\2 \\3 \\4/' | while read -r d; do date -u -d \"$d\" '+%F %T'; done | sort | head -___   (then compare with the earliest secure, fw.log and audit.log times)"
+  ],
+  "debrief": {
+    "solution": "ip=$(zgrep -hi nikto var/log/httpd/access_log* | cut -d' ' -f1 | sort -u)\nuser=$(grep \"Accepted password for .* from $ip \" var/log/secure | awk '{print $9}')\nport=$(grep \"DST=$ip \" var/log/firewalld/fw.log | grep -o 'DPT=[0-9]*' | cut -d= -f2 | sort | uniq -c | sort -nr | head -1 | awk '{print $2}')\nfirst=$( { zcat -f var/log/httpd/access_log* | grep \"^$ip \" | sed -E 's/^[^[]*\\[([0-9]+)\\/([A-Za-z]+)\\/([0-9]+):([0-9:]+) .*/\\1 \\2 \\3 \\4/'; grep -h \"$ip\" var/log/secure* var/log/firewalld/fw.log | awk '{print $2, $1, 2026, $3}'; } | while read -r d; do date -u -d \"$d\" +%s; done; grep -h \"$ip\" var/log/audit/audit.log | awk -F'[(.]' '{print $2}'; sed -nE \"s/^\\[[A-Za-z]+ ([A-Za-z]+) ([0-9]+) ([0-9:]+)\\.[0-9]+ ([0-9]+)\\].*client $ip:.*/\\2 \\1 \\4 \\3/p\" var/log/httpd/error_log | while read -r d; do date -u -d \"$d\" +%s; done )\necho \"$ip|$user|$(date -u -d @$(echo \"$first\" | sort -n | head -1) '+%F %T')|$port\"",
+    "alternative": "ip=$(grep 'Failed password' var/log/secure | grep -oE 'from [0-9.]+' | sort | uniq -c | sort -nr | head -1 | awk '{print $3}')\nuser=$(grep -F \"from $ip \" var/log/secure | sed -nE 's/.*Accepted [a-z]+ for ([^ ]+) from.*/\\1/p')\nport=$(sed -nE \"s/.*a1=\\\"--pool\\\" a2=\\\"$ip:([0-9]+)\\\".*/\\1/p\" var/log/audit/audit.log)\nfirst=$( { zcat -f var/log/httpd/access_log* | awk -v ip=\"$ip\" '$1 == ip {print substr($4, 2)}' | tr '/:' '  ' | awk '{print $1, $2, $3, $4\":\"$5\":\"$6}'; grep -hF \"$ip\" var/log/secure* var/log/firewalld/fw.log var/log/audit/audit.log | awk '/^type=/ {split($2, a, /[(.]/); print \"@\" a[2]; next} {print $2, $1, 2026, $3}'; } | while read -r d; do date -u -d \"$d\" '+%F %T'; done | sort | head -1)\necho \"$ip|$user|$first|$port\"",
+    "why": [
+      "The first sighting is 2026-03-12 19:47:21, a single Nikto request more than 26 hours before the burst. It lives only in `access_log.2.gz`. An analyst who read only the uncompressed logs would date the intrusion to the recon burst on the 13th and miss a full day of the attacker's interest in this host.",
+      "The two solutions agree from different evidence: the IP from the scanner's user agent vs. from brute-force volume; the port from the firewall's flow records vs. the dropper's own arguments. When independent sources agree, the line is defensible. When they disagree, you have found a gap in your logging, or a second actor.",
+      "On a real RHEL incident you would collect the same sources (`/var/log/secure*`, `/var/log/audit/audit.log*`, the web server logs, firewall and flow logs, `sar` history) off the host before cleaning it, ideally from a central log server the attacker could not edit. Then you would write this line, a timeline built the way you built it here, and a root cause: a service account with a guessable password, an interactive shell, and a sudo rule that allowed a shell."
+    ]
+  }
+}

@@ -1,0 +1,36 @@
+#!/bin/sh
+# loghunt-seed ID NOW — rebuild /home/analyst/arena from a seed the page wrote into the 9p filesystem.
+# Runs as root on the hidden ttyS1 channel. Inputs, both under /var/lib/loghunt/:
+#   seed-ID.tar.gz   the arena tree; tar headers carry each file's modification time
+#   seed-ID.gzlist   "<path>" or "<path>\t<final path>" per line: compress in place with `gzip -n` (so the
+#                    bytes never vary), then optionally rename (a gzip file with a misleading name)
+# NOW is the story's current time (epoch); it fixes the guest clock so `find -mtime` answers are stable.
+set -eu
+
+id=${1:?usage: loghunt-seed ID NOW}
+now=${2:?usage: loghunt-seed ID NOW}
+seed=/var/lib/loghunt/seed-$id
+arena=/home/analyst/arena
+tab=$(printf '\t')
+
+[ -f "$seed.tar.gz" ] || { echo "loghunt-seed: $seed.tar.gz missing" >&2; exit 1; }
+
+# Side quests start background writers; stop them so a reset is a clean slate.
+pkill -u analyst -f loghunt-appender 2>/dev/null || true
+
+find "$arena" -mindepth 1 -delete
+tar -xzf "$seed.tar.gz" -C "$arena"
+
+# gzip copies the original file's modification time onto the .gz it writes.
+if [ -s "$seed.gzlist" ]; then
+    while IFS="$tab" read -r path final; do
+        gzip -n -- "$arena/$path"
+        if [ -n "$final" ]; then mv -- "$arena/$path.gz" "$arena/$final"; fi
+    done < "$seed.gzlist"
+fi
+
+chown -R analyst:analyst "$arena"
+chmod 0755 "$arena"
+date -s "@$now" > /dev/null
+rm -f -- "$seed.tar.gz" "$seed.gzlist"
+echo "LOGHUNT-SEED-OK"

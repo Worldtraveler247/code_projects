@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="dark">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <meta name="description" content="LOGHUNT: Incident at Bastion-7 — investigate an intrusion with find, grep, awk, sed and sort in a real Linux shell that runs entirely in your browser.">
+    <!-- 'wasm-unsafe-eval' and worker-src blob: are for the v86 emulator; see DECISIONS.md. -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'self' 'wasm-unsafe-eval'; worker-src blob:; base-uri 'none'; object-src 'none'; form-action 'none';">
+    <title>LOGHUNT: Incident at Bastion-7 · Eddie's Portfolio</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Inter:wght@400;500;600&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="vendor/xterm/xterm.css">
+    <script type="module" src="app.js"></script>
+    <style>
+        *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; font-variant-ligatures:none; }
+        :root {
+            --bg:#07010f; --cyan:#4af7ff; --purple:#7b2fff; --green:#00e676;
+            --amber:#fbbf24; --red:#ff5c7c; --text:#dde0f0; --muted:#8a90aa;
+            --border:rgba(74,247,255,0.16); --card:rgba(255,255,255,0.03); --term:#0a0613;
+            --mono:'Fira Code', ui-monospace, Menlo, monospace;
+            color-scheme: dark;
+        }
+        body { background:var(--bg); color:var(--text); font-family:'Inter', system-ui, sans-serif; min-height:100vh; }
+        .skip { position:absolute; left:-999px; top:0; background:var(--cyan); color:#000; padding:8px 14px; border-radius:0 0 8px 0; z-index:50; }
+        .skip:focus { left:0; }
+        .sr-only { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
+
+        .top-nav { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:16px 24px; border-bottom:1px solid var(--border); position:sticky; top:0; background:rgba(7,1,15,0.92); backdrop-filter:blur(12px); z-index:10; }
+        .nav-left { display:flex; align-items:center; gap:12px; min-width:0; }
+        .back-btn { display:inline-flex; align-items:center; gap:6px; padding:7px 14px; border:1px solid var(--border); border-radius:8px; text-decoration:none; font-size:0.78rem; font-weight:500; white-space:nowrap; color:var(--muted); }
+        .back-btn:hover { color:var(--cyan); border-color:var(--cyan); }
+        .hiw-btn { display:inline-flex; align-items:center; gap:6px; padding:7px 14px; border:1px solid var(--border); border-radius:8px; text-decoration:none; font-size:0.78rem; font-weight:500; white-space:nowrap; color:var(--cyan); }
+        .hiw-btn:hover { background:rgba(74,247,255,0.07); border-color:var(--cyan); }
+        .app-title { font-family:'Orbitron', system-ui; font-size:0.85rem; color:var(--cyan); letter-spacing:2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+        main { max-width:1360px; margin:0 auto; padding:32px 24px 80px; }
+        h1 { font-family:'Orbitron', system-ui; font-size:clamp(1.4rem,4vw,2.1rem); color:#fff; margin-bottom:6px; }
+        .subtitle { color:var(--muted); font-size:0.9rem; margin-bottom:24px; line-height:1.5; max-width:70ch; }
+        code { font-family:var(--mono); color:var(--cyan); font-size:0.92em; }
+
+        .layout { display:grid; grid-template-columns:minmax(0,5fr) minmax(0,7fr); gap:20px; align-items:start; }
+        .pane { background:var(--card); border:1px solid var(--border); border-radius:14px; padding:18px; min-width:0; }
+        .pane h2 { font-family:'Orbitron', system-ui; font-size:0.8rem; letter-spacing:2px; color:var(--cyan); text-transform:uppercase; margin-bottom:12px; }
+        .mission { font-size:0.9rem; line-height:1.6; max-height:calc(100vh - 160px); overflow-y:auto; }
+        .mission > * + * { margin-top:12px; }
+        .mission h3 { font-size:0.95rem; color:#fff; }
+
+        .term-head { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:12px; flex-wrap:wrap; }
+        .term-head h2 { margin-bottom:0; }
+        .term-actions { display:flex; gap:8px; }
+        button { font:inherit; font-size:0.78rem; font-weight:500; padding:7px 14px; border-radius:8px; border:1px solid var(--border); background:transparent; color:var(--text); cursor:pointer; }
+        button:hover:not(:disabled) { border-color:var(--cyan); color:var(--cyan); }
+        button:disabled { opacity:0.45; cursor:not-allowed; }
+        button:focus-visible, input:focus-visible { outline:2px solid var(--cyan); outline-offset:2px; }
+        .primary { background:var(--cyan); color:#05010c; border-color:var(--cyan); font-weight:600; }
+        .primary:hover:not(:disabled) { background:#8ffbff; color:#05010c; }
+
+        .terminal-shell { position:relative; height:clamp(360px, 62vh, 640px); background:var(--term); border:1px solid var(--border); border-radius:10px; padding:8px; overflow:hidden; }
+        #terminal { height:100%; }
+        .overlay { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; padding:24px; text-align:center; background:var(--term); font-size:0.88rem; line-height:1.55; }
+        .overlay[hidden] { display:none; }
+        .progress { width:min(320px, 80%); height:6px; border-radius:3px; background:rgba(255,255,255,0.08); overflow:hidden; }
+        .progress > div { height:100%; width:0; background:linear-gradient(90deg, var(--purple), var(--cyan)); transition:width 0.15s linear; }
+        .overlay .error { color:var(--red); }
+        .status { margin-top:10px; font-size:0.76rem; color:var(--muted); min-height:1.2em; }
+
+        .answer-bar { grid-column:1 / -1; display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+        .answer-bar label { font-size:0.8rem; color:var(--muted); }
+        .answer-bar input { flex:1 1 260px; min-width:0; padding:9px 12px; border-radius:8px; border:1px solid var(--border); background:#0c0718; color:var(--text); font-family:var(--mono); font-size:0.88rem; }
+
+        .mission-top { display:flex; justify-content:space-between; align-items:baseline; gap:12px; }
+        .totals { font-size:0.76rem; color:var(--muted); }
+        .level-strip { display:flex; flex-wrap:wrap; gap:6px; margin:4px 0 16px; }
+        .level-chip { min-width:38px; padding:5px 9px; font-family:var(--mono); font-size:0.76rem; color:var(--muted); }
+        .level-chip.solved { color:var(--green); border-color:rgba(0,230,118,0.45); }
+        .level-chip.solved::after { content:" ✓"; }
+        .level-chip.current { color:#05010c; background:var(--cyan); border-color:var(--cyan); }
+        .level > * + * { margin-top:14px; }
+        .level-kicker { font-size:0.74rem; letter-spacing:1.5px; text-transform:uppercase; color:var(--purple); filter:brightness(1.6); }
+        .level-title { font-family:'Orbitron', system-ui; font-size:1.05rem; color:#fff; margin-top:2px; }
+        .level h4 { font-size:0.82rem; letter-spacing:1px; text-transform:uppercase; color:var(--cyan); margin-bottom:6px; }
+        .level h5 { font-size:0.88rem; color:#fff; margin-bottom:6px; }
+        .level p + p { margin-top:8px; }
+        .level details > summary { cursor:pointer; font-weight:600; color:#fff; padding:6px 0; }
+        .level details > summary:focus-visible { outline:2px solid var(--cyan); outline-offset:2px; border-radius:4px; }
+        .lesson > * + *, .examples > * + * { margin-top:10px; }
+        .note { color:#b9f6ca; }
+        .table-scroll { overflow-x:auto; }
+        table { border-collapse:collapse; font-size:0.8rem; width:100%; }
+        th, td { text-align:left; vertical-align:top; padding:6px 10px 6px 0; border-bottom:1px solid rgba(255,255,255,0.06); }
+        .flags th { white-space:nowrap; font-weight:400; }
+        .example { border:1px solid var(--border); border-radius:10px; padding:12px; background:rgba(0,0,0,0.18); }
+        .cmd-row { display:flex; gap:8px; align-items:flex-start; }
+        pre { font-family:var(--mono); font-size:0.8rem; line-height:1.5; white-space:pre-wrap; overflow-wrap:anywhere; }
+        pre.cmd { flex:1; min-width:0; color:var(--cyan); background:var(--term); border:1px solid var(--border); border-radius:8px; padding:8px 10px; }
+        pre.output, pre.code-block { background:var(--term); border:1px solid var(--border); border-radius:8px; padding:8px 10px; color:#dcdfe8; }
+        .type-btn { flex:none; font-size:0.72rem; padding:6px 10px; }
+        .stages { margin:10px 0 6px 1.2em; font-size:0.84rem; }
+        .stages li + li { margin-top:6px; }
+        .expected > summary { font-size:0.8rem; font-weight:500; color:var(--muted); }
+        .question { font-size:0.95rem; color:#fff; }
+        .format { font-size:0.8rem; color:var(--muted); }
+        .hint-list { margin-left:1.2em; font-size:0.86rem; }
+        .hint-list li + li { margin-top:6px; }
+        .debrief { border:1px solid rgba(0,230,118,0.45); border-radius:10px; padding:12px; background:rgba(0,230,118,0.05); }
+        .debrief .label { font-size:0.74rem; text-transform:uppercase; letter-spacing:1px; color:var(--green); margin-top:10px; }
+        .level-nav { display:flex; justify-content:space-between; margin-top:18px; }
+        .progress-view { margin-top:16px; font-size:0.84rem; }
+        .progress-view summary { cursor:pointer; color:var(--cyan); }
+        .progress-view table { margin:10px 0; }
+        .error { color:var(--red); }
+        .history { margin-top:12px; }
+        .history-head { display:flex; justify-content:space-between; align-items:center; gap:10px; }
+        .history h3 { font-size:0.76rem; letter-spacing:1px; text-transform:uppercase; color:var(--muted); font-weight:500; }
+        .history-list { margin:8px 0 0 1.6em; font-family:var(--mono); font-size:0.78rem; color:#dcdfe8; max-height:150px; overflow-y:auto; }
+        .history-list li { overflow-wrap:anywhere; }
+        .feedback { flex-basis:100%; font-size:0.84rem; min-height:1.3em; }
+        .feedback.ok { color:var(--green); }
+        .feedback.bad { color:var(--amber); }
+
+        .desktop-note { display:none; font-size:0.8rem; color:var(--amber); }
+
+        @media (max-width: 760px) {
+            .top-nav { padding:12px 16px; }
+            main { padding:20px 16px 60px; }
+            .layout { grid-template-columns:minmax(0,1fr); }
+            .mission { max-height:none; }
+            .terminal-shell { height:420px; }
+            .desktop-note { display:block; }
+        }
+        @media (prefers-reduced-motion: reduce) { .progress > div { transition:none; } }
+    </style>
+</head>
+<body>
+    <a class="skip" href="#mission">Skip to the mission</a>
+    <nav class="top-nav" aria-label="App navigation">
+        <div class="nav-left">
+            <a class="back-btn" href="../index.html">← App Hub</a>
+            <span class="app-title">LOGHUNT</span>
+        </div>
+        <a class="hiw-btn" href="how-it-works.html">📖 How It's Built</a>
+    </nav>
+
+    <main>
+        <h1>Incident at Bastion-7</h1>
+        <p class="subtitle">Investigate an intrusion with the tools a Linux admin reaches for first: <code>find</code>, <code>grep</code>, <code>awk</code>, <code>sed</code>, <code>sort</code>. The terminal is a real Linux system running inside your browser. Nothing you type leaves this page.</p>
+
+        <div class="layout">
+            <section class="pane mission" id="mission" aria-labelledby="mission-title" tabindex="-1">
+                <div class="mission-top">
+                    <h2 id="mission-title">Mission</h2>
+                    <span class="totals" id="totals"></span>
+                </div>
+                <nav class="level-strip" id="level-strip" aria-label="Levels"></nav>
+                <div class="level" id="level" aria-live="polite">
+                    <p>02:40 UTC. The on-call pager fired for <code>bastion-7</code>, the jump host in front of the payments subnet. Loading the case file…</p>
+                </div>
+                <div class="level-nav">
+                    <button type="button" id="prev-btn" disabled>← Previous</button>
+                    <button type="button" id="next-btn" disabled>Next →</button>
+                </div>
+                <details class="progress-view">
+                    <summary>Progress</summary>
+                    <div class="table-scroll"><table id="progress-table"></table></div>
+                    <button type="button" id="reset-progress-btn">Reset progress</button>
+                </details>
+            </section>
+
+            <section class="pane" aria-labelledby="term-title">
+                <div class="term-head">
+                    <h2 id="term-title">Terminal</h2>
+                    <div class="term-actions">
+                        <button type="button" id="reset-btn" disabled title="Regenerate ~/arena; the shell keeps running">Reset files</button>
+                        <button type="button" id="restart-btn" disabled title="Discard the whole VM and start from the snapshot">Restart terminal</button>
+                    </div>
+                </div>
+                <p class="desktop-note">The terminal is best on a desktop keyboard. The mission text works fine on a phone.</p>
+                <div class="terminal-shell">
+                    <div id="terminal" aria-label="Linux terminal"></div>
+                    <div class="overlay" id="overlay">
+                        <p id="overlay-text">Loading the Bastion-7 VM…</p>
+                        <div class="progress" role="progressbar" aria-label="VM download" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="progress"><div id="progress-bar"></div></div>
+                        <button type="button" class="primary" id="load-btn" hidden>Load the terminal</button>
+                    </div>
+                </div>
+                <p class="status" id="status" role="status" aria-live="polite"></p>
+                <div class="history">
+                    <div class="history-head">
+                        <h3>Your recent commands</h3>
+                        <button type="button" id="copy-btn" disabled>Copy my pipeline</button>
+                    </div>
+                    <ol class="history-list" id="history-list"></ol>
+                </div>
+            </section>
+
+            <form class="answer-bar" id="answer-form" novalidate>
+                <label for="answer">Answer</label>
+                <input id="answer" name="answer" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Type the answer to this level's challenge" disabled>
+                <button type="submit" class="primary" id="submit-btn" disabled>Submit</button>
+                <button type="button" id="hint-btn" disabled>Hint</button>
+                <p class="feedback" id="feedback" role="status" aria-live="polite"></p>
+            </form>
+        </div>
+    </main>
+</body>
+</html>

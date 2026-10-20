@@ -1,0 +1,173 @@
+{
+  "id": "find-01",
+  "number": 1,
+  "title": "Map the ground",
+  "tool": "find",
+  "briefing": [
+    "Before you read a single log line, map what is on disk. The on-call note says the host's fans spun up overnight, and nobody can name the process doing it.",
+    "Attackers rarely drop tools where `ls` shows them. Find the file that should not be there."
+  ],
+  "lesson": [
+    {
+      "p": "`find PATH TESTS` walks a directory tree and prints every path that passes all of its tests. Tests are joined with AND, left to right. `!` negates the next test; `-o` means OR."
+    },
+    {
+      "flags": [
+        [
+          "-type f / -type d",
+          "regular files only / directories only"
+        ],
+        [
+          "-name 'PATTERN'",
+          "match the file name with shell wildcards. Quote it so the shell does not expand it first. -iname ignores case."
+        ],
+        [
+          "-path 'PATTERN'",
+          "match the whole path. '*/.*' means: somewhere under a name that starts with a dot (a hidden directory or file)."
+        ],
+        [
+          "-size +1k / -size -100c",
+          "bigger than / smaller than. Units round UP to whole units: c = bytes, k = KiB, M = MiB."
+        ],
+        [
+          "-mtime -1 / -mtime +7",
+          "modified less than 24 hours ago / more than 7 full days ago"
+        ],
+        [
+          "-newermt 'DATE'",
+          "modified after an exact date and time; precise where -mtime counts whole days"
+        ],
+        [
+          "-empty",
+          "empty files and empty directories"
+        ],
+        [
+          "-perm /111 / -perm -u+x",
+          "any execute bit set / the owner's execute bit set"
+        ],
+        [
+          "-exec CMD {} +",
+          "run CMD once with many paths; `{} \\;` runs it once per path"
+        ],
+        [
+          "-print0 | xargs -0",
+          "separate paths with NUL bytes so names with spaces survive the pipe"
+        ]
+      ]
+    },
+    {
+      "note": "`find` measures time from now. Inside this VM, now is 2026-03-14 02:40 UTC, the moment the pager fired. Run `date` to see it."
+    },
+    {
+      "note": "Size rounding catches people: a 1,100-byte file counts as 2 KiB, so it matches `-size +1k`. Use `c` (bytes) when the exact size matters."
+    }
+  ],
+  "examples": [
+    {
+      "title": "Walk a tree",
+      "command": "find training/drill | sort",
+      "stages": [
+        {
+          "code": "find training/drill",
+          "why": "With no tests, find prints every path under the starting point, including directories and hidden names."
+        },
+        {
+          "code": "| sort",
+          "why": "find prints in directory order, which is not alphabetical. Sorting makes the output stable and easy to compare."
+        }
+      ],
+      "output": "training/drill\ntraining/drill/.hidden\ntraining/drill/.hidden/todo.txt\ntraining/drill/empty.log\ntraining/drill/notes.txt\ntraining/drill/report final.txt\n"
+    },
+    {
+      "title": "Bigger than one kibibyte",
+      "command": "find training -type f -size +1k | sort",
+      "stages": [
+        {
+          "code": "-type f",
+          "why": "Only regular files; directories have sizes too and would muddy the list."
+        },
+        {
+          "code": "-size +1k",
+          "why": "More than 1 KiB after rounding up. web.log (1,145 bytes) rounds to 2 KiB and matches; audit.log (680 bytes) rounds to 1 KiB and does not."
+        },
+        {
+          "code": "| sort",
+          "why": "Stable order."
+        }
+      ],
+      "output": "training/secure.log\ntraining/web.log\n"
+    },
+    {
+      "title": "Count files older than a week",
+      "command": "find training -type f -mtime +7 | wc -l",
+      "stages": [
+        {
+          "code": "-mtime +7",
+          "why": "The training files were written on 2026-03-01, about 13 days before now, so all of them are more than 7 full days old."
+        },
+        {
+          "code": "| wc -l",
+          "why": "Count the lines find printed: one path per line, so this is the number of files."
+        }
+      ],
+      "output": "15\n"
+    },
+    {
+      "title": "Why a plain pipe breaks on spaces",
+      "command": "find training/drill -name '*.txt' | xargs -n1 echo | sort",
+      "stages": [
+        {
+          "code": "-name '*.txt'",
+          "why": "Quoted, so find sees the wildcard instead of the shell expanding it in the current directory."
+        },
+        {
+          "code": "| xargs -n1 echo",
+          "why": "xargs splits its input on spaces and newlines, then runs echo once per piece (-n1). Watch the last file: report final.txt arrives as two separate names."
+        },
+        {
+          "code": "| sort",
+          "why": "Stable order. Look for the two halves of report final.txt: `final.txt` sorts first, `training/drill/report` last."
+        }
+      ],
+      "output": "final.txt\ntraining/drill/.hidden/todo.txt\ntraining/drill/notes.txt\ntraining/drill/report\n"
+    },
+    {
+      "title": "The fix: NUL-separated paths",
+      "command": "find training/drill -name '*.txt' -print0 | xargs -0 -n1 echo | sort",
+      "stages": [
+        {
+          "code": "-print0",
+          "why": "End each path with a NUL byte instead of a newline. NUL is the one byte a Linux file name cannot contain."
+        },
+        {
+          "code": "| xargs -0 -n1 echo",
+          "why": "-0 tells xargs to split on NUL only, so report final.txt stays one argument. `-exec echo {} +` would also be safe, because no pipe is involved."
+        },
+        {
+          "code": "| sort",
+          "why": "Stable order: three files, three lines."
+        }
+      ],
+      "output": "training/drill/.hidden/todo.txt\ntraining/drill/notes.txt\ntraining/drill/report final.txt\n"
+    }
+  ],
+  "challenge": {
+    "question": "Somewhere in ~/arena is a regular file that has an execute bit set, sits under a hidden directory, and was modified in the last 24 hours. What is its path?",
+    "format": "The path exactly as `find .` prints it when run from ~/arena, for example ./dir/file",
+    "answerHash": "5f71a2a093f28baa18c194341b326dab6a0f408e114f55101f90ea6bbcd31b9f"
+  },
+  "hints": [
+    "Three conditions, one find command: each condition is a test that must be true. Start it with `find .` from ~/arena so the path begins with ./",
+    "You need `-type f` (regular file), `-perm /111` (any execute bit), `-path '*/.*'` (under a hidden name), and `-mtime -1` (changed in the last 24 hours).",
+    "find . -type f -perm /111 -path '*/.*' -mtime ___"
+  ],
+  "debrief": {
+    "solution": "find . -type f -perm /111 -path '*/.*' -mtime -1",
+    "alternative": "find . -path '*/.*' -type f -executable -newermt '2026-03-13'",
+    "why": [
+      "Attackers drop tooling in dot-directories under /tmp, /var/tmp, and /dev/shm because `ls` hides them and those directories are writable by everyone. `kworkerd` is named to blend in with the kernel's own kworker threads in `ps` output.",
+      "On a real RHEL host, an early triage sweep is `find /tmp /var/tmp /dev/shm -xdev -type f -perm /111 -mtime -2`. `-mtime` counts whole 24-hour periods, so switch to `-newermt` with an exact timestamp once you know the incident window.",
+      "`-executable` asks whether you could run the file (it honours your user and ACLs). `-perm /111` reads the mode bits. As root the two can disagree, so be clear which question you are asking."
+    ]
+  }
+}

@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'none';">
+  <title>How It's Built — LOGHUNT | Eddie's App Hub</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Inter:wght@400;500;600&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../how-it-works.css">
+</head>
+<body>
+<a href="index.html" style="position:fixed;top:12px;left:12px;z-index:9999;background:rgba(10,10,20,0.85);backdrop-filter:blur(6px);color:#4af7ff;border:1px solid #4af7ff;border-radius:20px;padding:6px 14px;font-family:sans-serif;font-size:13px;text-decoration:none;font-weight:600;">← Back to the game</a>
+
+<div class="hiw-page">
+
+  <header class="hiw-header">
+    <div class="hiw-icon">🔎</div>
+    <h1>LOGHUNT — How It's Built</h1>
+    <p class="hiw-tagline">A real Linux system in a browser tab, one invented break-in, and every answer checked against the real tools.</p>
+  </header>
+
+  <section class="hiw-section">
+    <h2>Overview</h2>
+    <p>
+      Most command-line tutorials show a command and its output, and the learner nods along. LOGHUNT makes
+      you type the command yourself, at a real <code>bash</code> prompt, against logs that look like the ones on
+      a RHEL server: Apache access logs with a compressed rotation, <code>/var/log/secure</code>, auditd records
+      with epoch timestamps, firewall key=value lines, a metrics CSV with broken rows, and <code>sar</code>
+      output on a 12-hour clock. One attacker runs through all of them: a scan, an SSH brute force, a login,
+      <code>sudo</code> to a root shell, a dropper, and data leaving on an unusual port.
+    </p>
+    <p>
+      Ten levels teach one tool each, from <code>find</code> to <code>comm</code> and <code>join</code>. The last level
+      asks for a single line: who, as which account, since when, and where the data went. The first sighting
+      is a single request, 26 hours before the scan, in the one log file that plain <code>grep</code> cannot read.
+    </p>
+  </section>
+
+  <section class="hiw-section">
+    <h2>Tech Stack</h2>
+    <div class="hiw-badges">
+      <span class="hiw-badge">v86 (x86 emulator in WebAssembly)</span>
+      <span class="hiw-badge">Alpine Linux + GNU tools</span>
+      <span class="hiw-badge">xterm.js</span>
+      <span class="hiw-badge">JavaScript modules</span>
+      <span class="hiw-badge">Node test runner</span>
+      <span class="hiw-badge">Podman (image build)</span>
+    </div>
+    <ul class="hiw-caption-list">
+      <li><strong>v86</strong> — emulates a 32-bit PC in WebAssembly and boots a real Linux kernel. Chosen over CheerpX/WebVM because GitHub Pages cannot send the cross-origin isolation headers CheerpX needs, and v86 is BSD-licensed.</li>
+      <li><strong>Alpine Linux with GNU coreutils, grep, sed, gawk, findutils and gzip</strong> — real GNU behaviour and real error messages. The page restores a saved snapshot of the booted machine, so there is no boot wait.</li>
+      <li><strong>xterm.js</strong> — the terminal on the page, connected to the VM's first serial port.</li>
+      <li><strong>Node test runner</strong> — the same snapshot boots under Node, so the tests and the selftest run the exact machine the page runs.</li>
+      <li><strong>Podman</strong> — builds the guest image from a Containerfile; v86 runs it from that root filesystem.</li>
+    </ul>
+  </section>
+
+  <section class="hiw-section">
+    <h2>How Each Part Works</h2>
+    <div class="hiw-file-block">
+      <h3><code>story.js</code> and <code>generator.js</code> — the incident</h3>
+      <p>
+        <code>story.js</code> holds every fact of the campaign: the attacker's address, the victim account, and a
+        timeline from the first probe to the end of the exfil. <code>generator.js</code> turns it into about 20,000
+        log lines across 37 files, in about 25 milliseconds, from a fixed seed. Each log source draws from its
+        own random stream, so adding noise to the firewall log never shifts an answer in the web log. A test
+        pins a SHA-256 of the whole archive, so any change to the data is a deliberate one.
+      </p>
+      <p>
+        The arena is built in JavaScript and handed to the guest as one tar file, because tar headers carry
+        modification times and <code>find -mtime</code> answers depend on them. The compressed rotation is
+        gzipped inside the guest with <code>gzip -n</code>, so its bytes, and so its size, never vary between
+        browsers.
+      </p>
+    </div>
+    <div class="hiw-file-block">
+      <h3><code>levels/*.json</code> — the content</h3>
+      <p>
+        Each level is a JSON file: briefing, lesson, three to five worked examples on small training files,
+        one challenge, three hints, and a debrief with a reference solution, an alternative, and why it matters
+        on a real host. A new level needs no code. A validator checks every file when the page loads, in the
+        lint step, and in the tests.
+      </p>
+    </div>
+    <div class="hiw-file-block">
+      <h3><code>tools/selftest.mjs</code> — no answer written by hand</h3>
+      <p>
+        Every example output and every answer was taken from the real guest. The selftest boots the
+        snapshot, seeds the arena, runs every worked example and compares its output byte for byte, then runs
+        both the reference solution and the alternative and checks that each one hashes to the stored answer.
+        Two pipelines built from different evidence have to agree. Writing them this way caught real
+        mistakes: GNU <code>zgrep</code> rejects <code>-r</code>, and this VM has no locale data, so the sort-order
+        lesson had to become a note instead of a demo.
+      </p>
+    </div>
+    <div class="hiw-file-block">
+      <h3><code>checker.js</code> and <code>progress.js</code> — answers and score</h3>
+      <p>
+        Answers are trimmed, lowercased, and whitespace is collapsed, then hashed with the level id:
+        <code>sha256("loghunt:v1:&lt;id&gt;:&lt;answer&gt;")</code>. The page stores only the hash. Each level is
+        worth 100 points, minus 10, 20 or 35 for each hint tier; wrong attempts cost nothing. Progress stays in
+        the browser's local storage, with a two-click reset.
+      </p>
+    </div>
+    <div class="hiw-file-block">
+      <h3><code>live.js</code> — the side quest that writes while you watch</h3>
+      <p>
+        The <code>tail -f</code> side quest needs a log that grows. A level names a setup by key only
+        (<code>"setup": "live-feed"</code>); the shell that runs is fixed in <code>live.js</code>, never read from a
+        level file. It starts a writer as the learner's user, a few lines at once and then one every few
+        seconds. The seed script stops it on every reset.
+      </p>
+    </div>
+  </section>
+
+  <section class="hiw-section">
+    <h2>Security</h2>
+    <ul class="hiw-caption-list">
+      <li><strong>Commands never leave the tab</strong> — everything typed runs inside the emulated machine in your browser. There is no server, and the VM has no network interface except loopback; the snapshot build fails if a network request from the guest succeeds.</li>
+      <li><strong>No root for the learner</strong> — the shell runs as <code>analyst</code>. Root's password is locked, BusyBox's setuid helper is disabled, and there is no <code>sudo</code>; the build checks that <code>su</code> cannot reach uid 0.</li>
+      <li><strong>Content-Security-Policy</strong> — <code>script-src 'self' 'wasm-unsafe-eval'</code> (v86 compiles guest code to WebAssembly at run time) and <code>worker-src blob:</code> (v86's helper workers). Nothing loads from another site; a test pins the exact policy.</li>
+      <li><strong>Integrity</strong> — the snapshot's SHA-256 is checked before it runs; third-party code (v86, xterm.js) is vendored with recorded hashes, not loaded from a CDN.</li>
+      <li><strong>No <code>innerHTML</code>, no <code>eval</code></strong> — level text is put on the page as text only. A fork bomb hits a 128-process cap, and output floods are throttled, so the page stays responsive; <strong>Restart terminal</strong> throws the machine away and restores the snapshot in under a second.</li>
+      <li><strong>Invented data only</strong> — documentation IP ranges (RFC 5737), <code>example.com</code>, and made-up account names.</li>
+    </ul>
+  </section>
+
+  <section class="hiw-section">
+    <h2>Limits</h2>
+    <ul class="hiw-caption-list">
+      <li><strong>A 14 MB download</strong> — the saved machine has to be fetched once; on a phone the lessons load first and the terminal only on request.</li>
+      <li><strong>Answers can be found in the source</strong> — the generator runs in the browser and the code is public. Hashing only stops a casual peek; this is a learning game, not a competition.</li>
+      <li><strong>Alpine, not RHEL</strong> — the tools are GNU, but there is no <code>journalctl</code>, <code>ausearch</code> or <code>sar</code> to run. The debriefs say where each step differs on a real RHEL host.</li>
+    </ul>
+  </section>
+
+</div>
+</body>
+</html>

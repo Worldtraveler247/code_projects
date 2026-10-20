@@ -1,0 +1,153 @@
+{
+  "id": "awk-aggregate-06",
+  "number": 6,
+  "title": "Find the host that ran hot",
+  "tool": "awk arrays",
+  "briefing": [
+    "Level 5 proved which rows of `metrics/node_metrics.csv` have the wrong shape. Now do the arithmetic the on-call engineer needed at 02:40: which host pegged its CPU, for how long, and how hard.",
+    "Two rows have the right shape but the wrong content. If you let them into the sums, your numbers will be wrong and nothing will tell you."
+  ],
+  "lesson": [
+    {
+      "p": "An awk array is indexed by any string, so `n[$2]++` keeps one counter per host without declaring anything. Build the arrays line by line, then print them in an `END` block with `for (key in array)`."
+    },
+    {
+      "flags": [
+        [
+          "n[$2]++",
+          "count lines per value of field 2. A new key starts at 0."
+        ],
+        [
+          "s[$2] += $3",
+          "running total per key"
+        ],
+        [
+          "if ($3 > max[$2]) max[$2] = $3",
+          "running maximum per key"
+        ],
+        [
+          "for (h in n) print h, n[h]",
+          "loop over the keys in END. The order is not defined, so pipe the output through `sort`."
+        ],
+        [
+          "s[h] / n[h]",
+          "average = total / count. Divide only in END, when both are complete."
+        ],
+        [
+          "$3 + 0 == $3",
+          "true only when field 3 is a number: `N/A` and `cpu` fail it"
+        ],
+        [
+          "printf \"%.1f\", x",
+          "round to one decimal place"
+        ]
+      ]
+    },
+    {
+      "note": "awk compares two values as numbers only when both look numeric. `N/A` and `cpu` do not, so `$3 > 85` becomes a TEXT comparison, and `\"N/A\" > \"85\"` is true because the character N sorts after the character 8. In a sum, the same values count as 0. Filter non-numeric values out before you compare or add."
+    },
+    {
+      "note": "A collector restart can write the header again in the middle of the file. `NR > 1` skips only the first one."
+    }
+  ],
+  "examples": [
+    {
+      "title": "Rows per host",
+      "command": "awk -F, 'NR > 1 {n[$2]++} END {for (h in n) print h, n[h]}' training/metrics.csv | sort",
+      "stages": [
+        {
+          "code": "NR > 1 {n[$2]++}",
+          "why": "Skip the header, then add 1 to the counter for this row's host."
+        },
+        {
+          "code": "END {for (h in n) print h, n[h]}",
+          "why": "After the last line, print every host and its count."
+        },
+        {
+          "code": "| sort",
+          "why": "`for (h in n)` visits keys in no particular order."
+        }
+      ],
+      "output": "db-01 3\nweb-01 4\n"
+    },
+    {
+      "title": "A naive average, and why it is wrong",
+      "command": "awk -F, 'NR > 1 {s[$2] += $3; n[$2]++} END {for (h in s) printf \"%s %.1f\\n\", h, s[h] / n[h]}' training/metrics.csv | sort",
+      "stages": [
+        {
+          "code": "s[$2] += $3; n[$2]++",
+          "why": "Total and count per host."
+        },
+        {
+          "code": "printf \"%s %.1f\\n\", h, s[h] / n[h]",
+          "why": "Average to one decimal. db-01 comes out at 32.0: its `N/A` row was added as 0 and counted as a reading."
+        }
+      ],
+      "output": "db-01 32.0\nweb-01 33.8\n"
+    },
+    {
+      "title": "The same average without the N/A",
+      "command": "awk -F, 'NR > 1 && $3 != \"N/A\" {s[$2] += $3; n[$2]++} END {for (h in s) printf \"%s %.1f\\n\", h, s[h] / n[h]}' training/metrics.csv | sort",
+      "stages": [
+        {
+          "code": "$3 != \"N/A\"",
+          "why": "Leave the missing reading out of both the total and the count."
+        },
+        {
+          "code": "END {...}",
+          "why": "db-01 is now 48.0, the true mean of 44.0 and 52.0."
+        }
+      ],
+      "output": "db-01 48.0\nweb-01 33.8\n"
+    },
+    {
+      "title": "Peak per host, with guards",
+      "command": "awk -F, 'NR > 1 && NF == 6 && $3 != \"N/A\" {if ($3 > max[$2]) max[$2] = $3} END {for (h in max) print h, max[h]}' training/metrics.csv | sort",
+      "stages": [
+        {
+          "code": "NF == 6 && $3 != \"N/A\"",
+          "why": "Only complete rows with a real value. The truncated web-01 row (40.0) is dropped."
+        },
+        {
+          "code": "if ($3 > max[$2]) max[$2] = $3",
+          "why": "Keep the largest value seen per host. A key that is not there yet reads as 0, so the first positive reading always wins. For values that can be negative, start from the first reading instead: `!($2 in max) || $3 > max[$2]`."
+        }
+      ],
+      "output": "db-01 52.0\nweb-01 35.0\n"
+    },
+    {
+      "title": "Threshold: which samples ran hot",
+      "command": "awk -F, 'NR > 1 && NF == 6 && $3 != \"N/A\" && $3 > 40 {print $1, $2, $3}' training/metrics.csv",
+      "stages": [
+        {
+          "code": "$3 > 40",
+          "why": "Both sides are numbers now, so this is a numeric comparison."
+        },
+        {
+          "code": "{print $1, $2, $3}",
+          "why": "When, where, and how hot."
+        }
+      ],
+      "output": "2026-03-13T09:00:00Z db-01 44.0\n2026-03-13T09:10:00Z db-01 52.0\n"
+    }
+  ],
+  "challenge": {
+    "question": "Exactly one host in metrics/node_metrics.csv ever reported CPU above 85. Counting only rows whose cpu value is a number, which host is it, how many samples above 85 did it report, and what is the average CPU of those samples, to one decimal place?",
+    "format": "Host, count, and average separated by single spaces, for example web-09 12 91.3",
+    "answerHash": "093d2bddcbedded4efcc269819fcb9bf81d635b0e723de0425861b5ac4b8b6e1"
+  },
+  "hints": [
+    "Group by host (field 2), keep only samples above 85, and track a count and a total for each host. Then check what else slipped through: the header line, and anything in field 3 that is not a number.",
+    "`$3 + 0 == $3` is true only for numeric values. Combine it with `$3 > 85`, then `n[$2]++; s[$2] += $3`, and print `h, n[h], s[h] / n[h]` with `printf \"%s %d %.1f\\n\"` in END.",
+    "awk -F, '$3 + 0 == $3 && $3 > 85 {n[$2]++; s[$2] += $3} END {for (h in n) printf \"%s %d %.1f\\n\", h, n[h], ___}' metrics/node_metrics.csv"
+  ],
+  "debrief": {
+    "solution": "awk -F, '$3 + 0 == $3 && $3 > 85 {n[$2]++; s[$2] += $3} END {for (h in n) printf \"%s %d %.1f\\n\", h, n[h], s[h] / n[h]}' metrics/node_metrics.csv",
+    "alternative": "awk -F, '$3 ~ /^[0-9]+(\\.[0-9]+)?$/ && $3 > 85 {n[$2]++; s[$2] += $3} END {for (h in n) printf \"%s %d %.1f\\n\", h, n[h], s[h] / n[h]}' metrics/node_metrics.csv",
+    "why": [
+      "Without the numeric guard, the same program prints two lines: `host 2 0.0`, because both header lines (line 1, and line 1085 after a collector restart) pass `\"cpu\" > \"85\"` as text; and `bastion-7 29 90.4`, because the `N/A` sample at 23:45 passes as text and then adds 0 to the sum. Both errors are silent, and the second one looks plausible.",
+      "bastion-7 is a jump host. Its normal CPU is in single digits, so 28 five-minute samples at about 94% (23:25 to 01:40) is a miner or a busy exfil job, not a load spike. The window matches the sudo shell from Level 3.",
+      "On a real RHEL host, `sar -u -f /var/log/sa/saDD` gives the same history per day, and Performance Co-Pilot or node_exporter keep it for the whole fleet. Whatever the source, check the shape (Level 5) and the content (this level) before you put a number in a report."
+    ]
+  }
+}

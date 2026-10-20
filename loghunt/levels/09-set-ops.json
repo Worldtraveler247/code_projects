@@ -1,0 +1,146 @@
+{
+  "id": "set-ops-09",
+  "number": 9,
+  "title": "Which guesses were real accounts",
+  "tool": "comm + join",
+  "briefing": [
+    "Most of the usernames in the brute force do not exist here, and sshd turned them away as `invalid user`. The ones that DO exist are the real exposure: they held passwords an attacker could guess.",
+    "Intersect two lists: the names the attacker tried, and the accounts that exist on this host with their uids. Report the overlap."
+  ],
+  "lesson": [
+    {
+      "p": "Set operations on sorted files. `comm` compares two sorted lists of lines. `join` matches two sorted files on a key field, like a database join. `paste` puts files side by side, or folds one file onto a single line. `column -t` lines up the result."
+    },
+    {
+      "flags": [
+        [
+          "comm A B",
+          "three columns: only in A / only in B / in both (indented with tabs)"
+        ],
+        [
+          "comm -12 A B",
+          "suppress columns 1 and 2: the lines in BOTH (intersection)"
+        ],
+        [
+          "comm -23 A B",
+          "suppress columns 2 and 3: lines only in A (A minus B)"
+        ],
+        [
+          "join A B",
+          "for each key (field 1) found in both files, print the key and the other fields from both"
+        ],
+        [
+          "join -a1 A B",
+          "also print lines from A that have no match in B (a left outer join)"
+        ],
+        [
+          "join -t, -1 2 -2 1",
+          "comma-separated; key is field 2 of file 1 and field 1 of file 2"
+        ],
+        [
+          "paste A B / paste -sd' ' A",
+          "lines of A and B side by side / all lines of A on one line, joined by spaces"
+        ],
+        [
+          "<(command)",
+          "bash process substitution: the output of a pipeline used as if it were a file"
+        ],
+        [
+          "column -t",
+          "align whitespace-separated columns; `-s,` to split on commas"
+        ]
+      ]
+    },
+    {
+      "note": "`comm` and `join` need input sorted on the key, in the SAME locale. Unsorted input gives missing rows, with at best a warning. `sort -u` each side with `LC_ALL=C` (Level 4) before you join."
+    }
+  ],
+  "examples": [
+    {
+      "title": "Three columns of comm",
+      "command": "comm training/team_a.txt training/team_b.txt",
+      "stages": [
+        {
+          "code": "comm training/team_a.txt training/team_b.txt",
+          "why": "Both files are already sorted. Column 1: only in team A. Column 2 (one tab): only in team B. Column 3 (two tabs): on both teams."
+        }
+      ],
+      "output": "alice\n\t\tbob\ncarol\n\t\tdave\nerin\n\tfrank\n\tgrace\n"
+    },
+    {
+      "title": "Set difference",
+      "command": "comm -23 training/team_a.txt training/team_b.txt",
+      "stages": [
+        {
+          "code": "-23",
+          "why": "Hide column 2 (only in B) and column 3 (in both): what is left is only in A."
+        }
+      ],
+      "output": "alice\ncarol\nerin\n"
+    },
+    {
+      "title": "Join two lists on the user name",
+      "command": "join training/uids.txt training/shells.txt",
+      "stages": [
+        {
+          "code": "join",
+          "why": "Field 1 of each file is the key. Each user in both files gets one line: name, uid (from file 1), shell (from file 2)."
+        },
+        {
+          "code": "training/uids.txt training/shells.txt",
+          "why": "carol has no shell entry and zed has no uid, so neither appears: join prints only matches by default."
+        }
+      ],
+      "output": "alice 1001 /bin/bash\nbob 1002 /bin/zsh\nsvc_backup 1003 /bin/bash\n"
+    },
+    {
+      "title": "Keep the unmatched rows, then align",
+      "command": "join -a1 training/uids.txt training/shells.txt | column -t",
+      "stages": [
+        {
+          "code": "join -a1",
+          "why": "Also print rows from file 1 with no match. carol appears with no shell, which is a gap worth asking about."
+        },
+        {
+          "code": "| column -t",
+          "why": "Line the columns up so the gap is easy to see."
+        }
+      ],
+      "output": "alice       1001  /bin/bash\nbob         1002  /bin/zsh\ncarol       1004  \nsvc_backup  1003  /bin/bash\n"
+    },
+    {
+      "title": "Fold a list onto one line",
+      "command": "paste -sd, training/team_b.txt",
+      "stages": [
+        {
+          "code": "-s",
+          "why": "Serial: join all lines of the file instead of pairing them with another file."
+        },
+        {
+          "code": "-d,",
+          "why": "Put a comma between them. Handy for building `-u alice,bob` style arguments or a ticket summary."
+        }
+      ],
+      "output": "bob,dave,frank,grace\n"
+    }
+  ],
+  "challenge": {
+    "question": "Which usernames that 203.0.113.66 tried in Failed password lines in var/log/secure belong to accounts that exist on this host, and what uid does each have? An account exists if it appears in a \"session opened for user NAME(uid=N)\" line in var/log/secure or var/log/secure-20260313.",
+    "format": "Each name followed by its uid, sorted by name, all on one line separated by single spaces, for example alice 1001 bob 1002",
+    "answerHash": "79c1d32683f8bb2aa21a30b4d61a4df5f59d27931bc77a738df960031db2a39a"
+  },
+  "hints": [
+    "Build two sorted lists. List 1: the usernames the attacker tried, one per line, `sort -u` (you built this pipeline in Level 4). List 2: `name uid` pairs from the session lines, `sort -u`. Then intersect them on the name.",
+    "For list 2, `grep -ohE 'session opened for user [a-z_]+\\(uid=[0-9]+\\)'` over both secure files, then `sed -E 's/.*user ([a-z_]+)\\(uid=([0-9]+)\\)/\\1 \\2/'`. `join LIST1 LIST2` keeps the names in both and adds the uid; `paste -sd' '` puts the result on one line.",
+    "join <(grep 'Failed password' var/log/secure | grep -oE '[^ ]+ from 203\\.0\\.113\\.66 ' | cut -d' ' -f1 | sort -u) <(grep -ohE 'session opened for user [a-z_]+\\(uid=[0-9]+\\)' var/log/secure* | sed -E 's/.*user ([a-z_]+)\\(uid=([0-9]+)\\)/\\1 \\2/' | sort -u) | paste -sd___"
+  ],
+  "debrief": {
+    "solution": "join <(grep 'Failed password' var/log/secure | grep -oE '[^ ]+ from 203\\.0\\.113\\.66 ' | cut -d' ' -f1 | sort -u) <(grep -ohE 'session opened for user [a-z_]+\\(uid=[0-9]+\\)' var/log/secure* | sed -E 's/.*user ([a-z_]+)\\(uid=([0-9]+)\\)/\\1 \\2/' | sort -u) | paste -sd' '",
+    "alternative": "grep -ohE 'session opened for user [a-z_]+\\(uid=[0-9]+\\)' var/log/secure* | sed -E 's/.*user ([a-z_]+)\\(uid=([0-9]+)\\)/\\1 \\2/' | sort -u > /tmp/uids; comm -12 <(grep 'Failed password' var/log/secure | grep -oE '[^ ]+ from 203\\.0\\.113\\.66 ' | cut -d' ' -f1 | sort -u) <(cut -d' ' -f1 /tmp/uids) | join - /tmp/uids | paste -sd' '",
+    "why": [
+      "Two real accounts were in the wordlist: root and svc_backup. root is a guess on every host on the internet; it should never accept a password over SSH. svc_backup is the account that fell. A service account with a guessable password and an interactive shell is the root cause of this incident.",
+      "On a live RHEL host you would build list 2 from the account database instead: `getent passwd | cut -d: -f1,3 | tr : ' ' | sort -u`. Session lines only show accounts that have logged in; getent shows every account, including the ones nobody has used yet.",
+      "The fixes follow from the overlap: `PermitRootLogin no`, key-only SSH for service accounts (or `nologin` as their shell if they never need one), and an `AllowGroups` line in sshd's configuration so that only named groups can log in at all."
+    ]
+  }
+}

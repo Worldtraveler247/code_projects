@@ -1,0 +1,157 @@
+{
+  "id": "awk-05",
+  "number": 5,
+  "title": "Check the instruments",
+  "tool": "awk",
+  "briefing": [
+    "The fans that woke the on-call engineer should show up in `metrics/node_metrics.csv`, one row per host every five minutes. Before anyone averages a column from that file, someone has to prove the rows are sound: one short row and the totals are wrong, with no error message.",
+    "Find every row that does not have the six fields the header promises."
+  ],
+  "lesson": [
+    {
+      "p": "`awk 'PATTERN {ACTION}' FILE` reads one line at a time, splits it into fields `$1, $2, ...`, and runs ACTION on each line where PATTERN is true. Leave out the pattern and the action runs on every line. Leave out the action and awk prints the matching line."
+    },
+    {
+      "flags": [
+        [
+          "$1, $2 ... $NF",
+          "fields. `$0` is the whole line; `$NF` is the last field, `$(NF-1)` the one before it"
+        ],
+        [
+          "-F,",
+          "field separator. The default splits on runs of spaces and tabs, so padded columns just work (no `tr -s` needed)."
+        ],
+        [
+          "NR",
+          "the current line number (record number), counting from 1"
+        ],
+        [
+          "NF",
+          "the number of fields on the current line. An empty line has NF = 0."
+        ],
+        [
+          "NR > 1",
+          "a pattern that skips the header row"
+        ],
+        [
+          "$3 == \"N/A\" / $9 >= 400",
+          "compare as text / as a number. awk decides by looking at the values."
+        ],
+        [
+          "BEGIN {...} / END {...}",
+          "run once before the first line / once after the last one: headers and totals"
+        ],
+        [
+          "printf \"%s %d\\n\", a, b",
+          "formatted output. Unlike `print` it adds no newline; write `\\n` yourself."
+        ]
+      ]
+    },
+    {
+      "note": "Put the program in single quotes. Inside double quotes the shell would replace `$1` with its own (empty) first argument before awk ever ran."
+    },
+    {
+      "note": "`print a, b` joins with a space (the output separator). `print a b` joins with nothing. Both end the line."
+    }
+  ],
+  "examples": [
+    {
+      "title": "Fields by number",
+      "command": "awk '{print $1, $9}' training/web.log | head -3",
+      "stages": [
+        {
+          "code": "{print $1, $9}",
+          "why": "No pattern, so every line: the client IP and the status code, joined by a space."
+        },
+        {
+          "code": "| head -3",
+          "why": "First three lines."
+        }
+      ],
+      "output": "192.0.2.14 200\n192.0.2.27 200\n192.0.2.14 302\n"
+    },
+    {
+      "title": "Skip the header, pick CSV columns",
+      "command": "awk -F, 'NR > 1 {print $2, $3}' training/metrics.csv",
+      "stages": [
+        {
+          "code": "-F,",
+          "why": "Split on commas."
+        },
+        {
+          "code": "NR > 1",
+          "why": "Line 1 is the header; start at line 2."
+        },
+        {
+          "code": "{print $2, $3}",
+          "why": "Host and CPU. Note `N/A` for db-01 at 09:05: a value that looks like data but is not a number."
+        }
+      ],
+      "output": "web-01 31.5\ndb-01 44.0\nweb-01 35.0\ndb-01 N/A\nweb-01 28.5\ndb-01 52.0\nweb-01 40.0\n"
+    },
+    {
+      "title": "Rows with the wrong shape",
+      "command": "awk -F, 'NF != 6 {print NR \": \" $0}' training/metrics.csv",
+      "stages": [
+        {
+          "code": "NF != 6",
+          "why": "The header has six columns, so every row should have six fields."
+        },
+        {
+          "code": "{print NR \": \" $0}",
+          "why": "Print the line number and the line itself. The last row was cut short: only three fields."
+        }
+      ],
+      "output": "8: 2026-03-13T09:15:00Z,web-01,40.0\n"
+    },
+    {
+      "title": "Filter on a number",
+      "command": "awk '$9 >= 400 {print $1, $9, $7}' training/web.log",
+      "stages": [
+        {
+          "code": "$9 >= 400",
+          "why": "Status code compared as a number: client errors (4xx) and server errors (5xx)."
+        },
+        {
+          "code": "{print $1, $9, $7}",
+          "why": "IP, status, and the requested path (field 7), in any order you like."
+        }
+      ],
+      "output": "203.0.113.9 404 /wp-login.php\n203.0.113.9 404 /.env\n203.0.113.9 404 /admin/\n192.0.2.48 500 /api/v1/orders\n203.0.113.9 403 /server-status\n"
+    },
+    {
+      "title": "Total with END and printf",
+      "command": "awk '$10 != \"-\" {bytes += $10} END {printf \"%d bytes in %d requests\\n\", bytes, NR}' training/web.log",
+      "stages": [
+        {
+          "code": "$10 != \"-\" {bytes += $10}",
+          "why": "Add up the response sizes, skipping `-`. Variables start at 0, so there is no setup."
+        },
+        {
+          "code": "END {printf ...}",
+          "why": "After the last line, print the total. In END, NR still holds the number of lines read."
+        }
+      ],
+      "output": "10236 bytes in 10 requests\n"
+    }
+  ],
+  "challenge": {
+    "question": "Which lines of metrics/node_metrics.csv do not have exactly six comma-separated fields? Give their line numbers, counting the header as line 1.",
+    "format": "The line numbers in ascending order, separated by single spaces, for example 12 40 77",
+    "answerHash": "d50f8e5c91af6902d41cb4bc4b0a46530d9a6097094ac00998c287089e45c3c8"
+  },
+  "hints": [
+    "The header is line 1 and has six fields. You want the line number of every line whose field count is anything other than six: more, fewer, or none at all.",
+    "`-F,` splits on commas, `NF` is the field count, `NR` is the line number. A pattern `NF != 6` with an action that prints `NR` does it. `printf \"%s \", NR` keeps them on one line.",
+    "awk -F, 'NF != 6 {printf \"%s \", ___}' metrics/node_metrics.csv"
+  ],
+  "debrief": {
+    "solution": "awk -F, 'NF != 6 {printf \"%s \", NR}' metrics/node_metrics.csv",
+    "alternative": "awk -F, 'NF != 6 {print NR}' metrics/node_metrics.csv | tr '\\n' ' '",
+    "why": [
+      "Three different faults: line 308 has a seventh field (`retry`), line 1120 is blank, and line 1190 was cut off after four fields. An average over a column would count the blank line as a reading of 0, and summing column 6 (net_tx_bytes) would add 0 for the short row. Nothing would warn you.",
+      "The row with `N/A` for bastion-7 at 23:45 has six fields, so this check passes it. A field count proves the shape of a row, not its values. Level 6 checks the values too, before it does any arithmetic.",
+      "On a real host the same pattern guards any CSV or delimited export (`sar -o`, inventory dumps, ticket exports) before you report on it: `awk -F, 'NF != 6' FILE | wc -l` should be 0, or you explain each exception."
+    ]
+  }
+}

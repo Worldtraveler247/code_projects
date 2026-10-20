@@ -1,0 +1,145 @@
+{
+  "id": "side-tail-f",
+  "title": "The attacker comes back",
+  "tool": "tail -f",
+  "setup": "live-feed",
+  "briefing": [
+    "svc_backup's password was rotated an hour ago. If the attacker still has a foothold anywhere, they will try the account again soon, and you want to see it the moment it happens, not in tomorrow's report.",
+    "A live copy of the auth log is being written to `live/secure` right now. Follow it and catch the attacker's first new attempt."
+  ],
+  "lesson": [
+    {
+      "p": "`tail` prints the end of a file. With `-f` (follow) it keeps the file open and prints each new line as it is written, until you press Ctrl+C. Pipe it into `grep` to watch for one thing."
+    },
+    {
+      "flags": [
+        [
+          "tail -n 20",
+          "the last 20 lines (the default is 10)"
+        ],
+        [
+          "tail -n +5",
+          "everything from line 5 to the end; `-n +1` is the whole file"
+        ],
+        [
+          "tail -f",
+          "follow: print new lines as they arrive. Ctrl+C stops it."
+        ],
+        [
+          "tail -F",
+          "follow the NAME, not the open file: keeps going after logrotate replaces the file. Use this on real logs."
+        ],
+        [
+          "grep -m1",
+          "stop after the first match; the pipeline ends instead of waiting forever"
+        ],
+        [
+          "grep --line-buffered",
+          "print each match at once. Without it, grep holds output back in a block when it writes into another pipe."
+        ],
+        [
+          "timeout 30 CMD",
+          "kill CMD after 30 seconds (exit status 124): a safe way to follow for a while in a script"
+        ]
+      ]
+    },
+    {
+      "note": "The feed starts when you open this quest, writes a few lines straight away, then one every few seconds. Press Reset files to start it again from the top."
+    },
+    {
+      "note": "`tail -f FILE | grep X | cut ...` can look stuck: grep buffers its output when it is not writing to the terminal, so `cut` sees nothing until grep's buffer fills. `grep --line-buffered` fixes it."
+    }
+  ],
+  "examples": [
+    {
+      "title": "The end of a file",
+      "command": "tail -n 3 training/secure.log",
+      "stages": [
+        {
+          "code": "tail -n 3",
+          "why": "The last three lines: the most recent events in a log that is written in time order."
+        }
+      ],
+      "output": "Mar 13 09:20:44 web-01 sshd[2260]: Failed password for ops_bob from 198.51.100.22 port 51544 ssh2\nMar 13 09:20:51 web-01 sshd[2260]: Accepted password for ops_bob from 198.51.100.22 port 51544 ssh2\nMar 13 09:30:12 web-01 su[2302]: pam_unix(su-l:session): session opened for user root(uid=0) by ops_bob(uid=1002)\n"
+    },
+    {
+      "title": "From a line number to the end",
+      "command": "tail -n +9 training/web.log",
+      "stages": [
+        {
+          "code": "-n +9",
+          "why": "A plus sign means \"starting at line 9\", not \"the last 9\". Useful to skip a header: `tail -n +2 file.csv`."
+        }
+      ],
+      "output": "192.0.2.14 - - [13/Mar/2026:09:02:40 +0000] \"GET /static/style.css HTTP/1.1\" 200 1840 \"-\" \"Mozilla/5.0 (X11; Linux x86_64) Firefox/124.0\"\n203.0.113.9 - - [13/Mar/2026:09:02:41 +0000] \"GET /server-status HTTP/1.1\" 403 199 \"-\" \"curl/8.5.0\"\n"
+    },
+    {
+      "title": "Follow for a while, then stop",
+      "command": "timeout 2 tail -n 2 -f training/web.log; echo \"exit status $?\"",
+      "stages": [
+        {
+          "code": "tail -n 2 -f",
+          "why": "Print the last two lines, then wait for more. Nothing is writing to this file, so nothing else appears."
+        },
+        {
+          "code": "timeout 2",
+          "why": "Stop tail after two seconds instead of pressing Ctrl+C."
+        },
+        {
+          "code": "echo \"exit status $?\"",
+          "why": "124 is timeout's way of saying \"I had to kill it\". Scripts can test for it."
+        }
+      ],
+      "output": "192.0.2.14 - - [13/Mar/2026:09:02:40 +0000] \"GET /static/style.css HTTP/1.1\" 200 1840 \"-\" \"Mozilla/5.0 (X11; Linux x86_64) Firefox/124.0\"\n203.0.113.9 - - [13/Mar/2026:09:02:41 +0000] \"GET /server-status HTTP/1.1\" 403 199 \"-\" \"curl/8.5.0\"\nexit status 124\n"
+    },
+    {
+      "title": "Follow until the first match",
+      "command": "tail -n +1 -f training/secure.log | grep -m1 Accepted; echo done",
+      "stages": [
+        {
+          "code": "tail -n +1 -f",
+          "why": "Read the whole file from the top, then keep following."
+        },
+        {
+          "code": "| grep -m1 Accepted",
+          "why": "grep exits after the first match. tail notices that nobody is reading any more and exits too, so the shell moves on to `echo done`."
+        }
+      ],
+      "output": "Mar 13 09:10:01 web-01 sshd[2101]: Accepted publickey for ops_alice from 198.51.100.21 port 50122 ssh2: ED25519 SHA256:k3Fq0example\ndone\n"
+    },
+    {
+      "title": "A follow pipeline that does not stall",
+      "command": "timeout 2 tail -f training/secure.log | grep --line-buffered Failed | cut -d' ' -f9-",
+      "stages": [
+        {
+          "code": "grep --line-buffered Failed",
+          "why": "Pass each failed login on immediately, instead of in a block."
+        },
+        {
+          "code": "| cut -d' ' -f9-",
+          "why": "Everything from field 9 on: who, from where, on which port."
+        }
+      ],
+      "output": "invalid user admin from 203.0.113.9 port 40001 ssh2\nroot from 203.0.113.9 port 40007 ssh2\ninvalid user test from 203.0.113.9 port 40013 ssh2\nops_bob from 198.51.100.22 port 51544 ssh2\n"
+    }
+  ],
+  "challenge": {
+    "question": "Follow live/secure. When 203.0.113.66 tries to log in again, what source port is its first new attempt coming from?",
+    "format": "A port number, for example 51234",
+    "answerHash": "6a13200a6fc2defa1f7e2f3d0c0bb13bc04d985b3b8bce55987c5da93797a4c8"
+  },
+  "hints": [
+    "Start following before the attempt arrives: `tail -f live/secure`. Watch for the attacker's address, then read the port off the line. Ctrl+C when you have it.",
+    "Let the pipeline wait for you: `tail -f live/secure | grep -m1 203.0.113.66` prints the first matching line and exits. `grep -oE 'port [0-9]+'` then pulls out the port.",
+    "tail -f live/secure | grep -m1 203.0.113.66 | grep -oE 'port [0-9]+' | cut -d' ' -f___"
+  ],
+  "debrief": {
+    "solution": "tail -f live/secure | grep -m1 203.0.113.66 | grep -oE 'port [0-9]+' | cut -d' ' -f2",
+    "alternative": "tail -n +1 -f live/secure | awk '/203\\.0\\.113\\.66/ {print $(NF-1); exit}'",
+    "why": [
+      "The attacker tried svc_backup twice and gave up: the rotated password held. That they came back at all means they kept the credential, and probably a list of other hosts where it might work. Rotate it everywhere the account exists, not just here.",
+      "On a RHEL host, `journalctl -f -u sshd` follows the same events from the journal, and `journalctl -f -u sshd --grep '203.0.113.66'` filters them. On a host that writes files, use `tail -F`: logrotate renames `secure` at night, and `-f` would keep following the old, renamed file.",
+      "Watching by hand does not scale. The same idea, automated, is fail2ban (`dnf install fail2ban`, the sshd jail) or a SIEM rule: match the pattern, then act. You just did by hand what those tools do in a loop."
+    ]
+  }
+}

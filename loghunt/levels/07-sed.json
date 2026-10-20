@@ -1,0 +1,161 @@
+{
+  "id": "sed-07",
+  "number": 7,
+  "title": "Lift the dropper's arguments",
+  "tool": "sed",
+  "briefing": [
+    "auditd logs every program started on this host, with its arguments, as `key=\"value\"` pairs in `var/log/audit/audit.log`. The dropper you found in Level 1 was started with a command line, and the command line names where it was sending its work.",
+    "Pull the program and its `--pool` value out of the record with one `sed` command: no grep, no hand copying."
+  ],
+  "lesson": [
+    {
+      "p": "`sed` edits a stream line by line. The command you will use most is `s/REGEX/REPLACEMENT/`. With `-n` sed prints nothing unless told to, and the `p` flag prints a line after a successful substitution. Together, `sed -n 's/.../.../p'` means: rewrite the matching lines, print only those, and drop the rest."
+    },
+    {
+      "flags": [
+        [
+          "s/old/new/",
+          "replace the first match on each line; add `g` to replace every match"
+        ],
+        [
+          "-n ... p",
+          "print only the lines you ask for. `sed -n '/RE/p'` works like grep."
+        ],
+        [
+          "-E",
+          "extended regex: `( ) + ? |` without backslashes. Without -E write `\\( \\)`."
+        ],
+        [
+          "\\1 \\2",
+          "in the replacement: the text the first and second `( )` groups captured"
+        ],
+        [
+          "[^\"]*",
+          "any run of characters that are not a double quote: the value inside `key=\"...\"`"
+        ],
+        [
+          "'/START/,/END/p'",
+          "an address range: print from the first line matching START through the next line matching END"
+        ],
+        [
+          "'2,4p' / '$p'",
+          "line-number addresses: lines 2-4 / the last line"
+        ],
+        [
+          "-i",
+          "edit a file in place. Never run it on evidence; write to a new file instead."
+        ]
+      ]
+    },
+    {
+      "note": "`.*` is greedy: it matches as much as it can. In `s/.*a0=\"\\([^\"]*\\)\".*/\\1/`, the leading `.*` eats everything up to the LAST `a0=\"` on the line. Use `[^\"]*` instead of `.*` inside quotes, so the match stops at the closing quote."
+    },
+    {
+      "note": "Without `-n`, sed prints every line, changed or not, so a substitution on its own is an edit, not a filter. Adding `-n` and the `p` flag turns it into both: only the lines where the substitution matched come out, already rewritten."
+    }
+  ],
+  "examples": [
+    {
+      "title": "sed as grep",
+      "command": "sed -n '/Invalid user/p' training/secure.log",
+      "stages": [
+        {
+          "code": "-n",
+          "why": "Turn off sed's default of printing every line."
+        },
+        {
+          "code": "'/Invalid user/p'",
+          "why": "For lines that match, print. Same result as `grep 'Invalid user'`."
+        }
+      ],
+      "output": "Mar 13 09:11:15 web-01 sshd[2140]: Invalid user admin from 203.0.113.9 port 40001\nMar 13 09:11:24 web-01 sshd[2145]: Invalid user test from 203.0.113.9 port 40013\n"
+    },
+    {
+      "title": "An address range: from one event to another",
+      "command": "sed -n '/09:11:15/,/09:12:02/p' training/secure.log",
+      "stages": [
+        {
+          "code": "/09:11:15/,/09:12:02/",
+          "why": "Start at the first line that matches 09:11:15 and stop after the first line that matches 09:12:02."
+        },
+        {
+          "code": "p",
+          "why": "Print the whole window: the brute-force attempts and the sudo line that follows them. Ranges are how you cut a time window out of a log."
+        }
+      ],
+      "output": "Mar 13 09:11:15 web-01 sshd[2140]: Invalid user admin from 203.0.113.9 port 40001\nMar 13 09:11:15 web-01 sshd[2140]: Failed password for invalid user admin from 203.0.113.9 port 40001 ssh2\nMar 13 09:11:19 web-01 sshd[2142]: Failed password for root from 203.0.113.9 port 40007 ssh2\nMar 13 09:11:24 web-01 sshd[2145]: Invalid user test from 203.0.113.9 port 40013\nMar 13 09:11:24 web-01 sshd[2145]: Failed password for invalid user test from 203.0.113.9 port 40013 ssh2\nMar 13 09:12:02 web-01 sudo[2201]: ops_alice : TTY=pts/0 ; PWD=/home/ops_alice ; USER=root ; COMMAND=/usr/bin/systemctl restart httpd\n"
+    },
+    {
+      "title": "Capture groups: keep three pieces",
+      "command": "sed -E 's/^([^ ]+) .*\"(GET|POST) ([^ ]+).*/\\1 \\2 \\3/' training/web.log | head -3",
+      "stages": [
+        {
+          "code": "^([^ ]+) ",
+          "why": "Group 1: the IP, everything up to the first space."
+        },
+        {
+          "code": "\"(GET|POST) ([^ ]+)",
+          "why": "Group 2: the method after the opening quote. Group 3: the path, up to the next space."
+        },
+        {
+          "code": "/\\1 \\2 \\3/",
+          "why": "Replace the whole line with just the three groups."
+        }
+      ],
+      "output": "192.0.2.14 GET /\n192.0.2.27 GET /login\n192.0.2.14 POST /login\n"
+    },
+    {
+      "title": "key=value extraction",
+      "command": "sed -nE 's/.*SRC=([0-9.]+) .*DPT=([0-9]+).*/\\1 \\2/p' training/fw.log",
+      "stages": [
+        {
+          "code": "SRC=([0-9.]+) ",
+          "why": "The source address: digits and dots after `SRC=`."
+        },
+        {
+          "code": ".*DPT=([0-9]+)",
+          "why": "Skip ahead to the destination port. The key names anchor the match, so it works whatever sits between them."
+        },
+        {
+          "code": "-n ... /p",
+          "why": "Print only the rewritten lines."
+        }
+      ],
+      "output": "203.0.113.9 23\n198.51.100.11 53\n203.0.113.9 3389\n198.51.100.11 443\n192.0.2.200 445\n198.51.100.11 123\n"
+    },
+    {
+      "title": "Redact before you share",
+      "command": "sed -E 's/([0-9]+\\.[0-9]+\\.[0-9]+)\\.[0-9]+/\\1.x/g' training/web.log | head -3",
+      "stages": [
+        {
+          "code": "([0-9]+\\.[0-9]+\\.[0-9]+)\\.[0-9]+",
+          "why": "An IPv4 address. The first three octets are captured; the last one is not."
+        },
+        {
+          "code": "/\\1.x/g",
+          "why": "Keep the network, mask the host, on every address in the line (`g`). Logs often go into tickets or vendor cases, so trim them before they leave the team."
+        }
+      ],
+      "output": "192.0.2.x - - [13/Mar/2026:09:00:01 +0000] \"GET / HTTP/1.1\" 200 5312 \"-\" \"Mozilla/5.0 (X11; Linux x86_64) Firefox/124.0\"\n192.0.2.x - - [13/Mar/2026:09:00:04 +0000] \"GET /login HTTP/1.1\" 200 2210 \"-\" \"Mozilla/5.0 (Macintosh) Safari/605.1.15\"\n192.0.2.x - - [13/Mar/2026:09:00:09 +0000] \"POST /login HTTP/1.1\" 302 - \"-\" \"Mozilla/5.0 (X11; Linux x86_64) Firefox/124.0\"\n"
+    }
+  ],
+  "challenge": {
+    "question": "In var/log/audit/audit.log, the dropper's EXECVE record shows the program (a0) and the value that follows --pool (a2). Using sed, print both on one line.",
+    "format": "The program path, one space, then the pool value, for example /usr/bin/foo 192.0.2.1:9999",
+    "answerHash": "1f298ffbd1713a7bc3c1f4e60176b5608bde3afadb900fda65760eccfd436d0f"
+  },
+  "hints": [
+    "Look at the record first: `grep -- --pool var/log/audit/audit.log`. The values you want sit inside `a0=\"...\"` and `a2=\"...\"`, and `a1=\"--pool\"` is what tells this line apart from the others.",
+    "Use `sed -n 's/.../\\1 \\2/p'`. Capture each value with `\\([^\"]*\\)` (or `([^\"]*)` with -E), and include the literal `a1=\"--pool\"` between them so only this record matches.",
+    "sed -n 's/.*a0=\"\\([^\"]*\\)\" a1=\"--pool\" a2=\"\\([^\"]*\\)\".*/\\1 \\2/___' var/log/audit/audit.log"
+  ],
+  "debrief": {
+    "solution": "sed -n 's/.*a0=\"\\([^\"]*\\)\" a1=\"--pool\" a2=\"\\([^\"]*\\)\".*/\\1 \\2/p' var/log/audit/audit.log",
+    "alternative": "sed -nE 's/.*a0=\"([^\"]*)\" a1=\"--pool\" a2=\"([^\"]*)\".*/\\1 \\2/p' var/log/audit/audit.log",
+    "why": [
+      "The pool is the attacker's own address, 203.0.113.66, on port 4444. The dropper was not talking to a public mining pool; it reported back to the same machine that scanned and brute-forced this host. That port is your lead for the firewall log.",
+      "auditd only records programs if a rule asks for it. The `key=\"exec\"` on the SYSCALL lines comes from a rule like `-a always,exit -F arch=b64 -S execve -k exec` in `/etc/audit/rules.d/`. On RHEL, `ausearch -k exec -i` decodes these records (including hex-encoded arguments) for you; sed is what you use when you only have the raw file.",
+      "When an argument contains a space or a quote, auditd writes it as hex instead (`a1=2D2D706F6F6C`), and your sed pattern finds nothing. `ausearch -i` or `xxd -r -p` turns it back into text."
+    ]
+  }
+}
