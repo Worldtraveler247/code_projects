@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="dark">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'self' https://static.cloudflareinsights.com; connect-src 'self' https://cloudflareinsights.com; img-src 'self' data:; form-action https://buttondown.com; base-uri 'none'; object-src 'none'">
+    <meta name="description" content="The Daily Brief for Wednesday, October 21, 2026: security incidents, senior security advice, engineering explainers, and tech news.">
+    <title>The Daily Brief · Oct 21, 2026</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="icon" href="../../../favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="../../../style.css">
+    <link rel="stylesheet" href="../../newsletter.css">
+</head>
+<body class="brief-page">
+    <a href="#main-content" class="skip-nav">Skip to main content</a>
+    <nav class="brief-nav">
+        <a href="../../../index.html">← App Hub</a>
+        <a href="../../">All issues</a>
+    </nav>
+    
+<header class="brief-masthead">
+    <p class="brief-eyebrow">THE DAILY BRIEF</p>
+    <h1>Wednesday, October 21, 2026</h1>
+    <ol class="brief-toc">
+        <li><a href="#current-events">Current Events</a></li><li><a href="#security-advice">Senior Security Advice</a></li><li><a href="#tech-news">Tech News</a></li>
+    </ol>
+</header>
+<main id="main-content" class="brief">
+    
+    <article class="brief-section" id="current-events">
+        <p class="brief-kicker">Current Events</p>
+        <h2>The Vanna.AI Prompt-Injection-to-RCE Flaw</h2>
+        
+            
+            <p>Picture an AI tool built to let anyone type a plain-English question and get back a chart of their company's own data -- no SQL required. Now picture that same plain-English question box as the exact place an attacker drops a line of Python that runs on your server. That's what security researchers at JFrog found in an open-source tool called Vanna-dot-AI in 2024. Here's how it actually happened.</p>
+<p>Vanna is a text-to-SQL library: you ask it a question in natural language, a large language model turns that question into SQL, Vanna runs the SQL against your database, and then -- by default -- it visualizes the results as a chart using a library called Plotly. According to JFrog's own disclosure and the resulting CVE, CVE-2024-5565, that visualization step is where the flaw actually lived, not the SQL-generation step everyone was watching. Vanna's &quot;ask&quot; function, with its &quot;visualize&quot; option left at its default of True, has the LLM generate Plotly charting code directly from the user's prompt, and then executes that generated code on the host.</p>
+<p>Here's the chain, step by step. An attacker doesn't need a password or network access -- they just need to get text into that question box, directly or through any data the LLM ingests. That text can smuggle instructions telling the model to generate, not a chart, but arbitrary Python -- the kind of code that can run shell commands. Vanna then executes exactly what the model handed back, with no distinction between &quot;code the model wrote to draw a chart&quot; and &quot;code an attacker wrote to compromise the host.&quot;</p>
+<p>Root cause, in one sentence: a feature that was supposed to turn an LLM's output into a chart instead turned that output directly into executed code, and nothing stood in that path to check what it actually was before running it.</p>
+<p>What contained it, and this is the senior detail worth naming: JFrog disclosed the flaw responsibly and got it a CVE and a public National Vulnerability Database record, rather than this surfacing first as an active exploit in the wild. Vanna's own response, though, is itself a limit worth saying out loud -- the public GitHub security advisory for this flaw lists no patched software version for the affected releases. Vanna's fix was guidance: documentation warning that this feature can execute arbitrary code, and a recommendation to sandbox it or disable visualization entirely, not a code change that closes the hole by default.</p>
+<p>So what does that mean for you? A senior engineer treats any point where an LLM's output gets executed -- as code, as a shell command, as a database query -- as untrusted input, no different from a web form, and never assumes &quot;the AI generated it&quot; means it's safe to run directly. On a RHEL and Podman lab, that means any LLM-integrated agent that can generate and run code does so inside a locked-down, least-privilege container -- read-only root filesystem, no network, capabilities dropped -- so that even a successful prompt injection has nowhere to go.</p>
+
+        
+            <h3>Timeline</h3>
+            <table>
+<thead>
+<tr>
+<th>Date</th>
+<th>Event</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>2024 (exact date not publicly specified)</td>
+<td>JFrog Security Research, while examining LLM-integrated libraries, discovers that Vanna's visualization feature executes LLM-generated Python code with no isolation from attacker-controlled prompt text.</td>
+</tr>
+<tr>
+<td>May 31, 2024</td>
+<td>CVE-2024-5565 is published in the National Vulnerability Database, classified under CWE-94 (Code Injection) and CWE-77 (Command Injection), with an NVD CVSS 3.1 base score of 8.1.</td>
+</tr>
+<tr>
+<td>June 2024</td>
+<td>JFrog publishes its own technical write-up of the flaw; The Hacker News and other outlets report on it publicly the same month.</td>
+</tr>
+<tr>
+<td>After disclosure</td>
+<td>Researcher Tong Liu, working independently through the Huntr bug bounty platform, reports the same underlying flaw, which is assigned a separate identifier, CVE-2024-5826, after JFrog's CVE was already public.</td>
+</tr>
+<tr>
+<td>After disclosure</td>
+<td>Vanna publishes guidance acknowledging that its Plotly-based visualization path can be made to execute arbitrary Python, and recommends sandboxing or disabling the feature; the GitHub Security Advisory (GHSA-7735-w2jp-gvg6) lists affected versions as 0.5.5 and earlier with no patched version recorded.</td>
+</tr>
+<tr>
+<td>Nov 25, 2024</td>
+<td>The NVD and GitHub Advisory Database records for CVE-2024-5565 are last updated.</td>
+</tr>
+</tbody>
+</table>
+<p><em>Note: sources disagree on severity scoring — NVD's own CVSS 3.1 score is 8.1, while the GitHub Security Advisory separately lists a CVSS v4 score of 9.2, and at least one trade-press outlet described it informally as effectively a maximum-severity (&quot;CVSS 10&quot;) bug. This script treats 8.1 (NVD's own primary score) as the reference figure and flags the others as differing secondary characterizations rather than resolving them into one number. Whether a vendor-released patched version (one aggregator cites 0.5.6) exists is also unconfirmed against the primary GitHub advisory, which lists none — that gap is named rather than papered over.</em></p>
+
+        
+            <h3>Control Failures</h3>
+            <table>
+<thead>
+<tr>
+<th>#</th>
+<th>Failure</th>
+<th>NIST SP 800-53 Rev 5 Control Family</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>User-supplied natural-language input (and any data the model ingested) flowed, unvalidated, into code that was then directly executed on the host.</td>
+<td><strong>SI-10</strong> — Information Input Validation</td>
+</tr>
+<tr>
+<td>2</td>
+<td>The code-executing visualization feature was shipped enabled by default (&quot;visualize=True&quot;), rather than requiring an explicit, reviewed opt-in for a capability that runs arbitrary code.</td>
+<td><strong>CM-7</strong> — Least Functionality</td>
+</tr>
+<tr>
+<td>3</td>
+<td>LLM-generated code executed with the same privileges as the host application itself, with no reduced-privilege execution context for untrusted, model-produced output.</td>
+<td><strong>AC-6</strong> — Least Privilege</td>
+</tr>
+<tr>
+<td>4</td>
+<td>No sandbox or isolation boundary separated the code-generation/execution path from the rest of the system, so a flaw in one feature (charting) gave full code execution on the host.</td>
+<td><strong>SC-7</strong> — Boundary Protection</td>
+</tr>
+<tr>
+<td>5</td>
+<td>No logging or review process flagged anomalous LLM-generated code before or at the point of execution; the gap was found by outside researchers, not caught internally.</td>
+<td><strong>AU-6</strong> — Audit Record Review, Analysis, and Reporting</td>
+</tr>
+</tbody>
+</table>
+
+        
+            <h3>What Held</h3>
+            <ul>
+<li><strong>Responsible disclosure put a CVE and a public record in front of this before active exploitation was reported.</strong> JFrog's own research produced CVE-2024-5565 and a detailed public write-up, giving defenders a named, documented flaw to act on rather than a rumor.</li>
+<li><strong>An independent researcher corroborated the finding.</strong> Tong Liu's separate discovery of the same bug through Huntr, reported after JFrog's disclosure, is the kind of independent confirmation that gives a vulnerability report more weight.</li>
+<li><strong>Say the limit of that out loud.</strong> The GitHub Security Advisory for this CVE lists no patched version for the affected releases — Vanna's response was documentation and a sandboxing recommendation, not a default-safe code fix. &quot;A CVE exists and was disclosed responsibly&quot; is not the same claim as &quot;the software is now safe out of the box,&quot; and naming that gap, rather than treating disclosure as resolution, is the senior move.</li>
+</ul>
+
+        
+            <h3>Sources</h3>
+            <ul>
+<li><a href="https://nvd.nist.gov/vuln/detail/CVE-2024-5565" target="_blank" rel="noopener noreferrer">CVE-2024-5565 Detail — NVD (primary)</a></li>
+<li><a href="https://github.com/advisories/GHSA-7735-w2jp-gvg6" target="_blank" rel="noopener noreferrer">GHSA-7735-w2jp-gvg6 — Vanna prompt injection code execution (primary)</a></li>
+<li><a href="https://jfrog.com/blog/prompt-injection-attack-code-execution-in-vanna-ai-cve-2024-5565" target="_blank" rel="noopener noreferrer">When Prompts Go Rogue: Analyzing a Prompt Injection Code Execution in Vanna.AI — JFrog Research (primary)</a></li>
+<li><a href="https://thehackernews.com/2024/06/prompt-injection-flaw-in-vanna-ai.html" target="_blank" rel="noopener noreferrer">Prompt Injection Flaw in Vanna.AI Library Exposes Databases to RCE Attacks — The Hacker News</a></li>
+<li><a href="https://www.thestack.technology/cvss-10-bug-in-llm-to-sql-library-makes-prompt-injection-fun/" target="_blank" rel="noopener noreferrer">CVSS 10 Bug in LLM-to-SQL Library Makes Prompt Injection Fun — The Stack</a></li>
+</ul>
+<p><strong>Tomorrow's Thread:</strong> Day 34 moves to the container/orchestration escape family — CVE-2022-0185, a Linux kernel heap-overflow in the filesystem-context code used to break out of containers, distinct from today's AI/agent security family (this specific CVE should be re-verified for a mature public postmortem before recording, since today's research did not confirm one).</p>
+
+        
+    </article>
+    
+    <article class="brief-section" id="security-advice">
+        <p class="brief-kicker">Senior Security Advice</p>
+        <h2>Enable auditd and Forward Every Host&#39;s Audit Logs to a Central Server</h2>
+        
+            <h3>The Advice</h3>
+            <p>Turn on the Linux audit daemon, auditd, on every server you run, and forward its logs off the host to a central log server the moment they're written.</p>
+
+        
+            <h3>Why It Matters</h3>
+            <p>auditd keeps a kernel-level record of security-relevant events — logons, privilege escalation, account changes, access to sensitive files — that's separate from and more trustworthy than application logs, because it comes straight from the kernel instead of from software an attacker might control. The gap most teams miss is where that record lives. If audit logs sit only on the host that generated them, an attacker who gets root can simply delete the evidence of what they did, and incident responders are left reconstructing a breach with no record of it. DISA's security guidelines for Red Hat Enterprise Linux are explicit about this exact failure mode: audit records have to be off-loaded to a separate system, because information stored in one location is vulnerable to accidental or deliberate deletion. This is a recurring theme in breach post-mortems — incidents where local log tampering extended the unknown dwell time because there was no independent copy of what actually happened on the box.</p>
+
+        
+            <h3>How to Implement It</h3>
+            <ol>
+<li>Verify auditd is active on every host, not just installed — <code>systemctl status auditd</code>. DISA's STIG for RHEL 10 flags a stopped audit service as a finding on its own, regardless of configuration.</li>
+<li>Define what actually gets logged, per NIST SP 800-53's AU-2 control: identify the specific event types that matter for your risk model — logon/logoff, privileged command use, account creation and modification, kernel module loads — rather than logging everything or relying on defaults.</li>
+<li>Forward records off the host immediately by pointing rsyslog at a remote log aggregator (the <code>@@</code> TCP syntax in <code>rsyslog.conf</code>, or <code>audisp-remote</code> on older releases), and set <code>name_format = hostname</code> in <code>auditd.conf</code> so every record can be tied back to the system it came from.</li>
+<li>Verify forwarding is actually working, not just configured: trigger a known auditable event on the host — switching to root is a simple one — then go confirm that exact record landed on the central server. A line in a config file proves nothing on its own.</li>
+<li>Lock down the central log store itself: write-once retention, access limited to the security team, and no path for a compromised host to reach back and edit what it already shipped. Centralizing logs only helps if the attacker can't follow them there.</li>
+</ol>
+
+        
+            <h3>The Pushback You&#39;ll Hear</h3>
+            <p>&quot;auditd is noisy and burns disk space.&quot; The senior-engineer rebuttal: that's a tuning problem, not a reason to leave it off. AU-2 exists precisely so you choose the event types that matter instead of logging blindly, and once records ship off-host immediately, local disk pressure stops being the constraint anyway. A short tuning cycle is a cheap cost. Finding out mid-incident that the only record of what happened was sitting on the box the attacker already owned is not.</p>
+
+        
+            <h3>Sources</h3>
+            <ul>
+<li><a href="https://www.stigviewer.com/stigs/red_hat_enterprise_linux_10/2026-03-11/finding/V-280994" target="_blank" rel="noopener noreferrer">V-280994 - The audit service must be enabled (DISA STIG, Red Hat Enterprise Linux 10)</a></li>
+<li><a href="https://stigviewer.com/stig/red_hat_enterprise_linux_8/2021-12-03/finding/V-230479" target="_blank" rel="noopener noreferrer">V-230479 - RHEL 8 must off-load audit records onto a different system (DISA STIG)</a></li>
+<li><a href="https://www.stigviewer.com/controls/nist-800-53/AU-2" target="_blank" rel="noopener noreferrer">AU-2 - Event Logging (NIST SP 800-53 Rev. 5 control catalog)</a></li>
+</ul>
+
+        
+    </article>
+    
+    <article class="brief-section" id="tech-news">
+        <p class="brief-kicker">Tech News</p>
+        
+        
+            
+            <p>A firewall's management console just became a root shell for attackers — using nothing more than credentials that already exist on plenty of well-run networks. That's the headline out of Palo Alto Networks this week, and it's not the only administrative interface under fire right now. Two stories tonight: a firewall flaw CISA gave federal agencies just three days to fix, and a backup platform whose own vendor patch didn't actually work the first time.</p>
+<p>Start with Palo Alto Networks. According to the company's security advisory, confirmed by BleepingComputer and CSOonline, a code injection flaw in the PAN-OS management interface — tracked as CVE-2026-0322 — lets an attacker who already holds valid, high-privilege credentials and network reach to that interface run code as root on the firewall itself. Palo Alto rates it 8.6 out of 10 and describes exploitation so far as &quot;very limited,&quot; but CISA still added it to the Known Exploited Vulnerabilities catalog on October 14th and gave federal agencies until October 17th — three days — to patch. Here's the detail worth sitting with: this isn't an internet-facing bug. The attacker needs credentials and reachability to the management plane first. A senior engineer would read that as proof that &quot;it requires a login&quot; and &quot;it's safe&quot; are two separate claims, because once someone gets those credentials — through phishing, password reuse, or a breach somewhere upstream — the interface built to control the firewall becomes the easiest way to own it completely.</p>
+<p>Next up, a backup platform where the first fix didn't hold. According to Bitdefender's technical advisory, backed by BleepingComputer and The Hacker News, attackers have been chaining two flaws in Ahsay's AhsayCBS backup console — an authentication bypass and a separate command-injection bug — to get system-level code execution, then dropping web shells and a disguised cryptocurrency miner on compromised servers since around October 7th. Ahsay shipped a patch on October 10th. Researchers at Huntress found it didn't fully close either hole, and Ahsay had to ship a second hotfix. My take: a backup console deserves more scrutiny than almost any other system you run, because it's often the one place holding your last clean copy of everything else — and a vendor's first patch turning out not to be the real patch is exactly the gap a ransomware crew is built to walk through.</p>
+<p>Whether it's a firewall's console or a backup platform's, the systems you trust to control and protect everything else are now the systems attackers go after first. Treat every &quot;patched&quot; claim on an administrative interface as a hypothesis to verify, not a fact to file away.</p>
+
+        
+            <h3>Sources</h3>
+            <ul>
+<li><a href="https://socprime.com/?p=54512" target="_blank" rel="noopener noreferrer">CVE-2026-0322: Actively Exploited PAN-OS RCE Flaw Enables Root Access — SOC Prime</a></li>
+<li><a href="https://www.bleepingcomputer.com/news/security/palo-alto-networks-warns-of-pan-os-rce-flaw-exploited-in-attacks/amp/" target="_blank" rel="noopener noreferrer">Palo Alto Networks warns of PAN-OS RCE flaw exploited in attacks — BleepingComputer</a></li>
+<li><a href="https://www.csoonline.com/article/4235787/attackers-exploit-palo-alto-pan-os-flaw-for-root-access-as-cisa-orders-three-day-fix.html" target="_blank" rel="noopener noreferrer">Attackers exploit Palo Alto PAN-OS flaw for root access as CISA orders three-day fix — CSO Online</a></li>
+<li><a href="https://www.bitdefender.com/blog/businessinsights/technical-advisory-ahsaycbs-exploitation-chain-cve-2026-105133-cve-2026-105134" target="_blank" rel="noopener noreferrer">Technical Advisory: AhsayCBS Exploitation Chain (CVE-2026-105133, CVE-2026-105134) — Bitdefender</a></li>
+<li><a href="https://www.bleepingcomputer.com/news/security/unpatched-ahsaycbs-flaws-exploited-to-deploy-webshells-mine-crypto/amp/" target="_blank" rel="noopener noreferrer">Unpatched AhsayCBS flaws exploited to deploy web shells, mine crypto — BleepingComputer</a></li>
+<li><a href="https://thehackernews.com/2026/10/attackers-exploit-ahsaycbs-flaws-to.html" target="_blank" rel="noopener noreferrer">Attackers exploit AhsayCBS flaws to deploy web shells — The Hacker News</a></li>
+<li><a href="https://www.securityweek.com/unpatched-ahsaycbs-vulnerabilities-exploited-in-the-wild/amp/" target="_blank" rel="noopener noreferrer">Unpatched AhsayCBS vulnerabilities exploited in the wild — SecurityWeek</a></li>
+</ul>
+
+        
+    </article>
+    
+    <section class="brief-subscribe" id="subscribe">
+    <h2>Get The Daily Brief by email</h2>
+    <p>One short email each morning. Unsubscribe anytime.</p>
+    <form action="https://buttondown.com/api/emails/embed-subscribe/cybercider" method="post">
+        <label for="bd-email">Email address</label>
+        <input type="email" name="email" id="bd-email" required autocomplete="email" placeholder="you@example.com">
+        <button type="submit">Subscribe</button>
+    </form>
+</section>
+</main>
+
+    <footer><p class="copyright">The Daily Brief · Eddie Camacho</p></footer>
+<!-- cf-web-analytics (managed by tools/inject_analytics.py) -->
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "f728a20b49cc4a0fbe02cde72f03301c"}'></script>
+</body>
+</html>
