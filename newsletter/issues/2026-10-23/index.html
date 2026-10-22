@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="dark">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'self' https://static.cloudflareinsights.com; connect-src 'self' https://cloudflareinsights.com; img-src 'self' data:; form-action https://buttondown.com; base-uri 'none'; object-src 'none'">
+    <meta name="description" content="The Daily Brief for Friday, October 23, 2026: security incidents, senior security advice, engineering explainers, and tech news.">
+    <title>The Daily Brief · Oct 23, 2026</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="icon" href="../../../favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="../../../style.css">
+    <link rel="stylesheet" href="../../newsletter.css">
+</head>
+<body class="brief-page">
+    <a href="#main-content" class="skip-nav">Skip to main content</a>
+    <nav class="brief-nav">
+        <a href="../../../index.html">← App Hub</a>
+        <a href="../../">All issues</a>
+    </nav>
+    
+<header class="brief-masthead">
+    <p class="brief-eyebrow">THE DAILY BRIEF</p>
+    <h1>Friday, October 23, 2026</h1>
+    <ol class="brief-toc">
+        <li><a href="#current-events">Current Events</a></li><li><a href="#security-advice">Senior Security Advice</a></li>
+    </ol>
+</header>
+<main id="main-content" class="brief">
+    
+    <article class="brief-section" id="current-events">
+        <p class="brief-kicker">Current Events</p>
+        <h2>Change Healthcare Ransomware Attack</h2>
+        
+            
+            <p>One stolen login, on one remote-access portal with no second factor, took down the system that processes roughly half of all US medical claims. That's not an exaggeration — it's what UnitedHealth Group's own CEO told Congress under oath. Here's how it actually happened.</p>
+<p>Change Healthcare is a subsidiary of UnitedHealth Group that operates one of the largest clearinghouses in American healthcare — the plumbing that moves insurance claims, prescriptions, and payments between providers, pharmacies, and insurers. According to written testimony from UnitedHealth Group CEO Andrew Witty, delivered to a House Energy and Commerce subcommittee, attackers affiliated with the ransomware group AlphV, also known as BlackCat, got in on February 12th, 2024, using compromised credentials to log into a Citrix remote access portal. That portal let staff reach internal desktops from outside the network. It did not have multi-factor authentication turned on.</p>
+<p>Here's the chain, step by step. With just a username and password — no second factor required — the attackers walked straight through the front door. Once inside, Witty's testimony says they moved laterally through Change Healthcare's systems over the following nine days, exploring and expanding their access before deploying ransomware on February 21st. By the time anyone acted, the attackers had already exfiltrated a reported six terabytes of data, according to the ransomware group's own claims. The company's response was to take its own systems offline to contain the damage, which is exactly why claims processing for thousands of pharmacies and providers across the country ground to a halt for weeks.</p>
+<p>Root cause, in one sentence: a single remote-access login, protected by nothing but a password, was sufficient to reach deep into one of the most consequential systems in American healthcare.</p>
+<p>What actually limited this from becoming an even larger catastrophe — and this is the senior-level detail worth naming — is that the compromise and the ransomware deployment stayed largely contained to Change Healthcare's own environment rather than spreading unchecked across the rest of UnitedHealth Group's much larger corporate network. Whatever separation existed between Change Healthcare's systems and its parent company's broader infrastructure did its job, even though the damage inside that boundary was severe. That's the difference between a bad breach and a total enterprise-wide collapse.</p>
+<p>So what does that mean for the kind of system a senior engineer is responsible for? A senior engineer treats a remote-access portal as a high-value target by default, not an administrative afterthought, and never accepts &quot;it's protected by a password&quot; as equivalent to &quot;it's protected.&quot; On a RHEL and AWS lab, that means enforcing multi-factor authentication on every remote-access path before it ever reaches production, and separately verifying — hands-on, not just on paper — that network segmentation actually blocks lateral movement between environments, rather than assuming a diagram showing separate subnets reflects what the firewall rules actually enforce.</p>
+
+        
+            <h3>Timeline</h3>
+            <table>
+<thead>
+<tr>
+<th>Date</th>
+<th>Event</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>February 12, 2024</td>
+<td>Attackers affiliated with AlphV/BlackCat use compromised credentials to access a Change Healthcare Citrix remote-access portal that lacked multi-factor authentication, per Andrew Witty's congressional testimony.</td>
+</tr>
+<tr>
+<td>February 12–21, 2024</td>
+<td>Attackers move laterally within Change Healthcare's systems and exfiltrate data, per Witty's testimony (&quot;moved laterally... in more sophisticated ways and exfiltrated data&quot;).</td>
+</tr>
+<tr>
+<td>February 21, 2024</td>
+<td>Ransomware is deployed; Change Healthcare takes systems offline, disrupting claims processing nationwide.</td>
+</tr>
+<tr>
+<td>February 27, 2024</td>
+<td>CISA, the FBI, and HHS release a joint update to the #StopRansomware advisory on AlphV/BlackCat, noting the group was increasingly targeting the healthcare sector.</td>
+</tr>
+<tr>
+<td>May 1, 2024</td>
+<td>Andrew Witty testifies before the House Energy and Commerce Subcommittee on Oversight and Investigations and (separately the same day) the Senate Finance Committee.</td>
+</tr>
+<tr>
+<td>October 2024</td>
+<td>UnitedHealth Group first reports breach notifications affecting roughly 100 million individuals.</td>
+</tr>
+<tr>
+<td>July 31, 2025</td>
+<td>UnitedHealth submits a revised figure of 192.7 million affected individuals to the HHS Office for Civil Rights, making this the largest healthcare data breach on record in the US.</td>
+</tr>
+</tbody>
+</table>
+<p><em>Note: UnitedHealth has publicly confirmed it paid a ransom; one widely cited figure is $22 million, though this script treats that specific dollar amount as secondary reporting rather than a company-confirmed number. Separately, some outside analysts have suggested a ScreenConnect vulnerability also played a role; UnitedHealth's own public statements have focused on the compromised, non-MFA-protected Citrix credentials as the entry point, and that is the account this script follows.</em></p>
+
+        
+            <h3>Control Failures</h3>
+            <table>
+<thead>
+<tr>
+<th>#</th>
+<th>Failure</th>
+<th>NIST SP 800-53 Rev 5 Control Family</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>The Citrix remote-access portal authenticated users with a password alone, with no multi-factor authentication enforced on an internet-reachable, high-privilege access path.</td>
+<td><strong>IA-2</strong> — Identification and Authentication (Organizational Users)</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Once inside, attackers moved laterally across internal systems for nine days before deploying ransomware, with no boundary stopping that movement.</td>
+<td><strong>SC-7</strong> — Boundary Protection</td>
+</tr>
+<tr>
+<td>3</td>
+<td>A single compromised remote-access credential provided a path into systems far beyond what any one remote-desktop session should plausibly require.</td>
+<td><strong>AC-6</strong> — Least Privilege</td>
+</tr>
+<tr>
+<td>4</td>
+<td>Nine days elapsed between initial access and ransomware deployment with no indication the intrusion was detected and escalated during that window.</td>
+<td><strong>AU-6</strong> — Audit Record Review, Analysis, and Reporting</td>
+</tr>
+<tr>
+<td>5</td>
+<td>Recovery required taking core claims-processing systems fully offline for an extended period, pointing to a recovery posture that could not isolate and restore the affected segment without a full shutdown.</td>
+<td><strong>CP-9</strong> / <strong>CP-10</strong> — System Backup / System Recovery and Reconstitution</td>
+</tr>
+</tbody>
+</table>
+
+        
+            <h3>What Held</h3>
+            <ul>
+<li><strong>Containment within Change Healthcare's own environment.</strong> The ransomware deployment and the worst of the operational damage stayed largely confined to Change Healthcare's systems rather than cascading unchecked across the rest of UnitedHealth Group's considerably larger corporate and clinical infrastructure. Naming this matters because it signals an understanding that &quot;the breach was bad&quot; and &quot;the breach was total&quot; are different claims, and the gap between them is usually a segmentation or isolation control, even an imperfect one.</li>
+<li><strong>Eventual, if late, detection.</strong> The intrusion was ultimately detected and the company did act — shutting systems down to contain further damage — even though that detection came nine days after initial access rather than in near-real time. A senior engineer names the lag honestly rather than crediting a response that happened only after the damage was largely done.</li>
+<li><strong>Public, detailed accountability.</strong> Unlike many breaches where root cause is never confirmed, UnitedHealth's CEO testified under oath to Congress about the specific entry point, which is itself a rare level of public technical accountability for an incident of this scale, and gives defenders a concrete, attributable lesson instead of a vague &quot;we were the victim of a sophisticated attack&quot; statement.</li>
+</ul>
+
+        
+            <h3>Sources</h3>
+            <ul>
+<li><a href="https://energycommerce.house.gov/posts/chairs-rodgers-and-griffith-announce-united-health-ceo-to-testify-at-oversight-hearing-on-change-healthcare-attack" target="_blank" rel="noopener noreferrer">Chair Rodgers and Griffith Announce UnitedHealth CEO to Testify at Oversight Hearing on Change Healthcare Attack — House Energy and Commerce Committee (primary)</a></li>
+<li><a href="https://democrats-energycommerce.house.gov/committee-activity/hearings/hearing-examining-change-healthcare-cyberattack" target="_blank" rel="noopener noreferrer">Hearing: Examining the Change Healthcare Cyberattack — House Energy and Commerce Committee, Democratic staff summary (primary)</a></li>
+<li><a href="https://www.cisa.gov/news-events/alerts/2024/02/27/cisa-fbi-and-hhs-release-update-stopransomware-advisory-alphv-blackcat" target="_blank" rel="noopener noreferrer">CISA, FBI, and HHS Release an Update to #StopRansomware Advisory on ALPHV Blackcat — CISA (primary)</a></li>
+<li><a href="https://www.cisa.gov/news-events/cybersecurity-advisories/aa23-353a" target="_blank" rel="noopener noreferrer">#StopRansomware: ALPHV Blackcat, AA23-353A — CISA (primary)</a></li>
+<li><a href="https://www.techtarget.com/cybersecurity/news/366582824/Change-Healthcare-breached-via-Citrix-portal-with-no-MFA" target="_blank" rel="noopener noreferrer">Change Healthcare breached via Citrix portal with no MFA — TechTarget</a></li>
+<li><a href="https://cyberinsider.com/change-healthcare-revises-breach-impact-to-192-7-million-individuals/" target="_blank" rel="noopener noreferrer">Change Healthcare revises breach impact to 192.7 million individuals — Cyberinsider</a></li>
+<li><a href="https://cyberguy.com/security/unitedhealth-cyberattack-leaves-millions-risk/" target="_blank" rel="noopener noreferrer">UnitedHealth cyberattack now impacts 192 million people — CyberGuy</a></li>
+</ul>
+<p><strong>Tomorrow's Thread:</strong> Day 36 moves to the internet-facing edge-exploitation family — the Log4Shell vulnerability and its mass-exploitation aftermath, a different family from today's identity-and-credential-compromise incident.</p>
+
+        
+    </article>
+    
+    <article class="brief-section" id="security-advice">
+        <p class="brief-kicker">Senior Security Advice</p>
+        <h2>Run Phishing Simulations Tied to Real Awareness Training</h2>
+        
+            <h3>The Advice</h3>
+            <p>Run regular, unannounced phishing simulations as part of a living awareness program, not a once-a-year training video, so you measure whether people can actually spot and report an attack instead of just assuming the training &quot;worked.&quot;</p>
+
+        
+            <h3>Why It Matters</h3>
+            <p>Phishing is still the most common way attackers get their first foothold inside an organization: one click on a bad link, one set of harvested credentials, one malicious attachment opened on a laptop. CISA, the NSA, the FBI, and the Multi-State Information Sharing and Analysis Center frame it bluntly in their joint guidance — stopping phishing at this first phase is the cheapest place to break the attack chain, before an intruder ever reaches a server or a database. Without a tested awareness program, every other control a company has bought — endpoint detection, multi-factor authentication, network segmentation — is sitting behind a door that a single convincing email can walk through. This is the exact pattern behind a huge share of publicized ransomware intrusions and corporate data breaches: not a sophisticated technical exploit, but a phishing email that a trained attacker knew would get clicked.</p>
+
+        
+            <h3>How to Implement It</h3>
+            <ol>
+<li>Establish a baseline with a no-notice simulated phishing campaign before leaning on training alone — you need to know your actual click rate, not an assumed one.</li>
+<li>Target scenarios to real threats and roles: a fake invoice for finance, a fake login page for the general workforce, a fake IT support request for new hires. Generic, reused templates stop teaching anything once people memorize them.</li>
+<li>Measure and reward reporting, not just clicks. A team where people report suspicious emails to security is a healthier signal than a low click rate with silence, because silence hides near-misses you never hear about.</li>
+<li>Feed every real phishing incident and every simulation miss back into the next training cycle. NIST's literacy-training control explicitly expects content to be updated from lessons learned, not frozen after the first rollout.</li>
+<li>Verify the program is actually working: confirm the &quot;report phishing&quot; button routes to a real person on the security team who triages it, track report-to-click ratio over successive campaigns instead of a single snapshot, and confirm employees who click get immediate, specific coaching rather than a generic email weeks later.</li>
+</ol>
+
+        
+            <h3>The Pushback You&#39;ll Hear</h3>
+            <p>&quot;This just tricks people and hurts morale.&quot; The senior-engineer rebuttal: a simulation run with documented authorization, a no-blame policy, and immediate coaching isn't a trick, it's a fire drill — and it's exactly the kind of practical exercise CISA's guidance and NIST's own literacy-training control describe. The alternative isn't a kinder workplace; it's leaving your most-targeted, least-tested control untouched until a real attacker runs the test on you, in production, with real data on the line.</p>
+
+        
+            <h3>Sources</h3>
+            <ul>
+<li><a href="https://www.cisa.gov/resources-tools/resources/phishing-guidance-stopping-attack-cycle-phase-one" target="_blank" rel="noopener noreferrer">Phishing Guidance: Stopping the Attack Cycle at Phase One (CISA, NSA, FBI, MS-ISAC joint guidance)</a></li>
+<li><a href="https://www.stigviewer.com/controls/nist-800-53/AT-2" target="_blank" rel="noopener noreferrer">AT-2: Literacy Training and Awareness, NIST SP 800-53 Rev. 5 control catalog</a></li>
+</ul>
+
+        
+    </article>
+    
+    <section class="brief-subscribe" id="subscribe">
+    <h2>Get The Daily Brief by email</h2>
+    <p>One short email each morning. Unsubscribe anytime.</p>
+    <form action="https://buttondown.com/api/emails/embed-subscribe/cybercider" method="post">
+        <label for="bd-email">Email address</label>
+        <input type="email" name="email" id="bd-email" required autocomplete="email" placeholder="you@example.com">
+        <button type="submit">Subscribe</button>
+    </form>
+</section>
+</main>
+
+    <footer><p class="copyright">The Daily Brief · Eddie Camacho</p></footer>
+<!-- cf-web-analytics (managed by tools/inject_analytics.py) -->
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "f728a20b49cc4a0fbe02cde72f03301c"}'></script>
+</body>
+</html>
