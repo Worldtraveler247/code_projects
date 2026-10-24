@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="dark">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'self' https://static.cloudflareinsights.com; connect-src 'self' https://cloudflareinsights.com; img-src 'self' data:; form-action https://buttondown.com; base-uri 'none'; object-src 'none'">
+    <meta name="description" content="The Daily Brief for Sunday, October 25, 2026: security incidents, senior security advice, engineering explainers, and tech news.">
+    <title>The Daily Brief · Oct 25, 2026</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="icon" href="../../../favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="../../../style.css">
+    <link rel="stylesheet" href="../../newsletter.css">
+</head>
+<body class="brief-page">
+    <a href="#main-content" class="skip-nav">Skip to main content</a>
+    <nav class="brief-nav">
+        <a href="../../../index.html">← App Hub</a>
+        <a href="../../">All issues</a>
+    </nav>
+    
+<header class="brief-masthead">
+    <p class="brief-eyebrow">THE DAILY BRIEF</p>
+    <h1>Sunday, October 25, 2026</h1>
+    <ol class="brief-toc">
+        <li><a href="#current-events">Current Events</a></li><li><a href="#security-advice">Senior Security Advice</a></li><li><a href="#tech-news">Tech News</a></li>
+    </ol>
+</header>
+<main id="main-content" class="brief">
+    
+    <article class="brief-section" id="current-events">
+        <p class="brief-kicker">Current Events</p>
+        <h2>XZ Utils Backdoor</h2>
+        
+            
+            <p>A contributor spent more than two years quietly earning trust on an open-source project nobody outside a small community had ever heard of — and then used that trust to plant a backdoor capable of giving an attacker remote root access to a huge share of the internet's Linux servers. It was caught by sheer accident, days before it would have shipped everywhere. Here's how it actually happened.</p>
+<p>XZ Utils is a compression library — the kind of low-level utility baked into nearly every Linux distribution, used constantly and noticed by almost nobody. According to the public account assembled from the project's own commit history and corroborated by Red Hat's own security advisory, a contributor using the name &quot;Jia Tan&quot; had been submitting legitimate code to the project since 2021, gradually taking on more maintainer responsibility as the original maintainer's own bandwidth became a recurring complaint on the project's mailing list. That's the setup: patient, multi-year social engineering of an open-source maintainer pipeline, not a technical exploit.</p>
+<p>Here's the chain, step by step. In February 2024, this now-trusted maintainer account introduced malicious code across two releases, version 5.6.0 and 5.6.1. The payload didn't live in the public GitHub source code itself — it was hidden inside the release tarballs, the packaged archives that Linux distributions actually download and build from, specifically disguised inside test files used to validate the build. When a system built XZ Utils from one of those tarballs under the right conditions, the hidden code intercepted and modified SSH authentication — opening a path for a specific attacker, holding a specific private key, to gain unauthenticated remote access. On March 29, 2024, a Microsoft engineer named Andres Freund noticed something almost absurdly mundane: SSH logins on a development machine he managed were taking slightly longer than normal, and burning more CPU than they should. He investigated that one small performance anomaly, traced it back to XZ Utils, and disclosed it the same day.</p>
+<p>Root cause, in one sentence: a years-long, patient social-engineering campaign earned trusted-maintainer status on a critical dependency, and that trust was the actual vulnerability — the malicious code itself was almost incidental once that trust existed.</p>
+<p>What actually limited the damage, and this is the senior-level detail worth naming: this backdoor was caught before it ever reached a stable, widely-deployed Linux release. It existed only in bleeding-edge, pre-release distributions — Fedora Rawhide, Debian unstable and testing, Kali's rolling release, openSUSE Tumbleweed — the versions power users and developers run specifically to catch problems before they reach production. Red Hat's own advisory confirmed no shipped version of Red Hat Enterprise Linux was ever affected. The backdoor was weeks, maybe one release cycle, from reaching stable distributions that run in production environments everywhere, and it was one engineer's attention to a 100-millisecond delay that closed that window in time.</p>
+<p>So what does that mean for the kind of system a senior engineer is responsible for? A senior engineer treats &quot;who maintains this dependency, and how did they earn that position&quot; as a real question, not an unanswerable one — because XZ Utils proves that trust in open source is a security boundary like any other, and it can be patiently built up specifically to be abused. On a RHEL and AWS lab, that means practicing exactly what caught this in the real world: establishing a performance baseline for routine operations like SSH authentication, so that a small, unexplained anomaly actually stands out instead of disappearing into normal variance nobody's watching closely enough to notice.</p>
+
+        
+            <h3>Timeline</h3>
+            <table>
+<thead>
+<tr>
+<th>Date</th>
+<th>Event</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>2021–2023</td>
+<td>A contributor using the name &quot;Jia Tan&quot; submits legitimate code to the XZ Utils project over an extended period, gradually gaining maintainer-level trust and commit access.</td>
+</tr>
+<tr>
+<td>February 23–24, 2024</td>
+<td>Malicious code is introduced into the project across versions 5.6.0 and 5.6.1, hidden inside release tarball test files rather than the public source repository.</td>
+</tr>
+<tr>
+<td>March 28–29, 2024</td>
+<td>Andres Freund, a Microsoft engineer, notices anomalous CPU usage and a roughly 500-millisecond delay in SSH logins on a Debian sid system he maintains, and begins investigating.</td>
+</tr>
+<tr>
+<td>March 29, 2024</td>
+<td>Freund posts his findings to the open-source security mailing list (oss-security), publicly disclosing the backdoor; it is assigned CVE-2024-3094 with a CVSS score of 10.0 the same day.</td>
+</tr>
+<tr>
+<td>March 29, 2024</td>
+<td>Red Hat issues an urgent security alert instructing users to immediately stop using Fedora Rawhide and Fedora Linux 40 beta systems, and reverts XZ Utils to version 5.4.x.</td>
+</tr>
+<tr>
+<td>Following days (March 30–April 2024)</td>
+<td>Debian, Kali, openSUSE, and other rolling-release distributions confirm exposure in unstable/testing branches only and revert to clean versions; CISA publishes guidance recommending downgrade to XZ Utils 5.4.6.</td>
+</tr>
+</tbody>
+</table>
+<p><em>Note: the real identity behind the &quot;Jia Tan&quot; account has never been publicly confirmed, and this script does not resolve that question — multiple research groups have offered attribution theories, but no official attribution has been independently verified, and this account treats that as an open question rather than settled fact.</em></p>
+
+        
+            <h3>Control Failures</h3>
+            <table>
+<thead>
+<tr>
+<th>#</th>
+<th>Failure</th>
+<th>NIST SP 800-53 Rev 5 Control Family</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>A single contributor account was allowed to accumulate maintainer-level trust and release authority over an extended period with no apparent secondary review of that account's own trajectory or behavior.</td>
+<td><strong>AC-6</strong> — Least Privilege</td>
+</tr>
+<tr>
+<td>2</td>
+<td>The malicious payload was hidden inside release tarball test artifacts rather than the public, reviewable source repository, meaning normal code review of the visible source never saw it.</td>
+<td><strong>SI-10</strong> — Information Input Validation</td>
+</tr>
+<tr>
+<td>3</td>
+<td>No configuration management process flagged or questioned why build/release artifacts (the tarballs) differed meaningfully in content from the public version-controlled source.</td>
+<td><strong>CM-3</strong> — Configuration Change Control</td>
+</tr>
+<tr>
+<td>4</td>
+<td>Downstream Linux distributions had no systematic process to independently verify that a dependency's released build artifact matched its publicly reviewable source.</td>
+<td><strong>CM-7</strong> — Least Functionality</td>
+</tr>
+<tr>
+<td>5</td>
+<td>Detection depended entirely on one engineer's personal, informal observation of a performance anomaly — no automated monitoring or audit baseline caught the backdoor.</td>
+<td><strong>AU-6</strong> — Audit Record Review, Analysis, and Reporting</td>
+</tr>
+</tbody>
+</table>
+
+        
+            <h3>What Held</h3>
+            <ul>
+<li><strong>Rolling-release distributions acting as an unintentional tripwire.</strong> Because the backdoor first reached only bleeding-edge, pre-stable distributions — the versions used by developers and power users specifically because they tolerate instability in exchange for catching problems early — it was exposed to exactly the kind of technically sophisticated, performance-sensitive users most likely to notice something subtly wrong before the code ever reached a stable release.</li>
+<li><strong>Fast, transparent, coordinated vendor response.</strong> Within hours of Freund's disclosure, Red Hat, Debian, and other distributions independently confirmed scope, issued urgent guidance, and reverted affected packages — a senior engineer credits that coordinated response as a real mitigating factor distinct from praising the fact that the backdoor existed at all.</li>
+<li><strong>One engineer's baseline awareness of &quot;normal.&quot;</strong> Andres Freund only caught this because he had a working sense of how long SSH logins on his own systems ordinarily took. That's the senior-level point worth naming out loud: the control that actually worked wasn't a tool, it was one person's calibrated expectation of normal system behavior.</li>
+</ul>
+
+        
+            <h3>Sources</h3>
+            <ul>
+<li><a href="https://nvd.nist.gov/vuln/detail/CVE-2024-3094" target="_blank" rel="noopener noreferrer">CVE-2024-3094 Detail — NVD, National Institute of Standards and Technology (primary)</a></li>
+<li><a href="https://access.redhat.com/security/cve/CVE-2024-3094" target="_blank" rel="noopener noreferrer">CVE-2024-3094 — Red Hat Customer Portal (primary)</a></li>
+<li><a href="https://www.openwall.com/lists/oss-security/2024/03/29/4" target="_blank" rel="noopener noreferrer">oss-security mailing list: backdoor in upstream xz/liblzma leading to ssh server compromise — Andres Freund's original disclosure (primary)</a></li>
+<li><a href="https://en.wikipedia.org/wiki/XZ_Utils_backdoor" target="_blank" rel="noopener noreferrer">XZ Utils backdoor — Wikipedia</a></li>
+<li><a href="https://blog.rapid7.com/2024/04/01/etr-backdoored-xz-utils-cve-2024-3094/" target="_blank" rel="noopener noreferrer">Backdoor found in widely used Linux utility targets encrypted SSH connections — Rapid7</a></li>
+<li><a href="https://www.helpnetsecurity.com/2024/03/29/cve-2024-3094-linux-backdoor/" target="_blank" rel="noopener noreferrer">Beware! Backdoor found in XZ utilities used by many Linux distros — Help Net Security</a></li>
+<li><a href="https://thehackernews.com/2024/03/urgent-secret-backdoor-found-in-xz.html" target="_blank" rel="noopener noreferrer">Urgent: Secret backdoor found in XZ — The Hacker News</a></li>
+</ul>
+<p><strong>Tomorrow's Thread:</strong> Day 38 moves to the identity-and-credential-compromise family — a documented session-token theft, SSO breach, or credential-stuffing incident, a different family from today's software-supply-chain incident.</p>
+
+        
+    </article>
+    
+    <article class="brief-section" id="security-advice">
+        <p class="brief-kicker">Senior Security Advice</p>
+        <h2>Disable Direct Root Login Over SSH</h2>
+        
+            <h3>The Advice</h3>
+            <p>Turn off direct root login over SSH on every server, and require every administrator to authenticate with their own named account before elevating privilege.</p>
+
+        
+            <h3>Why It Matters</h3>
+            <p>Root is the one account guaranteed to exist with full superuser rights on almost every Linux and Unix host, which makes it the single most valuable target for anyone scanning the internet for exposed SSH. When PermitRootLogin is left at its default or explicitly set to &quot;yes,&quot; a stolen password, a weak passphrase, or a successful brute-force attempt against that one account hands an attacker complete control with no extra steps. Worse, every session shows up in the logs as &quot;root&quot; — there is no way to tell which human, or which compromised credential, was actually behind the keyboard. That is the pattern behind a huge share of internet-facing server compromises: automated bots continuously sweep for port 22, spray common credentials at the root account specifically, and the first server that answers &quot;yes&quot; to root login is the one that gets fully owned, not partially owned. DISA's own hardening requirement for this control exists precisely because shared root access destroys non-repudiation: without it, an incident responder cannot reconstruct who did what during a breach.</p>
+
+        
+            <h3>How to Implement It</h3>
+            <ol>
+<li>Before touching anything, confirm every administrator already has a personal account with SSH key-based access and sudo or RBAC rights configured and tested — this step prevents a lockout.</li>
+<li>Set <code>PermitRootLogin no</code> in <code>/etc/ssh/sshd_config</code>. On RHEL 9 specifically, check <code>/etc/ssh/sshd_config.d/</code> first, since a drop-in file there can silently override the main config and undo the change.</li>
+<li>Push the setting through the base image or configuration management tool (Ansible, Puppet, cloud-init) rather than editing boxes by hand, so the control survives the next rebuild instead of drifting.</li>
+<li>Restart <code>sshd</code>, then verify from a second, already-open session: run <code>ssh root@host</code> from another machine and confirm it is rejected before closing the session you used to make the change.</li>
+<li>Confirm the control is actually enforced, not just configured, by running <code>sshd -T | grep -i permitrootlogin</code> and by scanning the host with an OpenSCAP profile against the applicable STIG or CIS benchmark — the finding should come back closed.</li>
+</ol>
+
+        
+            <h3>The Pushback You&#39;ll Hear</h3>
+            <p>&quot;It's a small environment, I'm the only admin, this is overkill.&quot; The senior-engineer rebuttal: the size of the team has nothing to do with the size of the blast radius. Direct root login means anyone who ever obtains that one password or key — through phishing, a leaked backup, or a brute-force hit — gets instant, untraceable superuser access. Logging in as yourself and elevating with sudo costs one extra command and buys a named audit trail, which is exactly what you need the day something does go wrong.</p>
+
+        
+            <h3>Sources</h3>
+            <ul>
+<li><a href="https://stigviewer.com/stig/red_hat_enterprise_linux_9/2026-05-20/finding/V-257985" target="_blank" rel="noopener noreferrer">DISA STIG for Red Hat Enterprise Linux 9, Finding V-257985 / Rule RHEL-09-255045 (PermitRootLogin)</a></li>
+<li><a href="https://access.redhat.com/solutions/7128197" target="_blank" rel="noopener noreferrer">Red Hat: &quot;The Red Hat Enterprise Linux unable to login as root via SSH after apply CIS Benchmarks&quot;</a></li>
+</ul>
+
+        
+    </article>
+    
+    <article class="brief-section" id="tech-news">
+        <p class="brief-kicker">Tech News</p>
+        
+        
+            
+            <p>A vulnerability that's been quietly backdooring Nextcloud servers since mid-September just landed on the US government's official list of flaws that are actively being exploited right now. If your organization runs self-hosted collaboration tools, this is the one to know tonight. Two stories: a document-collaboration flaw that just graduated to a federal action item, and a fresh, still-unpatched crack in the language a huge share of the internet runs on.</p>
+<p>Start with Collabora and Nextcloud. According to Collabora's own advisory and the CVE record, tracked as CVE-2026-110447, an unauthenticated command-injection flaw in the built-in CODE Server component — the piece that lets Nextcloud users edit documents collaboratively — carries a near-maximum severity score. BleepingComputer and multiple outlets confirmed attackers have been exploiting it in the wild since mid-September, dropping PHP web shells onto compromised servers weeks before the public advisory caught up. Here's what's new as of this week: CISA added this exact flaw to its Known Exploited Vulnerabilities catalog on October 23rd — a federal confirmation, based on real-world attack evidence, that this isn't a theoretical risk anymore. The fix has existed since mid-September, but only the self-hosted, built-in version of the CODE server is affected; standalone Collabora deployments and Nextcloud's all-in-one package were never exposed. My read: the gap here isn't the patch — it's the month-plus window between &quot;attackers are already using this&quot; and &quot;the government formally says so.&quot; If you're waiting for a KEV listing to tell you something's urgent, you're always going to be behind the attackers who found it first.</p>
+<p>Next up, an update on a story I covered two nights ago. I told you about PHP2Shell, the pair of critical remote-code-execution flaws PHP patched across its supported versions. Here's what's changed: PHP's own security team has now disclosed a third, related flaw in the same memory-handling code — and this one doesn't have a patch yet. According to PHP's own advisory, the issue involves internal request data that can be accessed after its backing memory has already been freed, and the only mitigations available right now reduce exposure without closing the hole completely. My take: when a vendor finds a second and third issue in the same subsystem within weeks of the first, that's not three unrelated bugs — that's a sign the underlying code pattern itself needs a harder look, not just another patch.</p>
+
+        
+            <h3>Sources</h3>
+            <ul>
+<li><a href="https://app.opencve.io/cve/CVE-2026-110447" target="_blank" rel="noopener noreferrer">CVE-2026-110447 — OpenCVE</a></li>
+<li><a href="https://www.cisa.gov/news-events/alerts/2026/10/23/cisa-adds-one-known-exploited-vulnerability-catalog-0" target="_blank" rel="noopener noreferrer">CISA Adds One Known Exploited Vulnerability to Catalog (October 23, 2026) — CISA (primary)</a></li>
+<li><a href="https://www.bleepingcomputer.com/news/security/hackers-exploit-collabora-rce-flaw-to-backdoor-nextcloud-servers/" target="_blank" rel="noopener noreferrer">Hackers exploit Collabora RCE flaw to backdoor Nextcloud servers — BleepingComputer</a></li>
+<li><a href="https://www.esecurityplanet.com/threats/news-collabora-nextcloud-cve-2026-110447/" target="_blank" rel="noopener noreferrer">Hackers Use Critical Collabora Flaw to Compromise Nextcloud Servers — eSecurity Planet</a></li>
+<li><a href="https://thehackernews.com/2026/10/hackers-backdoor-nextcloud-servers.html" target="_blank" rel="noopener noreferrer">Hackers backdoor Nextcloud servers — The Hacker News</a></li>
+<li><a href="https://security-tracker.debian.org/tracker/CVE-2026-110447" target="_blank" rel="noopener noreferrer">CVE-2026-110447 — Debian Security Tracker</a></li>
+<li><a href="https://www.ncsc.gov.uk/news/critical-security-issue-affecting-php" target="_blank" rel="noopener noreferrer">Critical security issue affecting PHP — NCSC UK (primary)</a></li>
+<li><a href="https://cyber.gc.ca/en/alerts-advisories/al26-026-critical-vulnerabilities-impacting-php-cve-2026-109618-cve-2026-109619" target="_blank" rel="noopener noreferrer">Alert AL26-026 — Critical vulnerabilities impacting PHP, CVE-2026-109618 and CVE-2026-109619 — Canadian Centre for Cyber Security (primary)</a></li>
+</ul>
+
+        
+    </article>
+    
+    <section class="brief-subscribe" id="subscribe">
+    <h2>Get The Daily Brief by email</h2>
+    <p>One short email each morning. Unsubscribe anytime.</p>
+    <form action="https://buttondown.com/api/emails/embed-subscribe/cybercider" method="post">
+        <label for="bd-email">Email address</label>
+        <input type="email" name="email" id="bd-email" required autocomplete="email" placeholder="you@example.com">
+        <button type="submit">Subscribe</button>
+    </form>
+</section>
+</main>
+
+    <footer><p class="copyright">The Daily Brief · Eddie Camacho</p></footer>
+<!-- cf-web-analytics (managed by tools/inject_analytics.py) -->
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "f728a20b49cc4a0fbe02cde72f03301c"}'></script>
+</body>
+</html>
