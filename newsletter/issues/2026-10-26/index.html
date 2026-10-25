@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="dark">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'self' https://static.cloudflareinsights.com; connect-src 'self' https://cloudflareinsights.com; img-src 'self' data:; form-action https://buttondown.com; base-uri 'none'; object-src 'none'">
+    <meta name="description" content="The Daily Brief for Monday, October 26, 2026: security incidents, senior security advice, engineering explainers, and tech news.">
+    <title>The Daily Brief · Oct 26, 2026</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="icon" href="../../../favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="../../../style.css">
+    <link rel="stylesheet" href="../../newsletter.css">
+</head>
+<body class="brief-page">
+    <a href="#main-content" class="skip-nav">Skip to main content</a>
+    <nav class="brief-nav">
+        <a href="../../../index.html">← App Hub</a>
+        <a href="../../">All issues</a>
+    </nav>
+    
+<header class="brief-masthead">
+    <p class="brief-eyebrow">THE DAILY BRIEF</p>
+    <h1>Monday, October 26, 2026</h1>
+    <ol class="brief-toc">
+        <li><a href="#current-events">Current Events</a></li><li><a href="#security-advice">Senior Security Advice</a></li><li><a href="#tech-news">Tech News</a></li>
+    </ol>
+</header>
+<main id="main-content" class="brief">
+    
+    <article class="brief-section" id="current-events">
+        <p class="brief-kicker">Current Events</p>
+        <h2>Microsoft Midnight Blizzard Corporate Email Breach</h2>
+        
+            
+            <p>A Russian state-sponsored hacking group got into Microsoft's own corporate email system - not through a zero-day, not through some exotic exploit, but by guessing passwords against a test account nobody had bothered to retire. From there, they read the inboxes of Microsoft's own senior leadership and security team for weeks. Here's how it actually happened.</p>
+<p>Microsoft's own account, published by its Security Response Center, says the group it tracks as Midnight Blizzard - also known as Nobelium, and linked by the US government to Russia's foreign intelligence service - used a technique called password spraying. That means trying a small number of common passwords across a large number of accounts, rather than hammering one account repeatedly. They aimed it at a legacy, non-production test tenant account. One that was never meant to hold real access to anything that mattered.</p>
+<p>Here's the chain, step by step. The attackers got into that low-value test account in late November 2023. But that account had been granted an OAuth application role - a permission called &quot;full access as app&quot; inside Exchange Online, Microsoft's own hosted email service. Security researchers who later analyzed the incident describe the attackers using that foothold to create new malicious applications and grant them the same sweeping mailbox-access permission, then using those applications to read corporate email accounts, including Microsoft's own senior leadership and staff in its cybersecurity and legal teams. Microsoft detected the intrusion on January 12th, 2024, and disclosed it publicly a week later.</p>
+<p>Root cause, in one sentence: a forgotten test account, with a leftover permission far more powerful than its purpose ever required, became the hinge that swung open access to real corporate email.</p>
+<p>What actually limited the damage, and this is the senior-level detail worth naming: Microsoft said at the time it found no evidence the attackers reached customer-facing production systems. The blast radius stayed inside Microsoft's corporate environment - serious, but bounded. A March update complicated that picture, when Microsoft disclosed the same attackers had gone on to use information stolen from that corporate email to reach some of its source code repositories and internal systems too. So containment was real, but it was not the end of the story.</p>
+<p>So what does that mean for the kind of system a senior engineer is responsible for? A senior engineer treats every test or non-production account as a real attack surface, not an exception, and audits exactly what permissions legacy accounts and legacy OAuth applications were ever granted - because this breach shows that kind of leftover access is worth more to an attacker than any password. On a RHEL, AWS, or Kubernetes lab, that means an engineer would regularly enumerate every service account, IAM role, and OAuth application grant across an environment and flag anything with privileges wider than its stated purpose, instead of assuming an account is harmless just because it is old or unused.</p>
+
+        
+            <h3>Timeline</h3>
+            <table>
+<thead>
+<tr>
+<th>Date</th>
+<th>Event</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Late November 2023</td>
+<td>Midnight Blizzard (Nobelium) gains initial access to a legacy, non-production test tenant account via password spraying, per Microsoft's MSRC account.</td>
+</tr>
+<tr>
+<td>November 2023 – January 2024</td>
+<td>Attackers use the test account's existing OAuth application permissions to create new malicious applications granted the Exchange Online <code>full_access_as_app</code> role, then use those applications to access corporate mailboxes.</td>
+</tr>
+<tr>
+<td>January 12, 2024</td>
+<td>Microsoft detects the intrusion.</td>
+</tr>
+<tr>
+<td>January 19, 2024</td>
+<td>Microsoft publicly discloses the breach via its Security Response Center blog, naming the affected accounts as including senior leadership and staff in cybersecurity and legal functions.</td>
+</tr>
+<tr>
+<td>March 8, 2024</td>
+<td>Microsoft publishes an update stating the same actor used data exfiltrated from corporate email to gain or attempt to gain unauthorized access to some of Microsoft's source code repositories and internal systems.</td>
+</tr>
+</tbody>
+</table>
+<p><em>Note: Microsoft's own posts describe the OAuth-application privilege-escalation mechanism only at a high level; the more granular technical detail of exactly how a test app's permissions were leveraged to create new malicious apps comes from third-party security research (including Wiz's published analysis), not from Microsoft's own text directly, and this script treats that distinction as worth stating aloud rather than blurring the two together.</em></p>
+
+        
+            <h3>Control Failures</h3>
+            <table>
+<thead>
+<tr>
+<th>#</th>
+<th>Failure</th>
+<th>NIST SP 800-53 Rev 5 Control Family</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>A legacy, non-production test account was never decommissioned and remained reachable for authentication long after its purpose had ended.</td>
+<td><strong>CM-7</strong> — Least Functionality</td>
+</tr>
+<tr>
+<td>2</td>
+<td>That test account, and a test OAuth application tied to it, held a far broader permission (<code>full_access_as_app</code> over Exchange Online) than a test account should ever require.</td>
+<td><strong>AC-6</strong> — Least Privilege</td>
+</tr>
+<tr>
+<td>3</td>
+<td>The account was reachable via password authentication alone, with no indication multi-factor authentication blocked the password-spray attempts.</td>
+<td><strong>IA-2</strong> — Identification and Authentication (Organizational Users)</td>
+</tr>
+<tr>
+<td>4</td>
+<td>New OAuth applications could be created and granted sweeping mailbox-access permissions without a secondary review or approval gate catching the anomaly.</td>
+<td><strong>CM-3</strong> — Configuration Change Control</td>
+</tr>
+<tr>
+<td>5</td>
+<td>The intrusion persisted from late November 2023 until detection on January 12, 2024 — roughly six weeks — before anomalous mailbox access was flagged.</td>
+<td><strong>AU-6</strong> — Audit Record Review, Analysis, and Reporting</td>
+</tr>
+</tbody>
+</table>
+
+        
+            <h3>What Held</h3>
+            <ul>
+<li><strong>Segmentation between corporate and customer-facing production environments.</strong> Microsoft stated it found no evidence the attackers reached Microsoft-hosted customer-facing systems during the initial corporate-email phase of the intrusion — the boundary between corporate IT and production customer infrastructure did its job even while the corporate side was thoroughly compromised.</li>
+<li><strong>Eventual detection and public disclosure.</strong> Microsoft did detect the activity, moved to disclose it within about a week, and continued updating the public record in March as its investigation uncovered more — including the less flattering source-code finding. A senior engineer credits that transparency honestly, while also naming that detection still took roughly six weeks.</li>
+<li><strong>Scoped damage despite a powerful foothold.</strong> Even with an Exchange Online-wide mailbox-access permission in hand, the publicly described impact stayed within corporate email and, later, certain source repositories — not a full enterprise-wide compromise of Microsoft's entire production estate, as far as has been publicly disclosed.</li>
+</ul>
+
+        
+            <h3>Sources</h3>
+            <ul>
+<li><a href="https://msrc.microsoft.com/blog/2024/01/microsoft-actions-following-attack-by-nation-state-actor-midnight-blizzard/" target="_blank" rel="noopener noreferrer">Microsoft Actions Following Attack by Nation State Actor Midnight Blizzard — Microsoft Security Response Center (primary)</a></li>
+<li><a href="https://www.darkreading.com/threat-intelligence/microsoft-falls-victim-russian-midnight-blizzard-cyberattack" target="_blank" rel="noopener noreferrer">Microsoft Falls Victim to Russia-Backed 'Midnight Blizzard' Cyberattack — Dark Reading</a></li>
+<li><a href="https://www.wiz.io/blog/midnight-blizzard-microsoft-breach-analysis-and-best-practices" target="_blank" rel="noopener noreferrer">Midnight Blizzard attack on Microsoft corporate environment: a detailed analysis, detections and recommendations — Wiz</a></li>
+<li><a href="https://www.helpnetsecurity.com/2024/03/11/microsoft-russian-hackers-srouce-code/" target="_blank" rel="noopener noreferrer">Microsoft: Russian hackers accessed internal systems, code repositories — Help Net Security</a></li>
+</ul>
+<p><strong>Tomorrow's Thread:</strong> Day 39 moves to the operational-and-change-management-failure family — the AWS US-EAST-1 outage of October 20, 2025, caused by a DNS-automation race condition in DynamoDB's endpoint management, a different family from today's identity-and-credential incident.</p>
+
+        
+    </article>
+    
+    <article class="brief-section" id="security-advice">
+        <p class="brief-kicker">Senior Security Advice</p>
+        <h2>Enforce IMDSv2 on Every EC2 Instance</h2>
+        
+            <h3>The Advice</h3>
+            <p>Require IMDSv2 on every EC2 instance, account-wide, so no workload can ever fall back to the unauthenticated version of the instance metadata service.</p>
+
+        
+            <h3>Why It Matters</h3>
+            <p>Every EC2 instance can reach a local, unauthenticated-by-default endpoint that hands back its temporary IAM credentials. In the original version of this service (IMDSv1), any request an attacker can trick the box into making on its own behalf gets those credentials with nothing more than a plain GET. That trick is server-side request forgery, or SSRF: a vulnerable web app or proxy is coerced into fetching an internal URL, and if that URL is the metadata endpoint, the attacker walks away with the instance's IAM credentials without touching a password. A well-known breach class works exactly this way — an SSRF flaw in a misconfigured application reached the metadata service and pulled credentials that led to a large-scale cloud data exposure. IMDSv2 closes that door: it requires a PUT request to fetch a session token before any metadata can be read, and SSRF bugs can almost never send a PUT. AWS's own EC2 documentation confirms that once an instance requires tokens, IMDSv1-style credential retrieval is no longer available at all.</p>
+
+        
+            <h3>How to Implement It</h3>
+            <ol>
+<li>Set the account-level default so every newly launched instance requires IMDSv2 automatically, instead of relying on each team to configure it.</li>
+<li>Audit existing instances with <code>aws ec2 describe-instances</code>, checking each <code>MetadataOptions.HttpTokens</code> value — anything other than <code>required</code> is still exposed to IMDSv1.</li>
+<li>Remediate with <code>aws ec2 modify-instance-metadata-options --http-tokens required --http-endpoint enabled</code>, and bake the setting into launch templates and Infrastructure-as-Code so it can't drift back.</li>
+<li>Set a sane hop limit — AWS flags a hop limit of 1 as a known problem for containerized workloads behind a proxy — so you don't break legitimate calls while locking down tokens.</li>
+<li>Verify it's actually enforced, not just configured: try an IMDSv1-style GET against the endpoint and confirm it's rejected, and track it continuously with the CIS AWS Foundations Benchmark control that audits IMDSv2 account-wide.</li>
+</ol>
+
+        
+            <h3>The Pushback You&#39;ll Hear</h3>
+            <p>&quot;We have legacy agents that only speak IMDSv1 — this will break production.&quot; The senior-engineer rebuttal: that's a reason to inventory and upgrade those specific agents, not a reason to leave every instance exposed. Most modern SDKs already speak IMDSv2 by default. Roll the change out class by class, starting with anything internet-facing or taking untrusted input — exactly the workloads an SSRF bug would target — and fix the stragglers instead of leaving the fleet on a mode designed to be phased out.</p>
+
+        
+            <h3>Sources</h3>
+            <ul>
+<li><a href="https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/configuring-instance-metadata-options.html" target="_blank" rel="noopener noreferrer">Configure the Instance Metadata Service options - Amazon EC2 User Guide</a></li>
+<li><a href="https://docs.aws.amazon.com/AWSEC2/latest/APIReference/API_LaunchTemplateInstanceMetadataOptionsRequest.html" target="_blank" rel="noopener noreferrer">LaunchTemplateInstanceMetadataOptionsRequest / HttpTokens - Amazon EC2 API Reference</a></li>
+<li><a href="https://www.cisecurity.org/benchmark/amazon_web_services" target="_blank" rel="noopener noreferrer">CIS Amazon Web Services Foundations Benchmark - &quot;Ensure that EC2 Metadata Service only allows IMDSv2&quot;</a></li>
+</ul>
+
+        
+    </article>
+    
+    <article class="brief-section" id="tech-news">
+        <p class="brief-kicker">Tech News</p>
+        
+        
+            
+            <p>If you run a self-hosted Plex media server on a Linux box, or a self-managed GitLab instance at work, both of tonight's stories are about you. Attackers are already using one of them to mine cryptocurrency on other people's hardware. Two stories: a federal patch deadline tied to real in-the-wild attacks, and a software vendor that's had to patch the exact same class of maximum-severity bug twice in nine days.</p>
+<p>Start with Plex. According to CISA's own Known Exploited Vulnerabilities catalog, hackers are chaining four flaws in Plex Media Server — nicknamed Plex2Shell — to get unauthenticated remote code execution on self-hosted servers. BleepingComputer and The Hacker News both report that researchers first spotted in-the-wild exploitation around October 17th, with attackers planting cryptocurrency miners and proxy malware on compromised boxes. CISA added the flaws to its catalog on October 20th and ordered federal agencies to patch three of the four by October 23rd — that deadline has already passed — with the rest due November 3rd. The fix itself has existed since early August. My read: when a patch sits unapplied for two and a half months, the gap stops being a technology problem and becomes an asset-inventory problem. You can't patch a server you don't know you're running, and a self-hosted media server is exactly the kind of box that falls outside most organizations' formal patch cycle.</p>
+<p>Next up, turning from one patch gap to a vendor that keeps finding the same hole twice. GitLab has now shipped fixes for two separate maximum-severity flaws — both rated a perfect ten out of ten, both unauthenticated remote code execution, both sitting inside the same regular-expression compiler — in the span of nine days. Per GitLab's own advisories, corroborated by Help Net Security and Canada's Cyber Centre, the first fix landed October 12th as CVE-2026-97229; the second, CVE-2026-110264, followed October 21st. Here's the detail worth knowing cold: if you patched after the first advisory and stopped there, you are still exposed. The second flaw lives in the same component and was not closed by the October 12th update. My take: finding two bugs that fast in one subsystem usually means someone went back and audited the whole component after the first one turned up — that's good vendor follow-through. But it also means &quot;I already patched this&quot; is a sentence worth double-checking against the actual CVE ID, not just the component name.</p>
+<p>Tonight's thread: a patch that exists and a patch that's actually running on your systems are two different facts, whether the gap is two months wide or nine days.</p>
+
+        
+            <h3>Sources</h3>
+            <ul>
+<li><a href="https://www.cisa.gov/news-events/alerts/2026/10/20/cisa-adds-six-known-exploited-vulnerabilities-catalog" target="_blank" rel="noopener noreferrer">CISA Adds Six Known Exploited Vulnerabilities to Catalog — CISA (primary)</a></li>
+<li><a href="https://thehackernews.com/2026/10/cisa-orders-federal-agencies-to-patch.html" target="_blank" rel="noopener noreferrer">CISA Orders Federal Agencies to Patch Actively Exploited Plex Media Server Flaws — The Hacker News</a></li>
+<li><a href="https://bleepingcomputer.com/news/security/cisa-hackers-chain-plex-flaws-in-plex2shell-attacks-to-breach-servers" target="_blank" rel="noopener noreferrer">CISA: Hackers Chain Plex Flaws in 'Plex2Shell' Attacks to Breach Servers — BleepingComputer</a></li>
+<li><a href="https://helpnetsecurity.com/2026/10/13/gitlab-ci-cd-regular-expression-compiler-vulnerability-cve-2026-97229" target="_blank" rel="noopener noreferrer">GitLab Admins Urged to Patch Critical RCE Flaw (CVE-2026-97229) — Help Net Security</a></li>
+<li><a href="https://securityonline.info/gitlab-critical-patch-release-cve-2026-110264/" target="_blank" rel="noopener noreferrer">GitLab Critical Patch Release: CVE-2026-110264 — SecurityOnline</a></li>
+<li><a href="https://www.cyber.gc.ca/en/alerts-advisories/gitlab-security-advisory-av26-758" target="_blank" rel="noopener noreferrer">GitLab Security Advisory (AV26-758) — Canadian Centre for Cyber Security (primary)</a></li>
+</ul>
+
+        
+    </article>
+    
+    <section class="brief-subscribe" id="subscribe">
+    <h2>Get The Daily Brief by email</h2>
+    <p>One short email each morning. Unsubscribe anytime.</p>
+    <form action="https://buttondown.com/api/emails/embed-subscribe/cybercider" method="post">
+        <label for="bd-email">Email address</label>
+        <input type="email" name="email" id="bd-email" required autocomplete="email" placeholder="you@example.com">
+        <button type="submit">Subscribe</button>
+    </form>
+</section>
+</main>
+
+    <footer><p class="copyright">The Daily Brief · Eddie Camacho</p></footer>
+<!-- cf-web-analytics (managed by tools/inject_analytics.py) -->
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "f728a20b49cc4a0fbe02cde72f03301c"}'></script>
+</body>
+</html>
