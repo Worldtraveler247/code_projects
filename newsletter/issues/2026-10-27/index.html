@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="dark">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'self' https://static.cloudflareinsights.com; connect-src 'self' https://cloudflareinsights.com; img-src 'self' data:; form-action https://buttondown.com; base-uri 'none'; object-src 'none'">
+    <meta name="description" content="The Daily Brief for Tuesday, October 27, 2026: security incidents, senior security advice, engineering explainers, and tech news.">
+    <title>The Daily Brief · Oct 27, 2026</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="icon" href="../../../favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="../../../style.css">
+    <link rel="stylesheet" href="../../newsletter.css">
+</head>
+<body class="brief-page">
+    <a href="#main-content" class="skip-nav">Skip to main content</a>
+    <nav class="brief-nav">
+        <a href="../../../index.html">← App Hub</a>
+        <a href="../../">All issues</a>
+    </nav>
+    
+<header class="brief-masthead">
+    <p class="brief-eyebrow">THE DAILY BRIEF</p>
+    <h1>Tuesday, October 27, 2026</h1>
+    <ol class="brief-toc">
+        <li><a href="#current-events">Current Events</a></li><li><a href="#security-advice">Senior Security Advice</a></li><li><a href="#tech-news">Tech News</a></li>
+    </ol>
+</header>
+<main id="main-content" class="brief">
+    
+    <article class="brief-section" id="current-events">
+        <p class="brief-kicker">Current Events</p>
+        <h2>The Rogers Communications Nationwide Outage</h2>
+        
+            
+            <p>One mistake, inside one routine network change, took down phone and internet service for roughly half of Canada's population for most of a day - cutting off access to 911 in parts of the country. No attacker. No malware. Just a configuration change that went wrong, and a network that had no way to stop it from spreading. Here's how it actually happened.</p>
+<p>Rogers Communications is one of Canada's largest telecom providers. According to the executive summary of the independent review the CRTC, Canada's telecom regulator, commissioned from Xona Partners, the outage on July 8th, 2022, traces back to a configuration change inside Rogers' own IP core network. Staff removed an access control list filter from the distribution routers as part of a planned network update.</p>
+<p>Here's the chain, step by step. The moment that filter came out, it let a flood of internal routing data pour into Rogers' core routers - exactly the kind of traffic that filter had been quietly blocking. The review found the core routers were never configured with overload protection mechanisms that could have absorbed or throttled that flood. Without that safeguard, the core routers crashed within minutes of the filter's removal. And once the core crashed, there was nothing left underneath the rest of the network holding it up - voice, data, and even Rogers' own internal diagnostic access went down with it.</p>
+<p>Root cause, in one sentence: a single change-management step removed a safeguard that the network's core hardware had no independent backup for, and nothing in the change process caught that gap before it shipped.</p>
+<p>What actually dragged this out, and this is the detail worth sitting with: Rogers' own staff couldn't reach the system's error logs for roughly fourteen hours after the crash, because the very network they needed to use to diagnose the problem was the network that had just gone down. Multiple other configuration changes were already in flight that same day, which further confused the diagnosis. The review found Rogers had since implemented the recommended fixes and judged the remediation satisfactory - but that's two years of safeguards built after the fact, not before it.</p>
+<p>So what does that mean for the kind of system a senior engineer is responsible for? A senior engineer never treats a change window as a formality - every change to a core routing or access-control component gets a peer review and a rollback plan before it runs, and critical infrastructure gets independent, out-of-band access for diagnostics, so losing the primary network doesn't also cost you the ability to see what broke it. On an AWS or Kubernetes lab, that means practicing exactly that discipline: never applying a security-group or network- policy change to a shared environment without a documented peer review and a tested rollback step ready before you run it.</p>
+
+        
+            <h3>Timeline</h3>
+            <table>
+<thead>
+<tr>
+<th>Date</th>
+<th>Event</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>July 8, 2022, early morning</td>
+<td>Rogers staff execute a planned update to the IP core network; an access control list filter is removed from distribution routers as part of that update, per the CRTC-commissioned review's executive summary.</td>
+</tr>
+<tr>
+<td>July 8, 2022, within minutes</td>
+<td>The removed filter allows a flood of routing information into the core network; Rogers' core routers, which lacked overload protection, crash.</td>
+</tr>
+<tr>
+<td>July 8, 2022</td>
+<td>Voice, data, and text services go down nationwide for Rogers customers, including access to some 911 emergency services; outage duration is reported as roughly 15 to 26 hours depending on the source and metric used.</td>
+</tr>
+<tr>
+<td>July 8–9, 2022</td>
+<td>Rogers staff are unable to access system error logs for approximately 14 hours, delaying root-cause diagnosis; multiple other configuration changes in progress that day complicate the picture further.</td>
+</tr>
+<tr>
+<td>July 2022 (following weeks)</td>
+<td>The CRTC orders Rogers to explain the outage in detail and commissions an independent technical review.</td>
+</tr>
+<tr>
+<td>July 5, 2024</td>
+<td>The CRTC publishes the executive summary of the independent review, conducted by Xona Partners, confirming the configuration-error root cause and judging Rogers' subsequent remediation steps satisfactory.</td>
+</tr>
+</tbody>
+</table>
+<p><em>Note: the CRTC's published summary is redacted, and the full technical report has not been made public, so some operational detail here is Rogers' and the CRTC's characterization rather than the unredacted original text. Sources also differ on the exact outage duration — some cite roughly 15 hours, others roughly 26 — which this script states as a range rather than a single figure.</em></p>
+
+        
+            <h3>Control Failures</h3>
+            <table>
+<thead>
+<tr>
+<th>#</th>
+<th>Failure</th>
+<th>NIST SP 800-53 Rev 5 Control Family</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>A change to the IP core network removed an access control list filter without the change-management process catching the resulting exposure before it was pushed live.</td>
+<td><strong>CM-3</strong> — Configuration Change Control</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Core routers were not configured with overload protection mechanisms to absorb or limit an unexpected flood of internal routing traffic.</td>
+<td><strong>SC-5</strong> — Denial-of-Service Protection</td>
+</tr>
+<tr>
+<td>3</td>
+<td>The network had no independent, out-of-band path for staff to reach error logs and diagnostic systems once the primary network went down.</td>
+<td><strong>CP-10</strong> — System Recovery and Reconstitution</td>
+</tr>
+<tr>
+<td>4</td>
+<td>Multiple additional configuration changes were already in progress the same day, with no apparent coordination gate to prevent overlapping high-risk changes.</td>
+<td><strong>CM-3</strong> — Configuration Change Control</td>
+</tr>
+<tr>
+<td>5</td>
+<td>Roughly 14 hours passed before staff could review system logs to diagnose the failure, delaying any audit-driven root-cause response.</td>
+<td><strong>AU-6</strong> — Audit Record Review, Analysis, and Reporting</td>
+</tr>
+</tbody>
+</table>
+
+        
+            <h3>What Held</h3>
+            <ul>
+<li><strong>The regulator's oversight function worked as designed.</strong> The CRTC ordered a detailed explanation and commissioned an independent technical review rather than accepting Rogers' own account at face value — exactly the external verification function a regulator exists to provide, even though it took two years to reach the public in redacted form.</li>
+<li><strong>Remediation, once forced, was judged adequate.</strong> The CRTC's 2024 summary states Rogers implemented the review's recommended changes and found the steps taken to address the root cause satisfactory — a real, verified fix, even though it arrived only after a regulator required it.</li>
+<li><strong>Say the limit out loud.</strong> Nothing about this incident &quot;held&quot; during the outage itself — there was no internal safeguard, no segmentation, and no backup diagnostic path that limited the blast radius in the moment. Naming that plainly, rather than searching for a silver lining that wasn't there, is itself the senior-level move: some incidents teach you what containment looks like, and this one teaches you what its total absence looks like.</li>
+</ul>
+
+        
+            <h3>Sources</h3>
+            <ul>
+<li><a href="https://crtc.gc.ca/eng/publications/reports/xona2024.htm" target="_blank" rel="noopener noreferrer">Assessment of Rogers Networks for Resiliency and Reliability Following the 8 July 2022 Outage — Executive Summary — CRTC (primary)</a></li>
+<li><a href="https://ici.radio-canada.ca/rci/en/news/2086093/human-error-caused-2022-rogers-outage-system-deficiencies-made-it-worse-report" target="_blank" rel="noopener noreferrer">Human error caused 2022 Rogers outage, system 'deficiencies' made it worse: report — Radio Canada International / CBC</a></li>
+<li><a href="https://biv.com/news/technology/crtc-posts-independent-report-on-rogers-outage-says-company-made-necessary-changes-9183328" target="_blank" rel="noopener noreferrer">CRTC posts independent report on Rogers outage, says company made necessary changes — BIV / Business in Vancouver</a></li>
+<li><a href="https://www.cbc.ca/lite/story/1.6518203" target="_blank" rel="noopener noreferrer">CRTC ordering Rogers to explain in detail what caused massive network outage — CBC</a></li>
+</ul>
+<p><strong>Tomorrow's Thread:</strong> Day 40 moves to the software supply-chain family — a well-documented malicious package or build-pipeline compromise not yet covered in this folder, a different family from today's operational-and-change-management-failure incident.</p>
+
+        
+    </article>
+    
+    <article class="brief-section" id="security-advice">
+        <p class="brief-kicker">Senior Security Advice</p>
+        <h2>Default-Deny Network Policies for Every Kubernetes Namespace</h2>
+        
+            <h3>The Advice</h3>
+            <p>Put a default-deny NetworkPolicy in every Kubernetes namespace, for both ingress and egress, then explicitly allow only the pod-to-pod traffic each workload actually needs.</p>
+
+        
+            <h3>Why It Matters</h3>
+            <p>Kubernetes ships flat. Out of the box, every pod in a cluster can reach every other pod, in any namespace, with nothing in the network stopping it. NSA and CISA's joint Kubernetes Hardening Guidance calls this out directly: no network policies apply to pods or namespaces by default, so traffic stays unrestricted until an administrator changes that. That flat network turns one compromised container into a free pass to everything else running in the cluster. The incident class this stops is a familiar one: a single vulnerable workload — a web app with a code execution bug, a misconfigured sidecar, a poisoned dependency — gets popped, and because nothing on the network ever says no, the attacker pivots straight from that one pod to the database, the internal API, or the cluster's own control plane. The CIS Kubernetes Benchmark treats this as a baseline control, not an advanced one: it checks that every namespace has network policies defined, because a namespace with none leaves every pod in it open in both directions.</p>
+
+        
+            <h3>How to Implement It</h3>
+            <ol>
+<li>Map real traffic first. Before writing a single policy, inventory which services actually call which other services in each namespace — jumping straight to deny-all without this step breaks production the moment you flip it on.</li>
+<li>Confirm the cluster's CNI plugin (Calico, Cilium, or similar) actually enforces NetworkPolicy objects. A non-enforcing CNI makes every policy you write a no-op that only looks like protection.</li>
+<li>Apply a default-deny-all policy, ingress and egress, to every namespace as the baseline, then layer narrow allow rules on top for legitimate traffic. Remember that denying egress also blocks DNS lookups, so a specific allow rule for DNS on port 53 has to go in alongside the rest.</li>
+<li>Bake the baseline into namespace creation through GitOps or Helm/Kustomize templates, so no new namespace ever launches without it already in place.</li>
+<li>Verify it is actually enforced, not just applied: spin up a test pod in the namespace and try to reach a pod it should not be able to reach — confirm the connection hangs or is refused — and audit the whole cluster against the CIS benchmark control that checks for network policies in every namespace.</li>
+</ol>
+
+        
+            <h3>The Pushback You&#39;ll Hear</h3>
+            <p>&quot;We don't know every dependency well enough to deny-all without breaking something.&quot; The senior-engineer rebuttal: that uncertainty is the argument for mapping traffic and rolling out namespace by namespace, starting with anything internet-facing, not a reason to leave the whole cluster flat indefinitely. Incomplete visibility gets fixed by doing the mapping work, not by skipping the control until you magically have perfect knowledge of every call path.</p>
+
+        
+            <h3>Sources</h3>
+            <ul>
+<li><a href="https://media.defense.gov/2022/Aug/29/2003066362/1/1/0/CTR_KUBERNETES_HARDENING_GUIDANCE_1.2_20220829.PDF" target="_blank" rel="noopener noreferrer">CTR: Kubernetes Hardening Guidance, v1.2 (NSA / CISA, August 2022)</a></li>
+<li><a href="https://www.cisa.gov/news-events/alerts/2022/03/15/updated-kubernetes-hardening-guide" target="_blank" rel="noopener noreferrer">Updated Kubernetes Hardening Guide (CISA Alert, March 2022)</a></li>
+<li><a href="https://www.tenable.com/audits/items/CIS_Google_Kubernetes_Engine_GKE_v1.5.0_L2.audit:5a84620865741f029ba84a1077d65541" target="_blank" rel="noopener noreferrer">CIS Kubernetes Benchmark control 5.3.2, &quot;Ensure that all Namespaces have Network Policies defined&quot; (Tenable audit mirror)</a></li>
+</ul>
+
+        
+    </article>
+    
+    <article class="brief-section" id="tech-news">
+        <p class="brief-kicker">Tech News</p>
+        
+        
+            
+            <p>Session tokens, not passwords, are now the weak point in Microsoft 365 — and a campaign that's been running quietly since July just hit 79 organizations. If your team relies on multi-factor authentication to call the security problem solved, tonight's story is for you. Two stories: a session-hijacking campaign that proves MFA alone isn't the finish line, and an update on the PHP flaw I told you about last week.</p>
+<p>Start with the Microsoft 365 campaign. According to security firm Huntress, attackers ran an adversary-in-the-middle operation — essentially a fake Microsoft sign-in page sitting invisibly between the victim and the real one — from mid-July through late September. Victims typed their real password and approved a real MFA prompt, and the attacker simply copied the session token that got issued afterward. Huntress calls the technique &quot;token spraying,&quot; because once attackers have a working token, they replay it at scale across many organizations, the same logic as password spraying but one step past MFA. Across the campaign, Huntress counted 497 successful sign-ins out of more than 200,000 attempts, compromising 97 accounts at 79 organizations. In at least 19 of those organizations, the attackers moved fast to keep their access — removing the victim's existing MFA method and registering a new one within three hours, then quietly setting up inbox rules to hide or delete any mail about payroll, direct deposits, or bonuses. My read: this is why a senior engineer treats a session token with the same seriousness as a password. MFA protects the login moment. It does nothing to protect the token that login moment hands out, and that token is what the attacker actually wanted.</p>
+<p>Now, a quick update on PHP2Shell, the pair of critical PHP flaws I covered last week. Here's what's changed: multiple security firms, including the vulnerability's own responders, have now confirmed CVE-2026-109618 and CVE-2026-109619 are under active exploitation in the wild, not just early probing. PHP shipped fixes in versions 8.5.12, 8.4.27, 8.3.36, and 8.2.35. My take: the gap between &quot;patch available&quot; and &quot;patch applied&quot; is exactly where this one is being hit right now — if your org runs PHP with mod_php on Apache, this is the week to verify, not assume.</p>
+<p>Tonight's thread: a password check at the front door doesn't protect what happens after someone's already inside the building.</p>
+
+        
+            <h3>Sources</h3>
+            <ul>
+<li><a href="https://thehackernews.com/2026/10/microsoft-365-token-replay-attacks.html" target="_blank" rel="noopener noreferrer">Microsoft 365 Token-Replay Attacks Compromise 97 Accounts at 79 Organizations — The Hacker News</a></li>
+<li><a href="https://www.bleepingcomputer.com/news/security/php2shell-security-flaws-now-sucessfully-exploited-in-the-wild/" target="_blank" rel="noopener noreferrer">PHP2Shell security flaws now successfully exploited in the wild — BleepingComputer</a></li>
+<li><a href="https://www.huntress.com/blog/php2shell-leaked-critical-php-vulnerabilities" target="_blank" rel="noopener noreferrer">Rapid Response: PHP2Shell, Leaked Critical PHP Vulnerabilities (CVE-2026-109618 &amp; CVE-2026-109619) — Huntress</a></li>
+<li><a href="https://www.securityweek.com/php2shell-patches-land-as-first-exploitation-attempts-hit-sensors/" target="_blank" rel="noopener noreferrer">PHP2Shell: Patches Land as First Exploitation Attempts Hit Sensors — SecurityWeek</a></li>
+</ul>
+
+        
+    </article>
+    
+    <section class="brief-subscribe" id="subscribe">
+    <h2>Get The Daily Brief by email</h2>
+    <p>One short email each morning. Unsubscribe anytime.</p>
+    <form action="https://buttondown.com/api/emails/embed-subscribe/cybercider" method="post">
+        <label for="bd-email">Email address</label>
+        <input type="email" name="email" id="bd-email" required autocomplete="email" placeholder="you@example.com">
+        <button type="submit">Subscribe</button>
+    </form>
+</section>
+</main>
+
+    <footer><p class="copyright">The Daily Brief · Eddie Camacho</p></footer>
+<!-- cf-web-analytics (managed by tools/inject_analytics.py) -->
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "f728a20b49cc4a0fbe02cde72f03301c"}'></script>
+</body>
+</html>
