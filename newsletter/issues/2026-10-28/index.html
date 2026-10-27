@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="dark">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'self' https://static.cloudflareinsights.com; connect-src 'self' https://cloudflareinsights.com; img-src 'self' data:; form-action https://buttondown.com; base-uri 'none'; object-src 'none'">
+    <meta name="description" content="The Daily Brief for Wednesday, October 28, 2026: security incidents, senior security advice, engineering explainers, and tech news.">
+    <title>The Daily Brief · Oct 28, 2026</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="icon" href="../../../favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="../../../style.css">
+    <link rel="stylesheet" href="../../newsletter.css">
+</head>
+<body class="brief-page">
+    <a href="#main-content" class="skip-nav">Skip to main content</a>
+    <nav class="brief-nav">
+        <a href="../../../index.html">← App Hub</a>
+        <a href="../../">All issues</a>
+    </nav>
+    
+<header class="brief-masthead">
+    <p class="brief-eyebrow">THE DAILY BRIEF</p>
+    <h1>Wednesday, October 28, 2026</h1>
+    <ol class="brief-toc">
+        <li><a href="#current-events">Current Events</a></li><li><a href="#security-advice">Senior Security Advice</a></li><li><a href="#tech-news">Tech News</a></li>
+    </ol>
+</header>
+<main id="main-content" class="brief">
+    
+    <article class="brief-section" id="current-events">
+        <p class="brief-kicker">Current Events</p>
+        <h2>The NotPetya Attack</h2>
+        
+            
+            <p>One piece of accounting software, in one country, triggered roughly ten billion dollars in global damage in a single day - and it wasn't even built to make money. It was built to destroy. Here's how it actually happened.</p>
+<p>NotPetya looked like ransomware - it demanded payment and showed a ransom note. According to CISA's own alert on the malware, and corroborated by the UK and US governments' later attribution, it was never actually designed to be decrypted. It was a wiper, dressed up as ransomware, built to destroy data permanently.</p>
+<p>Here's the chain, step by step. The attackers compromised the update server for M.E.Doc, a tax and accounting program almost every business operating in Ukraine was required to use. On June 27th, 2017, a routine, automatic software update from that server delivered the malware directly onto customer machines - no phishing email, no user click, just a legitimate update process doing exactly what it was built to do. Once inside one machine on a network, NotPetya combined a leaked NSA exploit called EternalBlue with a credential-stealing tool called Mimikatz, letting it jump machine to machine across a network in minutes, encrypting master boot records as it went, even on systems that were fully patched, as long as one infected machine on that same network had valid credentials.</p>
+<p>Root cause, in one sentence: a single trusted software update channel, feeding a mandatory government-linked business tool, became the delivery mechanism for a weapon that didn't need a single human mistake once it was inside.</p>
+<p>What actually limited the damage, and this is the senior-level detail worth naming: NotPetya's own worm logic meant it spread fastest and hit hardest inside flat, poorly segmented internal networks. Companies like Maersk and Merck, by their own later accounts, got hit so badly specifically because their internal networks let one infected machine reach thousands of others with no internal boundary to stop it. The attack's reach stopped roughly at the edge of properly segmented networks and at systems that weren't reachable from an infected host at all - which is why the damage, global as it was, wasn't literally every computer on earth.</p>
+<p>So what does that mean for the kind of system a senior engineer is responsible for? A senior engineer treats network segmentation as a containment boundary, not a performance optimization - because this incident proves that patched, healthy machines can still get destroyed if nothing stops a compromised neighbor from reaching them with valid credentials. On a RHEL or AWS lab, that means practicing exactly that: confirming a compromised host in one subnet or security group genuinely cannot reach assets in another, instead of assuming a flat network is fine because everything in it happens to be patched.</p>
+
+        
+            <h3>Timeline</h3>
+            <table>
+<thead>
+<tr>
+<th>Date</th>
+<th>Event</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Prior to June 2017</td>
+<td>Attackers compromise the update-distribution server for M.E.Doc, a tax and accounting application mandated for use by businesses operating in Ukraine, per CISA's alert and multiple corroborating reports.</td>
+</tr>
+<tr>
+<td>June 27, 2017</td>
+<td>A malicious update is pushed through M.E.Doc's legitimate update channel; NotPetya begins spreading, combining the EternalBlue exploit and the Mimikatz credential-theft tool to move laterally across networks and encrypt master boot records.</td>
+</tr>
+<tr>
+<td>June 27–28, 2017</td>
+<td>Major multinational companies — including Maersk, Merck, FedEx's TNT Express subsidiary, and Mondelez — report significant operational disruption as the malware spreads through internal networks, largely outside Ukraine as well as within it.</td>
+</tr>
+<tr>
+<td>July 2017</td>
+<td>CISA (then US-CERT) publishes alert TA17-181A on the Petya/NotPetya malware, describing its behavior and providing indicators of compromise.</td>
+</tr>
+<tr>
+<td>February 2018</td>
+<td>The UK government publicly attributes the attack to the Russian military; the White House separately calls it the most destructive and costly cyberattack in history.</td>
+</tr>
+<tr>
+<td>January 2022 – May 2023</td>
+<td>Merck sues its insurers after they invoke a war exclusion to deny its roughly $1.4 billion NotPetya claim; a New Jersey trial court and, in May 2023, a state appeals court both rule the war exclusion does not apply, finding the clause requires actual military action.</td>
+</tr>
+</tbody>
+</table>
+<p><em>Note: company-level dollar figures in this script — Maersk's roughly $300 million estimate, Merck's roughly $870 million initial filing figure (later $1.3–1.4 billion in its insurance claim), and FedEx's roughly $400 million estimate — are company-reported figures from their own public statements and filings, not independently audited totals, and this script treats them as such. The often-cited global total of roughly $10 billion traces to a White House assessment reported by multiple outlets, not a detailed public accounting breakdown.</em></p>
+
+        
+            <h3>Control Failures</h3>
+            <table>
+<thead>
+<tr>
+<th>#</th>
+<th>Failure</th>
+<th>NIST SP 800-53 Rev 5 Control Family</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>A single mandatory software vendor's update-distribution channel was trusted implicitly by every downstream customer machine, with no verification that an incoming update matched a trusted source.</td>
+<td><strong>SI-7</strong> — Software, Firmware, and Information Integrity</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Internal networks at several affected companies were flat enough that one infected host could reach thousands of others with no internal boundary to stop lateral movement.</td>
+<td><strong>SC-7</strong> — Boundary Protection</td>
+</tr>
+<tr>
+<td>3</td>
+<td>A previously leaked exploit (EternalBlue) targeting an unpatched or unmitigated SMB vulnerability remained viable on enough machines to enable network-wide propagation.</td>
+<td><strong>SI-2</strong> — Flaw Remediation</td>
+</tr>
+<tr>
+<td>4</td>
+<td>Credential-harvesting tooling (Mimikatz) was able to extract reusable, often privileged credentials directly from infected machines' memory.</td>
+<td><strong>IA-5</strong> — Authenticator Management</td>
+</tr>
+<tr>
+<td>5</td>
+<td>No organization-level control appears to have limited how far a single compromised update, or a single compromised host, could reach before detection.</td>
+<td><strong>CM-7</strong> — Least Functionality</td>
+</tr>
+</tbody>
+</table>
+
+        
+            <h3>What Held</h3>
+            <ul>
+<li><strong>Network segmentation, where it existed, actually worked.</strong> Multiple post-incident accounts note that NotPetya's damage correlated directly with how flat or segmented a given company's internal network was — properly segmented environments and systems unreachable from an infected host were not swept up the same way, which is the clearest real-world argument for segmentation as a control rather than a best-practice slide.</li>
+<li><strong>Rapid vendor and government attribution and alerting.</strong> CISA's own alert, and the UK and US governments' public attribution to Russian state actors, came relatively quickly and gave defenders a documented technical basis to act on rather than speculation.</li>
+<li><strong>The legal system eventually enforced the insurance contract as written.</strong> Merck's insurers tried to avoid a roughly $1.4 billion payout using a war exclusion; courts at two levels rejected that argument because the policy language required actual military action, not just state-attributed cyber activity — a senior-level reminder that cyber risk and insurance language are now genuinely contested ground, not an afterthought.</li>
+</ul>
+
+        
+            <h3>Sources</h3>
+            <ul>
+<li><a href="https://cisa.gov/ncas/alerts/TA17-181A" target="_blank" rel="noopener noreferrer">TA17-181A: Petya Ransomware — CISA/US-CERT (primary)</a></li>
+<li><a href="https://boingboing.net/2018/08/22/andy-greenberg.html" target="_blank" rel="noopener noreferrer">The true story of NotPetya: a Russian cyberweapon that escaped and did $10B in worldwide damage — Boing Boing, summarizing Andy Greenberg's Wired reporting</a></li>
+<li><a href="https://freebeacon.com/national-security/white-house-russias-attack-ukraine-destructive-costly-cyber-attack-history/" target="_blank" rel="noopener noreferrer">White House: Russia's Cyber Attack on Ukraine Most 'Destructive and Costly' in History — Washington Free Beacon</a></li>
+<li><a href="https://cbsnews.com/losangeles/news/russia-cyber-attack-port-of-la" target="_blank" rel="noopener noreferrer">White House: Russia behind cyber-attack that shut down Port of LA — CBS News</a></li>
+<li><a href="https://www.guidepointsecurity.com/newsroom/give-notpetya-hit-merck-that-1-4b-appeals-court-tells-insurers/" target="_blank" rel="noopener noreferrer">Give NotPetya-hit Merck that $1.4B, appeals court tells insurers — GuidePoint Security</a></li>
+<li><a href="https://www.insurancejournal.com/news/east/2023/05/02/718771.htm" target="_blank" rel="noopener noreferrer">New Jersey Appeals Court Affirms War Exclusion Does Not Apply to Cyber Attack — Insurance Journal</a></li>
+<li><a href="https://www.cyberscoop.com/fedex-shareholder-suit-notpetya/" target="_blank" rel="noopener noreferrer">FedEx shareholder suit over NotPetya damages — CyberScoop</a></li>
+<li><a href="https://www.cfr.org/cyber-operations/notpetya" target="_blank" rel="noopener noreferrer">NotPetya — Council on Foreign Relations, Cyber Operations Tracker</a></li>
+</ul>
+<p><strong>Tomorrow's Thread:</strong> Day 41 moves to the cloud misconfiguration and IAM family — a documented case of SSRF-to-metadata-service abuse or an exposed object-storage incident not yet covered in this folder, a different family from today's software-supply-chain incident.</p>
+
+        
+    </article>
+    
+    <article class="brief-section" id="security-advice">
+        <p class="brief-kicker">Senior Security Advice</p>
+        <h2>Enable UEFI Secure Boot and Verify It at the Firmware Level</h2>
+        
+            <h3>The Advice</h3>
+            <p>Enable UEFI Secure Boot on every endpoint and server, and check its actual state in firmware rather than trusting that it shipped on.</p>
+
+        
+            <h3>Why It Matters</h3>
+            <p>Secure Boot exists to make sure a machine only runs boot software signed by a trusted authority, so nothing can quietly swap in malicious code before the operating system — and its antivirus, its logging, its every defense — even starts. A bootkit that gets in ahead of all of that is invisible to almost everything running afterward, because it loads first and can tamper with what the OS sees. The incident class this stops showed up for real with BlackLotus, a UEFI bootkit documented by security researchers in 2023 that could bypass Secure Boot on fully patched, fully up-to-date Windows 11 machines by exploiting a flaw in an older, still-trusted boot component. The National Security Agency's response made the scope of the problem explicit: in a December 2025 Cybersecurity Information Sheet on managing UEFI Secure Boot, NSA points to that incident plus other real-world Secure Boot failures — PKFail and BootHole among them — as proof that misconfigured or silently-disabled Secure Boot is a live, ongoing exposure, not a theoretical one. A machine with Secure Boot off, or left on a vendor's default trust list that was never reviewed, is a machine where a firmware-level compromise can persist through OS reinstalls and evade every tool running inside the operating system.</p>
+
+        
+            <h3>How to Implement It</h3>
+            <ol>
+<li>Set the fleet baseline through MDM, group policy, or your imaging pipeline so every new device ships with Secure Boot on, instead of depending on whatever a laptop vendor defaults to out of the box.</li>
+<li>For Windows fleets, confirm firmware mode and Secure Boot state directly: DISA's Windows 11 STIG (finding V-253272, high severity) requires Secure Boot enabled and checks it the same way you should — open System Information and confirm &quot;Secure Boot State&quot; reads &quot;On,&quot; not just that the setting exists in a policy document.</li>
+<li>Follow NSA's December 2025 guidance and periodically query and compare each device's actual Secure Boot configuration — including which certificates and keys it trusts — against your organization's expected baseline, since a device can have Secure Boot &quot;on&quot; while still trusting certificates it shouldn't.</li>
+<li>Pair Secure Boot with a TPM-backed measured boot where the hardware supports it, so tampering with the boot chain is detectable even if an attacker finds a way around Secure Boot's signature checks alone.</li>
+<li>Build recovery into the plan before you need it: know how to restore factory Secure Boot certificates or apply a vendor firmware update if a device is found misconfigured, rather than discovering that question during an actual incident.</li>
+</ol>
+
+        
+            <h3>The Pushback You&#39;ll Hear</h3>
+            <p>&quot;Our hardware is locked down and nobody has physical access anyway.&quot; The senior-engineer rebuttal: Secure Boot bypasses like BlackLotus didn't require physical access — they rode in on exploits and malicious loaders delivered the normal way, through a compromised update or an attacker who already has a foothold. Physical security reduces one attack path; it does nothing about a bootkit dropped by malware that's already running. The two controls solve different problems, and skipping Secure Boot because the office has badge readers leaves the boot chain wide open to anything that gets code execution first.</p>
+
+        
+            <h3>Sources</h3>
+            <ul>
+<li><a href="https://media.defense.gov/2025/Dec/11/2003841096/-1/-1/0/CSI_UEFI_SECURE_BOOT.PDF" target="_blank" rel="noopener noreferrer">CSI: UEFI Secure Boot (NSA Cybersecurity Information Sheet, December 2025)</a></li>
+<li><a href="https://www.nsa.gov/Press-Room/Press-Releases-Statements/Press-Release-View/Article/4356302/nsa-releases-unified-extensible-firmware-interface-secure-boot-guidance/" target="_blank" rel="noopener noreferrer">NSA Releases Unified Extensible Firmware Interface Secure Boot Guidance (NSA press release)</a></li>
+<li><a href="https://stigviewer.com/stig/microsoft_windows_11/2023-04-26/finding/V-253256" target="_blank" rel="noopener noreferrer">Microsoft Windows 11 STIG, Finding V-253272 / WN11-00-000010 - &quot;Secure Boot must be enabled&quot;</a></li>
+</ul>
+
+        
+    </article>
+    
+    <article class="brief-section" id="tech-news">
+        <p class="brief-kicker">Tech News</p>
+        
+        
+            
+            <p>A ransomware crew just squeezed a Japanese hosting company for roughly fifty million dollars — and when the company said no, they started publishing customer data today. If you run anything on hosted infrastructure you don't fully control, tonight's lead story is for you. Two stories: a hosting-provider breach that's hitting more than seventy brokerages at once, and a networking vendor patching its second actively-exploited zero-day in the same product in three months.</p>
+<p>Start with GMO Internet. According to Jiji Press and corroborated by BleepingComputer and Telecompaper, the Japanese company confirmed on October 21st that attackers planted malware across its Onamae-dot-com Desktop Cloud service — rented Windows servers that foreign-exchange traders use to run automated trading software around the clock. GMO says up to 26,739 servers were potentially exposed, though that's an exposure count, not a confirmed-compromise count. The attackers demanded roughly fifty million dollars in crypto; GMO refused, and this morning the attackers started publishing stolen customer data, with a threat to release more every day at noon. More than seventy brokerages and FX platforms were affected, including OANDA Japan, which froze withdrawals. GMO's own response is worth knowing: a flat goodwill payment to every user regardless of loss, compensation for verified trading losses, and on October 24th, an unprecedented request that the Japanese government invoke its new active-cyber-defense law for the first time ever. My read: this is a hosting-provider blast-radius problem before it's anything else — one shared environment, thousands of downstream customers who never audited it themselves, because they assumed &quot;rented&quot; meant &quot;someone else's job.&quot;</p>
+<p>Next up, a networking story with a pattern worth naming. Arista disclosed last week, per its own advisory corroborated by BleepingComputer and Network World, that its VeloCloud Orchestrator — the management console behind a lot of enterprise SD-WAN deployments — has a SQL-injection flaw, tracked as CVE-2026-114625, that lets any authenticated user escalate to a superuser-operator role. It's being actively exploited. Here's the pattern: this is the same product's second actively-exploited, maximum-attention vulnerability in three months — Arista patched a separate command-injection zero-day in that same orchestrator back in July, serious enough that CISA added it to its Known Exploited Vulnerabilities catalog within days. My take: when the same management plane turns up twice in one quarter, that's not bad luck, that's a signal to treat every orchestrator and controller in your environment as a standing target, not a one-time patch-and-forget.</p>
+<p>Tonight's thread: a shared system that nobody individually owns is exactly the system attackers are counting on nobody individually watching.</p>
+
+        
+            <h3>Sources</h3>
+            <ul>
+<li><a href="https://www.nippon.com/en/news/yjj2026102400301/" target="_blank" rel="noopener noreferrer">GMO Asks Govt to Take Active Cyber Defense Measures — Jiji Press / Nippon.com</a></li>
+<li><a href="https://bleepingcomputer.com/news/security/japans-onamae-desktop-cloud-hacked-up-to-27-000-servers-affected" target="_blank" rel="noopener noreferrer">Japan's Onamae Desktop Cloud hacked, up to 27,000 servers affected — BleepingComputer</a></li>
+<li><a href="https://www.telecompaper.com/news/gmo-internet-suspends-desktop-cloud-service-after-breach--1586879" target="_blank" rel="noopener noreferrer">GMO Internet suspends desktop cloud service after breach — Telecompaper</a></li>
+<li><a href="https://www.financemagnates.com/forex/brokers/oanda-japan-holds-withdrawals-after-hack-at-server-host-used-by-fx-traders/" target="_blank" rel="noopener noreferrer">OANDA Japan Holds Withdrawals After Hack at Server Host Used by FX Traders — Finance Magnates</a></li>
+<li><a href="https://www.networkworld.com/article/4226139/on-prem-velocloud-orchestrator-under-attack-only-some-versions-patched.html" target="_blank" rel="noopener noreferrer">On-prem VeloCloud Orchestrator under attack, only some versions patched — Network World</a></li>
+<li><a href="https://content.govdelivery.com/accounts/USDHSCISA/bulletins/42257f0" target="_blank" rel="noopener noreferrer">CISA Adds Two Known Exploited Vulnerabilities to Catalog (CVE-2026-16812, Arista VeloCloud Orchestrator) — CISA (primary)</a></li>
+</ul>
+
+        
+    </article>
+    
+    <section class="brief-subscribe" id="subscribe">
+    <h2>Get The Daily Brief by email</h2>
+    <p>One short email each morning. Unsubscribe anytime.</p>
+    <form action="https://buttondown.com/api/emails/embed-subscribe/cybercider" method="post">
+        <label for="bd-email">Email address</label>
+        <input type="email" name="email" id="bd-email" required autocomplete="email" placeholder="you@example.com">
+        <button type="submit">Subscribe</button>
+    </form>
+</section>
+</main>
+
+    <footer><p class="copyright">The Daily Brief · Eddie Camacho</p></footer>
+<!-- cf-web-analytics (managed by tools/inject_analytics.py) -->
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "f728a20b49cc4a0fbe02cde72f03301c"}'></script>
+</body>
+</html>
