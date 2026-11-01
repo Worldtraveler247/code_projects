@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="dark">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'self' https://static.cloudflareinsights.com; connect-src 'self' https://cloudflareinsights.com; img-src 'self' data:; form-action https://buttondown.com; base-uri 'none'; object-src 'none'">
+    <meta name="description" content="The Daily Brief for Monday, November 2, 2026: security incidents, senior security advice, engineering explainers, and tech news.">
+    <title>The Daily Brief · Nov 2, 2026</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="icon" href="../../../favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="../../../style.css">
+    <link rel="stylesheet" href="../../newsletter.css">
+</head>
+<body class="brief-page">
+    <a href="#main-content" class="skip-nav">Skip to main content</a>
+    <nav class="brief-nav">
+        <a href="../../../index.html">← App Hub</a>
+        <a href="../../">All issues</a>
+    </nav>
+    
+<header class="brief-masthead">
+    <p class="brief-eyebrow">THE DAILY BRIEF</p>
+    <h1>Monday, November 2, 2026</h1>
+    <ol class="brief-toc">
+        <li><a href="#current-events">Current Events</a></li><li><a href="#security-advice">Senior Security Advice</a></li><li><a href="#tech-news">Tech News</a></li>
+    </ol>
+</header>
+<main id="main-content" class="brief">
+    
+    <article class="brief-section" id="current-events">
+        <p class="brief-kicker">Current Events</p>
+        <h2>The Cloudflare November 2025 Outage</h2>
+        
+            
+            <p>A single database permissions change at one company briefly took a meaningful slice of the internet offline -- not because anyone attacked it, but because of what that change did to a file nobody was watching closely enough. Here's how one config file turned into a global outage, and what the company actually did about it afterward.</p>
+<p>On November 18th, 2025, Cloudflare -- a company that sits in front of a massive share of the web, handling traffic so sites load faster and survive attacks -- went down hard for several hours. According to Cloudflare's own incident report, the trigger was almost absurdly small: an engineering team made a permissions change to one of the company's internal database systems, called ClickHouse, meant to make data access more explicit and secure. That change had a side effect nobody caught before it shipped -- a routine query that builds a configuration file for Cloudflare's bot-detection system started returning duplicate rows, which more than doubled the size of that file.</p>
+<p>Here's the chain. That bot-management configuration file gets regenerated and pushed out across Cloudflare's entire global network every few minutes. The oversized file blew past a hard-coded limit of two hundred entries built into the core proxy software -- a limit that was never meant to be approached, let alone exceeded. The proxy's own code, written in Rust, hit that oversized file and triggered an unhandled error, a panic, which crashed the service outright. Because the bad file wasn't generated on every single cycle, the proxy would crash, recover when a good file came through, and then crash again minutes later when the bad one regenerated -- which is part of why Cloudflare's own engineers initially suspected they were looking at a massive attack rather than an internal mistake.</p>
+<p>Root cause, in one sentence: an internal permissions change altered a database query's behavior in a way nobody tested against the hard limit a downstream system depended on, and that downstream system had no graceful way to fail once the limit was breached.</p>
+<p>What actually held: Cloudflare's own team correctly ruled out an attack, traced the fault to the bot-management file specifically, stopped the automatic deployment pipeline that kept pushing the bad file out, and rolled back to a last-known-good version -- the fix that actually ended the outage. The company was also transparent fast, publishing a detailed root-cause writeup with exact timestamps within about a day, rather than leaving customers guessing.</p>
+<p>So what does this mean for a senior engineer's own environment? A senior engineer treats any auto-regenerated configuration file the same way they'd treat untrusted input -- validated before it ships, with a hard limit that fails safely instead of panicking, and a kill switch that can disable a feature globally without a full redeployment. On a RHEL or Podman lab, that means practicing exactly that: writing a config consumer that checks a size or schema limit before loading a file, instead of trusting that upstream will never produce something malformed.</p>
+
+        
+            <h3>Timeline</h3>
+            <table>
+<thead>
+<tr>
+<th>Date / Time (UTC)</th>
+<th>Event</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Nov 18, 2025, ~11:05</td>
+<td>A permissions change is deployed to a ClickHouse database cluster, altering how a query behaves.</td>
+</tr>
+<tr>
+<td>Nov 18, 2025, ~11:20–11:28</td>
+<td>The Bot Management feature file begins intermittently exceeding its 200-entry limit; the core proxy (FL2) begins panicking, causing global HTTP 5xx errors.</td>
+</tr>
+<tr>
+<td>Nov 18, 2025, 13:37</td>
+<td>Cloudflare engineers begin rolling back the Bot Management configuration to a last-known-good version.</td>
+</tr>
+<tr>
+<td>Nov 18, 2025, 14:24</td>
+<td>The automatic configuration-generation and deployment pipeline is stopped.</td>
+</tr>
+<tr>
+<td>Nov 18, 2025, ~14:30</td>
+<td>A correct configuration file is deployed globally; core traffic is largely restored.</td>
+</tr>
+<tr>
+<td>Nov 18, 2025, ~17:06</td>
+<td>All downstream, dependent services confirmed fully operational.</td>
+</tr>
+<tr>
+<td>Nov 19, 2025</td>
+<td>Cloudflare publishes a detailed public post-mortem with timestamps and root cause.</td>
+</tr>
+</tbody>
+</table>
+<p><em>Note: secondary sources vary slightly on the exact minute core traffic was first disrupted (11:20 vs. 11:28) and on the precise full-recovery time; this script anchors on the rollback and pipeline-stop timestamps, which are consistently reported.</em></p>
+
+        
+            <h3>Control Failures</h3>
+            <table>
+<thead>
+<tr>
+<th>#</th>
+<th>Failure</th>
+<th>NIST SP 800-53 Rev 5 Control Family</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>A database permissions change was deployed without testing its effect on a downstream consumer (the Bot Management file generator) that depended on specific query behavior.</td>
+<td><strong>CM-3</strong> — Configuration Change Control</td>
+</tr>
+<tr>
+<td>2</td>
+<td>The core proxy's code called an unwrap on a generated file that could exceed a hard-coded 200-entry limit, with no graceful degradation path.</td>
+<td><strong>SI-10</strong> — Information Input Validation</td>
+</tr>
+<tr>
+<td>3</td>
+<td>No automated check validated the generated configuration file's size or schema before it was propagated globally.</td>
+<td><strong>SI-7</strong> — Software, Firmware, and Information Integrity</td>
+</tr>
+<tr>
+<td>4</td>
+<td>The feature responsible for the crash had no global kill switch to disable it independently of a full rollback or redeploy.</td>
+<td><strong>CM-7</strong> — Least Functionality</td>
+</tr>
+<tr>
+<td>5</td>
+<td>Initial incident response was slowed because internal monitoring could not immediately distinguish an internal configuration fault from an external attack.</td>
+<td><strong>SI-4</strong> — System Monitoring</td>
+</tr>
+</tbody>
+</table>
+
+        
+            <h3>What Held</h3>
+            <ul>
+<li><strong>Correct, fast triage ruled out an attack.</strong> Cloudflare's team traced the intermittent crash pattern to the Bot Management file specifically rather than chasing an attack theory past the point it was useful.</li>
+<li><strong>Stopping the pipeline before fully understanding it bought time.</strong> Halting automatic configuration deployment at 14:24 prevented the bad file from continuing to propagate while the root cause was still being confirmed.</li>
+<li><strong>Rollback to last-known-good is what actually ended the outage.</strong> Not a code fix, not a redesign — reverting to a configuration that was already known to work.</li>
+<li><strong>Fast, detailed public disclosure.</strong> Publishing a timestamped root-cause writeup within about a day gave customers and the industry a real postmortem to learn from instead of a vague statement.</li>
+</ul>
+
+        
+            <h3>Sources</h3>
+            <ul>
+<li><a href="https://blog.cloudflare.com/18-november-2025-outage/" target="_blank" rel="noopener noreferrer">Cloudflare outage on November 18, 2025 (primary)</a></li>
+<li><a href="https://www.ilert.com/postmortems/cloudflare-global-outage-nov-2025" target="_blank" rel="noopener noreferrer">Cloudflare: Global outage caused by Bot Management config file — ilert postmortems</a></li>
+<li><a href="https://dev.to/om_shree_0709/inside-cloudflares-november-18-2025-outage-a-deep-dive-into-what-broke-the-internet-temporarily-2182" target="_blank" rel="noopener noreferrer">Inside Cloudflare's November 18, 2025 Outage — DEV Community</a></li>
+<li><a href="https://cyberinsider.com/cloudflare-blames-bot-management-system-for-yesterdays-widespread-outage/" target="_blank" rel="noopener noreferrer">Cloudflare blames bot management system for yesterday's widespread outage — CyberInsider</a></li>
+<li><a href="https://macmyths.com/cloudflare-outage-ends-as-ceo-apologizes-and-releases-post-mortem/" target="_blank" rel="noopener noreferrer">Cloudflare outage ends as CEO apologizes and releases post-mortem — MacMyths</a></li>
+</ul>
+<p><strong>Tomorrow's Thread:</strong> Day 46 moves to the AI and agent security family — a documented prompt-injection, model supply-chain, or agentic-misalignment incident not yet covered, a different family from today's operational outage.</p>
+
+        
+    </article>
+    
+    <article class="brief-section" id="security-advice">
+        <p class="brief-kicker">Senior Security Advice</p>
+        <h2>Block Legacy Authentication Protocols That Bypass MFA</h2>
+        
+            <h3>The Advice</h3>
+            <p>Block every legacy authentication protocol — POP, IMAP, SMTP AUTH, and older basic-auth sign-ins — at the identity layer, because these protocols cannot carry multi-factor authentication and quietly undo every MFA policy you think you've enforced.</p>
+
+        
+            <h3>Why It Matters</h3>
+            <p>Rolling out MFA feels like the job is done, but most identity platforms still let older mail and legacy sign-in protocols authenticate with just a username and password, since those protocols were built before MFA existed and have no way to prompt for a second factor. An attacker who steals or guesses a password can skip the MFA prompt entirely just by connecting through one of these old protocols instead of the normal sign-in page.</p>
+<p>This is exactly the gap behind password-spray and credential-stuffing campaigns: attackers try a stolen or common password against thousands of accounts, and because the login arrives over a legacy protocol, no MFA challenge ever fires. Microsoft's own Conditional Access documentation states that more than 97% of credential-stuffing attacks use legacy authentication, and CISA issued government-wide guidance directing agencies to retire Basic Authentication in Exchange Online specifically because it does not support MFA. Without this control, &quot;we enforced MFA everywhere&quot; is often false — it just feels true.</p>
+
+        
+            <h3>How to Implement It</h3>
+            <ol>
+<li>Pull sign-in logs filtered to legacy or basic-auth client types to see which accounts and applications are still using these protocols before touching anything.</li>
+<li>Build the blocking policy in report-only (audit) mode first, so you can see exactly who would be blocked without locking anyone out.</li>
+<li>Exclude one break-glass emergency account from the policy before enforcing it, so a misconfiguration can't lock out every admin at once.</li>
+<li>Switch the policy from report-only to enforced, blocking legacy protocols tenant-wide (or via security defaults if no Conditional Access license is available).</li>
+<li>Verify it's actually working: attempt a legacy-protocol sign-in with a test account after enforcement and confirm it's denied, then re-check the sign-in logs a week later to confirm legacy attempts are being blocked, not just logged.</li>
+</ol>
+
+        
+            <h3>The Pushback You&#39;ll Hear</h3>
+            <p>&quot;Some old scripts and devices only support basic auth — we'll break something.&quot; The rebuttal: that's exactly why step 1 and step 2 exist. You find those exceptions in the logs before enforcing, migrate them to modern authentication or app passwords scoped to that one use case, and then enforce. Leaving legacy auth open for everyone because one printer scanner needs it is trading a known, exploited attack path for the convenience of a device that can be reconfigured in an afternoon.</p>
+
+        
+            <h3>Sources</h3>
+            <ul>
+<li>Microsoft Learn, &quot;Block legacy authentication with Microsoft Entra Conditional Access&quot;: https://learn.microsoft.com/da-DK/azure/active-directory/conditional-access/block-legacy-authentication</li>
+<li>CISA, &quot;CISA Releases Guidance on Switching to Modern Auth in Exchange Online Before October 1&quot;: https://www.cisa.gov/news-events/alerts/2022/06/28/cisa-releases-guidance-switching-modern-auth-exchange-online-october</li>
+</ul>
+
+        
+    </article>
+    
+    <article class="brief-section" id="tech-news">
+        <p class="brief-kicker">Tech News</p>
+        
+        
+            
+            <p>If you've ever trusted that little padlock icon in your browser without thinking twice, tonight's lead story is exactly why that deserves a second look. A certificate authority just got caught issuing trust from keys that were never properly random in the first place — and fixing it meant emergency surgery on a programming language a huge share of cloud software is built in. Two stories tonight: a certificate authority's weak keys forcing Google, Microsoft, and the Go language itself into emergency action, and an Android flaw that let a zero-permission app quietly steal Microsoft work-account logins.</p>
+<p>Start with the certificate authority. According to The Hacker News and Mozilla's own bug tracker, corroborated by Dark Reading, a researcher reported on October 17th that eight intermediate certificate authorities operated by the firm eMudhra were generated with insufficient randomness, the result of what the company itself calls a flawed key ceremony from last year. Chrome and Microsoft both moved within days to stop trusting the affected roots outright. Then Go — the programming language behind a huge share of cloud infrastructure tooling — shipped emergency releases, 1.27.3 and 1.26.10, that reject any certificate chain running through those eight keys, with no setting to turn it off. eMudhra's board has since decided to exit the SSL and TLS certificate business entirely. Here's my read: patching the language isn't the same as fixing the problem — only software actually rebuilt with the new release picks up that protection, so anything still running on a pinned older toolchain, including plenty of containers and CI pipelines, stays exposed until someone goes back and rebuilds it.</p>
+<p>Next up, turning to mobile identity. According to Microsoft's own advisory, corroborated by The Hacker News, researchers disclosed CVE-2026-80097, a flaw in the Android version of Microsoft Authenticator that let an app requesting zero permissions impersonate a Teams sign-in prompt and capture a user's work-account token. Microsoft rates it 8.6 and fixed it in Authenticator version 6.2606.4246; it hasn't been seen exploited in the wild, but it does require the victim to actually complete a sign-in step inside the fake prompt. My take: &quot;requests no permissions&quot; tells you nothing about what an app can still talk a user into handing over voluntarily — on any fleet of personal devices touching corporate identity, that's exactly the gap policy has to assume exists.</p>
+<p>Tonight's thread: in both stories, the vulnerability wasn't really the headline bug — it was how much of the internet had to actually act before the fix meant anything.</p>
+
+        
+            <h3>Sources</h3>
+            <ul>
+<li><a href="https://thehackernews.com/2026/10/go-issues-emergency-update-blocking.html" target="_blank" rel="noopener noreferrer">Go issues emergency update blocking eMudhra certificates — The Hacker News</a></li>
+<li><a href="https://bugzilla.mozilla.org/show_bug.cgi?id=2018979" target="_blank" rel="noopener noreferrer">eMudhra: Transition Plan for Existing Dual-Purpose Roots — Mozilla Bugzilla</a></li>
+<li><a href="https://darkreading.com/cyber-risk/tech-giants-emudhra-certificates-compromised-keys" target="_blank" rel="noopener noreferrer">Tech Giants Block eMudhra Certificates Tied to 8 Compromised Keys — Dark Reading</a></li>
+<li><a href="https://thehackernews.com/2026/10/emudhra-to-exit-global-ssltls-business.html" target="_blank" rel="noopener noreferrer">eMudhra to Exit Global SSL/TLS Business — The Hacker News</a></li>
+<li><a href="https://thehackernews.com/2026/10/microsoft-authenticator-flaw-let.html" target="_blank" rel="noopener noreferrer">Microsoft Authenticator Flaw Let Permissionless Android Apps Steal Work Account Tokens — The Hacker News</a></li>
+</ul>
+
+        
+    </article>
+    
+    <section class="brief-subscribe" id="subscribe">
+    <h2>Get The Daily Brief by email</h2>
+    <p>One short email each morning. Unsubscribe anytime.</p>
+    <form action="https://buttondown.com/api/emails/embed-subscribe/cybercider" method="post">
+        <label for="bd-email">Email address</label>
+        <input type="email" name="email" id="bd-email" required autocomplete="email" placeholder="you@example.com">
+        <button type="submit">Subscribe</button>
+    </form>
+</section>
+</main>
+
+    <footer><p class="copyright">The Daily Brief · Eddie Camacho</p></footer>
+<!-- cf-web-analytics (managed by tools/inject_analytics.py) -->
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "f728a20b49cc4a0fbe02cde72f03301c"}'></script>
+</body>
+</html>
