@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="dark">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'self' https://static.cloudflareinsights.com; connect-src 'self' https://cloudflareinsights.com; img-src 'self' data:; form-action https://buttondown.com; base-uri 'none'; object-src 'none'">
+    <meta name="description" content="The Daily Brief for Tuesday, November 3, 2026: security incidents, senior security advice, engineering explainers, and tech news.">
+    <title>The Daily Brief · Nov 3, 2026</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="icon" href="../../../favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="../../../style.css">
+    <link rel="stylesheet" href="../../newsletter.css">
+</head>
+<body class="brief-page">
+    <a href="#main-content" class="skip-nav">Skip to main content</a>
+    <nav class="brief-nav">
+        <a href="../../../index.html">← App Hub</a>
+        <a href="../../">All issues</a>
+    </nav>
+    
+<header class="brief-masthead">
+    <p class="brief-eyebrow">THE DAILY BRIEF</p>
+    <h1>Tuesday, November 3, 2026</h1>
+    <ol class="brief-toc">
+        <li><a href="#current-events">Current Events</a></li><li><a href="#security-advice">Senior Security Advice</a></li><li><a href="#tech-news">Tech News</a></li>
+    </ol>
+</header>
+<main id="main-content" class="brief">
+    
+    <article class="brief-section" id="current-events">
+        <p class="brief-kicker">Current Events</p>
+        <h2>GitHub Copilot Prompt Injection RCE</h2>
+        
+            
+            <p>An AI coding assistant that can write files to your project folder without asking first sounds convenient -- until someone works out how to make it write the one file that turns off every safety check it has. That's exactly what happened to GitHub Copilot inside Visual Studio, and the fix for it tells you something bigger about what happens when you let an assistant act on your behalf.</p>
+<p>GitHub Copilot is Microsoft's AI coding assistant, built into Visual Studio and Visual Studio Code, and it can read a project's files, suggest code, and in some configurations, make changes directly. According to Microsoft's own security advisory, security researchers disclosed CVE-2025-53773 in August of 2025: a flaw that let an attacker's hidden instructions -- planted in a source code comment, a GitHub issue, or even a web page Copilot happened to read while helping with a task -- get treated by Copilot as something to act on, not just text to summarize.</p>
+<p>Here's the chain. Those hidden instructions told Copilot to edit one specific file in the project: a configuration file called dot-vscode-slash-settings-dot-json. Buried in there is a setting that controls whether Copilot has to stop and ask you before it runs a command on your machine. Multiple technical write-ups describe attackers flipping that setting to true -- turning on what researchers nicknamed &quot;YOLO mode&quot; -- which switches off every one of those confirmation prompts. Once that setting was live, Copilot would execute follow-on commands without asking permission at all, which is how a text-only prompt injection turned into actual code execution on the victim's own machine.</p>
+<p>Root cause, in one sentence: Copilot treated its own safety switch as just another file it was allowed to edit on someone else's say-so, instead of treating that specific setting as something only the human at the keyboard should ever be able to change.</p>
+<p>What actually held: Microsoft's fix, shipped in Visual Studio 2022 version 17.14.12, closed the specific path that let an untrusted prompt flip that setting without the user's own action. It's rated high severity, not maximum, precisely because the attacker still needed Copilot to ingest the malicious instruction in the first place -- this wasn't a flaw a stranger could fire at a machine with zero interaction from the user or their tools.</p>
+<p>So what does this mean for how a senior engineer treats agentic tools in their own environment? A senior engineer treats any setting that disables a human-in-the-loop confirmation as something that should never be writable by the tool itself -- only by the human, through a separate, protected path. On a RHEL or Podman lab, that means practicing exactly that: locking down a configuration file so the application reading it cannot also be the thing rewriting it.</p>
+
+        
+            <h3>Timeline</h3>
+            <table>
+<thead>
+<tr>
+<th>Date</th>
+<th>Event</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Before Aug 2025</td>
+<td>Security researchers identify that prompt injection delivered via source comments, GitHub issues, or web content can direct GitHub Copilot to edit <code>.vscode/settings.json</code>.</td>
+</tr>
+<tr>
+<td>August 12, 2025</td>
+<td>CVE-2025-53773 is published; Microsoft's Security Response Center advisory describes it as a command injection (CWE-77) vulnerability in GitHub Copilot and Visual Studio.</td>
+</tr>
+<tr>
+<td>August 2025 (Patch Tuesday)</td>
+<td>Microsoft ships the fix in Visual Studio 2022 version 17.14.12, closing the specific path that let an injected prompt flip the <code>chat.tools.autoApprove</code> setting.</td>
+</tr>
+<tr>
+<td>June 2026</td>
+<td>A separate write-up describes a related permission key, <code>chat.permissions.default</code>, governing a newer three-mode approval picker — reporting suggests scrutiny of AI-tool auto-approval settings continued after the original fix.</td>
+</tr>
+</tbody>
+</table>
+<p><em>Note: public reporting does not give an exact discovery date before the August 12, 2025 publication date, and secondary sources differ slightly on a CVSS sub-score (7.8 base, with one source listing a secondary 6.8 figure) — this script uses the CVE record's published 7.8 base score.</em></p>
+
+        
+            <h3>Control Failures</h3>
+            <table>
+<thead>
+<tr>
+<th>#</th>
+<th>Failure</th>
+<th>NIST SP 800-53 Rev 5 Control Family</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>Copilot treated instructions embedded in untrusted content (source comments, issues, web pages) as commands to act on rather than data to summarize.</td>
+<td><strong>SI-10</strong> — Information Input Validation</td>
+</tr>
+<tr>
+<td>2</td>
+<td>A security-relevant configuration setting (<code>chat.tools.autoApprove</code>) could be modified by the AI tool itself rather than being restricted to direct user action.</td>
+<td><strong>CM-3</strong> — Configuration Change Control</td>
+</tr>
+<tr>
+<td>3</td>
+<td>Once the auto-approve setting was enabled, no secondary control required human confirmation before executing shell commands.</td>
+<td><strong>AC-3</strong> — Access Enforcement</td>
+</tr>
+<tr>
+<td>4</td>
+<td>The feature that disables confirmation prompts (&quot;YOLO mode&quot;) existed as an available, discoverable setting rather than being restricted by default.</td>
+<td><strong>CM-7</strong> — Least Functionality</td>
+</tr>
+<tr>
+<td>5</td>
+<td>No distinction was enforced between code Copilot was asked to write and instructions Copilot found while reading project or web content on the user's behalf.</td>
+<td><strong>AC-6</strong> — Least Privilege</td>
+</tr>
+</tbody>
+</table>
+
+        
+            <h3>What Held</h3>
+            <ul>
+<li><strong>The attack still required user interaction.</strong> Copilot had to actually ingest the malicious content before anything could happen — this kept the flaw at High severity rather than zero-click maximum severity, and let Microsoft ship a targeted fix rather than an emergency out-of-band patch.</li>
+<li><strong>Microsoft's fix targeted the trust boundary, not just the symptom.</strong> Rather than only telling users to disable auto-approve, the patch closed the path that let an untrusted prompt flip that setting in the first place.</li>
+<li><strong>The flaw was caught and reported before mass exploitation.</strong> Public reporting describes no confirmed widespread exploitation in the wild, which is what disclosure-before-abuse is supposed to buy an ecosystem.</li>
+</ul>
+
+        
+            <h3>Sources</h3>
+            <ul>
+<li><a href="https://msrc.microsoft.com/update-guide/vulnerability/CVE-2025-53773" target="_blank" rel="noopener noreferrer">CVE-2025-53773 — GitHub Copilot and Visual Studio Remote Code Execution Vulnerability — MSRC / CVE record (primary)</a></li>
+<li><a href="https://db.gcve.eu/vuln/CVE-2025-53773" target="_blank" rel="noopener noreferrer">CVE-2025-53773 (GCVE-0-2025-53773)</a></li>
+<li><a href="https://cybersecuritynews.com/github-copilot-rce-vulnerability/" target="_blank" rel="noopener noreferrer">GitHub Copilot RCE Vulnerability — Cyber Security News</a></li>
+<li><a href="https://gbhackers.com/github-copilot-rce-vulnerability/" target="_blank" rel="noopener noreferrer">GitHub Copilot RCE Vulnerability — GBHackers</a></li>
+<li><a href="https://www.sentinelone.com/vulnerability-database/cve-2025-53773/" target="_blank" rel="noopener noreferrer">CVE-2025-53773 vulnerability database entry — SentinelOne</a></li>
+</ul>
+<p><strong>Tomorrow's Thread:</strong> Day 47 moves to the cloud misconfiguration and IAM family — a documented incident not yet covered in this folder, a different family from today's AI and agent security topic.</p>
+
+        
+    </article>
+    
+    <article class="brief-section" id="security-advice">
+        <p class="brief-kicker">Senior Security Advice</p>
+        <h2>Enable CloudTrail in Every Region and Protect the Logs</h2>
+        
+            <h3>The Advice</h3>
+            <p>Turn on a multi-Region CloudTrail trail with log file validation in every AWS account, and lock the log bucket down so no one on the team — including the admins — can quietly edit or delete what it records.</p>
+
+        
+            <h3>Why It Matters</h3>
+            <p>CloudTrail is the record of every API call made in an AWS account: who created a user, who opened a security group, who touched a bucket. Without it turned on everywhere, an attacker who gets into an account during business hours looks identical to an engineer doing their job, because there's no log to tell the difference. Without log file validation and a locked-down destination bucket, an attacker who does get in can simply edit or delete the trail to erase their own tracks — stopping or tampering with cloud audit logging after initial access is a well-documented step attackers take specifically because so many accounts never check whether logging is still running.</p>
+<p>The failure mode isn't dramatic until the day it is: a security team investigating a suspicious login discovers CloudTrail was quietly disabled in one region three weeks earlier, and now there's no record of what happened in between. A single-region trail has the same blind spot — anything that happens in a region nobody set up logging in simply never gets written down.</p>
+
+        
+            <h3>How to Implement It</h3>
+            <ol>
+<li>Create (or confirm) at least one multi-Region trail per account that captures management events, so activity in every region — including ones your team never deliberately uses — gets logged by default.</li>
+<li>Turn on log file validation on every trail. This adds digitally signed digest files that hash-chain each log, so any after-the-fact edit or deletion of a log is detectable, not invisible.</li>
+<li>Send the logs to a dedicated S3 bucket with versioning on, and write a bucket policy that denies delete and overwrite actions to everyone except a narrow break-glass role — the people running the trail should not be the people who can erase it.</li>
+<li>Forward the trail to CloudWatch Logs (or your SIEM) and set a CloudWatch alarm on <code>StopLogging</code> and <code>DeleteTrail</code> API calls, so disabling the trail itself generates an alert instead of silence.</li>
+<li>Verify it's actually working, not just configured: run <code>aws cloudtrail get-trail-status</code> and confirm <code>IsLogging</code> is true, check that digest files are landing in the bucket roughly hourly, and use an AWS Config rule (<code>cloudtrail-enabled</code>, <code>cloud-trail-log-file-validation-enabled</code>) to continuously flag any account that drifts out of compliance.</li>
+</ol>
+
+        
+            <h3>The Pushback You&#39;ll Hear</h3>
+            <p>&quot;Logging everything in every region is noisy and racks up cost for events we'll never look at.&quot; The rebuttal: management-event logging on a multi-Region trail is inexpensive compared to the cost of an unexplained incident, and you're not paying to read every event by hand — you're paying so the record exists when you need it. If cost is a real constraint, scope down expensive data-event logging (like S3 object-level access) to the buckets that actually need it, but management events stay on everywhere, because that's the layer that shows account takeovers and privilege changes — exactly what you can't afford to lose.</p>
+
+        
+            <h3>Sources</h3>
+            <ul>
+<li>AWS Security Hub User Guide, &quot;Security Hub CSPM controls for AWS CloudTrail&quot; (CIS AWS Foundations Benchmark control on multi-Region trail coverage): https://docs.aws.amazon.com/securityhub/latest/userguide/cloudtrail-controls.html</li>
+<li>AWS CloudTrail User Guide, &quot;Enabling log file integrity validation for CloudTrail&quot;: https://docs.aws.amazon.com/awscloudtrail/latest/userguide/cloudtrail-log-file-validation-enabling.html</li>
+</ul>
+
+        
+    </article>
+    
+    <article class="brief-section" id="tech-news">
+        <p class="brief-kicker">Tech News</p>
+        
+        
+            
+            <p>If you run a Cisco firewall or an Ivanti VPN appliance, the device sitting at your network's front door just became this week's biggest liability — and in one case, there's still no setting you can change to fully work around it. Two stories tonight: a Cisco firewall flaw that lets an attacker crash the device with no login at all, and two more zero-days piling onto an Ivanti Connect Secure attack chain that was already under active exploitation.</p>
+<p>Start with Cisco. According to Cisco's own security advisory, corroborated by Network World and Tech Insider, the company patched CVE-2026-76418 in late October — a flaw in the Remote Access SSL VPN service inside its Secure Firewall ASA and Firepower Threat Defense software. It scores 8.6, needs no valid login at all, and lets an unauthenticated attacker remotely force the device to reboot. Cisco says it's already being exploited in the wild, there's no workaround beyond disabling secondary authentication on the affected tunnel groups, and this is the second Cisco firewall VPN zero-day since August. Here's my read: a denial-of-service bug on a VPN gateway isn't just an inconvenience — that gateway is often the only thing standing between the internet and your internal network, and a device that can be forced to reboot on command is a device an attacker can use to mask a second, quieter move.</p>
+<p>Next up, turning to Ivanti. According to Help Net Security's reporting on CISA's own advisory, the agency added two more flaws, CVE-2026-111357 and CVE-2026-118527, to its Known Exploited Vulnerabilities catalog this week. These extend an attack chain first disclosed in October, when a privilege-escalation flaw let an unauthenticated attacker work toward full root access on Connect Secure appliances. Federal agencies had until today to patch one of the two; the other carries a November 13th deadline. My take: when a vendor keeps turning up new members of the same attack chain weeks after the first disclosure, that's usually not a sign the first patch failed — it's a sign the investigation correctly kept digging instead of declaring victory after one fix.</p>
+<p>Tonight's thread: the devices built to guard your network's edge are exactly where attackers are spending their time right now, and the fix in both cases is unglamorous — patch on CISA's clock, not your own.</p>
+
+        
+            <h3>Sources</h3>
+            <ul>
+<li><a href="https://www.networkworld.com/article/4242425/new-cisco-firewall-zero-day-being-actively-exploited-2.html" target="_blank" rel="noopener noreferrer">New Cisco firewall zero-day being actively exploited — Network World</a></li>
+<li><a href="https://tech-insider.org/cisco-asa-ftd-cve-2026-76418-ssl-vpn-zero-day-cvss-8-6-2026/" target="_blank" rel="noopener noreferrer">Cisco ASA/FTD CVE-2026-76418 SSL VPN Zero-Day, CVSS 8.6 — Tech Insider</a></li>
+<li><a href="https://dailysecurityreview.com/?p=45169" target="_blank" rel="noopener noreferrer">Cisco Patches Exploited ASA/FTD VPN Zero-Day CVE-2026-76418 — Daily Security Review</a></li>
+<li><a href="https://www.helpnetsecurity.com/2026/11/02/cisa-to-federal-agencies-remediate-exploited-ivanti-connect-secure-vulnerabilities-cve-2026-111357-cve-2026-118527/" target="_blank" rel="noopener noreferrer">CISA to federal agencies: Remediate exploited Ivanti Connect Secure vulnerabilities (CVE-2026-111357, CVE-2026-118527) — Help Net Security</a></li>
+<li><a href="https://securityweek.com/ivanti-patches-two-more-zero-days-exploited-in-connect-secure-attack-chain" target="_blank" rel="noopener noreferrer">Ivanti Patches Two More Zero-Days Exploited in Connect Secure Attack Chain — SecurityWeek</a></li>
+<li><a href="https://www.thehackerwire.com/vulnerability/CVE-2026-111357/" target="_blank" rel="noopener noreferrer">CVE-2026-111357 vulnerability analysis — The Hacker Wire</a></li>
+</ul>
+
+        
+    </article>
+    
+    <section class="brief-subscribe" id="subscribe">
+    <h2>Get The Daily Brief by email</h2>
+    <p>One short email each morning. Unsubscribe anytime.</p>
+    <form action="https://buttondown.com/api/emails/embed-subscribe/cybercider" method="post">
+        <label for="bd-email">Email address</label>
+        <input type="email" name="email" id="bd-email" required autocomplete="email" placeholder="you@example.com">
+        <button type="submit">Subscribe</button>
+    </form>
+</section>
+</main>
+
+    <footer><p class="copyright">The Daily Brief · Eddie Camacho</p></footer>
+<!-- cf-web-analytics (managed by tools/inject_analytics.py) -->
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "f728a20b49cc4a0fbe02cde72f03301c"}'></script>
+</body>
+</html>
