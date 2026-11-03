@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="dark">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'self' https://static.cloudflareinsights.com; connect-src 'self' https://cloudflareinsights.com; img-src 'self' data:; form-action https://buttondown.com; base-uri 'none'; object-src 'none'">
+    <meta name="description" content="The Daily Brief for Wednesday, November 4, 2026: security incidents, senior security advice, engineering explainers, and tech news.">
+    <title>The Daily Brief · Nov 4, 2026</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="icon" href="../../../favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="../../../style.css">
+    <link rel="stylesheet" href="../../newsletter.css">
+</head>
+<body class="brief-page">
+    <a href="#main-content" class="skip-nav">Skip to main content</a>
+    <nav class="brief-nav">
+        <a href="../../../index.html">← App Hub</a>
+        <a href="../../">All issues</a>
+    </nav>
+    
+<header class="brief-masthead">
+    <p class="brief-eyebrow">THE DAILY BRIEF</p>
+    <h1>Wednesday, November 4, 2026</h1>
+    <ol class="brief-toc">
+        <li><a href="#current-events">Current Events</a></li><li><a href="#security-advice">Senior Security Advice</a></li><li><a href="#tech-news">Tech News</a></li>
+    </ol>
+</header>
+<main id="main-content" class="brief">
+    
+    <article class="brief-section" id="current-events">
+        <p class="brief-kicker">Current Events</p>
+        <h2>Microsoft Power Apps Portals Data Exposure</h2>
+        
+            
+            <p>Thirty-eight million records -- names, Social Security numbers, COVID test results -- sat open to anyone on the internet for weeks, and nobody had to hack anything to get at them. The setting that exposed them was just... the default. Here's how a feature meant to make building apps easier turned into one of the biggest accidental data exposures of the decade.</p>
+<p>Microsoft's Power Apps is a low-code tool that lets organizations build quick web portals -- things like a COVID testing sign-up page, or a job-application form. According to the security research firm UpGuard, an analyst found in May of 2021 that many of these portals were pulling data through a feature called an OData feed, and that feed's access setting defaulted to open to anyone who could guess or find the right web address -- no login required.</p>
+<p>Here's the chain. A developer builds a portal, turns on a list to display records, and never touches the permissions, because the default already looks like it's working -- the list displays data, the app works, the ticket closes. What they didn't realize is that the same data was also reachable directly through the OData feed's raw address, completely bypassing whatever login screen sat in front of the portal itself. UpGuard notified Microsoft in June; by the time access was cut off in July, the exposure had touched at least forty- seven organizations, including airlines, a trucking company, and several US state governments, with some of the exposed data including Social Security numbers.</p>
+<p>Root cause, in one sentence: the tool's default configuration treated &quot;convenient for the developer&quot; and &quot;private by default&quot; as the same thing, when they were never the same thing at all.</p>
+<p>What actually held: nothing stopped the records from being public in the first place -- that's the honest version of this story. What limited the damage afterward was that a legitimate security research firm found it first, through ordinary internet scanning, and reported it responsibly instead of selling it or dumping it. Microsoft's fix wasn't a patch -- it was flipping the default itself, so new portals start locked down instead of starting open.</p>
+<p>So what does this mean for how a senior engineer treats a vendor's own defaults? A senior engineer never reads a default setting as a security decision someone already made on their behalf -- not on a RHEL box, not on an AWS account, not on any low-code platform. The standing question becomes: not &quot;does this work the way it shipped,&quot; but &quot;has someone actually verified what this default exposes, and proven it's closed.&quot; On a RHEL or Podman lab, that means treating every new service's default access the same way -- confirmed closed, never assumed closed.</p>
+
+        
+            <h3>Timeline</h3>
+            <table>
+<thead>
+<tr>
+<th>Date</th>
+<th>Event</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Before May 2021</td>
+<td>Organizations build Power Apps portals using OData list feeds, inheriting a default &quot;public&quot; access setting without reconfiguring it.</td>
+</tr>
+<tr>
+<td>May 24, 2021</td>
+<td>UpGuard's analyst discovers the exposed OData feeds during routine internet-wide scanning for misconfigured cloud assets.</td>
+</tr>
+<tr>
+<td>June 24, 2021</td>
+<td>UpGuard notifies Microsoft of the data exposure.</td>
+</tr>
+<tr>
+<td>By July 7, 2021</td>
+<td>Public access to the exposed data is cut off.</td>
+</tr>
+<tr>
+<td>August 17, 2021</td>
+<td>The State of Indiana, one of the affected organizations, publicly acknowledges the exposure.</td>
+</tr>
+<tr>
+<td>August 23, 2021</td>
+<td>UpGuard publishes its public report, &quot;By Design: How Default Permissions on Microsoft Power Apps Exposed Millions.&quot;</td>
+</tr>
+</tbody>
+</table>
+<p><em>Note: public reporting differs on the exact count of affected organizations — most outlets cite 47, though descriptions vary between &quot;businesses,&quot; &quot;entities,&quot; and government bodies — and on exactly which data categories applied to which organizations; this script uses the widely corroborated 38-million-record, 47-organization figures.</em></p>
+
+        
+            <h3>Control Failures</h3>
+            <table>
+<thead>
+<tr>
+<th>#</th>
+<th>Failure</th>
+<th>NIST SP 800-53 Rev 5 Control Family</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>The platform's default configuration for OData feed access was public rather than restricted, requiring an explicit opt-in to lock it down.</td>
+<td><strong>CM-6</strong> — Configuration Settings</td>
+</tr>
+<tr>
+<td>2</td>
+<td>No access control enforced authentication or authorization before serving records through the OData feed, even where the portal's own login screen implied one existed.</td>
+<td><strong>AC-3</strong> — Access Enforcement</td>
+</tr>
+<tr>
+<td>3</td>
+<td>Organizations had no process to verify that a deployed portal's actual data-access surface matched what they believed they had configured.</td>
+<td><strong>CA-7</strong> — Continuous Monitoring</td>
+</tr>
+<tr>
+<td>4</td>
+<td>The exposure was found by an external research firm's internet scan rather than by the affected organizations' own vulnerability management process.</td>
+<td><strong>RA-5</strong> — Vulnerability Monitoring and Scanning</td>
+</tr>
+<tr>
+<td>5</td>
+<td>Sensitive data categories, including Social Security numbers, were stored and served through a general-purpose, low-code data feature without additional handling controls.</td>
+<td><strong>SC-28</strong> — Protection of Information at Rest</td>
+</tr>
+</tbody>
+</table>
+
+        
+            <h3>What Held</h3>
+            <ul>
+<li><strong>Responsible discovery and disclosure.</strong> UpGuard found the exposure through routine research, not by targeting a specific victim, and followed a standard notify-then-publish disclosure timeline rather than exploiting or selling the access.</li>
+<li><strong>A fast cutoff once notified.</strong> Public access was closed within roughly two weeks of Microsoft being notified, limiting how long the window stayed open after the right people knew.</li>
+<li><strong>A systemic fix, not just individual cleanup.</strong> Microsoft's response changed the platform's own default behavior going forward, which protects every portal built afterward, not just the ones already found and fixed.</li>
+</ul>
+
+        
+            <h3>Sources</h3>
+            <ul>
+<li><a href="https://upguard.com/breaches/power-apps" target="_blank" rel="noopener noreferrer">By Design: How Default Permissions on Microsoft Power Apps Exposed Millions — UpGuard (primary)</a></li>
+<li><a href="https://www.darkreading.com/application-security/38m-records-exposed-via-microsoft-power-apps-misconfiguration" target="_blank" rel="noopener noreferrer">38M Records Exposed via Microsoft Power Apps Misconfiguration — Dark Reading</a></li>
+<li><a href="https://www.securityweek.com/misconfigured-microsoft-power-apps-portals-exposed-millions-records/" target="_blank" rel="noopener noreferrer">Misconfigured Microsoft Power Apps Portals Exposed Millions of Records — SecurityWeek</a></li>
+<li><a href="https://www.techrepublic.com/article/microsoft-power-apps-misconfiguration-exposes-data-from-38-million-records/" target="_blank" rel="noopener noreferrer">Microsoft Power Apps Misconfiguration Exposes Data From 38 Million Records — TechRepublic</a></li>
+</ul>
+<p><strong>Tomorrow's Thread:</strong> Day 48 moves to the software supply-chain family — a documented incident not yet covered in this folder, a different family from today's cloud misconfiguration and IAM topic.</p>
+
+        
+    </article>
+    
+    <article class="brief-section" id="security-advice">
+        <p class="brief-kicker">Senior Security Advice</p>
+        <h2>Replace Long-Lived CI/CD Credentials with Short-Lived OIDC Federation</h2>
+        
+            <h3>The Advice</h3>
+            <p>Stop storing cloud access keys as secrets in your CI/CD pipeline — federate the pipeline's identity through OpenID Connect so it receives short-lived, narrowly scoped credentials instead of a static key.</p>
+
+        
+            <h3>Why It Matters</h3>
+            <p>A cloud access key dropped into a CI/CD secrets store (GitHub Actions secrets, a Jenkins credentials store, a GitLab CI variable) is a long-lived, static credential. It works from anywhere, with no built-in expiration, until someone remembers to rotate it. If that key leaks — through a misconfigured build log, a malicious pull request that triggers an unreviewed workflow, or a compromised third-party action — the attacker doesn't just get into one build, they get standing access to whatever that key can touch in your cloud account.</p>
+<p>CISA and the NSA's joint guidance on defending CI/CD environments names insecure secrets management and insufficient pipeline access controls as core threats, and recommends minimizing long-term credentials and applying least privilege to CI/CD access. The incident class this prevents is the one where attackers pivot through a build pipeline's cloud credentials to reach production infrastructure — the pattern behind the software supply-chain compromises this guidance exists to stop.</p>
+
+        
+            <h3>How to Implement It</h3>
+            <ol>
+<li>Register the CI/CD provider (GitHub Actions, GitLab, etc.) as an OpenID Connect identity provider in IAM.</li>
+<li>Create a narrowly scoped IAM role whose trust policy checks the <code>sub</code> claim — restricting it to one repository, branch, or environment — rather than trusting the provider broadly.</li>
+<li>Update the pipeline to exchange its OIDC token for temporary credentials at runtime (for example, <code>aws-actions/configure-aws-credentials</code> with <code>role-to-assume</code>), then delete the stored long-lived access key secret entirely.</li>
+<li>Scope that role's permissions to exactly what the one job needs — push to one registry, deploy one stack — never broad or administrative access.</li>
+<li>Verify it's actually enforced, not just configured: try triggering the pipeline from an unapproved fork or branch and confirm the role assumption is denied, then check your cloud audit log for <code>AssumeRoleWithWebIdentity</code> events to confirm no leftover long-lived key is still in use.</li>
+</ol>
+
+        
+            <h3>The Pushback You&#39;ll Hear</h3>
+            <p>&quot;Our pipeline needs this key across multiple jobs and accounts, and OIDC is extra setup we don't have time for.&quot; The rebuttal: the trust-policy setup is a one-time cost per job, not an ongoing burden, and you can map separate <code>sub</code> conditions to separate roles for each job just as easily as you'd manage separate static keys — except the credentials expire in minutes instead of sitting there indefinitely, so a single leak stops being a standing compromise.</p>
+
+        
+            <h3>Sources</h3>
+            <ul>
+<li>CISA and NSA, &quot;CISA and NSA Release Joint Guidance on Defending Continuous Integration/Continuous Delivery (CI/CD) Environments&quot;: https://www.cisa.gov/news-events/alerts/2023/06/28/cisa-and-nsa-release-joint-guidance-defending-continuous-integrationcontinuous-delivery-cicd</li>
+<li>NSA/CISA Cybersecurity Information Sheet, &quot;Defending Continuous Integration/Continuous Delivery (CI/CD) Environments&quot;: https://media.defense.gov/2023/Jun/28/2003249466/-1/-1/0/CSI_DEFENDING_CI_CD_ENVIRONMENTS.PDF</li>
+<li>GitHub Docs, &quot;Security hardening your deployments: Configuring OpenID Connect in Amazon Web Services&quot;: https://docs.github.com/en/actions/how-tos/secure-your-work/security-harden-deployments/oidc-in-aws</li>
+</ul>
+
+        
+    </article>
+    
+    <article class="brief-section" id="tech-news">
+        <p class="brief-kicker">Tech News</p>
+        
+        
+            
+            <p>If you run an online store on Drupal's Commerce module, attackers are placing fraudulent orders on sites just like yours right now — no login required. And if your organization runs Oracle's E-Business Suite, the attackers testing a brand-new flaw in it haven't hit real targets yet, but they're already rehearsing on decoys built to look just like yours. Two stories tonight: a Drupal Commerce access-control flaw under active attack across tens of thousands of stores, and an Oracle E-Business Suite bug attackers are quietly probing before anyone's confirmed a real victim.</p>
+<p>Start with Drupal. According to Drupal's own security advisory, corroborated by SecurityWeek, BleepingComputer, and reporting on Canada's Cyber Centre bulletin, the open-source Commerce Core module shipped a highly critical access-bypass flaw, CVE-2026-118539, that lets an attacker tamper with orders without ever logging in — on any of the more than forty-two thousand sites running the module, regardless of how it's configured. Drupal's security team published the advisory on October 28th alongside thirty-eight other contributed-project fixes, and the vendor Centarro has already released order-audit checks because reports describe attackers placing fraudulent orders in live stores. Here's my read: an unauthenticated flaw in a commerce platform isn't just a data problem, it's a direct line to a store's money — and the fix here isn't exotic, it's patching to version 3.3.13 or 8.x-2.41 and then actually auditing recent orders, because the patch alone doesn't undo fraud that already happened.</p>
+<p>Next up, turning to Oracle. According to the security research firm Defused, corroborated by The Hacker News and Orca Security, Oracle's October Critical Patch Update — released October 20th — fixed CVE-2026-101767, a maximum-severity, 9.8-rated flaw in E-Business Suite's Application Object Library that lets an unauthenticated attacker chain a SQL injection into full remote code execution. One week later, on October 27th, Defused reported attackers already probing honeypots built to look like unpatched E-Business Suite installations — not real victims yet; Oracle hasn't tagged this one as exploited in the wild. My take: that gap between patch day and probing is exactly the window a senior engineer treats as borrowed time, not safety — the attackers testing the lock on a decoy today are testing it on a real door tomorrow.</p>
+<p>Tonight's thread: one of these flaws is already being used against real victims, the other is still in rehearsal — and the only difference between them, six months from now, might just be how fast you patched this week.</p>
+
+        
+            <h3>Sources</h3>
+            <ul>
+<li><a href="https://www.securityweek.com/drupal-commerce-core-vulnerability-exploited-against-online-stores/" target="_blank" rel="noopener noreferrer">Drupal Commerce Core Vulnerability Exploited Against Online Stores — SecurityWeek</a></li>
+<li><a href="https://www.bleepingcomputer.com/news/security/drupal-warns-of-critical-commerce-core-flaw-exploited-in-attacks" target="_blank" rel="noopener noreferrer">Drupal warns of critical Commerce Core flaw exploited in attacks — BleepingComputer</a></li>
+<li><a href="https://dailysecurityreview.com/?p=45165" target="_blank" rel="noopener noreferrer">Drupal Commerce Core Auth Bypass CVE-2026-118539 Under Attack — Daily Security Review</a></li>
+<li><a href="https://www.rescana.com/post/drupal-commerce-core-cve-2026-118539-access-bypass-exploited" target="_blank" rel="noopener noreferrer">Drupal Commerce Core CVE-2026-118539 Access Bypass Exploited — Rescana</a></li>
+<li><a href="https://thehackernews.com/2026/10/hackers-target-critical-oracle-e.html" target="_blank" rel="noopener noreferrer">Hackers target critical Oracle E-Business Suite flaw — The Hacker News</a></li>
+<li><a href="https://dailysecurityreview.com/?p=45057" target="_blank" rel="noopener noreferrer">Attackers Probe Oracle EBS SQL Injection CVE-2026-101767 — Daily Security Review</a></li>
+<li><a href="https://orca.security/?p=75653" target="_blank" rel="noopener noreferrer">What is CVE-2026-101767? — Orca Security</a></li>
+<li><a href="https://bleepingcomputer.com/news/security/hackers-now-scanning-systems-for-recently-patched-oracle-flaw" target="_blank" rel="noopener noreferrer">Hackers now scanning systems for recently-patched Oracle flaw — BleepingComputer</a></li>
+</ul>
+
+        
+    </article>
+    
+    <section class="brief-subscribe" id="subscribe">
+    <h2>Get The Daily Brief by email</h2>
+    <p>One short email each morning. Unsubscribe anytime.</p>
+    <form action="https://buttondown.com/api/emails/embed-subscribe/cybercider" method="post">
+        <label for="bd-email">Email address</label>
+        <input type="email" name="email" id="bd-email" required autocomplete="email" placeholder="you@example.com">
+        <button type="submit">Subscribe</button>
+    </form>
+</section>
+</main>
+
+    <footer><p class="copyright">The Daily Brief · Eddie Camacho</p></footer>
+<!-- cf-web-analytics (managed by tools/inject_analytics.py) -->
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "f728a20b49cc4a0fbe02cde72f03301c"}'></script>
+</body>
+</html>
