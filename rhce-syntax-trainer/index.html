@@ -1,0 +1,1487 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EX294 Syntax Trainer — Type the Playbook</title>
+<style>
+  :root{
+    --bg:#000; --panel:#0a0a0a; --panel2:#111; --line:#3a3a3a;
+    --text:#d6d6d6; --dim:#8a8a8a; --red:#ee0000; --green:#3fb950;
+    --amber:#e3b341; --bad:#f85149; --cyan:#39c5cf;
+  }
+  *{box-sizing:border-box}
+  html,body{background:var(--bg)}
+  body{margin:0;color:var(--text);font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;font-size:14px}
+  ::selection{background:#264f78;color:#fff}
+  header{background:#0a0a0a;border-bottom:2px solid var(--red);padding:8px 14px;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+  header .title{font-weight:700;font-size:16px;letter-spacing:.02em}
+  header .title span{color:var(--red)}
+  .pill{border:1px solid var(--line);padding:3px 10px;font-size:12px;color:var(--dim);background:#000}
+  .pill b{color:var(--text)}
+  .pill.time b{color:var(--amber)}
+  #ttybar{background:#161616;border-bottom:1px solid var(--line);color:var(--amber);padding:5px 14px;font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  main{display:flex;max-width:1460px;margin:0 auto;height:calc(100vh - 110px);height:calc(100dvh - 110px)}
+  nav{width:250px;flex:none;border-right:1px solid var(--line);background:var(--panel);padding:12px 8px;height:100%;box-sizing:border-box;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:#3a3a3a #0d0d0d}
+  nav::-webkit-scrollbar{width:8px}
+  nav::-webkit-scrollbar-thumb{background:#3a3a3a;border-radius:4px}
+  nav::-webkit-scrollbar-track{background:#0d0d0d}
+  nav h3{margin:2px 6px 10px;font-size:11px;letter-spacing:.1em;color:var(--dim)}
+  .qitem{padding:7px 8px;margin-bottom:2px;font-size:13px;color:var(--dim);border-left:3px solid transparent;white-space:nowrap;overflow:hidden}
+  .qitem small{display:block;font-size:11px;color:#5c5c5c;margin-left:18px}
+  .qitem .mk{display:inline-block;width:16px;color:var(--dim)}
+  .qitem.current{background:#1a1a1a;color:#fff;border-left-color:var(--red)}
+  .qitem.current .mk{color:var(--red)}
+  .qitem.done{color:var(--text)}
+  .qitem.done .mk{color:var(--green)}
+  .qitem.locked{opacity:.45}
+  .qitem{cursor:pointer}
+  .qitem:hover{background:#161616}
+  .navnote{color:#5c5c5c;font-size:11.5px;line-height:1.6;padding:8px 6px}
+  section{flex:1;padding:16px 20px;min-width:0;height:100%;box-sizing:border-box;overflow-y:auto;overscroll-behavior:contain}
+  .crumb{color:var(--dim);font-size:12.5px;margin-bottom:4px}
+  h1{font-size:19px;margin:0 0 4px;color:#fff;font-weight:700}
+  .spec{background:#050505;border:1px solid var(--line);border-left:3px solid var(--cyan);padding:12px 14px;margin:12px 0;line-height:1.65;font-size:13.5px}
+  .spec b{color:#fff}
+  .spec code{background:#1a1a1a;padding:0 5px;color:var(--amber);font-size:12.5px}
+  .fileblock{margin:18px 0 6px}
+  .filehead{background:#0a0a0a;border:1px solid var(--line);border-bottom:none;padding:6px 10px;font-size:12.5px;color:var(--dim)}
+  .filehead .prompt{color:var(--green)}
+  .filehead .cmd{color:#fff}
+  .filehead .lang{float:right;color:#5c5c5c}
+  .vimedit{display:flex;border:1px solid var(--line);background:#000;height:288px}
+  .gutter{background:#070707;color:#565656;text-align:right;padding:12px 7px 12px 9px;font-size:14px;line-height:21px;overflow:hidden;border-right:1px solid #262626;flex:none;min-width:44px;user-select:none}
+  .gutter span{display:block;will-change:transform}
+  .editwrap{position:relative;flex:1;overflow:hidden}
+  .hl{position:absolute;inset:0;pointer-events:none;z-index:0}
+  .hl-line{position:absolute;left:0;right:0;background:rgba(255,255,255,.055)}
+  .hl-col{position:absolute;top:0;bottom:0;background:rgba(255,255,255,.04)}
+  .syntax{position:absolute;top:0;left:0;width:max-content;min-width:100%;min-height:100%;margin:0;padding:12px 14px;font-family:inherit;font-size:14px;line-height:21px;white-space:pre;pointer-events:none}
+  textarea::placeholder{color:#4d4d4d}
+  .tk-key{color:#79c0ff}.tk-colon{color:#ff7b72;font-weight:700}.tk-str{color:#e5c07b}.tk-jinja{color:#c792ea}
+  .tk-num{color:#d19a66}.tk-bool{color:#56b6c2}.tk-com{color:#6a737d;font-style:italic}.tk-dash{color:#ff7b72}
+  .tk-doc{color:#ff7b72}.tk-cmd{color:#61afef}.tk-mod{color:#c792ea}.tk-flag{color:#d19a66}.tk-kw{color:#c792ea}.tk-opt{color:#56b6c2}
+  textarea{position:relative;z-index:1;width:100%;height:100%;background:transparent;color:transparent;border:none;padding:12px 14px;font-family:inherit;font-size:14px;line-height:21px;resize:none;tab-size:2;outline:none;white-space:pre;overflow:auto;caret-color:#fff}
+  .statusline{background:#1c1c1c;color:#cfcfcf;border:1px solid var(--line);border-top:none;padding:3px 10px;font-size:12px;display:flex;justify-content:space-between;gap:12px}
+  .statusline .mode{color:var(--amber);font-weight:700}
+  .statusline .pos{color:var(--amber)}
+  .cmdinput{position:static;width:100%;height:52px;background:#000;color:#e8e8e8;border:1px solid var(--line);border-top:none;padding:12px 14px;font-family:inherit;font-size:14px;line-height:21px;resize:none;outline:none;white-space:pre}
+  .helprow{display:flex;flex-wrap:wrap;gap:10px;margin:2px 0 12px}
+  .hbtn,.qitem{touch-action:manipulation}
+  .hbtn{background:#161b22;border:1px solid var(--line);color:var(--ink);padding:8px 14px;font:inherit;font-size:13px;cursor:pointer;border-radius:4px}
+  .hbtn:hover{border-color:var(--amber);color:var(--amber)}
+  .hintbox{display:none;border:1px dashed var(--amber);background:#1d1a12;color:#f2e3b3;padding:12px 14px;margin:0 0 12px;line-height:1.6;font-size:14px}
+  .hintbox.show{display:block}
+  .answerbox{display:none;border:1px solid #f85149;background:#160d0d;margin:0 0 12px}
+  .answerbox.show{display:block}
+  .anspath{color:var(--amber);font-size:12.5px;padding:8px 12px 0}
+  .ansfile pre{margin:0;padding:6px 12px 12px;color:#e8e8e8;white-space:pre-wrap;font-size:13.5px;line-height:1.55}
+  .ansnote{color:var(--dim);font-size:12.5px;padding:8px 12px;border-top:1px solid var(--line)}
+  .keys{color:var(--dim);font-size:12.5px;margin:10px 0;line-height:1.7}
+  .keys b{color:var(--amber);font-weight:400}
+  .keys .n{color:#fff}
+  .feedback{border:1px solid var(--line);padding:11px 14px;margin:12px 0;font-size:13.5px;line-height:1.65;display:none;background:#050505}
+  .feedback.show{display:block}
+  .feedback.bad{border-color:var(--bad);color:#f0c8c8}
+  .feedback.good{border-color:var(--green);color:#c8f0d0}
+  .feedback ul{margin:6px 0 2px;padding-left:20px}
+  .explain{display:none;background:#050505;border:1px solid var(--green);padding:14px 16px;margin:16px 0;line-height:1.7;font-size:13.5px}
+  .explain.show{display:block}
+  .explain h2{margin:0 0 8px;font-size:16px;color:var(--green)}
+  .explain h4{margin:13px 0 3px;color:#fff}
+  .explain code{background:#1a1a1a;padding:0 5px;color:var(--amber);font-size:12.5px}
+  .explain .tie{background:#0d0d0d;border-left:3px solid var(--amber);padding:9px 12px;margin-top:12px}
+  .explain .nextline{margin-top:14px;color:var(--amber)}
+  .finish{display:none;background:#050505;border:1px solid var(--green);padding:20px;text-align:center;margin:20px auto;max-width:900px}
+  .finish.show{display:block}
+  .finish .big{font-size:24px;margin-bottom:6px;color:var(--green)}
+  footer{color:#5c5c5c;font-size:11.5px;text-align:center;padding:12px}
+  @media (max-width:700px){
+    main{flex-direction:column}
+    nav{width:100%;border-right:none;border-bottom:1px solid var(--line);height:auto;max-height:36vh}
+    section{height:auto}
+    textarea,.syntax,.cmdinput{font-size:16px}
+    .vimedit{height:240px}
+    .qitem{padding:10px 8px}
+    .keys{display:none}
+    h1{font-size:17px}
+  }
+  @media (max-height:500px){
+    #ttybar{display:none}
+    main{height:calc(100vh - 54px);height:calc(100dvh - 54px)}
+    header{padding:4px 10px}
+    nav{width:208px;padding:8px 6px}
+    .navnote{display:none}
+    section{padding:10px 12px}
+    .vimedit{height:180px}
+    .spec{margin:8px 0;padding:8px 10px}
+    h1{font-size:16px;margin-bottom:2px}
+    .keys{display:none}
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="title">EX294 <span>SYNTAX TRAINER</span></div>
+  <div class="pill">[student@controller ~/ansible]$</div>
+  <div class="pill time">exam clock: <b id="clock">00:00</b> / 150:00</div>
+  <div class="pill">passed: <b id="score">0 / 9</b></div>
+</header>
+<div id="ttybar">The run starts at Q0 and goes in order — or click any question on the left to jump straight to it. Click an editor box to type. &nbsp;[Ctrl+Enter or F2] check &nbsp;[Alt+↑/↓] switch file &nbsp;[Alt+→] next &nbsp;[Alt+←] previous</div>
+<main>
+  <nav>
+    <h3>EXAM QUESTIONS</h3>
+    <div id="qlist"></div>
+    <p class="navnote">The exam builds on itself, so the run starts at Q0 and flows in order — but every question is open: click any of them to start there. Q0 sets up your editor first; every editor after that behaves exactly like the .vimrc you wrote: 2-space indents, auto-indent, line numbers, cursor line + column lit.</p>
+  </nav>
+  <section id="stage"></section>
+</main>
+<div class="finish" id="finish">
+  <div class="big">*** EXAM COMPLETE ***</div>
+  <p id="finishstats" style="line-height:1.7"></p>
+  <p style="color:var(--amber)">Press [Enter] to run it again from Q0.</p>
+</div>
+<footer>Built from your own direct-answer sheet (Q0 setup + Q1–Q8). Nothing here is the answer key — every file was typed by you, keyboard only.</footer>
+
+<script>
+"use strict";
+// ===PURE-START===
+// Each check: { re: RegExp } or { fn: function(text)->bool }, plus msg = the requirement, restated from the task.
+// Regexes are deliberately tolerant of quoting style, key order inside a task, and short vs FQCN module names.
+function near(text, anchorRe, tokens, span){
+  const flags = anchorRe.flags.includes("g") ? anchorRe.flags : anchorRe.flags + "g";
+  const re = new RegExp(anchorRe.source, flags);
+  let m;
+  while ((m = re.exec(text)) !== null) {
+    const win = text.slice(m.index, m.index + (span || 320));
+    if (tokens.every(t => t.test(win))) return true;
+    if (re.lastIndex === m.index) re.lastIndex++;
+  }
+  return false;
+}
+function lineWith(text, must, also){
+  return text.split("\n").some(l => must.test(l) && (!also || also.test(l)));
+}
+const QUESTIONS = [
+{
+  id:"Q0", title:"~/.vimrc", sub:"Editor setup — do this first",
+  files:[{ path:"/home/student/.vimrc", lang:"vim" }],
+  spec:`<b>Task.</b> Before any playbook work, set up your editor. Create <code>~/.vimrc</code> with a single <code>autocmd</code> line so that whenever vim opens a <b>YAML</b> file, these <b>buffer-local</b> settings apply:
+  <br>• tabstop <b>2</b> (<code>ts</code>), softtabstop <b>2</b> (<code>sts</code>), shiftwidth <b>2</b> (<code>sw</code>)
+  <br>• autoindent (<code>ai</code>), cursorcolumn (<code>cuc</code>), cursorline (<code>cul</code>), line numbers (<code>nu</code>), and <code>expandtab</code>.
+  <br>Type the one line exactly as you would in the exam.`,
+  checks:[[
+    { re:/^autocmd\s+FileType\s+yaml\s+setlocal\s+/m, msg:"One line: autocmd FileType yaml setlocal ..." },
+    { re:/\bts=2\b/, msg:"ts=2 (tabstop 2)" },
+    { re:/\bsts=2\b/, msg:"sts=2 (softtabstop 2)" },
+    { re:/\bsw=2\b/, msg:"sw=2 (shiftwidth 2)" },
+    { re:/\bai\b/, msg:"ai (autoindent)" },
+    { re:/\bcuc\b/, msg:"cuc (cursorcolumn)" },
+    { re:/\bcul\b/, msg:"cul (cursorline)" },
+    { re:/\bnu\b/, msg:"nu (line numbers)" },
+    { re:/\bexpandtab\b/, msg:"expandtab (spaces, never tab characters)" }
+  ]],
+  explain:`<h2>✅ Q0 complete — what you just did</h2>
+  <p>You configured vim itself. This one line fires an <b>autocmd</b> every time a buffer's filetype is detected as <code>yaml</code>, and applies the settings with <code>setlocal</code> — so they affect <i>that buffer only</i>, not every file you ever open.</p>
+  <h4>Token by token</h4>
+  <p>• <code>ts=2</code> tabstop — a tab character <i>displays</i> as 2 columns.<br>
+  • <code>sts=2</code> softtabstop — Tab and Backspace move in steps of 2 spaces, so indenting feels like tabs but is made of spaces.<br>
+  • <code>sw=2</code> shiftwidth — one level of indent (autoindent, <code>&gt;&gt;</code>, <code>&lt;&lt;</code>) is 2 spaces. YAML nesting is 2 spaces — now the editor agrees.<br>
+  • <code>ai</code> autoindent — pressing Enter starts the new line at the same indent as the current one. No more re-spacing every line by hand.<br>
+  • <code>cuc</code> cursorcolumn + <code>cul</code> cursorline — your current column and line are highlighted, forming crosshairs. In YAML, alignment <i>is</i> syntax; the crosshairs make a misaligned key visible at a glance.<br>
+  • <code>nu</code> — line numbers down the left side.<br>
+  • <code>expandtab</code> — the big one: the Tab key inserts <b>spaces</b>, never a tab character. A single real tab inside a playbook makes Ansible's YAML parser reject the whole file.</p>
+  <div class="tie"><b>How it ties in:</b> from Q1 onward, every editor in this trainer behaves exactly like this .vimrc — 2-space steps, auto-indent on Enter, line numbers in the gutter, your line and column lit. In the real exam, spend the first minute on this file and every playbook after it gets easier to write and to proofread.</div>`
+},
+
+{
+  id:"Q1", title:"ansible-navigator.yml", sub:"Execution environment config",
+  files:[{ path:"/home/student/ansible/ansible-navigator.yml", lang:"yaml" }],
+  spec:`<b>Task.</b> On <b>controller</b>, in the project root next to <code>ansible.cfg</code>, create <code>ansible-navigator.yml</code> so that navigator runs playbooks inside an execution environment. Requirements:
+  <br>• Top-level key <code>ansible-navigator</code>.
+  <br>• Under <code>execution-environment</code>: container engine <code>podman</code>, EE <code>enabled</code>, image <code>ghcr.io/ansible/creator-ee:v0.22.0</code>.
+  <br>• A <code>pull</code> block with policy <code>missing</code> and an arguments list containing <code>--tls-verify=false</code>.
+  <br>• <code>playbook-artifact</code> with its enable flag turned off.
+  <br>• Mode set to <code>stdout</code>.`,
+  checks:[[
+    { re:/ansible-navigator\s*:/, msg:"Top-level key ansible-navigator:" },
+    { re:/execution-environment\s*:/, msg:"An execution-environment: block" },
+    { re:/container-engine\s*:\s*podman/, msg:"container-engine: podman" },
+    { re:/enabled\s*:\s*(true|yes)/i, msg:"EE enabled: true" },
+    { re:/image\s*:\s*ghcr\.io\/ansible\/creator-ee:v0\.22\.0/, msg:"image: ghcr.io/ansible/creator-ee:v0.22.0" },
+    { re:/pull\s*:/, msg:"A pull: block under the execution environment" },
+    { re:/policy\s*:\s*missing/, msg:"pull policy: missing" },
+    { re:/--tls-verify=false/, msg:"pull arguments include --tls-verify=false" },
+    { re:/playbook-artifact\s*:/, msg:"A playbook-artifact: block" },
+    { re:/enable\s*:\s*(false|no)/i, msg:"playbook-artifact enable: false" },
+    { re:/mode\s*:\s*stdout/, msg:"mode: stdout" }
+  ]],
+  explain:`<h2>✅ Q1 complete — what you just did</h2>
+  <p>You wrote the config file that tells <code>ansible-navigator</code> <i>how</i> to run playbooks on this controller. Instead of executing modules with the controller's own Python and collections, navigator starts a <b>podman</b> container — an <b>execution environment (EE)</b> — from the image <code>ghcr.io/ansible/creator-ee:v0.22.0</code> and runs the playbook inside it.</p>
+  <h4>How it affects the Ansible environment</h4>
+  <p>• <code>enabled: true</code> is the switch: with it on, every <code>ansible-navigator run</code> happens inside the EE, so the environment is identical on any machine that has the image — no more "works on my controller".<br>
+  • <code>pull.policy: missing</code> means podman only downloads the image when it isn't already cached locally, and the <code>--tls-verify=false</code> argument relaxes TLS checks on that pull — needed in this lab because the registry path isn't fully trusted.<br>
+  • <code>playbook-artifact.enable: false</code> stops navigator from saving a JSON artifact of every run, and <code>mode: stdout</code> makes it print playbook output straight to your terminal like classic <code>ansible-playbook</code>, instead of opening the interactive TUI.</p>
+  <h4>The tech underneath</h4>
+  <p>Navigator sits on top of the same ansible-core engine; the EE is just a container image that bundles ansible-core, Python, and collections. This is Red Hat's direction for the exam and for AAP: content runs in a known, versioned container instead of whatever happens to be installed on the host.</p>
+  <div class="tie"><b>How it ties in:</b> every playbook you write from Q3 onward can be launched through navigator and will pick up this file automatically, because it lives in the project root next to <code>ansible.cfg</code>. Configuration first, content second — that's the exam's shape too.</div>`
+},
+{
+  id:"Q2", title:"repo_key.sh", sub:"Ad hoc commands — GPG key + YUM repositories",
+  files:[{ path:"/home/student/ansible/repo_key.sh", lang:"bash" }],
+  spec:`<b>2. Configure YUM Repositories Using Ad Hoc Commands</b><br>• Create a shell script called /home/student/ansible/repo_key.sh that uses Ansible ad hoc commands to import the GPG key below and configure the following YUM repositories on all managed hosts:<br>• GPG key to import: http://apt.sw.be/RPM-GPG-KEY.dag.txt<br>• Repository Name: BaseOS<br>• Description: BaseOS Repo<br>• Base URL: http://10.1.14.36/RHEL9/BaseOS<br>• GPG Check: Enabled<br>• GPG Key: http://apt.sw.be/RPM-GPG-KEY.dag.txt<br>• Enabled: Yes<br>• Repository Name: AppStream<br>• Description: AppStream Repo<br>• Base URL: http://10.1.14.36/RHEL9/AppStream<br>• GPG Check: Enabled<br>• GPG Key: http://apt.sw.be/RPM-GPG-KEY.dag.txt<br>• Enabled: Yes`,
+  checks:[[
+    { fn:t => lineWith(t, /rpm_key/, /state=present/) && /apt\.sw\.be\/RPM-GPG-KEY\.dag\.txt/.test(t), msg:"An rpm_key ad hoc command importing http://apt.sw.be/RPM-GPG-KEY.dag.txt with state=present" },
+    { fn:t => { const k = t.search(/rpm_key/); const r = t.search(/yum_repository/); return k >= 0 && r > k; }, msg:"Order matters: the GPG key is imported before the repos that check against it" },
+    { fn:t => lineWith(t, /yum_repository/, /name=['"]?BaseOS['"]?/) && lineWith(t, /BaseOS/, /10\.1\.14\.36\/RHEL9\/BaseOS/), msg:"A yum_repository command for BaseOS pointing at http://10.1.14.36/RHEL9/BaseOS" },
+    { fn:t => lineWith(t, /yum_repository/, /name=['"]?AppStream['"]?/) && lineWith(t, /AppStream/, /10\.1\.14\.36\/RHEL9\/AppStream/), msg:"A yum_repository command for AppStream pointing at http://10.1.14.36/RHEL9/AppStream" },
+    { re:/description=['"]?BaseOS Repo['"]?/, msg:"BaseOS description is 'BaseOS Repo'" },
+    { re:/description=['"]?AppStream Repo['"]?/, msg:"AppStream description is 'AppStream Repo'" },
+    { fn:t => (t.match(/gpgcheck=(true|yes|1)\b/g) || []).length >= 2, msg:"Both repos have GPG check ENABLED (gpgcheck=true)" },
+    { fn:t => (t.match(/gpgkey=/g) || []).length >= 2 && /gpgkey=['"]?http:\/\/apt\.sw\.be\/RPM-GPG-KEY\.dag\.txt/.test(t), msg:"Both repos set gpgkey to the imported key URL" },
+    { fn:t => lineWith(t, /BaseOS/, /enabled=(true|yes)/) && lineWith(t, /AppStream/, /enabled=(true|yes)/), msg:"Both repos are enabled (Enabled: Yes)" },
+    { fn:t => { const lines = t.split("\n").filter(l => /ansible\s+all\s/.test(l)); return lines.length >= 3 && lines.every(l => /\s-b(\s|$)/.test(l) || /--become/.test(l)); }, msg:"All three ad hoc commands target 'all' hosts and use -b (become)" }
+  ]],
+  explain:`<h2>✅ Q2 complete — what you just did</h2>
+  <p>You wrote a bootstrap script of <b>ad hoc commands</b> — one-off <code>ansible all -m &lt;module&gt; -a "args"</code> calls instead of a playbook. It does three things to <b>every managed node</b>: imports the repo signing key with <code>rpm_key</code>, then writes the two repo definitions with <code>yum_repository</code>.</p>
+  <h4>How it affects the Ansible environment</h4>
+  <p>• On each node, <code>yum_repository</code> creates <code>/etc/yum.repos.d/BaseOS.repo</code> and <code>AppStream.repo</code> pointing at the lab mirror. Until this script runs, the nodes have no usable package source for this lab.<br>
+  • <code>rpm_key</code> installs the public key into the node's RPM keyring <i>first</i> — that is what allows <code>gpgcheck=true</code> to pass on both repos. Repos defined with GPG checking but no imported key would make every later <code>dnf</code> task fail with signature errors.<br>
+  • <code>-b</code> (become) runs the modules as root — writing under <code>/etc/yum.repos.d</code> and the RPM keyring requires it. Your verification steps close the loop: <code>dnf repolist</code> shows both repos on every node, and <code>rpm -q gpg-pubkey</code> shows the imported key.</p>
+  <h4>The tech underneath</h4>
+  <p>Ad hoc commands push a single module over SSH with no playbook structure — right for one-time setup, wrong tool for ongoing state. Inside <code>-a</code> the pattern is space-separated <code>key=value</code> pairs, quoting any value that contains spaces, like the repo descriptions.</p>
+  <div class="tie"><b>How it ties in:</b> Q3's <code>dnf</code> installs — and even the definition of the "RPM Development Tools" package group — come from the metadata of the repos you just created. No Q2, no Q3.</div>`
+},
+{
+  id:"Q3", title:"packages.yml", sub:"One play, task-level when guards",
+  files:[{ path:"/home/student/ansible/packages.yml", lang:"yaml" }],
+  spec:`<b>3. Manage Packages and Package Groups Using a Playbook</b><br>• Create a playbook called /home/student/ansible/packages.yml<br>• The playbook must perform the following tasks:<br>• Install the php and mariadb packages on hosts in the dev, test, and prod groups<br>• Install the RPM Development Tools package group on hosts in the dev group<br>• Update all packages to the latest version on hosts in the dev group`,
+  checks:[[
+    { re:/hosts\s*:\s*all/, msg:"The play targets hosts: all" },
+    { re:/become\s*:\s*(true|yes)/i, msg:"become: true on the play" },
+    { fn:t => near(t, /(ansible\.builtin\.)?dnf\s*:/, [/-\s*php\b/, /-\s*mariadb\b/], 340), msg:"One dnf task installs php and mariadb together as a list" },
+    { re:/state\s*:\s*present/, msg:"Package installs use state: present" },
+    { fn:t => t.split("\n").some(l => /when\s*:/.test(l) && /groups\[['"]dev['"]\]/.test(l) && /groups\[['"]test['"]\]/.test(l) && /groups\[['"]prod['"]\]/.test(l)), msg:"A when condition testing membership in dev, test AND prod groups" },
+    { re:/@RPM Development Tools/, msg:"The group is named with the @ prefix: '@RPM Development Tools'" },
+    { fn:t => t.split("\n").filter(l => /when\s*:/.test(l) && /groups\[['"]dev['"]\]/.test(l) && !/test|prod/.test(l)).length >= 2, msg:"Two when conditions restricted to dev hosts only (group install + full update)" },
+    { re:/name\s*:\s*['"]?\*['"]?/, msg:"The update task targets name: '*'" },
+    { re:/state\s*:\s*latest/, msg:"The update task uses state: latest" }
+  ]],
+  explain:`<h2>✅ Q3 complete — what you just did</h2>
+  <p>You wrote your first real playbook: <b>one play</b> (<code>hosts: all</code>, <code>become: true</code>) whose three <code>dnf</code> tasks each carry a <b>task-level <code>when</code></b> guard, so a single play safely covers hosts that need different things.</p>
+  <h4>How it affects the Ansible environment</h4>
+  <p>• The guard <code>inventory_hostname in groups['dev'] or ...</code> is evaluated <b>per host, per task</b>. servera (dev) runs all three tasks; serverb (test+prod) runs only the php/mariadb task; serverd (balancers) skips everything — same playbook, different outcomes, decided by inventory membership.<br>
+  • Putting php and mariadb in <b>one</b> dnf task installs them in a single transaction, so dependencies resolve together.<br>
+  • <code>name: '*'</code> with <code>state: latest</code> means "every installed package, brought current" — very different from <code>present</code>, which only guarantees existence.</p>
+  <h4>The tech underneath</h4>
+  <p><code>groups</code> is a magic variable — a dictionary of every inventory group and its hosts — and <code>inventory_hostname</code> is the host's name as the controller knows it. The <code>@</code> in <code>'@RPM Development Tools'</code> tells dnf "this is a package group, not a package"; the group itself is defined in the repo metadata from Q2, which is why this task can't work before repo.sh has run.</p>
+  <div class="tie"><b>How it ties in:</b> the php stack you just installed on the prod hosts (serverb, serverc) is what Q7's Apache role and Q8's phpinfo role serve content with later. And notice the pattern — one play + guards — because Q8 uses the same trick with <code>group_names</code>.</div>`
+},
+{
+  id:"Q3.1", title:"Run packages.yml", sub:"Syntax-check, then run it", cmd:true,
+  files:[{ path:"shell", lang:"cmd" }],
+  spec:`<b>3.1. Run the playbook.</b><br>• On the controller, from <code>~/ansible</code>: first run a <b>syntax check</b> on <code>packages.yml</code>, and only if it passes, run the playbook itself.<br>• Chain both steps in <b>one command line</b>, so the run happens only when the check succeeds.<br>• Type the command at the prompt and press <b>Enter</b> to run it.`,
+  checks:[[
+    { re:/ansible-playbook\s+packages\.yml\s+--syntax-check/, msg:"First step: ansible-playbook packages.yml --syntax-check" },
+    { re:/&&/, msg:"The two steps are chained with &&" },
+    { fn:t => { const a = t.search(/--syntax-check/); const b = t.indexOf("&&"); const c = b < 0 ? -1 : t.slice(b).search(/ansible-playbook\s+packages\.yml/); return a >= 0 && b > a && c >= 0; }, msg:"After the &&: ansible-playbook packages.yml again (the real run)" }
+  ]],
+  explain:`<h2>✅ Q3.1 complete — what you just did</h2>
+  <p>You ran the playbook the exam way: <b>prove it parses, then execute it</b>. <code>--syntax-check</code> makes ansible-playbook load <code>packages.yml</code>, parse the YAML and the play structure, and report errors — without connecting to a single host. Ten seconds of insurance against burning exam minutes on a typo.</p>
+  <h4>How it affects the Ansible environment</h4>
+  <p>• The <code>&amp;&amp;</code> is shell logic: the second command runs <b>only if the first exits 0</b>. A failed syntax check stops the line cold — nothing half-runs.<br>
+  • The real run then connects to the inventory and applies Q3's guards host by host: php and mariadb land on dev, test, and prod; the RPM Development Tools group and the full package update happen on dev only.</p>
+  <div class="tie"><b>How it ties in:</b> a green playbook run is a claim, not proof. Q3.2 verifies the result on the actual hosts — the run/verify rhythm that runs through this whole exam.</div>`
+},
+{
+  id:"Q3.2", title:"Verify the dev group install", sub:"Ad hoc check — dnf group list", cmd:true,
+  files:[{ path:"shell", lang:"cmd" }],
+  spec:`<b>3.2. Verify it worked.</b><br>• Using an <b>ad hoc</b> command aimed at the <b>dev</b> hosts only, run <code>dnf</code> through the <code>command</code> module to list the package groups that are actually installed.<br>• You are proving Q3's second task — the RPM Development Tools group — really landed on dev.<br>• Type the command at the prompt and press <b>Enter</b> to run it.`,
+  checks:[[
+    { re:/ansible\s+dev\b/, msg:"The ad hoc command targets the dev hosts (ansible dev ...)" },
+    { re:/-m\s+(ansible\.builtin\.)?command\b/, msg:"It uses the command module (-m ansible.builtin.command)" },
+    { re:/-a\s+['"]?dnf\s+group\s+list\s+--installed/, msg:"The -a argument runs: dnf group list --installed" }
+  ]],
+  explain:`<h2>✅ Q3.2 complete — what you just did</h2>
+  <p>You verified Q3 instead of trusting it. The ad hoc command hits <b>only the dev group</b>, loads the <code>command</code> module, and runs <code>dnf group list --installed</code> on the host itself — the output should list the RPM Development Tools group, proving the playbook's second task changed what it claimed to change.</p>
+  <h4>How it affects the Ansible environment</h4>
+  <p>• Nothing is modified — this is a read-only check. That is the point of verification: independent evidence, gathered with a different tool than the one that made the change.<br>
+  • Note the module choice: <code>command</code> runs the binary directly with no shell, so no pipes or redirects — fine here, because this dnf command needs neither. When you do need shell features, that is the <code>shell</code> module's job.</p>
+  <div class="tie"><b>How it ties in:</b> run → verify is the rhythm of the whole exam: Q2 ended with repolist checks, Q7 ends with curl, Q8 with curl loops. On to Q4 — Galaxy collections.</div>`
+},
+{
+  id:"Q4", title:"Create the collections directory", sub:"cd, mkdir -p, vim — one line", cmd:true,
+  files:[{ path:"shell", lang:"cmd" }],
+  spec:`<b>4. Install Collections Using Ansible Galaxy — setup first.</b><br>• The requirements file lives at <code>/home/student/ansible/collections/requirements.yml</code> — but the <code>collections</code> directory does not exist yet, and vim cannot save a file into a directory that isn't there.<br>• In <b>one chained command line</b>: change into the ansible project directory, create the <code>collections</code> directory (with parents, and no error if it already exists), then open <code>collections/requirements.yml</code> in vim.<br>• Type the command at the prompt and press <b>Enter</b> to run it.`,
+  checks:[[
+    { re:/cd\s+(~\/ansible|\/home\/student\/ansible)/, msg:"First: cd into the ansible project directory" },
+    { re:/mkdir\s+-p\s+(\.\/)?collections\b/, msg:"Then: mkdir -p collections (the -p matters)" },
+    { re:/vim\s+(\.\/)?collections\/requirements\.yml/, msg:"Then: vim collections/requirements.yml" },
+    { fn:t => { const a = t.search(/cd\s/), b = t.search(/mkdir/), c = t.search(/vim\s/); return a >= 0 && b > a && c > b && (t.match(/&&/g) || []).length >= 2; }, msg:"All three steps in order, chained with &&" }
+  ]],
+  explain:`<h2>✅ Q4 complete — what you just did</h2>
+  <p>You did the setup beat the exam expects before any file exists: got into the project directory, created <code>collections/</code>, and opened the requirements file in vim — one line, three steps.</p>
+  <h4>How it affects the Ansible environment</h4>
+  <p>• <code>mkdir -p</code> creates <code>collections</code> <i>and any missing parents</i>, and — just as important mid-exam — it exits successfully if the directory already exists. No error, no second-guessing what state the controller is in.<br>
+  • The directory has to come first: vim will happily let you type a whole buffer for a path in a nonexistent directory, then fail the save with <code>E212: Can't open file for writing</code>. That is a classic way to lose exam minutes and work.<br>
+  • Chaining with <code>&amp;&amp;</code> means a failed step stops the line — you never end up editing in the wrong directory.</p>
+  <div class="tie"><b>How it ties in:</b> the editor is already open on the right file — Q4.1 is filling in the requirements themselves. The same beat (mkdir -p, then vim) comes back for the roles directory in Q6.</div>`
+},
+{
+  id:"Q4.1", title:"collections/requirements.yml", sub:"Collection dependencies",
+  files:[{ path:"/home/student/ansible/collections/requirements.yml", lang:"yaml" }],
+  spec:`<b>4. Install Collections Using Ansible Galaxy</b><br>• Use a requirements file located at /home/student/ansible/collections/requirements.yml to download and install the following Ansible Galaxy collections to /home/student/ansible/collections:<br>• community.general<br>• ansible.posix<br>• ansible.netcommon`,
+  checks:[[
+    { re:/^\s*collections\s*:/m, msg:"Top-level collections: key" },
+    { re:/-\s*name\s*:\s*community\.general/, msg:"List entry: community.general" },
+    { re:/-\s*name\s*:\s*ansible\.posix/, msg:"List entry: ansible.posix" },
+    { re:/-\s*name\s*:\s*ansible\.netcommon/, msg:"List entry: ansible.netcommon" }
+  ]],
+  explain:`<h2>✅ Q4 complete — what you just did</h2>
+  <p>You declared the project's <b>collection</b> dependencies. A requirements file turns "someone's controller happens to have these plugins" into a reproducible install: <code>ansible-galaxy collection install -r collections/requirements.yml -p collections</code> downloads the three collections into the project's own <code>collections/</code> directory, where <code>ansible.cfg</code> can find them.</p>
+  <h4>How it affects the Ansible environment</h4>
+  <p>• Collections are how Ansible ships content — modules, roles, plugins — outside of ansible-core itself. <code>ansible.posix</code> carries the <code>firewalld</code> module, <code>community.general</code> a huge library of general-purpose modules, and <code>ansible.netcommon</code> the network device modules.<br>
+  • Installing with <code>-p collections</code> keeps them <b>project-local</b>: anyone who clones this project gets the same content versions, and this project's playbooks can't be broken by a system-wide change.</p>
+  <h4>The tech underneath</h4>
+  <p>The <code>namespace.name</code> format (e.g. <code>ansible.posix</code>) is the collection's identity on Galaxy, and modules inside it get fully qualified names like <code>ansible.posix.firewalld</code> — that FQCN is exactly what you'll type in Q7 and Q8.</p>
+  <div class="tie"><b>How it ties in:</b> without this question, Q7's and Q8's firewall tasks would die with "couldn't resolve module/action firewalld". Collections are the exam's dependency layer — Q4 serves the back half of the exam.</div>`
+},
+{
+  id:"Q4.2", title:"Install the collections", sub:"ansible-galaxy collection install", cmd:true,
+  files:[{ path:"shell", lang:"cmd" }],
+  spec:`<b>4.2. Install the collections.</b><br>• On the controller: change into the ansible project directory, then use <code>ansible-galaxy</code> to install the collections listed in the requirements file you just wrote.<br>• Install them into the project's local <code>collections</code> directory — that is where this project's configuration looks for them, not your home directory's default location.<br>• Chain both commands on <b>one line</b> with <code>&amp;&amp;</code>, and press <b>Enter</b> to run it.`,
+  checks:[[
+    { re:/cd\s+(~\/ansible|\/home\/student\/ansible)/, msg:"First: cd into the ansible project directory" },
+    { re:/ansible-galaxy\s+collection\s+install\b/, msg:"Then: ansible-galaxy collection install" },
+    { re:/-r\s+(\.\/)?collections\/requirements\.yml/, msg:"It reads the requirements file (-r collections/requirements.yml)" },
+    { re:/-p\s+(\.\/)?collections\/?(\s|$)/, msg:"It installs into the local collections directory (-p collections)" },
+    { fn:t => { const a = t.search(/cd\s/), b = t.search(/ansible-galaxy/); return a >= 0 && b > a; }, msg:"The cd comes before the install" }
+  ]],
+  explain:`<h2>✅ Q4.2 complete — what you just did</h2>
+  <p>You turned the requirements file into installed code. <code>ansible-galaxy collection install</code> read <code>collections/requirements.yml</code>, downloaded community.general, ansible.posix, and ansible.netcommon from Galaxy, and unpacked them locally.</p>
+  <h4>How it affects the Ansible environment</h4>
+  <p>• The <code>-p collections</code> flag is the whole game: it installs into <code>~/ansible/collections</code>, the path this project's <code>ansible.cfg</code> points <code>collections_path</code> at. Skip it and the collections land in <code>~/.ansible/collections</code> instead — installed, but invisible to your playbooks, which then die with "couldn't resolve module/action".<br>
+  • The <code>-r</code> file is what makes this repeatable: the list lives in version control with the project, not in your memory of what you once typed.</p>
+  <div class="tie"><b>How it ties in:</b> Q7 and Q8 call the ansible.posix firewalld module — it only resolves because of this install. Q4.3 proves the collections actually landed where Ansible looks.</div>`
+},
+{
+  id:"Q4.3", title:"Verify the collections", sub:"ansible-galaxy collection list", cmd:true,
+  files:[{ path:"shell", lang:"cmd" }],
+  spec:`<b>4.3. Verify the install.</b><br>• List the collections that are installed in the project's local <code>collections</code> directory.<br>• You are confirming that community.general, ansible.posix, and ansible.netcommon actually landed where Ansible will look for them — before any playbook depends on them.<br>• Type the command at the prompt and press <b>Enter</b> to run it.`,
+  checks:[[
+    { re:/ansible-galaxy\s+collection\s+list\b/, msg:"The command is ansible-galaxy collection list" },
+    { re:/-p\s+(\.\/)?collections\/?(\s|$)/, msg:"It looks in the local collections directory (-p collections)" }
+  ]],
+  explain:`<h2>✅ Q4.3 complete — what you just did</h2>
+  <p>You verified the install before anything depended on it. <code>ansible-galaxy collection list -p collections</code> prints every collection under that path with its version — community.general, ansible.posix, and ansible.netcommon should all be there.</p>
+  <h4>How it affects the Ansible environment</h4>
+  <p>• Nothing changes — this is evidence-gathering. The <code>-p</code> matters as much here as in the install: without it, the list shows the default search paths, which can look fine while the project's own directory is empty.<br>
+  • This is the cheapest debugging you will ever do on this exam. A missing collection discovered now costs ten seconds; discovered in Q8 it costs a playbook rewrite under time pressure.</p>
+  <div class="tie"><b>How it ties in:</b> same rhythm as Q3.1 → Q3.2 — do the step, then prove it with an independent command. Q4 is now fully closed: directory, file, install, verify. On to Q5, the timesync role.</div>`
+},
+{
+  id:"Q5", title:"Install RHEL System Roles", sub:"sudo dnf install rhel-system-roles", cmd:true,
+  files:[{ path:"shell", lang:"cmd" }],
+  spec:`<b>5. Configure Time Synchronization — install the roles first.</b><br>• The timesync role is one of Red Hat's system roles, and the package that provides them is not installed on the controller yet.<br>• Run dnf as root (sudo) and install the <code>rhel-system-roles</code> package, non-interactively, so the install never stops to ask for confirmation.<br>• Type the command at the prompt and press <b>Enter</b> to run it.`,
+  checks:[[
+    { re:/sudo\s+dnf\s+install\b/, msg:"The install runs as root: sudo dnf install" },
+    { re:/\s-y\b/, msg:"The -y flag is there, so dnf never stops to ask" },
+    { re:/\brhel-system-roles\b/, msg:"The package name is rhel-system-roles" }
+  ]],
+  explain:`<h2>✅ Q5 complete — what you just did</h2>
+  <p>You installed the <b>RHEL System Roles</b> package on the controller. It bundles Red Hat's official roles — timesync, selinux, firewall, storage, and more — so the role Q5.2 calls actually exists on this machine.</p>
+  <h4>How it affects the Ansible environment</h4>
+  <p>• The package lands the roles as the <code>redhat.rhel_system_roles</code> collection under <code>/usr/share/ansible/collections/</code> — a system-wide location every user and project on the controller can resolve, unlike the project-local collections from Q4.<br>
+  • <code>sudo</code> gives dnf the root privileges a package install needs, and <code>-y</code> answers yes to the transaction prompt in advance — on an exam, a command that stops and waits for input is a command that burns your clock.</p>
+  <div class="tie"><b>How it ties in:</b> Q4 installed collections for one project; this installs roles for the whole controller. Q5.1 proves the timesync role is really there before you write a playbook that depends on it.</div>`
+},
+{
+  id:"Q5.1", title:"Verify the timesync role exists", sub:"ls the collection roles, grep timesync", cmd:true,
+  files:[{ path:"shell", lang:"cmd" }],
+  spec:`<b>5.1. Verify the install.</b><br>• List the roles inside the installed collection — they live under <code>/usr/share/ansible/collections/ansible_collections/redhat/rhel_system_roles/roles/</code> — and filter the listing down to the one role this question needs.<br>• Type the command at the prompt and press <b>Enter</b> to run it.`,
+  checks:[[
+    { re:/ls\s+\/usr\/share\/ansible\/collections\/ansible_collections\/redhat\/rhel_system_roles\/roles\/?/, msg:"ls of the redhat.rhel_system_roles collection's roles/ directory" },
+    { re:/\|\s*grep\s+timesync\b/, msg:"The listing is piped through grep timesync" }
+  ]],
+  explain:`<h2>✅ Q5.1 complete — what you just did</h2>
+  <p>You proved the install landed: the roles directory of the <code>redhat.rhel_system_roles</code> collection contains a <code>timesync</code> entry — exactly the role name Q5.2 is about to call as <code>redhat.rhel_system_roles.timesync</code>.</p>
+  <h4>How it affects the Ansible environment</h4>
+  <p>• Nothing changes — this is verification, the same habit as Q4.3. If that grep came back empty, writing the playbook anyway would only earn you a "role not found" error later, further from the cause.<br>
+  • Notice the pipe: you are in a real shell here, so <code>|</code> works. Contrast Q3.2 — the <code>command</code> module runs on the host with no shell, so no pipes there. Same keyboard, two different worlds.</p>
+  <div class="tie"><b>How it ties in:</b> role confirmed on disk, so now the playbook in Q5.2 can resolve it.</div>`
+},
+{
+  id:"Q5.2", title:"timesync.yml", sub:"RHEL system role — chrony via role variables",
+  files:[{ path:"/home/student/ansible/timesync.yml", lang:"yaml" }],
+  spec:`<b>5. Use RHEL System Role to Configure Time Synchronization</b><br>• Install the rhel-system-roles package on the control node<br>• Create a playbook called /home/student/ansible/timesync.yml that does the following:<br>• Runs on all managed hosts<br>• Uses the timesync role<br>• Configures the role to use the time server 2.north-america.pool.ntp.org<br>• Configures the role to set the iburst parameter as enabled`,
+  checks:[[
+    { re:/hosts\s*:\s*all/, msg:"The play targets hosts: all" },
+    { re:/become\s*:\s*(true|yes)/i, msg:"become: true on the play" },
+    { re:/timesync_ntp_servers\s*:/, msg:"Variable timesync_ntp_servers is set under vars" },
+    { re:/hostname\s*:\s*2\.north-america\.pool\.ntp\.org/, msg:"The server entry's hostname is 2.north-america.pool.ntp.org" },
+    { re:/iburst\s*:\s*(true|yes)/i, msg:"iburst is enabled on the server entry" },
+    { fn:t => /roles\s*:/.test(t) && /redhat\.rhel_system_roles\.timesync/.test(t), msg:"The roles section applies redhat.rhel_system_roles.timesync" }
+  ]],
+  explain:`<h2>✅ Q5 complete — what you just did</h2>
+  <p>You configured a service <b>without writing a single task</b>. The playbook is just a variable and a role: <code>redhat.rhel_system_roles.timesync</code> reads your <code>timesync_ntp_servers</code> variable and does all the work — installs and configures chrony, writes the NTP server lines, restarts the service — on every host.</p>
+  <h4>How it affects the Ansible environment</h4>
+  <p>• After this runs, every managed node's <code>/etc/chrony.conf</code> points at <code>2.north-america.pool.ntp.org</code>, and <code>iburst: true</code> tells chrony to take a burst of quick measurements at startup so the clock converges fast instead of drifting in slowly.<br>
+  • The role is <b>content installed on the controller</b> (the <code>rhel-system-roles</code> RPM), not on the nodes — the nodes only receive the changes the role makes.</p>
+  <h4>The tech underneath</h4>
+  <p>RHEL system roles are Red Hat's supported, pre-built roles for common OS configuration. The pattern to remember is <b>interface by variables</b>: you don't edit the role, you feed it documented variables and it renders the right config for the OS version it finds. That is the same pattern Q8 uses when a variable overrides a role's defaults.</p>
+  <div class="tie"><b>How it ties in:</b> synchronized clocks are invisible until they're missing — Kerberos, TLS, and log correlation across servera–serverd all quietly depend on what you just did. Structurally, this is your template for every "apply role X with variables Y" exam question.</div>`
+},
+{
+  id:"Q5.3", title:"Run timesync.yml", sub:"ansible-playbook timesync.yml", cmd:true,
+  files:[{ path:"shell", lang:"cmd" }],
+  spec:`<b>5.3. Run the playbook.</b><br>• From <code>~/ansible</code>, run <code>timesync.yml</code> with ansible-playbook.<br>• No sudo — the play already becomes root on the managed hosts itself.<br>• Type the command at the prompt and press <b>Enter</b> to run it.`,
+  checks:[[
+    { re:/ansible-playbook\s+timesync\.yml/, msg:"The command is ansible-playbook timesync.yml" },
+    { fn:t => /ansible-playbook\s+timesync\.yml/.test(t) && !/sudo/.test(t), msg:"No sudo — playbooks run as student; become inside the play does the privilege work" }
+  ]],
+  explain:`<h2>✅ Q5.3 complete — what you just did</h2>
+  <p>You ran the playbook: on every host in the inventory, the timesync role configured chrony to use your NTP server and made sure the service is running.</p>
+  <h4>How it affects the Ansible environment</h4>
+  <p>• This is the first question whose run reaches out and changes <i>every managed host</i> — the earlier playbooks were scoped by group guards, but Q5.2's play targets all hosts, because every machine needs correct time (Kerberos, logs, and certificates all depend on it).<br>
+  • The play ran as student and escalated with <code>become</code> only where the role needed it — that is why the command itself carries no sudo.</p>
+  <div class="tie"><b>How it ties in:</b> a successful run is a claim. Q5.4 checks the config file the role wrote, and Q5.5 checks the daemon itself — two different layers of proof.</div>`
+},
+{
+  id:"Q5.4", title:"Verify: the chrony.conf pool line", sub:"Ad hoc grep on all hosts", cmd:true,
+  files:[{ path:"shell", lang:"cmd" }],
+  spec:`<b>5.4. Verify the configuration.</b><br>• Using an ad hoc command on <b>all</b> hosts through the <code>command</code> module, check that <code>/etc/chrony.conf</code> now contains a <code>pool</code> entry — the line the timesync role wrote for your NTP server.<br>• Type the command at the prompt and press <b>Enter</b> to run it.`,
+  checks:[[
+    { re:/ansible\s+all\b/, msg:"The ad hoc command targets all hosts" },
+    { re:/-m\s+(ansible\.builtin\.)?command\b/, msg:"It uses the command module" },
+    { re:/-a\s+['"]grep\s+pool\s+\/etc\/chrony\.conf['"]/, msg:"The -a argument runs: grep pool /etc/chrony.conf" }
+  ]],
+  explain:`<h2>✅ Q5.4 complete — what you just did</h2>
+  <p>You checked the artifact the role was supposed to produce: every host's <code>/etc/chrony.conf</code> should now show a <code>pool</code> line pointing at 2.north-america.pool.ntp.org — the server from Q5.2's variable, rendered into chrony's config.</p>
+  <h4>How it affects the Ansible environment</h4>
+  <p>• Read-only again: ad hoc <code>command</code> calls gather evidence without changing state, which is what makes them safe to run as often as you like during the exam.<br>
+  • This verifies the <i>configuration layer</i>: the file says the right thing. It says nothing yet about whether chronyd has actually picked the source up — that is a different layer, and it gets its own check.</p>
+  <div class="tie"><b>How it ties in:</b> variable (Q5.2) → role → config file (Q5.4) → live daemon (Q5.5). You are tracing one fact through the whole stack.</div>`
+},
+{
+  id:"Q5.5", title:"Verify: chronyc sources", sub:"Ad hoc on all hosts", cmd:true,
+  files:[{ path:"shell", lang:"cmd" }],
+  spec:`<b>5.5. Verify the service.</b><br>• One more ad hoc check on <b>all</b> hosts, through the <code>command</code> module: ask chrony itself which time sources it is currently using.<br>• The config file (5.4) is what's written on disk; this is the daemon's live view.<br>• Type the command at the prompt and press <b>Enter</b> to run it.`,
+  checks:[[
+    { re:/ansible\s+all\b/, msg:"The ad hoc command targets all hosts" },
+    { re:/-m\s+(ansible\.builtin\.)?command\b/, msg:"It uses the command module" },
+    { re:/-a\s+['"]chronyc\s+sources['"]/, msg:"The -a argument runs: chronyc sources" }
+  ]],
+  explain:`<h2>✅ Q5.5 complete — what you just did</h2>
+  <p>You asked the running daemon for its own view: <code>chronyc sources</code> lists the NTP sources chronyd is actually polling on every host. The pool server from your variable should appear — proof the config change became live behavior, not just text in a file.</p>
+  <h4>How it affects the Ansible environment</h4>
+  <p>• This is the deepest verification layer in the Q5 chain: package installed (Q5), role present (Q5.1), playbook written (Q5.2), playbook run (Q5.3), config on disk (Q5.4), daemon using it (Q5.5). Each step was proven before the next one was trusted.<br>
+  • On the real exam this habit is what catches the silent failures — a role that "ran fine" but never restarted the service, or a config written to the wrong host group.</p>
+  <div class="tie"><b>How it ties in:</b> Q5 is fully closed. Q6 returns to downloaded Galaxy roles — the same roles:/requirements pattern as Q4, one level up.</div>`
+},
+{
+  id:"Q6", title:"Create the roles directory", sub:"cd, mkdir -p, vim — one line", cmd:true,
+  files:[{ path:"shell", lang:"cmd" }],
+  spec:`<b>6. Install Roles Using Ansible Galaxy — setup first.</b><br>• The requirements file lives at <code>/home/student/ansible/roles/requirements.yml</code> — but the <code>roles</code> directory does not exist yet.<br>• In <b>one chained command line</b>: change into the ansible project directory, create the <code>roles</code> directory (with parents, no error if it already exists), then open <code>roles/requirements.yml</code> in vim.<br>• Type the command at the prompt and press <b>Enter</b> to run it.`,
+  checks:[[
+    { re:/cd\s+(~\/ansible|\/home\/student\/ansible)/, msg:"First: cd into the ansible project directory" },
+    { re:/mkdir\s+-p\s+(\.\/)?roles\b/, msg:"Then: mkdir -p roles (the -p matters)" },
+    { re:/vim\s+(\.\/)?roles\/requirements\.yml/, msg:"Then: vim roles/requirements.yml" },
+    { fn:t => { const a = t.search(/cd\s/), b = t.search(/mkdir/), c2 = t.search(/vim\s/); return a >= 0 && b > a && c2 > b && (t.match(/&&/g) || []).length >= 2; }, msg:"All three steps in order, chained with &&" }
+  ]],
+  explain:`<h2>✅ Q6 complete — what you just did</h2>
+  <p>Same setup beat as Q4, one directory over: you created <code>roles/</code> and opened its requirements file in one chained line. The directory has to exist before vim can save into it — skip the mkdir and the save fails with E212 after you've typed the whole file.</p>
+  <h4>How it affects the Ansible environment</h4>
+  <p>• <code>roles/</code> is not just a folder: it is where this project's configuration looks for roles (<code>roles_path</code>), and it is the install target Q6.2 uses. Everything Galaxy installs for this question lands here.<br>
+  • <code>mkdir -p</code> keeps the line safe to re-run — no error if the directory is already there.</p>
+  <div class="tie"><b>How it ties in:</b> Q4 built the collections directory; this builds the roles one. Q6.1 writes the requirements file you just opened.</div>`
+},
+{
+  id:"Q6.1", title:"roles/requirements.yml", sub:"Galaxy roles — installed under new names",
+  files:[{ path:"/home/student/ansible/roles/requirements.yml", lang:"yaml" }],
+  spec:`<b>6. Install Roles Using Ansible Galaxy</b><br>• Use a requirements file located at /home/student/ansible/roles/requirements.yml to download and install the following roles to /home/student/ansible/roles:<br>• geerlingguy.haproxy — the name of this role should be balancer<br>• geerlingguy.php — the name of this role should be phpinfo`,
+  checks:[[
+    { fn:t => near(t, /src\s*:\s*geerlingguy\.haproxy/, [/name\s*:\s*balancer/], 140) || near(t, /name\s*:\s*balancer/, [/src\s*:\s*geerlingguy\.haproxy/], 140), msg:"geerlingguy.haproxy with name: balancer in the same entry" },
+    { fn:t => near(t, /src\s*:\s*geerlingguy\.php/, [/name\s*:\s*phpinfo/], 140) || near(t, /name\s*:\s*phpinfo/, [/src\s*:\s*geerlingguy\.php/], 140), msg:"geerlingguy.php with name: phpinfo in the same entry" }
+  ]],
+  explain:`<h2>✅ Q6 complete — what you just did</h2>
+  <p>You declared two Galaxy roles — but the real skill in this question is the <b>rename</b>. <code>src</code> says where the role comes from; <code>name</code> says what it will be called <b>on this controller</b>. After install, the roles live at <code>roles/balancer</code> and <code>roles/phpinfo</code>, and playbooks must call them by those local names.</p>
+  <h4>How it affects the Ansible environment</h4>
+  <p>• <code>ansible-galaxy role install -r roles/requirements.yml -p roles</code> unpacks each role into the project <code>roles/</code> directory under its <i>renamed</i> folder. The upstream names <code>geerlingguy.haproxy</code> and <code>geerlingguy.php</code> never appear in any playbook.<br>
+  • Role requirements use a plain list of <code>src</code>/<code>name</code> pairs — different from the collection requirements format in Q4, which nests under a <code>collections:</code> key. Mixing the two formats up is a classic exam slip.</p>
+  <h4>The tech underneath</h4>
+  <p>A role is a self-contained bundle: tasks, templates, handlers, defaults. Galaxy is just the distribution channel. Renaming on install is how a project adapts generic upstream content to its own vocabulary — the exam will only ever refer to these roles as <code>balancer</code> and <code>phpinfo</code>.</p>
+  <div class="tie"><b>How it ties in:</b> Q8's playbook calls <code>role: balancer</code> and <code>role: phpinfo</code>. Those names resolve <i>only</i> because of the renames you declared here. If Q6 is wrong, Q8 fails before it starts.</div>`
+},
+{
+  id:"Q6.2", title:"Install the roles", sub:"ansible-galaxy role install -p roles", cmd:true,
+  files:[{ path:"shell", lang:"cmd" }],
+  spec:`<b>6.2. Install the roles.</b><br>• On the controller: change into the ansible project directory, then use <code>ansible-galaxy</code> to install the roles listed in the requirements file you just wrote.<br>• Install them into the project's local <code>roles</code> directory — the location this project's configuration searches.<br>• Chain both commands on <b>one line</b> with <code>&amp;&amp;</code>, and press <b>Enter</b> to run it.`,
+  checks:[[
+    { re:/cd\s+(~\/ansible|\/home\/student\/ansible)/, msg:"First: cd into the ansible project directory" },
+    { re:/ansible-galaxy\s+role\s+install\b/, msg:"Then: ansible-galaxy role install" },
+    { re:/-r\s+(\.\/)?roles\/requirements\.yml/, msg:"It reads the requirements file (-r roles/requirements.yml)" },
+    { re:/-p\s+(\.\/)?roles\/?(\s|$)/, msg:"It installs into the local roles directory (-p roles)" },
+    { fn:t => { const a = t.search(/cd\s/), b = t.search(/ansible-galaxy/); return a >= 0 && b > a; }, msg:"The cd comes before the install" }
+  ]],
+  explain:`<h2>✅ Q6.2 complete — what you just did</h2>
+  <p>You installed the two Galaxy roles — and the renames from Q6.1 took effect: on disk they are now <code>roles/balancer</code> and <code>roles/phpinfo</code>, not geerlingguy.anything. From here on, playbooks on this controller know them only by those local names.</p>
+  <h4>How it affects the Ansible environment</h4>
+  <p>• The <code>-p roles</code> flag is doing the same job as Q4.2's <code>-p collections</code>: install into the project, where <code>roles_path</code> points — not into your home directory's default role location, where this project's playbooks would never find them.<br>
+  • The requirements file made it repeatable: anyone with this project can rebuild the same roles directory with one command.</p>
+  <div class="tie"><b>How it ties in:</b> Q8's roles.yml applies <code>balancer</code> and <code>phpinfo</code> by name — those names exist because of the rename in Q6.1 and this install. Q6.3 proves they landed.</div>`
+},
+{
+  id:"Q6.3", title:"Verify the roles", sub:"ansible-galaxy role list", cmd:true,
+  files:[{ path:"shell", lang:"cmd" }],
+  spec:`<b>6.3. Verify the install.</b><br>• List the roles Ansible Galaxy has installed, and confirm <code>balancer</code> and <code>phpinfo</code> are both there.<br>• Type the command at the prompt and press <b>Enter</b> to run it.`,
+  checks:[[
+    { re:/ansible-galaxy\s+role\s+list\b/, msg:"The command is ansible-galaxy role list" }
+  ]],
+  explain:`<h2>✅ Q6.3 complete — what you just did</h2>
+  <p>You verified the install: the role list shows what Galaxy manages on this controller, with versions. <code>balancer</code> and <code>phpinfo</code> should both appear — under their new names, which is the confirmation that the rename worked.</p>
+  <h4>How it affects the Ansible environment</h4>
+  <p>• Nothing changes; this is the Q4.3 habit applied to roles. Note there is no <code>-p</code> here: <code>role list</code> reports the locations Galaxy knows about, and seeing the two renamed roles in it is the proof you need before Q8 depends on them.<br>
+  • Catching a missing role now costs seconds. Catching it in Q8 costs a failed playbook run.</p>
+  <div class="tie"><b>How it ties in:</b> Q6 is closed — directory, requirements, install, verify. Q7 flips from installing other people's roles to authoring your own.</div>`
+},
+{
+  id:"Q7", title:"Go to the roles directory", sub:"cd /home/student/ansible/roles", cmd:true,
+  files:[{ path:"shell", lang:"cmd" }],
+  spec:`<b>7. Create and Use a Role to Deploy a Web Server — set up.</b><br>• The new role will be created inside the project's <code>roles</code> directory.<br>• Change into that directory now: <code>/home/student/ansible/roles</code>.<br>• Type the command at the prompt and press <b>Enter</b> to run it.`,
+  checks:[[
+    { re:/cd\s+(\/home\/student\/ansible\/roles|~\/ansible\/roles)\/?(\s|$)/, msg:"cd into /home/student/ansible/roles" }
+  ]],
+  explain:`<h2>✅ Q7 complete — what you just did</h2>
+  <p>You moved into the project's <code>roles/</code> directory — the directory Q6 created and installed into. Where you are standing matters for the next step: the role scaffolding command creates the role <i>inside your current directory</i>.</p>
+  <h4>How it affects the Ansible environment</h4>
+  <p>• A role only resolves if it sits in a directory on the <code>roles_path</code>. Creating it here — alongside <code>balancer</code> and <code>phpinfo</code> — puts your hand-written role in exactly the same place as the downloaded ones, so playbooks treat them identically.</p>
+  <div class="tie"><b>How it ties in:</b> Q6 filled this directory from Galaxy; Q7.1 adds one you author yourself.</div>`
+},
+{
+  id:"Q7.1", title:"Create the apache role", sub:"ansible-galaxy role init apache", cmd:true,
+  files:[{ path:"shell", lang:"cmd" }],
+  spec:`<b>7.1. Create the role.</b><br>• Use Ansible Galaxy's role scaffolding to create a new role named <code>apache</code>, right here in the roles directory.<br>• Type the command at the prompt and press <b>Enter</b> to run it.`,
+  checks:[[
+    { re:/ansible-galaxy\s+role\s+init\s+apache\b/, msg:"The command is ansible-galaxy role init apache" }
+  ]],
+  explain:`<h2>✅ Q7.1 complete — what you just did</h2>
+  <p><code>role init</code> scaffolded the standard role layout for <code>apache</code>: <code>tasks/</code>, <code>templates/</code>, <code>handlers/</code>, <code>defaults/</code>, <code>vars/</code>, <code>files/</code>, <code>meta/</code>, and <code>tests/</code> — each with its expected starter file.</p>
+  <h4>How it affects the Ansible environment</h4>
+  <p>• This is convention over configuration: Ansible finds a role's tasks at <code>tasks/main.yml</code> and its templates under <code>templates/</code> <i>because</i> the layout says so — no path configuration anywhere. The scaffold guarantees the layout is exactly the one the engine expects.<br>
+  • For this exam you will only write in two places — <code>tasks/main.yml</code> (Q7.3) and <code>templates/index.html.j2</code> (Q7.4). The rest of the skeleton can stay as generated.</p>
+  <div class="tie"><b>How it ties in:</b> the downloaded roles from Q6 have this same skeleton inside them — you have been using this layout all along; now you see how it is made. Q7.2 confirms it exists.</div>`
+},
+{
+  id:"Q7.2", title:"List the role's files", sub:"ls roles/apache", cmd:true,
+  files:[{ path:"shell", lang:"cmd" }],
+  spec:`<b>7.2. Verify the skeleton.</b><br>• List the contents of the role you just created: <code>roles/apache</code>.<br>• You are confirming the scaffold produced the standard directory layout before you write into it.<br>• Type the command at the prompt and press <b>Enter</b> to run it.`,
+  checks:[[
+    { re:/ls\s+(\.\/)?(roles\/)?apache\/?(\s|$)/, msg:"ls of the apache role directory" }
+  ]],
+  explain:`<h2>✅ Q7.2 complete — what you just did</h2>
+  <p>You verified the scaffold: the listing shows the role's directories — the two you care about are <code>tasks/</code> and <code>templates/</code>. Ten seconds of looking now beats a "file not found" from the template task later.</p>
+  <h4>How it affects the Ansible environment</h4>
+  <p>• Nothing changes — evidence again, the same rhythm as Q4.3, Q5.1, and Q6.3: create, then confirm, then build on it.</p>
+  <div class="tie"><b>How it ties in:</b> skeleton confirmed. Q7.3 writes the role's tasks into tasks/main.yml.</div>`
+},
+{
+  id:"Q7.3", title:"roles/apache/tasks/main.yml", sub:"The role's tasks",
+  files:[{ path:"/home/student/ansible/roles/apache/tasks/main.yml", lang:"yaml" }],
+  spec:`<b>7. Create and Use a Role to Deploy a Web Server</b><br>• Create a role named apache in /home/student/ansible/roles<br>• The role must perform the following:<br>• Install the httpd package<br>• Enable and start the httpd service on boot<br>• Ensure the firewall is enabled and running with a rule to allow access to the web server<br>• Create a template file called index.html.j2 that outputs: Welcome to HOSTNAME and the IP Address is IPV4ADDRESS<br>• Use the template to generate /var/www/html/index.html on the managed hosts<br>• Create a playbook called /home/student/ansible/role.yml that runs this role on hosts in the webservers host group`,
+  checks:[[
+      { fn:t => near(t, /(ansible\.builtin\.)?dnf\s*:/, [/-\s*httpd\b/, /-\s*firewalld\b/], 300), msg:"A dnf task installing httpd and firewalld together" },
+      { re:/state\s*:\s*present/, msg:"Packages use state: present" },
+      { fn:t => /(ansible\.builtin\.)?service\s*:/.test(t) && /name\s*:\s*["']?\{\{\s*item\s*\}\}["']?/.test(t), msg:"The service task uses name: \"{{ item }}\"" },
+      { re:/state\s*:\s*started/, msg:"Services use state: started" },
+      { re:/enabled\s*:\s*(true|yes)/i, msg:"Services are enabled: true" },
+      { fn:t => near(t, /loop\s*:/, [/-\s*httpd\b/, /-\s*firewalld\b/], 140), msg:"The service task loops over httpd and firewalld" },
+      { fn:t => /(ansible\.posix\.)?firewalld\s*:/.test(t) && /service\s*:\s*["']?\{\{\s*item\s*\}\}["']?/.test(t), msg:"The firewalld task uses service: \"{{ item }}\"" },
+      { re:/immediate\s*:\s*(true|yes)/i, msg:"firewalld immediate: true" },
+      { re:/permanent\s*:\s*(true|yes)/i, msg:"firewalld permanent: true" },
+      { fn:t => near(t, /loop\s*:/, [/-\s*http\b/, /-\s*https\b/], 140) && /(ansible\.posix\.)?firewalld\s*:[\s\S]{0,260}state\s*:\s*enabled/.test(t), msg:"The firewalld task loops over http and https with state: enabled" },
+      { fn:t => /(ansible\.builtin\.)?template\s*:/.test(t) && /src\s*:\s*index\.html\.j2/.test(t), msg:"A template task with src: index.html.j2" },
+      { re:/dest\s*:\s*\/var\/www\/html\/index\.html/, msg:"dest: /var/www/html/index.html" },
+      { re:/setype\s*:\s*httpd_sys_content_t/, msg:"setype: httpd_sys_content_t" }
+    ]],
+  explain:`<h2>✅ Q7.3 complete — what you just did</h2>
+  <p>You wrote the working heart of the apache role: four tasks that install httpd and firewalld, start and enable both services, open http and https in the firewall (runtime <i>and</i> permanent), and deploy the index template with the SELinux type httpd content expects.</p>
+  <h4>How it affects the Ansible environment</h4>
+  <p>• Notice what is <i>not</i> here: no hosts line, no become — a role's tasks file is pure work, and the play that calls the role supplies the context. That is what makes the role reusable from any playbook.<br>
+  • The loops keep it to one task per concern: adding a third service or port later is a one-line list change, not a new task.</p>
+  <div class="tie"><b>How it ties in:</b> the template this deploys does not exist yet — Q7.4 writes it, and the template task will fail without it.</div>`
+},
+{
+  id:"Q7.4", title:"roles/apache/templates/index.html.j2", sub:"The web page template",
+  files:[{ path:"/home/student/ansible/roles/apache/templates/index.html.j2", lang:"jinja" }],
+  spec:`<b>7.4. Create the template.</b><br>• Inside the apache role, edit <code>templates/index.html.j2</code>.<br>• The page prints the host's fully qualified domain name fact, and the address from its default IPv4 fact — so every web server serves a page that names itself.<br>• The task in Q7.3 already points at this file; it has to exist, with this content, for the run to succeed.`,
+  checks:[[
+      { re:/ansible_facts\[['"]fqdn['"]\]/, msg:"The line uses ansible_facts['fqdn']" },
+      { re:/ansible_facts\[['"]default_ipv4['"]\]\[['"]address['"]\]/, msg:"The line uses ansible_facts['default_ipv4']['address']" }
+    ]],
+  explain:`<h2>✅ Q7.4 complete — what you just did</h2>
+  <p>You wrote the Jinja template the role deploys as the web index page. It contains no hard-coded hostnames — it renders each host's own <code>fqdn</code> fact and <code>default_ipv4</code> address, so the same file produces a different, correct page on serverb and serverc.</p>
+  <h4>How it affects the Ansible environment</h4>
+  <p>• Templates are how Ansible turns facts into files: at deploy time the engine evaluates the expressions against the target host's facts and writes the rendered result to /var/www/html/index.html — with the SELinux type the Q7.3 task specified.</p>
+  <div class="tie"><b>How it ties in:</b> this page is your verification tool in Q7.7 — when curl shows each server's own name and IP, you know the whole chain worked. One piece left: the playbook that runs the role, Q7.5.</div>`
+},
+{
+  id:"Q7.5", title:"role.yml", sub:"The playbook that uses the role",
+  files:[{ path:"/home/student/ansible/role.yml", lang:"yaml" }],
+  spec:`<b>7.5. Create the playbook.</b><br>• In the project root, edit <code>role.yml</code>.<br>• Write a play that targets the <code>webservers</code> group and applies the <code>apache</code> role you just built, using an include_role task.<br>• This is the file you will run in Q7.6.`,
+  checks:[[
+      { re:/hosts\s*:\s*webservers/, msg:"role.yml targets hosts: webservers" },
+      { re:/become\s*:\s*(true|yes)/i, msg:"become: true on the play" },
+      { fn:t => /(ansible\.builtin\.)?include_role\s*:[\s\S]{0,80}?name\s*:\s*apache/.test(t), msg:"include_role with name: apache inside the tasks" }
+    ]],
+  explain:`<h2>✅ Q7 complete — what you just did</h2>
+  <p>You stopped <i>using</i> roles and started <i>authoring</i> one. The <code>apache</code> role bundles four tasks and a template; <code>role.yml</code> pulls it in with <code>include_role</code> and runs it against the <code>webservers</code> group — serverb and serverc.</p>
+  <h4>How it affects the Ansible environment</h4>
+  <p>• On each webserver: httpd and firewalld get installed, started, and enabled; the firewall opens http and https <b>permanently and immediately</b> (both flags matter — permanent survives reboot, immediate applies now); and <code>/var/www/html/index.html</code> is rendered with the correct SELinux type <code>httpd_sys_content_t</code>, so httpd is actually allowed to serve it.<br>
+  • The template is rendered <b>per host</b>: <code>ansible_facts['fqdn']</code> and <code>ansible_facts['default_ipv4']['address']</code> resolve to each server's own values, so serverb and serverc serve different pages from one template.<br>
+  • Both service and firewall tasks use <code>loop</code> with <code>{{ item }}</code> — one task definition, executed once per item.</p>
+  <h4>The tech underneath</h4>
+  <p><code>include_role</code> is a <i>dynamic</i> include: the role loads when the task runs, inside the play's task list — different from listing a role under <code>roles:</code>, which loads statically before tasks (you'll use that form in Q8). Role anatomy matters too: Ansible auto-loads <code>tasks/main.yml</code> and finds <code>index.html.j2</code> in <code>templates/</code> by name, no paths needed.</p>
+  <div class="tie"><b>How it ties in:</b> this role leans on Q4 (the <code>ansible.posix.firewalld</code> module exists because of your collections install) and on Q3 (the php stack underneath). Verify in the real lab with <code>curl http://serverb</code> — each host greets you with its own name and IP.</div>`
+},
+{
+  id:"Q7.6", title:"Run role.yml", sub:"ansible-playbook role.yml", cmd:true,
+  files:[{ path:"shell", lang:"cmd" }],
+  spec:`<b>7.6. Run the playbook.</b><br>• From <code>~/ansible</code>, run <code>role.yml</code> with ansible-playbook.<br>• No sudo — the play handles privilege itself.<br>• Type the command at the prompt and press <b>Enter</b> to run it.`,
+  checks:[[
+    { re:/ansible-playbook\s+role\.yml/, msg:"The command is ansible-playbook role.yml" },
+    { fn:t => /ansible-playbook\s+role\.yml/.test(t) && !/sudo/.test(t), msg:"No sudo — playbooks run as student; become inside the play does the privilege work" }
+  ]],
+  explain:`<h2>✅ Q7.6 complete — what you just did</h2>
+  <p>You ran the playbook: the apache role executed against the webservers group — serverb and serverc — installing and configuring the web service and deploying each host's own index page.</p>
+  <h4>How it affects the Ansible environment</h4>
+  <p>• First full author-and-run cycle of the exam: role you wrote (Q7.3, Q7.4), playbook you wrote (Q7.5), now applied. Every earlier question consumed someone else's automation; this one is yours end to end.</p>
+  <div class="tie"><b>How it ties in:</b> the run claims success — Q7.7 proves it over HTTP, from the outside, the way a user would see it.</div>`
+},
+{
+  id:"Q7.7", title:"Verify with curl", sub:"curl serverb and serverc", cmd:true,
+  files:[{ path:"shell", lang:"cmd" }],
+  spec:`<b>7.7. Verify it worked.</b><br>• From the controller, request the home page of each web server over HTTP: <code>curl http://serverb</code> and <code>curl http://serverc</code>.<br>• Each should answer with its own name and IP address — the template from Q7.4, rendered per host.<br>• Type both commands on one line (separate them with <code>;</code>) and press <b>Enter</b>.`,
+  checks:[[
+    { re:/curl\s+https?:\/\/serverb(\.lab\.example\.com)?\b/, msg:"curl http://serverb" },
+    { re:/curl\s+https?:\/\/serverc(\.lab\.example\.com)?\b/, msg:"curl http://serverc" }
+  ]],
+  explain:`<h2>✅ Q7.7 complete — what you just did</h2>
+  <p>You verified end to end, over the wire: serverb answered with serverb's name and address, serverc with serverc's. That single result proves the whole chain — httpd running, firewall open, template deployed, and the facts rendered correctly per host.</p>
+  <h4>How it affects the Ansible environment</h4>
+  <p>• Nothing changes — but note the level of this proof. The playbook run (Q7.6) reported what Ansible <i>did</i>; curl shows what a client actually <i>gets</i>. When the two disagree, curl is the truth that matters.</p>
+  <div class="tie"><b>How it ties in:</b> Q7 is closed — directory, scaffold, verify, tasks, template, playbook, run, verify. Q8 takes these exact pieces (the balancer role from Q6, this template pattern) and composes them into the capstone.</div>`
+},
+{
+  id:"Q8", title:"Create the role directories", sub:"mkdir -p for the downloads", cmd:true,
+  files:[{ path:"shell", lang:"cmd" }],
+  spec:`<b>8. Use Galaxy Roles in a Playbook — set up the directories.</b><br>• The next steps download files into the two roles from Q6 — into <code>roles/balancer/templates</code>, <code>roles/phpinfo/templates</code>, and <code>roles/phpinfo/tasks</code>.<br>• From <code>~/ansible</code>, create all three directories in one command, with parents.<br>• Type the command at the prompt and press <b>Enter</b> to run it.`,
+  checks:[[
+    { re:/mkdir\s+-p\b/, msg:"mkdir with -p (parents, no error if they exist)" },
+    { re:/roles\/balancer\/templates\b/, msg:"roles/balancer/templates" },
+    { re:/roles\/phpinfo\/templates\b/, msg:"roles/phpinfo/templates" },
+    { re:/roles\/phpinfo\/tasks\b/, msg:"roles/phpinfo/tasks" }
+  ]],
+  explain:`<h2>✅ Q8 complete — what you just did</h2>
+  <p>You prepared the landing spots for the exam server's files. The downloads that follow drop a template into the balancer role, a template into the phpinfo role, and a tasks file into phpinfo — and a download into a directory that doesn't exist just fails.</p>
+  <h4>How it affects the Ansible environment</h4>
+  <p>• One <code>mkdir -p</code> with three targets: parents are created as needed and existing directories are not an error — the same safe-to-rerun habit as Q4 and Q6.<br>
+  • These paths are convention, again: a role reads its templates from <code>templates/</code> and its tasks from <code>tasks/</code>, so the downloaded files only become part of the roles if they land in exactly these directories.</p>
+  <div class="tie"><b>How it ties in:</b> Q8.1 to Q8.4 fetch the four files; Q8.5 proves every one of them landed.</div>`
+},
+{
+  id:"Q8.1", title:"Download roles.yml", sub:"curl -o from the exam server", cmd:true,
+  files:[{ path:"shell", lang:"cmd" }],
+  spec:`<b>8.1. Download the playbook skeleton.</b><br>• The exam server provides the starting <code>roles.yml</code> at <code>http://10.1.10.121/roles.yml</code>.<br>• Download it with curl and save it as <code>roles.yml</code> in the project root — the <code>-o</code> flag names the output file.<br>• Type the command at the prompt and press <b>Enter</b> to run it.`,
+  checks:[[
+    { re:/curl\s+(-s\s+)?-o\s+roles\.yml\b/, msg:"curl -o roles.yml (save under that name)" },
+    { re:/http:\/\/10\.1\.10\.121\/roles\.yml/, msg:"From http://10.1.10.121/roles.yml" }
+  ]],
+  explain:`<h2>✅ Q8.1 complete — what you just did</h2>
+  <p>You pulled the exam's skeleton playbook down from the file server. It is deliberately incomplete — the backend addresses and a few pieces are yours to finish in Q8.6.</p>
+  <h4>How it affects the Ansible environment</h4>
+  <p>• <code>curl -o</code> writes the response body to the named file instead of the terminal. Without <code>-o</code> the YAML would scroll past and nothing would be saved.<br>
+  • Working from the provided skeleton is the exam's intent here: graders check the result, and the skeleton guarantees the play structure matches what the downloaded role files expect.</p>
+  <div class="tie"><b>How it ties in:</b> three more downloads follow the same pattern — Q8.2 into the balancer role, Q8.3 and Q8.4 into phpinfo.</div>`
+},
+{
+  id:"Q8.2", title:"Download haproxy.cfg.j2", sub:"Into balancer/templates", cmd:true,
+  files:[{ path:"shell", lang:"cmd" }],
+  spec:`<b>8.2. Download the balancer template.</b><br>• Download <code>http://10.1.10.121/haproxy.cfg.j2</code> and save it as <code>roles/balancer/templates/haproxy.cfg.j2</code> — inside the balancer role you installed in Q6.<br>• This is the template that renders the HAProxy configuration, including your backend servers.<br>• Type the command at the prompt and press <b>Enter</b> to run it.`,
+  checks:[[
+    { re:/curl\s+(-s\s+)?-o\s+roles\/balancer\/templates\/haproxy\.cfg\.j2\b/, msg:"Saved as roles/balancer/templates/haproxy.cfg.j2" },
+    { re:/http:\/\/10\.1\.10\.121\/haproxy\.cfg\.j2/, msg:"From http://10.1.10.121/haproxy.cfg.j2" }
+  ]],
+  explain:`<h2>✅ Q8.2 complete — what you just did</h2>
+  <p>The HAProxy config template is now part of the balancer role. When Q8.7 runs, the role renders it into <code>/etc/haproxy/haproxy.cfg</code> on serverd — looping over the <code>haproxy_backend_servers</code> variable you complete in Q8.6.</p>
+  <h4>How it affects the Ansible environment</h4>
+  <p>• Placement is everything: a template only belongs to the role if it sits in the role's <code>templates/</code> directory — that is the path the role's template task resolves, with no configuration anywhere saying so.</p>
+  <div class="tie"><b>How it ties in:</b> Q8.8 greps the rendered config for your backend lines — the file you just downloaded is what makes that output possible.</div>`
+},
+{
+  id:"Q8.3", title:"Download hello.php.j2", sub:"Into phpinfo/templates", cmd:true,
+  files:[{ path:"shell", lang:"cmd" }],
+  spec:`<b>8.3. Download the PHP template.</b><br>• Download <code>http://10.1.10.121/hello.php.j2</code> and save it as <code>roles/phpinfo/templates/hello.php.j2</code> — inside the phpinfo role from Q6.<br>• Type the command at the prompt and press <b>Enter</b> to run it.`,
+  checks:[[
+    { re:/curl\s+(-s\s+)?-o\s+roles\/phpinfo\/templates\/hello\.php\.j2\b/, msg:"Saved as roles/phpinfo/templates/hello.php.j2" },
+    { re:/http:\/\/10\.1\.10\.121\/hello\.php\.j2/, msg:"From http://10.1.10.121/hello.php.j2" }
+  ]],
+  explain:`<h2>✅ Q8.3 complete — what you just did</h2>
+  <p>The phpinfo role now has its page template — the file that becomes <code>hello.php</code> on the web servers, printing "Hello PHP World" plus the host's PHP details.</p>
+  <h4>How it affects the Ansible environment</h4>
+  <p>• Same convention as Q8.2: role templates live in the role's <code>templates/</code> directory. Two roles, two templates, one pattern.</p>
+  <div class="tie"><b>How it ties in:</b> Q8.10 curls hello.php on both web servers — this template is what answers.</div>`
+},
+{
+  id:"Q8.4", title:"Download main.yml", sub:"Into phpinfo/tasks", cmd:true,
+  files:[{ path:"shell", lang:"cmd" }],
+  spec:`<b>8.4. Download the phpinfo tasks.</b><br>• Download <code>http://10.1.10.121/main.yml</code> and save it as <code>roles/phpinfo/tasks/main.yml</code>.<br>• Watch the rename: the server calls it <code>main.yml</code>, and it must land under that exact name inside the role's <code>tasks/</code> directory.<br>• Type the command at the prompt and press <b>Enter</b> to run it.`,
+  checks:[[
+    { re:/curl\s+(-s\s+)?-o\s+roles\/phpinfo\/tasks\/main\.yml\b/, msg:"Saved as roles/phpinfo/tasks/main.yml" },
+    { re:/http:\/\/10\.1\.10\.121\/main\.yml/, msg:"From http://10.1.10.121/main.yml" }
+  ]],
+  explain:`<h2>✅ Q8.4 complete — what you just did</h2>
+  <p>The phpinfo role now has its real task list, replacing whatever placeholder the Galaxy install carried. This is the file that installs the PHP packages and deploys hello.php when the role runs.</p>
+  <h4>How it affects the Ansible environment</h4>
+  <p>• <code>tasks/main.yml</code> is the one filename Ansible reads automatically when a role is applied — no playbook references it by name. Download it to the wrong name or directory and the role silently does nothing.<br>
+  • Note the interplay with Q8.6: this tasks file consumes the <code>php_packages</code> variable your playbook defines — the role brings the logic, your play supplies the data.</p>
+  <div class="tie"><b>How it ties in:</b> all four downloads are done. Q8.5 verifies them before you build on them.</div>`
+},
+{
+  id:"Q8.5", title:"Verify the downloads", sub:"ls -l all four locations", cmd:true,
+  files:[{ path:"shell", lang:"cmd" }],
+  spec:`<b>8.5. Verify the downloads.</b><br>• List, in one command: the <code>roles.yml</code> file and the contents of the three directories from Q8 — <code>roles/balancer/templates/</code>, <code>roles/phpinfo/templates/</code>, and <code>roles/phpinfo/tasks/</code>.<br>• You are confirming all four downloaded files exist, in the right places, before the playbook depends on them.<br>• Type the command at the prompt and press <b>Enter</b> to run it.`,
+  checks:[[
+    { re:/ls\s+-l\b/, msg:"A long listing (ls -l)" },
+    { re:/roles\.yml\b/, msg:"It includes roles.yml" },
+    { re:/roles\/balancer\/templates\/?\b/, msg:"It includes roles/balancer/templates/" },
+    { re:/roles\/phpinfo\/templates\/?\b/, msg:"It includes roles/phpinfo/templates/" },
+    { re:/roles\/phpinfo\/tasks\/?\b/, msg:"It includes roles/phpinfo/tasks/" }
+  ]],
+  explain:`<h2>✅ Q8.5 complete — what you just did</h2>
+  <p>You verified the whole download set in one listing: roles.yml in the project root, haproxy.cfg.j2 in the balancer's templates, hello.php.j2 in phpinfo's templates, and main.yml in phpinfo's tasks — each present and non-empty.</p>
+  <h4>How it affects the Ansible environment</h4>
+  <p>• Nothing changes — this is the checkpoint that keeps a failed or misdirected download from surfacing later as a cryptic template error mid-run, when it costs real time to trace.</p>
+  <div class="tie"><b>How it ties in:</b> materials verified. Q8.6 completes the playbook that ties them together.</div>`
+},
+{
+  id:"Q8.6", title:"roles.yml", sub:"Capstone — conditional roles + post_tasks",
+  files:[{ path:"/home/student/ansible/roles.yml", lang:"yaml" }],
+  spec:`<b>8. Use Galaxy Roles in a Playbook</b><br>• Download the following files from the exam server and place them in the correct locations:<br>• Download http://10.1.10.121/roles.yml and save it as /home/student/ansible/roles.yml<br>• Download http://10.1.10.121/haproxy.cfg.j2 and place it inside the templates/ directory of the balancer role<br>• Download http://10.1.10.121/hello.php.j2 and place it inside the templates/ directory of the phpinfo role<br>• Download http://10.1.10.121/main.yml and place it inside the tasks/ directory of the phpinfo role<br>• Open roles.yml and add the IP addresses of serverb and serverc to the haproxy_backend_servers variable in the vars section<br>• Complete the playbook so that it runs on all hosts and does the following:<br>• Applies the balancer role only on hosts in the balancers host group<br>• Applies the phpinfo role only on hosts in the webservers host group<br>• When implemented, browsing to hosts in the balancers host group (e.g. http://serverd.lab.example.com) should produce the following output: Welcome to serverb.lab.example.com and the IP Address is 172.25.250.11<br>• Reloading the browser should return output from the alternate web server: Welcome to serverc.lab.example.com and the IP Address is 172.25.250.12<br>• Browsing to http://serverb.lab.example.com/hello.php should produce: Hello PHP World from serverb.lab.example.com along with various details of the PHP configuration including the version of PHP that is installed<br>• Similarly, browsing to http://serverc.lab.example.com/hello.php should produce: Hello PHP World from serverc.lab.example.com along with various details of the PHP configuration including the version of PHP that is installed`,
+  checks:[[
+    { re:/hosts\s*:\s*all/, msg:"The play targets hosts: all" },
+    { re:/become\s*:\s*(true|yes)/i, msg:"become: true on the play" },
+    { re:/haproxy_backend_servers\s*:/, msg:"Variable haproxy_backend_servers is defined" },
+    { fn:t => near(t, /name\s*:\s*serverb/, [/address\s*:\s*(10\.1\.12\.161|172\.25\.250\.11)/, /port\s*:\s*80/], 160), msg:"Backend entry: serverb with its IP address and port 80 as separate keys" },
+    { fn:t => near(t, /name\s*:\s*serverc/, [/address\s*:\s*(10\.1\.12\.162|172\.25\.250\.12)/, /port\s*:\s*80/], 160), msg:"Backend entry: serverc with its IP address and port 80 as separate keys" },
+    { fn:t => near(t, /php_packages\s*:/, [/-\s*php\b/, /-\s*php-cli\b/, /-\s*php-common\b/], 200), msg:"php_packages lists php, php-cli and php-common" },
+    { fn:t => /role\s*:\s*balancer[\s\S]{0,160}?when\s*:[^\n]*['"]balancers['"]\s+in\s+group_names/.test(t), msg:"role: balancer with when: 'balancers' in group_names" },
+    { fn:t => /role\s*:\s*phpinfo[\s\S]{0,160}?when\s*:[^\n]*['"]webservers['"]\s+in\s+group_names/.test(t), msg:"role: phpinfo with when: 'webservers' in group_names" },
+    { re:/post_tasks\s*:/, msg:"A post_tasks section after the roles" },
+    { fn:t => { const i = t.search(/post_tasks\s*:/); if (i < 0) return false; const w = t.slice(i); return /firewalld\s*:/.test(w) && /service\s*:\s*http\b/.test(w) && /permanent\s*:\s*(true|yes)/i.test(w) && /immediate\s*:\s*(true|yes)/i.test(w) && /state\s*:\s*enabled/.test(w); }, msg:"The post_task opens firewalld service http, permanent + immediate, state enabled" },
+    { fn:t => { const i = t.search(/post_tasks\s*:/); if (i < 0) return false; return /when\s*:[^\n]*['"]balancers['"]\s+in\s+group_names/.test(t.slice(i)); }, msg:"The post_task is guarded to balancers with group_names" }
+  ]],
+  explain:`<h2>✅ Q8 complete — what you just did</h2>
+  <p>The capstone: one playbook that turns serverd into an HAProxy load balancer in front of serverb and serverc, and finishes the php setup on the web servers — with the <i>same</i> play deciding, per host, which roles apply.</p>
+  <h4>How it affects the Ansible environment</h4>
+  <p>• <code>haproxy_backend_servers</code> is a <b>list of dictionaries</b>, and the balancer role's template reads <code>name</code>, <code>address</code>, and <code>port</code> as separate keys — that's the contract you verified with <code>grep backend</code> on the template. One combined string would render a broken haproxy.cfg.<br>
+  • <code>php_packages</code> in play vars <b>overrides</b> the phpinfo role's default variable — variable precedence in action: the play's value wins, so exactly php, php-cli, and php-common get installed.<br>
+  • The guards use <code>group_names</code> — the list of groups the <i>current</i> host belongs to — the mirror image of Q3's <code>inventory_hostname in groups[...]</code> test. Roles listed under <code>roles:</code> load statically, and <code>post_tasks</code> run only after all roles finish, which is why the firewall opening on the balancer happens last.</p>
+  <h4>The tech underneath</h4>
+  <p>HAProxy will round-robin between the two backends: hit <code>http://serverd</code> four times and the answers alternate serverb, serverc — that's your verification that the whole chain works.</p>
+  <div class="tie"><b>How it ties in:</b> everything converges here — the roles exist under these names because of Q6, the firewalld module because of Q4, the repos and php packages because of Q2 and Q3, and the webservers/balancers groups are the same inventory you've used all exam. Eight questions, one connected system.</div>`
+},
+{
+  id:"Q8.7", title:"Run roles.yml", sub:"ansible-playbook roles.yml", cmd:true,
+  files:[{ path:"shell", lang:"cmd" }],
+  spec:`<b>8.7. Run the playbook.</b><br>• From <code>~/ansible</code>, run <code>roles.yml</code> with ansible-playbook.<br>• No sudo — the play handles privilege itself.<br>• Type the command at the prompt and press <b>Enter</b> to run it.`,
+  checks:[[
+    { re:/ansible-playbook\s+roles\.yml/, msg:"The command is ansible-playbook roles.yml" },
+    { fn:t => /ansible-playbook\s+roles\.yml/.test(t) && !/sudo/.test(t), msg:"No sudo — playbooks run as student; become inside the play does the privilege work" }
+  ]],
+  explain:`<h2>✅ Q8.7 complete — what you just did</h2>
+  <p>The capstone ran: one play, all hosts, each machine getting only its role — serverd became the HAProxy balancer in front of serverb and serverc, the web servers got PHP and hello.php, and the firewall opened on the balancer in post_tasks.</p>
+  <h4>How it affects the Ansible environment</h4>
+  <p>• This is every earlier thread pulled tight: Q4's collections (the firewalld module), Q6's renamed roles, Q7's authoring pattern, Q8.6's variables and conditional roles — composed into a single run.</p>
+  <div class="tie"><b>How it ties in:</b> three verifications remain, each aimed at a different layer: the rendered config (Q8.8), the config's validity (Q8.9), and the live web answer (Q8.10).</div>`
+},
+{
+  id:"Q8.8", title:"Verify: backends in haproxy.cfg", sub:"Ad hoc grep on balancers", cmd:true,
+  files:[{ path:"shell", lang:"cmd" }],
+  spec:`<b>8.8. Verify the rendered config.</b><br>• Using an ad hoc command on the <b>balancers</b> hosts through the <code>command</code> module, search <code>/etc/haproxy/haproxy.cfg</code> for the backend <code>server</code> lines.<br>• You are checking that your backend variables actually made it into the load balancer's configuration.<br>• Type the command at the prompt and press <b>Enter</b> to run it.`,
+  checks:[[
+    { re:/ansible\s+balancers\b/, msg:"The ad hoc command targets the balancers hosts" },
+    { re:/-m\s+(ansible\.builtin\.)?command\b/, msg:"It uses the command module" },
+    { re:/-a\s+['"]grep\s+server\s+\/etc\/haproxy\/haproxy\.cfg['"]/, msg:"The -a argument runs: grep server /etc/haproxy/haproxy.cfg" }
+  ]],
+  explain:`<h2>✅ Q8.8 complete — what you just did</h2>
+  <p>You read the rendered truth on serverd: haproxy.cfg should list both backends — serverb and serverc with their addresses and port 80 — generated from the haproxy_backend_servers variable through the Q8.2 template.</p>
+  <h4>How it affects the Ansible environment</h4>
+  <p>• Read-only evidence again, aimed at exactly the hosts that should have the file — balancers only, because only serverd runs HAProxy.</p>
+  <div class="tie"><b>How it ties in:</b> the config contains the right lines. Q8.9 asks HAProxy itself whether the config is valid.</div>`
+},
+{
+  id:"Q8.9", title:"Verify: haproxy config test", sub:"haproxy -c", cmd:true,
+  files:[{ path:"shell", lang:"cmd" }],
+  spec:`<b>8.9. Verify the config is valid.</b><br>• One more ad hoc check on the <b>balancers</b> hosts, through the <code>command</code> module: run HAProxy's own configuration test against <code>/etc/haproxy/haproxy.cfg</code>.<br>• The flag that matters tells haproxy to check the config and exit, without starting.<br>• Type the command at the prompt and press <b>Enter</b> to run it.`,
+  checks:[[
+    { re:/ansible\s+balancers\b/, msg:"The ad hoc command targets the balancers hosts" },
+    { re:/-m\s+(ansible\.builtin\.)?command\b/, msg:"It uses the command module" },
+    { re:/-a\s+['"]haproxy\s+-c\s+-f\s+\/etc\/haproxy\/haproxy\.cfg['"]/, msg:"The -a argument runs: haproxy -c -f /etc/haproxy/haproxy.cfg" }
+  ]],
+  explain:`<h2>✅ Q8.9 complete — what you just did</h2>
+  <p>HAProxy itself signed off on its configuration: <code>haproxy -c</code> parses the file and reports it valid (or tells you the exact line that isn't), and <code>-f</code> names the file to test.</p>
+  <h4>How it affects the Ansible environment</h4>
+  <p>• A stronger proof than Q8.8's grep: the lines are not just present, they form a configuration the daemon accepts. Present-but-broken would pass the grep and fail here — which is why the exam checks both.</p>
+  <div class="tie"><b>How it ties in:</b> config present, config valid. Q8.10 is the final proof — the application answering over HTTP.</div>`
+},
+{
+  id:"Q8.10", title:"Verify: hello.php on both servers", sub:"curl, first 5 lines", cmd:true,
+  files:[{ path:"shell", lang:"cmd" }],
+  spec:`<b>8.10. Verify the PHP pages.</b><br>• From the controller, request <code>hello.php</code> from each web server — <code>http://serverb/hello.php</code> and <code>http://serverc/hello.php</code> — quietly (<code>-s</code>), showing just the first 5 lines of each answer.<br>• Type both commands on one line, separated with <code>;</code>, and press <b>Enter</b>.`,
+  checks:[[
+    { re:/curl\s+-s\s+https?:\/\/serverb(\.lab\.example\.com)?\/hello\.php/, msg:"curl -s http://serverb/hello.php" },
+    { re:/curl\s+-s\s+https?:\/\/serverc(\.lab\.example\.com)?\/hello\.php/, msg:"curl -s http://serverc/hello.php" },
+    { fn:t => (t.match(/head\s+-5/g) || []).length >= 2, msg:"Each answer is trimmed with | head -5" }
+  ]],
+  explain:`<h2>✅ Q8.10 complete — what you just did</h2>
+  <p>The final proof, at the application layer: both web servers answered hello.php with "Hello PHP World" and their own names — PHP installed (with exactly the package set from Q8.6), the template deployed, the page served. That closes Q8 — and the exam set.</p>
+  <h4>How it affects the Ansible environment</h4>
+  <p>• Nothing changes; this is the deepest verification in the chain: downloads (Q8.5) → playbook (Q8.6) → run (Q8.7) → config contents (Q8.8) → config validity (Q8.9) → live application (Q8.10). Every layer proven with its own tool.</p>
+  <div class="tie"><b>The whole arc:</b> Q0 tuned your editor, Q1 configured the runner, Q2 fixed the repos everything installs from, Q3–Q5 built plays and proved them, Q4 and Q6 stocked the controller with collections and roles, Q7 taught you to author a role, and Q8 composed all of it into one system. That layering — set up, do, verify — is the exam.</div>`
+}
+];
+// ===PURE-END===
+const HELP = {
+"Q0": { hint:`One autocmd line: FileType yaml + setlocal, then the options in any order — ts, sts, and sw all set to 2, then ai, cuc, cul, nu, and expandtab.`,
+  answer:[{ path:"~/.vimrc", text:"autocmd FileType yaml setlocal ts=2 sts=2 sw=2 ai cuc cul nu expandtab" }] },
+"Q1": { hint:`Everything nests under one top-level ansible-navigator: key. Inside it: execution-environment (podman as the engine, the creator-ee image, pull policy "missing" plus a --tls-verify=false pull argument), playbook-artifact (enable: false), and mode: stdout.`,
+  answer:[{ path:"/home/student/ansible/ansible-navigator.yml", text:`---
+ansible-navigator:
+  execution-environment:
+    enabled: true
+    container-engine: podman
+    image: ghcr.io/ansible/creator-ee:v0.22.0
+    pull:
+      policy: missing
+      arguments:
+        - "--tls-verify=false"
+  playbook-artifact:
+    enable: false
+  mode: stdout
+` }] },
+"Q2": { hint:`Three ad hoc commands, all aimed at "all" hosts with -b: rpm_key first (state=present), then two yum_repository calls. Every repo line carries name, description, baseurl, gpgcheck=true, the same gpgkey URL, and enabled=true.`,
+  answer:[{ path:"/home/student/ansible/repo_key.sh", text:`ansible all -m ansible.builtin.rpm_key -a "key='http://apt.sw.be/RPM-GPG-KEY.dag.txt' state=present" -b
+ansible all -m ansible.builtin.yum_repository -a "name='BaseOS' description='BaseOS Repo' baseurl='http://10.1.14.36/RHEL9/BaseOS' gpgcheck=true gpgkey='http://apt.sw.be/RPM-GPG-KEY.dag.txt' enabled=true" -b
+ansible all -m ansible.builtin.yum_repository -a "name='AppStream' description='AppStream Repo' baseurl='http://10.1.14.36/RHEL9/AppStream' gpgcheck=true gpgkey='http://apt.sw.be/RPM-GPG-KEY.dag.txt' enabled=true" -b
+` }] },
+"Q3": { hint:`One play (hosts: all, become: true) with three dnf tasks. php + mariadb are guarded by an "or" across the dev, test, and prod groups; the "@" group task and the "*" latest task are both dev-only.`,
+  answer:[{ path:"/home/student/ansible/packages.yml", text:`---
+- name: Install packages
+  hosts: all
+  become: true
+  tasks:
+    - name: Install php and mariadb
+      ansible.builtin.dnf:
+        name:
+          - php
+          - mariadb
+        state: present
+      when: inventory_hostname in groups['dev'] or inventory_hostname in groups['test'] or inventory_hostname in groups['prod']
+    - name: Install the RPM Development Tools group
+      ansible.builtin.dnf:
+        name: '@RPM Development Tools'
+        state: present
+      when: inventory_hostname in groups['dev']
+    - name: Update all packages on dev
+      ansible.builtin.dnf:
+        name: '*'
+        state: latest
+      when: inventory_hostname in groups['dev']
+` }] },
+"Q3.1": { hint:`One line, two ansible-playbook calls to the same file: the first adds --syntax-check, then && joins it to the plain run.`,
+  answer:[{ path:"shell", text:"ansible-playbook packages.yml --syntax-check && ansible-playbook packages.yml" }] },
+"Q3.2": { hint:`ansible dev -m ansible.builtin.command -a '...' — inside the quotes goes a dnf command that lists groups, with the --installed flag (two hyphens).`,
+  answer:[{ path:"shell", text:"ansible dev -m ansible.builtin.command -a 'dnf group list --installed'" }] },
+"Q4": { hint:`cd, then mkdir, then vim — in that order, joined by &&. The mkdir needs its -p flag, and the vim target is collections/requirements.yml.`,
+  answer:[{ path:"shell", text:"cd ~/ansible && mkdir -p collections && vim collections/requirements.yml" }] },
+"Q4.1": { hint:`Start with ---, then a "collections:" list holding three name entries: community.general, ansible.posix, ansible.netcommon.`,
+  answer:[{ path:"/home/student/ansible/collections/requirements.yml", text:`---
+collections:
+  - name: community.general
+  - name: ansible.posix
+  - name: ansible.netcommon
+` }] },
+"Q4.2": { hint:`cd ~/ansible first, then ansible-galaxy collection install with two flags: -r points at the requirements file, -p points at the local collections directory. Join them with &&.`,
+  answer:[{ path:"shell", text:"cd ~/ansible && ansible-galaxy collection install -r collections/requirements.yml -p collections" }] },
+"Q4.3": { hint:`ansible-galaxy collection list — with the same -p collections you used for the install, so you are listing the project's directory, not the default paths.`,
+  answer:[{ path:"shell", text:"ansible-galaxy collection list -p collections" }] },
+ "Q5": { hint:`Three parts on one line: sudo dnf install, the -y flag, and the package name rhel-system-roles.`,
+  answer:[{ path:"shell", text:"sudo dnf install -y rhel-system-roles" }] },
+"Q5.1": { hint:`ls the roles/ directory at the end of the redhat/rhel_system_roles collection path, then a pipe into grep for the one role name you need.`,
+  answer:[{ path:"shell", text:"ls /usr/share/ansible/collections/ansible_collections/redhat/rhel_system_roles/roles/ | grep timesync" }] },
+"Q5.2": { hint:`A vars block sets timesync_ntp_servers to a one-item list (hostname 2.north-america.pool.ntp.org, iburst: true); then roles: applies the fully qualified redhat.rhel_system_roles.timesync role.`,
+  answer:[{ path:"/home/student/ansible/timesync.yml", text:`---
+- name: Configure time synchronization
+  hosts: all
+  become: true
+  vars:
+    timesync_ntp_servers:
+      - hostname: 2.north-america.pool.ntp.org
+        iburst: true
+  roles:
+    - redhat.rhel_system_roles.timesync
+` }] },
+"Q5.3": { hint:`A plain ansible-playbook run of timesync.yml — no sudo; the play becomes root on the hosts itself.`,
+  answer:[{ path:"shell", text:"ansible-playbook timesync.yml" }] },
+"Q5.4": { hint:`ansible all, the command module, and an -a argument that greps for the word pool in /etc/chrony.conf.`,
+  answer:[{ path:"shell", text:"ansible all -m ansible.builtin.command -a 'grep pool /etc/chrony.conf'" }] },
+"Q5.5": { hint:`ansible all, the command module, and an -a argument that asks chrony for its sources.`,
+  answer:[{ path:"shell", text:"ansible all -m ansible.builtin.command -a 'chronyc sources'" }] },
+"Q6": { hint:`cd, mkdir, vim — in that order, joined by &&. The mkdir needs -p; the vim target is roles/requirements.yml.`,
+  answer:[{ path:"shell", text:"cd ~/ansible && mkdir -p roles && vim roles/requirements.yml" }] },
+"Q6.1": { hint:`Two src/name pairs: geerlingguy.haproxy renamed to balancer, and geerlingguy.php renamed to phpinfo. The rename lives in the "name:" key paired with each src.`,
+  answer:[{ path:"/home/student/ansible/roles/requirements.yml", text:`---
+- src: geerlingguy.haproxy
+  name: balancer
+- src: geerlingguy.php
+  name: phpinfo
+` }] },
+"Q6.2": { hint:`cd ~/ansible first, then ansible-galaxy role install with -r (roles/requirements.yml) and -p (the local roles directory), joined by &&.`,
+  answer:[{ path:"shell", text:"cd ~/ansible && ansible-galaxy role install -r roles/requirements.yml -p roles" }] },
+"Q6.3": { hint:`ansible-galaxy role list — no flags; you are looking for balancer and phpinfo in the output.`,
+  answer:[{ path:"shell", text:"ansible-galaxy role list" }] },
+"Q7": { hint:`The full path of the project's roles directory: /home/student/ansible/roles.`,
+  answer:[{ path:"shell", text:"cd /home/student/ansible/roles" }] },
+"Q7.1": { hint:`ansible-galaxy role init, followed by the role's name: apache.`,
+  answer:[{ path:"shell", text:"ansible-galaxy role init apache" }] },
+"Q7.2": { hint:`ls, then the role's path: roles/apache.`,
+  answer:[{ path:"shell", text:"ls roles/apache" }] },
+"Q7.3": { hint:`Four tasks: dnf install of httpd + firewalld; a service loop (started, enabled) over both daemons; a firewalld loop over http and https with immediate + permanent; then a template task with setype: httpd_sys_content_t.`,
+  answer:[{ path:"/home/student/ansible/roles/apache/tasks/main.yml", text:`---
+- name: Install httpd and firewalld
+  ansible.builtin.dnf:
+    name:
+      - httpd
+      - firewalld
+    state: present
+- name: Start and enable httpd and firewalld
+  ansible.builtin.service:
+    name: "{{ item }}"
+    state: started
+    enabled: true
+  loop:
+    - httpd
+    - firewalld
+- name: Permit http and https in the firewall
+  ansible.posix.firewalld:
+    service: "{{ item }}"
+    state: enabled
+    immediate: true
+    permanent: true
+  loop:
+    - http
+    - https
+- name: Deploy the index page
+  ansible.builtin.template:
+    src: index.html.j2
+    dest: /var/www/html/index.html
+    setype: httpd_sys_content_t
+` }] },
+"Q7.4": { hint:`Two fact expressions, one per line: the fqdn fact, and the address inside the default_ipv4 fact — both as ansible_facts[...] lookups in {{ }} braces.`,
+  answer:[{ path:"/home/student/ansible/roles/apache/templates/index.html.j2", text:`{{ ansible_facts['fqdn'] }}
+{{ ansible_facts['default_ipv4']['address'] }}
+` }] },
+"Q7.5": { hint:`hosts: webservers, become: true, and one task that includes the apache role by name (ansible.builtin.include_role).`,
+  answer:[{ path:"/home/student/ansible/role.yml", text:`---
+- name: Deploy the apache role
+  hosts: webservers
+  become: true
+  tasks:
+    - name: Include the apache role
+      ansible.builtin.include_role:
+        name: apache
+` }] },
+"Q7.6": { hint:`A plain ansible-playbook run of role.yml — no sudo; the play becomes root itself.`,
+  answer:[{ path:"shell", text:"ansible-playbook role.yml" }] },
+"Q7.7": { hint:`Two curls on one line, separated by a semicolon: http://serverb and http://serverc.`,
+  answer:[{ path:"shell", text:"curl http://serverb; curl http://serverc" }] },
+"Q8": { hint:`One mkdir -p, three targets: the balancer templates dir, the phpinfo templates dir, and the phpinfo tasks dir — all under roles/.`,
+  answer:[{ path:"shell", text:"mkdir -p roles/balancer/templates roles/phpinfo/templates roles/phpinfo/tasks" }] },
+"Q8.1": { hint:`curl with -o roles.yml, from the exam server's address — the file server is 10.1.10.121.`,
+  answer:[{ path:"shell", text:"curl -o roles.yml http://10.1.10.121/roles.yml" }] },
+"Q8.2": { hint:`curl -o, saving into roles/balancer/templates/ under the same filename the server uses: haproxy.cfg.j2.`,
+  answer:[{ path:"shell", text:"curl -o roles/balancer/templates/haproxy.cfg.j2 http://10.1.10.121/haproxy.cfg.j2" }] },
+"Q8.3": { hint:`curl -o, saving into roles/phpinfo/templates/ as hello.php.j2.`,
+  answer:[{ path:"shell", text:"curl -o roles/phpinfo/templates/hello.php.j2 http://10.1.10.121/hello.php.j2" }] },
+"Q8.4": { hint:`curl -o, saving into roles/phpinfo/tasks/ as main.yml — the server's filename is already main.yml.`,
+  answer:[{ path:"shell", text:"curl -o roles/phpinfo/tasks/main.yml http://10.1.10.121/main.yml" }] },
+"Q8.5": { hint:`One ls -l naming all four: roles.yml plus the three directories from Q8.`,
+  answer:[{ path:"shell", text:"ls -l roles.yml roles/balancer/templates/ roles/phpinfo/templates/ roles/phpinfo/tasks/" }] },
+"Q8.6": { hint:`One play, hosts: all. Backend servers are a list of dicts with name, address, and port as separate keys, and php_packages is overridden in the same vars. The roles: section applies balancer and phpinfo conditionally — each role entry carries its own when on group_names — and the firewall opening sits in post_tasks, also guarded to balancers.`,
+  answer:[{ path:"/home/student/ansible/roles.yml", text:`---
+- name: Configure balancers and web servers
+  hosts: all
+  become: true
+  vars:
+    haproxy_backend_servers:
+      - name: serverb.lab.example.com
+        address: 172.25.250.11
+        port: 80
+      - name: serverc.lab.example.com
+        address: 172.25.250.12
+        port: 80
+    php_packages:
+      - php
+      - php-cli
+      - php-common
+  roles:
+    - role: balancer
+      when: "'balancers' in group_names"
+    - role: phpinfo
+      when: "'webservers' in group_names"
+  post_tasks:
+    - name: Permit http in the firewall
+      ansible.posix.firewalld:
+        service: http
+        state: enabled
+        immediate: true
+        permanent: true
+      when: "'balancers' in group_names"
+` }] },
+"Q8.7": { hint:`A plain ansible-playbook run of roles.yml — no sudo.`,
+  answer:[{ path:"shell", text:"ansible-playbook roles.yml" }] },
+"Q8.8": { hint:`ansible balancers, the command module, and an -a argument that greps for the word server in /etc/haproxy/haproxy.cfg.`,
+  answer:[{ path:"shell", text:"ansible balancers -m ansible.builtin.command -a 'grep server /etc/haproxy/haproxy.cfg'" }] },
+"Q8.9": { hint:`ansible balancers, the command module, and an -a argument running haproxy's config check: haproxy -c -f, then the config path.`,
+  answer:[{ path:"shell", text:"ansible balancers -m ansible.builtin.command -a 'haproxy -c -f /etc/haproxy/haproxy.cfg'" }] },
+"Q8.10": { hint:`Two quiet curls on one line, separated by a semicolon: serverb's hello.php and serverc's hello.php, each piped to head -5.`,
+  answer:[{ path:"shell", text:"curl -s http://serverb/hello.php | head -5; curl -s http://serverc/hello.php | head -5" }] }
+};
+
+function runChecks(q, texts){
+  // YAML/Bash sanity: tabs are illegal in YAML and a classic silent killer.
+  const results = [];
+  q.files.forEach((f, fi) => {
+    const t = texts[fi] || "";
+    if (f.lang === "yaml" && /\t/.test(t)) {
+      results.push({ ok:false, msg:"(" + f.path.split("/").pop() + ") Contains TAB characters — YAML requires spaces. Replace tabs with spaces." });
+    }
+    (q.checks[fi] || []).forEach(c => {
+      let ok = false;
+      try { ok = c.re ? c.re.test(t) : !!c.fn(t); } catch(e) { ok = false; }
+      results.push({ ok, msg:"(" + f.path.split("/").pop() + ") " + c.msg });
+    });
+  });
+  return results;
+}
+// === ENGINE ===
+const state = { cur: 0, unlocked: 0, done: new Set(), attempts: {}, texts: {}, finished: false };
+let activeFile = 0;
+const start = Date.now();
+setInterval(() => {
+  const s = Math.floor((Date.now() - start) / 1000);
+  const c = document.getElementById("clock");
+  if (c) c.textContent = String(Math.floor(s / 60)).padStart(2, "0") + ":" + String(s % 60).padStart(2, "0");
+}, 1000);
+
+const LH = 21, PAD_T = 12, PAD_L = 14;
+let CHAR_W = 8.4;
+(function(){ try { const cv = document.createElement("canvas").getContext("2d"); cv.font = "14px ui-monospace, Menlo, Consolas, monospace"; CHAR_W = cv.measureText("MMMMMMMMMM").width / 10; } catch(e){} })();
+
+function gel(id){ return document.getElementById(id); }
+
+function renderNav(){
+  const el = gel("qlist"); el.innerHTML = "";
+  QUESTIONS.forEach((q, i) => {
+    const d = document.createElement("div");
+    d.className = "qitem" + (i === state.cur ? " current" : "") + (state.done.has(i) ? " done" : "");
+    const mk = state.done.has(i) ? "✔" : (i === state.cur ? ">" : "·");
+    d.innerHTML = "<span class='mk'>" + mk + "</span>" + q.id + " " + q.title + "<small>" + q.sub + "</small>";
+    d.title = "Go to " + q.id;
+    d.onclick = () => { if (i !== state.cur) goQuestion(i); };
+    el.appendChild(d);
+  });
+  gel("score").textContent = state.done.size + " / " + QUESTIONS.length;
+  const cur = el.querySelector(".qitem.current");
+  if (cur) cur.scrollIntoView({ block: "nearest" });
+}
+
+function saveTexts(){
+  if (!gel("ta0")) return;
+  const q = QUESTIONS[state.cur];
+  state.texts[state.cur] = q.files.map((f, fi) => { const ta = gel("ta" + fi); return ta ? ta.value : ""; });
+}
+
+function placeholders(f){
+  if (f.lang === "cmd") return "type the command here - press Enter to run it...";
+  if (f.lang === "bash") return "#!/bin/bash\n# type the whole script here, one command per line...";
+  if (f.lang === "jinja") return "Type the one-line template here...";
+  if (f.lang === "vim") return "Type your .vimrc here - the one autocmd line...";
+  return "---\n# type the whole file here - spaces only, no tabs...";
+}
+
+function gutterSync(fi){
+  const ta = gel("ta" + fi), gut = gel("gut" + fi);
+  if (!ta || !gut) return;
+  const n = ta.value.split("\n").length;
+  let nums = "";
+  for (let i = 1; i <= n; i++) nums += i + "\n";
+  gut.textContent = nums;
+  gut.style.transform = "translateY(" + (-ta.scrollTop) + "px)";
+}
+
+function caretSync(fi){
+  const ta = gel("ta" + fi); if (!ta) return;
+  const pos = ta.selectionStart;
+  const lines = ta.value.slice(0, pos).split("\n");
+  const ln = lines.length, col = lines[lines.length - 1].length + 1;
+  const p = gel("pos" + fi); if (p) p.textContent = "Ln " + ln + ", Col " + col;
+  const lEl = gel("hll" + fi), cEl = gel("hlc" + fi);
+  if (lEl) { lEl.style.top = (PAD_T + (ln - 1) * LH - ta.scrollTop) + "px"; lEl.style.height = LH + "px"; }
+  if (cEl) { cEl.style.left = (PAD_L + (col - 1) * CHAR_W - ta.scrollLeft) + "px"; cEl.style.width = CHAR_W + "px"; }
+}
+
+function focusEditor(fi){
+  const q = QUESTIONS[state.cur];
+  activeFile = Math.max(0, Math.min(fi, q.files.length - 1));
+  const ta = gel("ta" + activeFile);
+  if (ta) { ta.focus(); caretSync(activeFile); }
+}
+
+function wireEditor(fi){
+  const ta = gel("ta" + fi); if (!ta) return;
+  const lang = QUESTIONS[state.cur].files[fi].lang;
+  ta.addEventListener("input", () => { saveTexts(); gutterSync(fi); caretSync(fi); syntaxSync(fi); });
+  ta.addEventListener("scroll", () => { gutterSync(fi); caretSync(fi); syntaxSync(fi); });
+  ta.addEventListener("keyup", () => caretSync(fi));
+  ta.addEventListener("focus", () => { activeFile = fi; caretSync(fi); });
+  ta.addEventListener("keydown", (e) => {
+    if (e.key === "Tab") {
+      // vim: Tab steps to the next sts stop; with a selection it indents the lines (>>); Shift+Tab outdents (<<)
+      e.preventDefault();
+      const s0 = ta.selectionStart, e0 = ta.selectionEnd;
+      if (e.shiftKey) shiftLines(ta, -1);
+      else if (s0 !== e0) shiftLines(ta, 1);
+      else { const col = s0 - (ta.value.lastIndexOf("\n", s0 - 1) + 1); ta.setRangeText(" ".repeat(2 - (col % 2)), s0, e0, "end"); }
+      ta.dispatchEvent(new Event("input"));
+    } else if (e.key === "Enter" && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      // ai + the yaml indent script: copy the indent; add a level after a block key, align inside a list item's map
+      e.preventDefault();
+      const pos = ta.selectionStart;
+      const lineStart = ta.value.lastIndexOf("\n", pos - 1) + 1;
+      let lineEnd = ta.value.indexOf("\n", pos); if (lineEnd < 0) lineEnd = ta.value.length;
+      const cur = ta.value.slice(lineStart, lineEnd);
+      ta.setRangeText("\n" + " ".repeat(newlineIndent(cur, lang)), pos, ta.selectionEnd, "end");
+      ta.dispatchEvent(new Event("input"));
+    } else if (e.key === "Backspace") {
+      // sts=2: backspace over pure indentation deletes a 2-space step
+      const pos = ta.selectionStart;
+      if (ta.selectionStart === ta.selectionEnd && pos > 0) {
+        const lineStart = ta.value.lastIndexOf("\n", pos - 1) + 1;
+        const beforeOnLine = ta.value.slice(lineStart, pos);
+        if (beforeOnLine.length > 0 && /^ *$/.test(beforeOnLine)) {
+          e.preventDefault();
+          const n = ((beforeOnLine.length - 1) % 2) + 1;
+          ta.setRangeText("", pos - n, pos, "end");
+          ta.dispatchEvent(new Event("input"));
+        }
+      }
+    }
+  });
+}
+
+// ===HELPERS-START===
+function esc(s){ return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
+function hlValue(str){
+  let out = "", i = 0;
+  while (i < str.length) {
+    if (str.startsWith("{{", i)) {
+      const j = str.indexOf("}}", i);
+      if (j < 0) { out += "<span class='tk-jinja'>" + esc(str.slice(i)) + "</span>"; i = str.length; }
+      else { out += "<span class='tk-jinja'>{{" + hlValue(str.slice(i + 2, j)) + "}}</span>"; i = j + 2; }
+    } else if (str[i] === '"' || str[i] === "'") {
+      const q = str[i]; let j = i + 1; while (j < str.length && str[j] !== q) j++;
+      const end = Math.min(j + 1, str.length);
+      const tok = str.slice(i, end);
+      const closed = (end - i >= 2) && str[end - 1] === q;
+      if (closed && tok.includes("{{")) {
+        // quotes stay string-colored, but a {{ }} expression inside still pops, like vim+ansible
+        out += "<span class='tk-str'>" + esc(tok[0]) + "</span>" + hlValue(tok.slice(1, -1)) + "<span class='tk-str'>" + esc(tok[tok.length - 1]) + "</span>";
+      } else {
+        out += "<span class='tk-str'>" + esc(tok) + "</span>";
+      }
+      i = end;
+    } else {
+      let j = i;
+      while (j < str.length && !str.startsWith("{{", j) && str[j] !== '"' && str[j] !== "'") j++;
+      out += esc(str.slice(i, j)).replace(/\b(true|false|yes|no|null)\b/gi, "<span class='tk-bool'>$1</span>").replace(/\b(\d+(?:\.\d+)?)\b/g, "<span class='tk-num'>$1</span>");
+      i = j;
+    }
+  }
+  return out;
+}
+function splitComment(line){
+  let q = null;
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (q) { if (c === q) q = null; }
+    else if (c === '"' || c === "'") q = c;
+    else if (c === "#" && (i === 0 || /\s/.test(line[i - 1]))) return [line.slice(0, i), line.slice(i)];
+  }
+  return [line, ""];
+}
+function hlYamlLine(line){
+  const parts = splitComment(line), code = parts[0], comment = parts[1];
+  const m = code.match(/^(\s*)(-\s+)?(.*)$/);
+  let out = esc(m[1]);
+  if (m[2]) out += "<span class='tk-dash'>-</span>" + esc(m[2].slice(1));
+  const rest = m[3];
+  if (rest === "---") out += "<span class='tk-doc'>---</span>";
+  else if (rest) {
+    const km = rest.match(/^([^:\s][^:]*?)(\s*)(:)(\s+|$)(.*)$/);
+    if (km) out += "<span class='tk-key'>" + esc(km[1]) + "</span>" + esc(km[2]) + "<span class='tk-colon'>:</span>" + esc(km[4]) + hlValue(km[5] || "");
+    else out += hlValue(rest);
+  }
+  if (comment) out += "<span class='tk-com'>" + esc(comment) + "</span>";
+  return out;
+}
+function hlBashLine(line){
+  const parts = splitComment(line), code = parts[0], comment = parts[1];
+  const re = /('[^']*'|"[^"]*"|\s-[a-zA-Z]\b|\s--[a-z][\w-]*|\bansible\.builtin\.[\w.]+|\bansible\b|\bcd\b|\bbash\b|\bchmod\b|\bcurl\b)/g;
+  let out = "", last = 0, m;
+  while ((m = re.exec(code)) !== null) {
+    out += esc(code.slice(last, m.index));
+    const tok = m[0];
+    let cls = "tk-cmd";
+    if (tok[0] === "'" || tok[0] === '"') cls = "tk-str";
+    else if (/^\s-/.test(tok)) cls = "tk-flag";
+    else if (tok.indexOf("ansible.builtin.") === 0) cls = "tk-mod";
+    out += "<span class='" + cls + "'>" + esc(tok) + "</span>";
+    last = m.index + tok.length;
+  }
+  out += esc(code.slice(last));
+  if (comment) out += "<span class='tk-com'>" + esc(comment) + "</span>";
+  return out;
+}
+function hlJinja(text){
+  return text.split(/(\{\{[^}]*\}\})/g).map(part => {
+    if (part.startsWith("{{") && part.endsWith("}}")) return "<span class='tk-jinja'>{{" + hlValue(part.slice(2, -2)) + "}}</span>";
+    return esc(part);
+  }).join("");
+}
+function hlVim(text){
+  return text.split("\n").map(line => {
+    const m = line.match(/^(autocmd)(\s+)(FileType)(\s+)(\S+)(\s+)(setlocal)(\s+)(\S.*)$/);
+    if (!m) return esc(line);
+    const opts = m[9].split(/\s+/).filter(Boolean).map(o => {
+      const kv = o.match(/^([a-z]+)=(\d+)$/);
+      return kv ? "<span class='tk-opt'>" + kv[1] + "</span>=<span class='tk-num'>" + kv[2] + "</span>" : "<span class='tk-opt'>" + esc(o) + "</span>";
+    }).join(" ");
+    return "<span class='tk-kw'>" + m[1] + "</span>" + m[2] + "<span class='tk-kw'>" + m[3] + "</span>" + m[4] + "<span class='tk-str'>" + esc(m[5]) + "</span>" + m[6] + "<span class='tk-kw'>" + m[7] + "</span>" + m[8] + opts;
+  }).join("\n");
+}
+function highlightCode(lang, text){
+  if (lang === "yaml") return text.split("\n").map(hlYamlLine).join("\n");
+  if (lang === "bash") return text.split("\n").map(hlBashLine).join("\n");
+  if (lang === "jinja") return hlJinja(text);
+  if (lang === "vim") return hlVim(text);
+  return esc(text);
+}
+function newlineIndent(cur, lang){
+  const base = (cur.match(/^ */) || [""])[0].length;
+  let n = base;
+  if (lang === "yaml") {
+    const trimmed = cur.replace(/\s+$/, "");
+    const isItem = /^\s*-\s/.test(cur);
+    const itemIsMap = /^\s*-\s+[^:\s]+:/.test(cur);
+    if (isItem && itemIsMap) n = base + 2 + (trimmed.endsWith(":") ? 2 : 0);
+    else if (!isItem && trimmed.endsWith(":")) n = base + 2;
+  }
+  return n;
+}
+function shiftLines(ta, dir){
+  const v = ta.value, s = ta.selectionStart, e = ta.selectionEnd;
+  const ls = v.lastIndexOf("\n", s - 1) + 1;
+  let le = v.indexOf("\n", e); if (le < 0) le = v.length;
+  if (e > ls && v[e - 1] === "\n") le = e - 1;
+  const lines = v.slice(ls, le).split("\n");
+  let dFirst = 0, dTotal = 0;
+  const out = lines.map((ln, i) => {
+    if (dir > 0) { dTotal += 2; if (i === 0) dFirst = 2; return "  " + ln; }
+    const mm = ln.match(/^ {1,2}/); const rm = mm ? mm[0].length : 0;
+    dTotal -= rm; if (i === 0) dFirst = -rm; return ln.slice(rm);
+  }).join("\n");
+  ta.setRangeText(out, ls, le, "end");
+  ta.selectionStart = Math.max(ls, s + dFirst);
+  ta.selectionEnd = Math.max(ta.selectionStart, e + dTotal);
+}
+function syntaxSync(fi){
+  const ta = gel("ta" + fi), pre = gel("syn" + fi);
+  if (!ta || !pre) return;
+  pre.innerHTML = highlightCode(QUESTIONS[state.cur].files[fi].lang, ta.value) + "\n";
+  pre.style.transform = "translate(" + (-ta.scrollLeft) + "px," + (-ta.scrollTop) + "px)";
+}
+// ===HELPERS-END===
+function wireCmd(fi){
+  const ta = gel("ta" + fi); if (!ta) return;
+  ta.addEventListener("input", saveTexts);
+  ta.addEventListener("focus", () => { activeFile = fi; });
+  ta.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && !e.ctrlKey && !e.metaKey && !e.altKey) { e.preventDefault(); doCheck(); }
+  });
+}
+
+function wireHelp(q){
+  const help = HELP[q.id]; if (!help) return;
+  const hb = gel("hintbtn"), rb = gel("revealbtn"), hbox = gel("hintbox"), abox = gel("answerbox");
+  const cb = gel("checkbtn"), nb = gel("nextbtn");
+  if (cb) cb.addEventListener("click", () => doCheck());
+  if (nb) {
+    if (state.cur >= QUESTIONS.length - 1) nb.style.display = "none";
+    else nb.addEventListener("click", () => goQuestion(state.cur + 1));
+  }
+  if (!hb || !rb) return;
+  hb.addEventListener("click", () => {
+    const open = hbox.classList.toggle("show");
+    if (open && !hbox.innerHTML) hbox.innerHTML = "<b>Hint:</b> " + help.hint;
+    hb.textContent = open ? "💡 Hide hint" : "💡 Hint";
+  });
+  let armed = false, armTimer = null;
+  rb.addEventListener("click", () => {
+    if (abox.classList.contains("show")) { abox.classList.remove("show"); rb.textContent = "👁 Reveal answer"; armed = false; return; }
+    if (!armed) {
+      armed = true;
+      rb.textContent = "⚠ Click again to reveal — it won't count as a pass";
+      armTimer = setTimeout(() => { armed = false; rb.textContent = "👁 Reveal answer"; }, 4000);
+      return;
+    }
+    clearTimeout(armTimer); armed = false;
+    abox.innerHTML = help.answer.map(a => "<div class='ansfile'><div class='anspath'>" + esc(a.path) + "</div><pre>" + esc(a.text) + "</pre></div>").join("")
+      + "<div class='ansnote'>Type it yourself to complete the question — revealing does not mark it passed.</div>";
+    abox.classList.add("show");
+    rb.textContent = "👁 Hide answer";
+  });
+}
+
+function updateNextline(){
+  const nl = gel("nextline"); if (!nl) return;
+  if (!state.done.has(state.cur)) { nl.textContent = ""; return; }
+  nl.innerHTML = state.cur < QUESTIONS.length - 1
+    ? "&gt;&gt; Next: " + QUESTIONS[state.cur + 1].id + " — press [Alt+→] or click it on the left"
+    : "&gt;&gt; final question passed — press [Alt+→] for your result";
+}
+
+function renderStage(){
+  const q = QUESTIONS[state.cur];
+  const saved = state.texts[state.cur] || [];
+  let h = "";
+  h += "<div class='crumb'>EXAM 1 :: QUESTION " + (state.cur + 1) + " OF " + QUESTIONS.length + " :: student @ controller :: /home/student/ansible</div>";
+  h += "<h1>" + q.id + ": " + q.title + "</h1>";
+  h += "<div class='spec'>" + q.spec + "</div>";
+  q.files.forEach((f, fi) => {
+    const val = saved[fi] ? saved[fi].replace(/&/g, "&amp;").replace(/</g, "&lt;") : "";
+    if (q.cmd) {
+      h += "<div class='fileblock'><div class='filehead'><span class='prompt'>[student@controller ansible]$</span> <span class='cmd'>type the command, then press Enter to run it</span><span class='lang'>shell</span></div>"
+        + "<textarea class='cmdinput' id='ta" + fi + "' spellcheck='false' autocomplete='off' autocapitalize='off' placeholder='" + placeholders(f).replace(/'/g, "&#39;") + "'>" + val + "</textarea></div>";
+      return;
+    }
+    h += "<div class='fileblock'><div class='filehead'><span class='prompt'>[student@controller ansible]$</span> <span class='cmd'>vim " + f.path + "</span><span class='lang'>" + f.lang + "</span></div>"
+      + "<div class='vimedit'><pre class='gutter'><span id='gut" + fi + "'>1</span></pre>"
+      + "<div class='editwrap'><div class='hl'><pre class='syntax' id='syn" + fi + "'></pre><div class='hl-line' id='hll" + fi + "'></div><div class='hl-col' id='hlc" + fi + "'></div></div>"
+      + "<textarea id='ta" + fi + "' spellcheck='false' autocomplete='off' autocapitalize='off' placeholder='" + placeholders(f).replace(/'/g, "&#39;") + "'>" + val + "</textarea></div></div>"
+      + "<div class='statusline'><span class='mode'>-- INSERT --</span><span>" + f.path + "</span><span class='pos' id='pos" + fi + "'>Ln 1, Col 1</span></div></div>";
+  });
+  h += "<div class='keys'><b>[Ctrl+Enter / F2]</b> check &nbsp;<b>[Alt+↑/↓]</b> switch file &nbsp;<b>[Alt+→]</b> next question &nbsp;<b>[Alt+←]</b> previous &nbsp;<b>[Tab]</b> indent · <b>[Shift+Tab]</b> outdent &nbsp;::&nbsp; attempts: <span class='n' id='att'>" + (state.attempts[state.cur] || 0) + "</span></div>";
+  h += "<div class='helprow'><button class='hbtn' id='checkbtn'>▶ Check</button><button class='hbtn' id='hintbtn'>💡 Hint</button><button class='hbtn' id='revealbtn'>👁 Reveal answer</button><button class='hbtn' id='nextbtn'>Next ▸</button></div>";
+  h += "<div class='hintbox' id='hintbox'></div>";
+  h += "<div class='answerbox' id='answerbox'></div>";
+  h += "<div class='feedback' id='fb'></div>";
+  h += "<div class='explain' id='ex'>" + q.explain + "<div class='nextline' id='nextline'></div></div>";
+  gel("stage").innerHTML = h;
+  if (q.cmd) { wireCmd(0); } else { q.files.forEach((f, fi) => { wireEditor(fi); gutterSync(fi); caretSync(fi); syntaxSync(fi); }); }
+  updateNextline();
+  if (state.done.has(state.cur)) gel("ex").className = "explain show";
+  wireHelp(q);
+}
+
+function doCheck(){
+  const q = QUESTIONS[state.cur];
+  saveTexts();
+  state.attempts[state.cur] = (state.attempts[state.cur] || 0) + 1;
+  const att = gel("att"); if (att) att.textContent = state.attempts[state.cur];
+  const texts = q.files.map((f, fi) => { const ta = gel("ta" + fi); return ta ? ta.value : ""; });
+  const res = runChecks(q, texts);
+  const bad = res.filter(r => !r.ok), good = res.filter(r => r.ok);
+  const fb = gel("fb");
+  if (bad.length === 0) {
+    state.done.add(state.cur);
+    fb.className = "feedback show good";
+    fb.innerHTML = "<b>[OK] syntax accepted</b> — all " + res.length + " requirements met in " + state.attempts[state.cur] + " attempt" + (state.attempts[state.cur] > 1 ? "s" : "") + ". Read the breakdown below — that's the part that makes it stick.";
+    gel("ex").className = "explain show";
+    updateNextline(); renderNav();
+    gel("ex").scrollIntoView({ behavior: "smooth", block: "start" });
+  } else {
+    fb.className = "feedback show bad";
+    fb.innerHTML = "<b>[FAIL] not yet</b> — " + good.length + " of " + res.length + " requirements met. Still missing or wrong:<ul>" + bad.map(r => "<li>" + r.msg.replace(/&/g, "&amp;").replace(/</g, "&lt;") + "</li>").join("") + "</ul><span style='color:var(--dim)'>Fix those lines and check again — unlimited retries.</span>";
+    fb.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }
+}
+
+function goQuestion(i){
+  if (i < 0 || i >= QUESTIONS.length) return;
+  saveTexts();
+  state.cur = i; activeFile = 0;
+  renderNav(); renderStage();
+  window.scrollTo({ top: 0 });
+  focusEditor(0);
+}
+
+function showFinish(){
+  state.finished = true;
+  const s = Math.floor((Date.now() - start) / 1000);
+  const totalAtt = Object.values(state.attempts).reduce((a, b) => a + b, 0);
+  gel("finishstats").innerHTML = "All " + QUESTIONS.length + " questions typed correctly, keyboard only, in <b>" + Math.floor(s / 60) + "m " + (s % 60) + "s</b> (real exam budget: 150 minutes) with <b>" + totalAtt + "</b> total checks.<br>Per question: " + QUESTIONS.map((q, i) => q.id + " — " + (state.attempts[i] || 0)).join(" · ") + "<br><br>The syntax is in your fingers now. Run it again tomorrow and watch the attempt counts fall.";
+  const f = gel("finish");
+  f.className = "finish show";
+  f.scrollIntoView({ behavior: "smooth" });
+}
+
+document.addEventListener("keydown", (e) => {
+  if (((e.ctrlKey || e.metaKey) && e.key === "Enter") || e.key === "F2" || (e.altKey && e.key === "Enter") || (e.ctrlKey && (e.key === "s" || e.key === "S"))) { e.preventDefault(); if (!state.finished) doCheck(); return; }
+  if (e.altKey && e.key === "ArrowDown") { e.preventDefault(); focusEditor(activeFile + 1); return; }
+  if (e.altKey && e.key === "ArrowUp") { e.preventDefault(); focusEditor(activeFile - 1); return; }
+  if (e.altKey && e.key === "ArrowRight") {
+    e.preventDefault();
+    if (state.cur < QUESTIONS.length - 1) { goQuestion(state.cur + 1); }
+    else if (state.done.has(state.cur) && !state.finished) showFinish();
+    return;
+  }
+  if (e.altKey && e.key === "ArrowLeft") { e.preventDefault(); if (state.cur > 0) goQuestion(state.cur - 1); return; }
+  if (state.finished && e.key === "Enter") { location.reload(); return; }
+  const tag = (document.activeElement && document.activeElement.tagName) || "";
+  if (!state.finished && tag !== "TEXTAREA" && e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) focusEditor(activeFile);
+});
+
+// Mouse lock: a real exam terminal takes keys, not clicks.
+const ttyBar = gel("ttybar");
+const ttyOrig = ttyBar ? ttyBar.textContent : "";
+let ttyTimer = null;
+["mousedown", "mouseup", "click", "dblclick", "contextmenu", "wheel"].forEach(ev => {
+  document.addEventListener(ev, (e) => {
+    if (e.target && (e.target.tagName === "TEXTAREA" || (e.target.closest && (e.target.closest("nav") || e.target.closest(".hbtn"))))) return; // mouse may use the question list (scroll + click), focus an editor, or use the hint/reveal buttons
+    e.preventDefault();
+    if (ttyBar) {
+      ttyBar.textContent = "!! mouse works on the question list and editor focus only. [Ctrl+Enter / F2] check · [Alt+↑/↓] switch file · [Alt+←/→] switch question";
+      if (ttyTimer) clearTimeout(ttyTimer);
+      ttyTimer = setTimeout(() => { ttyBar.textContent = ttyOrig; }, 2200);
+    }
+  }, { passive: false });
+});
+
+renderNav();
+renderStage();
+focusEditor(0);
+
+</script>
+</body>
+</html>
