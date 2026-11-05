@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>How It's Built — MathPath to AI | Eddie's App Hub</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Inter:wght@400;500;600&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../how-it-works.css">
+</head>
+<body>
+<a href="../index.html" style="position:fixed;top:12px;left:12px;z-index:9999;background:rgba(10,10,20,0.85);backdrop-filter:blur(6px);color:#4af7ff;border:1px solid #4af7ff;border-radius:20px;padding:6px 14px;font-family:sans-serif;font-size:13px;text-decoration:none;font-weight:600;">← App Hub</a>
+
+<div class="hiw-page">
+
+  <header class="hiw-header">
+    <div class="hiw-icon">🧮</div>
+    <h1>MathPath to AI — How It's Built</h1>
+    <p class="hiw-tagline">A free, structured math curriculum — from algebra to the math behind modern AI, taught in dependency order.</p>
+  </header>
+
+  <section class="hiw-section">
+    <h2>Overview</h2>
+    <p>
+      MathPath to AI answers a specific frustration: most "math for machine learning" resources either assume you already have the prerequisites or scatter topics in an order that doesn't build. This curriculum lays the whole path out as one sequence — algebra foundations, geometry and trigonometry, precalculus, calculus, linear algebra, probability and statistics, and finally the optimization and AI math that sit on top of all of it. Each stage is there because the next stage needs it: linear algebra is the language neural networks are written in, calculus is what makes gradient descent work, and probability is how models express uncertainty. The site is free, self-paced, and static — no accounts, no backend, nothing to run.
+    </p>
+  </section>
+
+  <section class="hiw-section">
+    <h2>Tech Stack</h2>
+    <div class="hiw-badges">
+      <span class="hiw-badge">TypeScript</span>
+      <span class="hiw-badge">Next.js</span>
+      <span class="hiw-badge">HTML</span>
+      <span class="hiw-badge">CSS</span>
+    </div>
+    <ul class="hiw-caption-list">
+      <li><strong>TypeScript</strong> — the curriculum and lesson content are typed data, so a malformed lesson fails at build time instead of on the page</li>
+      <li><strong>Next.js</strong> — builds the site and statically exports it: every route pre-rendered to plain HTML that any static host can serve</li>
+      <li><strong>HTML / CSS</strong> — the exported pages; fast by construction, since there is no server and no runtime data fetching</li>
+    </ul>
+  </section>
+
+  <section class="hiw-section">
+    <h2>How Each Part Works</h2>
+
+    <h3>The curriculum is a dependency graph</h3>
+    <p>
+      The path is stored as ordered data: stages contain units, units contain lessons, and each stage declares what it assumes from the stages before it. Rendering is the easy part — the real design work is the ordering. A topic appears only after everything it depends on, which is what makes the path usable for self-study without an instructor sequencing it for you.
+    </p>
+    <pre><code>// Curriculum as data: stages in dependency order
+const STAGES = [
+  { id: "algebra",        title: "Algebra Foundations",      unlocks: "functions, equations, inequalities" },
+  { id: "geometry-trig",  title: "Geometry & Trigonometry",  unlocks: "angles, vectors, periodic functions" },
+  { id: "precalculus",    title: "Precalculus",              unlocks: "limits, exponentials, logarithms" },
+  { id: "calculus",       title: "Calculus",                 unlocks: "derivatives, gradients, optimization" },
+  { id: "linear-algebra", title: "Linear Algebra",           unlocks: "matrices, transformations, embeddings" },
+  { id: "probability",    title: "Probability & Statistics", unlocks: "distributions, inference, uncertainty" },
+  { id: "ai-math",        title: "Math for AI",              unlocks: "gradient descent, backpropagation, attention" },
+];</code></pre>
+
+    <h3>Static export, two doors</h3>
+    <p>
+      The source lives in its own repository (<code>mathpath-to-ai</code>) as a Next.js project. The build statically exports the whole curriculum to plain HTML/CSS/JS, and that export is what this hub folder hosts — so the curriculum is reachable both as a standalone project and as part of the App Hub, with no server behind either door. Updating it means editing the source, re-exporting, and replacing the export — the two copies can't quietly drift apart because one is generated from the other.
+    </p>
+
+    <h3>Why static matters here</h3>
+    <p>
+      A curriculum is read far more than it is updated. Pre-rendering every page at build time means instant loads, free hosting on GitHub Pages, and nothing to patch or keep alive. The trade-off — no per-user progress accounts — is deliberate: the path is a reference you walk, not a service you sign up for.
+    </p>
+  </section>
+
+  <section class="hiw-section">
+    <h2>File Map</h2>
+    <pre><code>mathpath-to-ai/            (this hub folder — the exported site)
+├── index.html             ← curriculum home: the staged path
+├── 404.html               ← export's not-found page
+└── _next/ and route files ← pre-rendered pages and assets from the Next.js export
+
+github.com/Worldtraveler247/mathpath-to-ai   ← the source project (TypeScript / Next.js)</code></pre>
+  </section>
+
+  <section class="hiw-section">
+    <h2>Replicate It Yourself</h2>
+    <ol>
+      <li>
+        <span>
+          <strong>Map the prerequisites first.</strong> List the topics your subject needs, then draw the dependency arrows. The order of your curriculum is just a topological sort of that graph — everything else is presentation.
+        </span>
+      </li>
+      <li>
+        <span>
+          <strong>Store the curriculum as typed data.</strong> Stages, units, and lessons as data structures — not hard-coded pages — so reordering a stage is a data edit, not a rewrite.
+        </span>
+      </li>
+      <li>
+        <span>
+          <strong>Build with Next.js and export statically.</strong> Pre-render every route at build time; host the output anywhere that serves files.
+          Reference: <a href="https://nextjs.org/docs/app/guides/static-exports" target="_blank" rel="noopener">Next.js static exports</a>.
+        </span>
+      </li>
+      <li>
+        <span>
+          <strong>Deploy to GitHub Pages.</strong> Push to <code>main</code>, go to repo Settings &rarr; Pages &rarr; Source: <em>Deploy from branch</em> &rarr; <code>main / (root)</code>.
+          Reference: <a href="https://docs.github.com/en/pages/getting-started-with-github-pages" target="_blank" rel="noopener">GitHub Pages docs</a>.
+        </span>
+      </li>
+    </ol>
+  </section>
+
+</div>
+</body>
+</html>

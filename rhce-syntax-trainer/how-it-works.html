@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>How It's Built — RHCE Syntax Trainer | Eddie's App Hub</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Inter:wght@400;500;600&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../how-it-works.css">
+</head>
+<body>
+<a href="../index.html" style="position:fixed;top:12px;left:12px;z-index:9999;background:rgba(10,10,20,0.85);backdrop-filter:blur(6px);color:#4af7ff;border:1px solid #4af7ff;border-radius:20px;padding:6px 14px;font-family:sans-serif;font-size:13px;text-decoration:none;font-weight:600;">← App Hub</a>
+
+<div class="hiw-page">
+
+  <header class="hiw-header">
+    <div class="hiw-icon">⌨️</div>
+    <h1>RHCE Syntax Trainer — How It's Built</h1>
+    <p class="hiw-tagline">A type-the-answer trainer for the EX294 Ansible exam: 39 chained tasks, a vim-faithful editor, and per-requirement checking that never fakes a pass.</p>
+  </header>
+
+  <section class="hiw-section">
+    <h2>Overview</h2>
+    <p>
+      The RHCE Syntax Trainer turns a full EX294 practice exam (questions Q1–Q8) into a typing game. Instead of picking from multiple choice, you type the real artifact the exam asks for — the playbook, the Galaxy requirements file, the ad hoc command — inside a simulated RHEL controller terminal with managed nodes serverb, serverc, and serverd. Every question chains the way the real exam does: set up, write the file, run it, then verify the result. A question only counts as passed when every one of its requirements checks out. A hint button nudges you with structure, and a reveal button shows the reference answer — but revealing never marks the question passed. Finishing a question unlocks its full explanation: what the step does, how it changes the Ansible environment, the technology underneath it, and how it connects to the questions around it.
+    </p>
+  </section>
+
+  <section class="hiw-section">
+    <h2>Tech Stack</h2>
+    <div class="hiw-badges">
+      <span class="hiw-badge">HTML</span>
+      <span class="hiw-badge">CSS</span>
+      <span class="hiw-badge">JavaScript</span>
+    </div>
+    <ul class="hiw-caption-list">
+      <li><strong>HTML</strong> — one terminal window: question sidebar, editor/command pane, check results and explanation panel</li>
+      <li><strong>CSS</strong> — RHEL terminal theme, vim-style status line, responsive layout that stacks on phones</li>
+      <li><strong>JavaScript</strong> — the question engine: 39 question definitions, per-requirement checkers, the editor behavior layer, and live syntax highlighting. Zero dependencies, zero build step — the whole app is a single file</li>
+    </ul>
+  </section>
+
+  <section class="hiw-section">
+    <h2>How Each Part Works</h2>
+
+    <h3>One check per requirement</h3>
+    <p>
+      Each question carries a list of independent checks — one per thing the exam actually grades. A YAML question might check the play name, the target hosts, the exact module arguments, and a task-level <code>when</code> guard as four separate tests run against your normalized text. All of them must pass; an empty editor passes none. That granularity is what makes the feedback useful: you see exactly which requirement you missed instead of a bare wrong/right.
+    </p>
+    <pre><code>// One question = a list of small, honest tests
+checks: [
+  { label: "hosts: webservers",        test: t =&gt; /^hosts:\s*webservers\s*$/m.test(t) },
+  { label: "become: true on the play",  test: t =&gt; /^become:\s*true\s*$/m.test(t) },
+  { label: "template src + dest set",   test: t =&gt; /src:\s*index\.html\.j2/.test(t) &amp;&amp; /dest:\s*\/var\/www\/html\/index\.html/.test(t) },
+]</code></pre>
+
+    <h3>An editor that behaves like your vim</h3>
+    <p>
+      File questions open in an editor that mimics the exact <code>.vimrc</code> from question Q0: 2-space expandtab steps, autoindent, line numbers, cursor line and column, and a vim-style status line. Tab moves to the next 2-space stop (and indents a selection like <code>&gt;&gt;</code>), Backspace over pure indentation deletes one step, and Enter follows YAML's indent rules. A highlighting layer colors YAML keys, colons, quoted strings, booleans, numbers, and <code>{{ }}</code> Jinja expressions as you type, so the file reads the way it would in your real lab.
+    </p>
+
+    <h3>Chains, not flashcards</h3>
+    <p>
+      The 39 steps follow the exam's dependency chain — the Galaxy requirements file you write in Q4 is the one you install in Q4.2 and list in Q4.3; the role you scaffold in Q7 is the one you run in Q7.6 and curl in Q7.7. Command questions are checked when you press Enter, like a shell. Nothing is locked: the sidebar lets you jump to any question in any order, and the score counts only questions you genuinely passed.
+    </p>
+
+    <h3>Hints and reveals that keep score honest</h3>
+    <p>
+      The hint button describes the structure of the answer — the keys, the order, the shape — without giving the answer text. The reveal button asks for a confirming second click, then shows the reference. Revealing deliberately does <em>not</em> mark the question passed: the point of the trainer is muscle memory, and the score stays meaningful only if every pass was typed.
+    </p>
+  </section>
+
+  <section class="hiw-section">
+    <h2>File Map</h2>
+    <pre><code>rhce-syntax-trainer/
+└── index.html   ← the entire app: markup, styles, question bank, checkers, editor, explanations</code></pre>
+  </section>
+
+  <section class="hiw-section">
+    <h2>Replicate It Yourself</h2>
+    <ol>
+      <li>
+        <span>
+          <strong>Start from reference answers.</strong> Write the exact file or command each question should produce first. The trainer is only as good as its references — every checker is derived from one.
+        </span>
+      </li>
+      <li>
+        <span>
+          <strong>Write one check per graded requirement.</strong> Resist the urge to compare whole files. Small tests over normalized text (trimmed, consistent line endings) accept harmless variation and pinpoint real mistakes.
+        </span>
+      </li>
+      <li>
+        <span>
+          <strong>Verify the references against the checkers.</strong> Every reference answer must pass its own question's checks, and an empty answer must pass none. Automate both assertions before you ship.
+        </span>
+      </li>
+      <li>
+        <span>
+          <strong>Keep the score honest.</strong> Let learners peek — but never let peeking count as passing.
+        </span>
+      </li>
+      <li>
+        <span>
+          <strong>Deploy to GitHub Pages.</strong> Push to <code>main</code>, go to repo Settings &rarr; Pages &rarr; Source: <em>Deploy from branch</em> &rarr; <code>main / (root)</code>.
+          Reference: <a href="https://docs.github.com/en/pages/getting-started-with-github-pages" target="_blank" rel="noopener">GitHub Pages docs</a>.
+        </span>
+      </li>
+    </ol>
+  </section>
+
+</div>
+</body>
+</html>
