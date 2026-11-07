@@ -802,7 +802,7 @@ const QUESTIONS = [
   <p>The capstone ran: one play, all hosts, each machine getting only its role — serverd became the HAProxy balancer in front of serverb and serverc, the web servers got PHP and hello.php, and the firewall opened on the balancer in post_tasks.</p>
   <h4>How it affects the Ansible environment</h4>
   <p>• This is every earlier thread pulled tight: Q4's collections (the firewalld module), Q6's renamed roles, Q7's authoring pattern, Q8.6's variables and conditional roles — composed into a single run.</p>
-  <div class="tie"><b>How it ties in:</b> three verifications remain, each aimed at a different layer: the rendered config (Q8.8), the config's validity (Q8.9), and the live web answer (Q8.10).</div>`
+  <div class="tie"><b>How it ties in:</b> four verifications remain, each aimed at a different layer: the rendered config (Q8.8), the config's validity (Q8.9), the live web answer (Q8.10), and the balancer itself answering (Q8.11).</div>`
 },
 {
   id:"Q8.8", title:"Verify: backends in haproxy.cfg", sub:"Ad hoc grep on balancers", cmd:true,
@@ -832,7 +832,7 @@ const QUESTIONS = [
   <p>HAProxy itself signed off on its configuration: <code>haproxy -c</code> parses the file and reports it valid (or tells you the exact line that isn't), and <code>-f</code> names the file to test.</p>
   <h4>How it affects the Ansible environment</h4>
   <p>• A stronger proof than Q8.8's grep: the lines are not just present, they form a configuration the daemon accepts. Present-but-broken would pass the grep and fail here — which is why the exam checks both.</p>
-  <div class="tie"><b>How it ties in:</b> config present, config valid. Q8.10 is the final proof — the application answering over HTTP.</div>`
+  <div class="tie"><b>How it ties in:</b> config present, config valid. Next, Q8.10 proves the application answering over HTTP, and Q8.11 proves it through the balancer.</div>`
 },
 {
   id:"Q8.10", title:"Verify: hello.php on both servers", sub:"curl, first 5 lines", cmd:true,
@@ -844,9 +844,25 @@ const QUESTIONS = [
     { fn:t => (t.match(/head\s+-5/g) || []).length >= 2, msg:"Each answer is trimmed with | head -5" }
   ]],
   explain:`<h2>✅ Q8.10 complete — what you just did</h2>
-  <p>The final proof, at the application layer: both web servers answered hello.php with "Hello PHP World" and their own names — PHP installed (with exactly the package set from Q8.6), the template deployed, the page served. That closes Q8 — and the exam set.</p>
+  <p>Proof at the application layer: both web servers answered hello.php with "Hello PHP World" and their own names — PHP installed (with exactly the package set from Q8.6), the template deployed, the page served.</p>
   <h4>How it affects the Ansible environment</h4>
-  <p>• Nothing changes; this is the deepest verification in the chain: downloads (Q8.5) → playbook (Q8.6) → run (Q8.7) → config contents (Q8.8) → config validity (Q8.9) → live application (Q8.10). Every layer proven with its own tool.</p>
+  <p>• Nothing changes; this verification chain runs downloads (Q8.5) → playbook (Q8.6) → run (Q8.7) → config contents (Q8.8) → config validity (Q8.9) → live application (Q8.10). Every layer proven with its own tool.</p>
+  <div class="tie"><b>How it ties in:</b> both backends answer when asked directly. One step remains — Q8.11 asks the balancer on serverd instead, which is how real traffic arrives.</div>`
+},
+{
+  id:"Q8.11", title:"Verify: the balancer answers", sub:"for loop, curl serverd x4", cmd:true,
+  files:[{ path:"shell", lang:"cmd" }],
+  spec:`<b>8.11. Verify the balancer is working properly.</b><br>• From the controller, request <code>http://serverd</code> four times in a row — a <code>for</code> loop over <code>1 2 3 4</code>, each pass running a quiet <code>curl -s</code> — and watch the answers rotate between the two backends.<br>• Type the one-line loop and press <b>Enter</b> to run it.`,
+  checks:[[
+    { re:/for\s+i\s+in\s+1\s+2\s+3\s+4\s*;/, msg:"for i in 1 2 3 4;" },
+    { re:/do\s+curl\s+-s\s+https?:\/\/serverd(\.lab\.example\.com)?\/?\s*;/, msg:"do curl -s http://serverd;" },
+    { re:/done\s*;?\s*$/, msg:"Loop closes with done" }
+  ]],
+  explain:`<h2>✅ Q8.11 complete — what you just did</h2>
+  <p>The true final proof: you stopped asking the backends directly and asked the balancer instead. Four requests to serverd, and HAProxy passed them to serverb and serverc in turn — if the answers alternate between the two hostnames, the balancer is working properly: frontend listening, backends healthy, round-robin doing its job. That closes Q8 — and the exam set.</p>
+  <h4>How it affects the Ansible environment</h4>
+  <p>• Nothing changes; this completes the deepest verification chain in the set: downloads (Q8.5) → playbook (Q8.6) → run (Q8.7) → config contents (Q8.8) → config validity (Q8.9) → live backends (Q8.10) → live balancer (Q8.11). Every layer proven with its own tool.<br>
+  • Why a loop, not one curl? A single request proves the balancer can reach <i>a</i> backend. Four requests prove it reaches <i>both</i> — a dead backend hiding behind a working one is exactly the failure this check exists to catch.</p>
   <div class="tie"><b>The whole arc:</b> Q0 tuned your editor, Q1 configured the runner, Q2 fixed the repos everything installs from, Q3–Q5 built plays and proved them, Q4 and Q6 stocked the controller with collections and roles, Q7 taught you to author a role, and Q8 composed all of it into one system. That layering — set up, do, verify — is the exam.</div>`
 }
 ];
@@ -1055,7 +1071,9 @@ collections:
 "Q8.9": { hint:`ansible balancers, the command module, and an -a argument running haproxy's config check: haproxy -c -f, then the config path.`,
   answer:[{ path:"shell", text:"ansible balancers -m ansible.builtin.command -a 'haproxy -c -f /etc/haproxy/haproxy.cfg'" }] },
 "Q8.10": { hint:`Two quiet curls on one line, separated by a semicolon: serverb's hello.php and serverc's hello.php, each piped to head -5.`,
-  answer:[{ path:"shell", text:"curl -s http://serverb/hello.php | head -5; curl -s http://serverc/hello.php | head -5" }] }
+  answer:[{ path:"shell", text:"curl -s http://serverb/hello.php | head -5; curl -s http://serverc/hello.php | head -5" }] },
+"Q8.11": { hint:`One line: a for loop over 1 2 3 4, and inside it a quiet curl to http://serverd — the balancer's own address, no page name.`,
+  answer:[{ path:"shell", text:"for i in 1 2 3 4; do curl -s http://serverd; done" }] }
 };
 
 function runChecks(q, texts){
