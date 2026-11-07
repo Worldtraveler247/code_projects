@@ -141,7 +141,7 @@
   <p id="finishstats" style="line-height:1.7"></p>
   <p style="color:var(--amber)">Press [Enter] to run it again from Q0.</p>
 </div>
-<footer>Built from your own direct-answer sheet (Q0 setup + Q1–Q8) and your updated Q9–Q13 notes. Nothing here is the answer key — every file was typed by you, keyboard only.</footer>
+<footer>Built from your own direct-answer sheet (Q0 setup + Q1–Q8) and your updated Q9–Q14 notes. Nothing here is the answer key — every file was typed by you, keyboard only.</footer>
 
 <script>
 "use strict";
@@ -1348,7 +1348,78 @@ const QUESTIONS = [
   <p>A negative proof: <code>grep -L</code> names files that do <i>not</i> contain the pattern, so silence plus exit code 1 is the pass — every report has at least one <code>=</code> line, which combined with Q13.2's five-line shape means no bare label survived. It is the fastest possible completeness check: one command, no reading. That closes Q13.</p>
   <h4>How it affects the Ansible environment</h4>
   <p>• Nothing changes. Say it the senior way: "The disk lines use a default('NONE') filter, so a host without that disk writes NONE instead of failing — and because the template is re-downloaded each run, every run reports changed even when the final file is the same."</p>
-  <div class="tie"><b>The whole arc:</b> Q0 tuned your editor, Q1 configured the runner, Q2 fixed the repos everything installs from, Q3–Q5 built plays and proved them, Q4 and Q6 stocked the controller with collections and roles, Q7 taught you to author a role, Q8 composed all of it into one system, Q9 taught storage to branch on facts, Q10 built one host's file out of every host's facts, Q11 aimed different content at different groups and showed what an overlap costs, Q12 built a shared directory the way teams actually share, and Q13 turned each host's own facts into its own report — with a safe placeholder for whatever it doesn't have. That layering — set up, do, verify — is the exam.</div>`
+  <div class="tie"><b>How it ties in:</b> that closes Q13. Q14 leaves the managed nodes entirely — it works on the controller, protecting the secrets that Q15's playbook will consume.</div>`
+},
+{
+  id:"Q14", title:"secret.txt password file", sub:"echo + chmod 600", cmd:true,
+  files:[{ path:"shell", lang:"cmd" }],
+  spec:`<b>14. Create the vault password file.</b><br>• In <code>~/ansible</code>: write the vault password <code>redhat123</code> into <code>secret.txt</code> and lock its permissions down to <code>600</code>, chained in one command line. No vim needed.<br>• Type the command and press <b>Enter</b>.`,
+  checks:[[
+    { re:/cd\s+(\/home\/student\/ansible|~\/ansible)/, msg:"cd ~/ansible" },
+    { re:/echo\s+['"]redhat123['"]\s*>\s*secret\.txt/, msg:"echo 'redhat123' > secret.txt" },
+    { re:/chmod\s+600\s+secret\.txt/, msg:"chmod 600 secret.txt" },
+    { fn:t => { const a = t.search(/cd\s/), b = t.search(/echo\s/), c = t.search(/chmod\s/); return a >= 0 && b > a && c > b && (t.match(/&&/g) || []).length >= 2; }, msg:"All three steps in order, chained with &&" }
+  ]],
+  explain:`<h2>✅ Q14 complete — what you just did</h2>
+  <p>You made the key before the lock: a one-line file holding the vault password, with mode <code>600</code> so only your user can read it. Every later vault command points at this file with <code>--vault-password-file</code> instead of prompting, which is what makes the vault usable by playbooks and scripts, not just by a human at a keyboard.</p>
+  <h4>How it affects the Ansible environment</h4>
+  <p>• The password file is itself a secret — in production it never goes into Git (it belongs in .gitignore) and the password itself comes from a secrets manager through a script. Here it is a lab file with lab permissions.<br>
+  • Deliberately <i>not</i> done: adding <code>vault_password_file</code> to ansible.cfg. Q16's vault uses a different password, and a global setting would silently point every command at the wrong key. Explicit flags beat global state.</p>
+  <div class="tie"><b>How it ties in:</b> the key exists. Q14.1 uses it to create the lock itself.</div>`
+},
+{
+  id:"Q14.1", title:"Create the vault", sub:"ansible-vault create locker.yml", cmd:true,
+  files:[{ path:"shell", lang:"cmd" }],
+  spec:`<b>14.1. Create the encrypted vault.</b><br>• Let <code>ansible-vault</code> create <code>locker.yml</code>, unlocking it with the password file from Q14. Do <b>not</b> create the file with vim — the tool creates and encrypts it.<br>• Type the command and press <b>Enter</b>.`,
+  checks:[[
+    { re:/ansible-vault\s+create\s+locker\.yml\s+--vault-password-file\s+secret\.txt/, msg:"ansible-vault create locker.yml --vault-password-file secret.txt" },
+    { fn:t => !/vim/.test(t), msg:"No vim — ansible-vault creates this file, not the editor" }
+  ]],
+  explain:`<h2>✅ Q14.1 complete — what you just did</h2>
+  <p><code>ansible-vault create</code> made a new file and opened it in an editor for exactly one purpose: whatever you save is encrypted on the way out, with AES256, using the password in secret.txt. On disk the file will never exist in plaintext — that is the entire point of create over "write it, then encrypt it", which leaves a plaintext window.</p>
+  <h4>How it affects the Ansible environment</h4>
+  <p>• Q14 is the exam's odd one out: no playbook, no managed hosts, and no ansible-navigator equivalent — ansible-vault is the only tool. Nothing on servera–d changed.</p>
+  <div class="tie"><b>How it ties in:</b> the editor is open. Q14.2 is what you type into it.</div>`
+},
+{
+  id:"Q14.2", title:"locker.yml contents", sub:"The two passwords, pre-encryption",
+  files:[{ path:"/home/student/ansible/locker.yml", lang:"yaml" }],
+  spec:`<b>14.2. Enter the secrets.</b><br>• In the editor ansible-vault opened, enter the two variables, exactly: the developer password and the manager password. Saving encrypts them — what you type here is the last plaintext this file ever shows.<br>• Type both lines.`,
+  checks:[[
+    { re:/pw_developer\s*:\s*Imadev\b/, msg:"pw_developer: Imadev (exact case — passwords are case-sensitive)" },
+    { re:/pw_manager\s*:\s*Imamgr\b/, msg:"pw_manager: Imamgr (exact case)" }
+  ]],
+  explain:`<h2>✅ Q14.2 complete — what you just did</h2>
+  <p>Two plain YAML variables — the same shape as any vars file, because that is what a vault is: a vars file that happens to be encrypted. When Q15 loads locker.yml through <code>vars_files</code>, these exact names, <code>pw_developer</code> and <code>pw_manager</code>, become the passwords its user tasks set. A typo in a name here becomes a silent wrong password there.</p>
+  <h4>How it affects the Ansible environment</h4>
+  <p>• On save, the file's first line became <code>$ANSIBLE_VAULT;1.1;AES256</code> followed by ciphertext. The values are recoverable only with the vault password — which is why the encrypted file is safe to keep in the project, and even in Git.</p>
+  <div class="tie"><b>How it ties in:</b> contents sealed. Q14.3 and Q14.4 prove the seal from both sides — the header outside, the plaintext inside.</div>`
+},
+{
+  id:"Q14.3", title:"Verify: vault header", sub:"head -1 locker.yml", cmd:true,
+  files:[{ path:"shell", lang:"cmd" }],
+  spec:`<b>14.3. Verify the encryption.</b><br>• Print just the first line of <code>locker.yml</code>. Pass means it starts with <code>$ANSIBLE_VAULT;1.1;AES256</code>.<br>• Type the command and press <b>Enter</b>.`,
+  checks:[[
+    { re:/head\s+(-1|-n\s*1)\s+locker\.yml/, msg:"head -1 locker.yml" }
+  ]],
+  explain:`<h2>✅ Q14.3 complete — what you just did</h2>
+  <p>The header is the file's own declaration: vault format 1.1, AES256 cipher. It is also the fastest possible audit — any file in a project that should be a vault and does <i>not</i> start with that line is plaintext, whatever its name claims. Everything below that line is ciphertext blocks.</p>
+  <h4>How it affects the Ansible environment</h4>
+  <p>• Nothing changes. Note the header is metadata, not proof of the contents — Q14.4 opens the file properly and reads what is actually inside.</p>
+  <div class="tie"><b>How it ties in:</b> sealed on the outside. Q14.4 checks the inside matches what you typed.</div>`
+},
+{
+  id:"Q14.4", title:"Verify: view the vault", sub:"ansible-vault view", cmd:true,
+  files:[{ path:"shell", lang:"cmd" }],
+  spec:`<b>14.4. Verify the contents.</b><br>• View <code>locker.yml</code> decrypted, using the password file — without editing it. Pass means both variables print with the exact values from Q14.2.<br>• Type the command and press <b>Enter</b>.`,
+  checks:[[
+    { re:/ansible-vault\s+view\s+locker\.yml\s+--vault-password-file\s+secret\.txt/, msg:"ansible-vault view locker.yml --vault-password-file secret.txt" }
+  ]],
+  explain:`<h2>✅ Q14.4 complete — what you just did</h2>
+  <p><code>view</code> decrypts to the screen and writes nothing — the file on disk stays ciphertext. You have now proven the round trip: the password file opens the vault, and the vault holds exactly the two values Q15 will spend. That closes Q14.</p>
+  <h4>How it affects the Ansible environment</h4>
+  <p>• Say it the senior way: "The secrets are encrypted at rest with AES256, so the file can live in the project and in Git. The password comes from a file with 600 permissions, passed explicitly on every command — never baked into ansible.cfg."</p>
+  <div class="tie"><b>The whole arc:</b> Q0 tuned your editor, Q1 configured the runner, Q2 fixed the repos everything installs from, Q3–Q5 built plays and proved them, Q4 and Q6 stocked the controller with collections and roles, Q7 taught you to author a role, Q8 composed all of it into one system, Q9 taught storage to branch on facts, Q10 built one host's file out of every host's facts, Q11 aimed different content at different groups and showed what an overlap costs, Q12 built a shared directory the way teams actually share, Q13 turned each host's own facts into its own report, and Q14 locked the project's secrets away from the project itself. That layering — set up, do, verify — is the exam.</div>`
 }
 ];
 // ===PURE-END===
@@ -1750,7 +1821,19 @@ ansible-playbook lvm.yml --syntax-check
 "Q13.3": { hint:`ansible all, the setup module, and an -a argument filtering to ansible_devices — no -b on this one.`,
   answer:[{ path:"shell", text:"ansible all -m ansible.builtin.setup -a 'filter=ansible_devices'" }] },
 "Q13.4": { hint:`ansible all with -b, the command module, and a double-quoted -a argument: grep -L = /root/hwreport.txt — silence and rc=1 is the pass.`,
-  answer:[{ path:"shell", text:"ansible all -b -m ansible.builtin.command -a \"grep -L = /root/hwreport.txt\"" }] }
+  answer:[{ path:"shell", text:"ansible all -b -m ansible.builtin.command -a \"grep -L = /root/hwreport.txt\"" }] },
+"Q14": { hint:`One chained line: cd ~/ansible && echo 'redhat123' > secret.txt && chmod 600 secret.txt — write the password, then lock the file down.`,
+  answer:[{ path:"shell", text:"cd ~/ansible && echo 'redhat123' > secret.txt && chmod 600 secret.txt" }] },
+"Q14.1": { hint:`ansible-vault create locker.yml, with --vault-password-file secret.txt. Create, not encrypt, and never vim — the tool makes the file.`,
+  answer:[{ path:"shell", text:"ansible-vault create locker.yml --vault-password-file secret.txt" }] },
+"Q14.2": { hint:`Two plain YAML lines, exact case: pw_developer: Imadev and pw_manager: Imamgr. Saving is what encrypts them.`,
+  answer:[{ path:"/home/student/ansible/locker.yml", text:`pw_developer: Imadev
+pw_manager: Imamgr
+` }] },
+"Q14.3": { hint:`head with -1 on locker.yml — you are only after the $ANSIBLE_VAULT header line.`,
+  answer:[{ path:"shell", text:"head -1 locker.yml" }] },
+"Q14.4": { hint:`ansible-vault view locker.yml with --vault-password-file secret.txt — view decrypts to the screen and writes nothing.`,
+  answer:[{ path:"shell", text:"ansible-vault view locker.yml --vault-password-file secret.txt" }] }
 };
 
 function runChecks(q, texts){
