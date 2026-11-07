@@ -863,7 +863,28 @@ const QUESTIONS = [
   <h4>How it affects the Ansible environment</h4>
   <p>• Nothing changes; this completes the deepest verification chain in the set: downloads (Q8.5) → playbook (Q8.6) → run (Q8.7) → config contents (Q8.8) → config validity (Q8.9) → live backends (Q8.10) → live balancer (Q8.11). Every layer proven with its own tool.<br>
   • Why a loop, not one curl? A single request proves the balancer can reach <i>a</i> backend. Four requests prove it reaches <i>both</i> — a dead backend hiding behind a working one is exactly the failure this check exists to catch.</p>
-  <div class="tie"><b>How it ties in:</b> Q8 closes the web stack. Act 4 changes the subject to the machines themselves — Q9 starts it with storage that has a fallback plan.</div>`
+  <div class="tie"><b>How it ties in:</b> Q8 closes the web stack. Act 4 changes the subject to the machines themselves — it opens with a precheck (Q9.0), then storage with a fallback plan (Q9).</div>`
+},
+{
+  id:"Q9.0", title:"Precheck for Q9", sub:"8 commands before lvm.yml",
+  files:[{ path:"shell", lang:"bash" }],
+  spec:`<b>9.0. Precheck — run before Q9, in this order.</b><br>• Type all eight commands, one per line, then press <b>Ctrl+Enter</b> to check.<br>• 1. Will the modules load?<br>• 2. Do the nodes have LVM tools?<br>• 3. What will the facts say?<br>• 4. Predict each host's path from vg_free.<br>• 5. Is there an old data LV?<br>• 6. Is the device already formatted or mounted?<br>• 7. Which disk is free? (practice setup only)<br>• 8. Syntax only.`,
+  checks:[[
+    { re:/ansible-galaxy\s+collection\s+list\s+community\.general/, msg:"1. ansible-galaxy collection list community.general" },
+    { re:/ansible\s+all\s+-b\s+-m\s+ansible\.builtin\.command\s+-a\s*['"]rpm\s+-q\s+lvm2['"]/, msg:"2. ansible all -b -m ansible.builtin.command -a 'rpm -q lvm2'" },
+    { re:/ansible\s+all\s+-b\s+-m\s+ansible\.builtin\.setup\s+-a\s*['"]filter=ansible_lvm['"]/, msg:"3. ansible all -b -m ansible.builtin.setup -a 'filter=ansible_lvm'" },
+    { re:/ansible\s+all\s+-b\s+-m\s+ansible\.builtin\.command\s+-a\s*['"]vgs\s+--units\s+m\s+-o\s+vg_name,vg_size,vg_free\s+yellowtail['"]/, msg:"4. ansible all -b -m ansible.builtin.command -a 'vgs --units m -o vg_name,vg_size,vg_free yellowtail'" },
+    { re:/ansible\s+all\s+-b\s+-m\s+ansible\.builtin\.command\s+-a\s*['"]lvs\s+yellowtail['"]/, msg:"5. ansible all -b -m ansible.builtin.command -a 'lvs yellowtail'" },
+    { re:/ansible\s+all\s+-b\s+-m\s+ansible\.builtin\.command\s+-a\s*['"]blkid\s+\/dev\/yellowtail\/data['"]/, msg:"6. ansible all -b -m ansible.builtin.command -a 'blkid /dev/yellowtail/data'" },
+    { re:/ansible\s+all\s+-b\s+-m\s+ansible\.builtin\.command\s+-a\s*['"]lsblk\s+-o\s+NAME,SIZE,TYPE,FSTYPE,MOUNTPOINTS['"]/, msg:"7. ansible all -b -m ansible.builtin.command -a 'lsblk -o NAME,SIZE,TYPE,FSTYPE,MOUNTPOINTS'" },
+    { re:/ansible-playbook\s+lvm\.yml\s+--syntax-check/, msg:"8. ansible-playbook lvm.yml --syntax-check" },
+    { fn:t => !/--check/.test(t.split("--syntax-check").join("")), msg:"No --check dry run — it false-alarms on the format task" }
+  ]],
+  explain:`<h2>✅ Q9.0 complete — what you just did</h2>
+  <p>Eight questions, answered before the play runs: the collection is installed, lvm2 is on every node, the facts — read with <code>-b</code>, because without it <code>vgs</code> comes back empty and the fail task fires on every host — say which hosts have yellowtail, and <code>vg_free</code> predicts each host's path before you run anything.</p>
+  <p>• vg_free ≥ 1500 MiB → block succeeds · 800–1499 → rescue fires, <code>rescued=1</code> · under 800 → the rescue's retry fails too · VG missing → fail task, <code>failed=1</code> with the required message.<br>
+  • An old <code>data</code> LV changes the story — <code>lvol</code> resizes it instead of creating fresh. <code>blkid</code> failing on a host with no device is expected. And <code>lsblk</code> before any <code>vgcreate</code>, always: never create a VG on a disk you haven't seen empty.</p>
+  <div class="tie"><b>How it ties in:</b> two minutes here is the difference between reading a recap and being surprised by it. On to Q9.</div>`
 },
 {
   id:"Q9", title:"lvm.yml", sub:"LVM, fail guard + block/rescue fallback",
@@ -1147,6 +1168,16 @@ collections:
   answer:[{ path:"shell", text:"curl -s http://serverb/hello.php | head -5; curl -s http://serverc/hello.php | head -5" }] },
 "Q8.11": { hint:`One line: a for loop over 1 2 3 4, and inside it a quiet curl to http://serverd — the balancer's own address, no page name.`,
   answer:[{ path:"shell", text:"for i in 1 2 3 4; do curl -s http://serverd; done" }] },
+"Q9.0": { hint:`Every ad hoc command takes -b — your ansible.cfg has become off. Six use the command module; the facts one uses the setup module with filter=ansible_lvm; the free-disk one is lsblk with -o NAME,SIZE,TYPE,FSTYPE,MOUNTPOINTS. The last line is the playbook's own --syntax-check, and there is no --check anywhere.`,
+  answer:[{ path:"shell", text:`ansible-galaxy collection list community.general
+ansible all -b -m ansible.builtin.command -a 'rpm -q lvm2'
+ansible all -b -m ansible.builtin.setup -a 'filter=ansible_lvm'
+ansible all -b -m ansible.builtin.command -a 'vgs --units m -o vg_name,vg_size,vg_free yellowtail'
+ansible all -b -m ansible.builtin.command -a 'lvs yellowtail'
+ansible all -b -m ansible.builtin.command -a 'blkid /dev/yellowtail/data'
+ansible all -b -m ansible.builtin.command -a 'lsblk -o NAME,SIZE,TYPE,FSTYPE,MOUNTPOINTS'
+ansible-playbook lvm.yml --syntax-check
+` }] },
 "Q9": { hint:`One play, become: true. The guard is a task, not a condition on the block: ansible.builtin.fail carrying the missing-VG message, fired by when: "'yellowtail' not in ansible_facts['lvm']['vgs']". Then a single block/rescue task — lvol at 1500m with state: present in the block; the warning message, then lvol at 800m, in the rescue. The ext4 format task goes last with NO when — the fail task already removed VG-less hosts from the play.`,
   answer:[{ path:"/home/student/ansible/lvm.yml", text:`---
 - name: Create a logical volume
