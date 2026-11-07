@@ -141,7 +141,7 @@
   <p id="finishstats" style="line-height:1.7"></p>
   <p style="color:var(--amber)">Press [Enter] to run it again from Q0.</p>
 </div>
-<footer>Built from your own direct-answer sheet (Q0 setup + Q1–Q8) and your updated Q9–Q14 notes. Nothing here is the answer key — every file was typed by you, keyboard only.</footer>
+<footer>Built from your own direct-answer sheet (Q0 setup + Q1–Q8) and your updated Q9–Q15 notes. Nothing here is the answer key — every file was typed by you, keyboard only.</footer>
 
 <script>
 "use strict";
@@ -1419,7 +1419,125 @@ const QUESTIONS = [
   <p><code>view</code> decrypts to the screen and writes nothing — the file on disk stays ciphertext. You have now proven the round trip: the password file opens the vault, and the vault holds exactly the two values Q15 will spend. That closes Q14.</p>
   <h4>How it affects the Ansible environment</h4>
   <p>• Say it the senior way: "The secrets are encrypted at rest with AES256, so the file can live in the project and in Git. The password comes from a file with 600 permissions, passed explicitly on every command — never baked into ansible.cfg."</p>
-  <div class="tie"><b>The whole arc:</b> Q0 tuned your editor, Q1 configured the runner, Q2 fixed the repos everything installs from, Q3–Q5 built plays and proved them, Q4 and Q6 stocked the controller with collections and roles, Q7 taught you to author a role, Q8 composed all of it into one system, Q9 taught storage to branch on facts, Q10 built one host's file out of every host's facts, Q11 aimed different content at different groups and showed what an overlap costs, Q12 built a shared directory the way teams actually share, Q13 turned each host's own facts into its own report, and Q14 locked the project's secrets away from the project itself. That layering — set up, do, verify — is the exam.</div>`
+  <div class="tie"><b>How it ties in:</b> that closes Q14. Q15 is the vault's payoff — the playbook that finally spends pw_developer and pw_manager.</div>`
+},
+{
+  id:"Q15", title:"Download user_list.yml", sub:"curl -o + cat the keys", cmd:true,
+  files:[{ path:"shell", lang:"cmd" }],
+  spec:`<b>15. Download the user list.</b><br>• From <code>~/ansible</code>: download <code>user_list.yml</code> from the exam server and immediately <code>cat</code> it — you need to read its keys before writing the playbook that consumes them.<br>• Type the command and press <b>Enter</b>.`,
+  checks:[[
+    { re:/cd\s+(\/home\/student\/ansible|~\/ansible)/, msg:"cd ~/ansible" },
+    { re:/curl\s+-o\s+user_list\.yml\s+https?:\/\/10\.1\.10\.121\/user_list\.yml/, msg:"curl -o user_list.yml http://10.1.10.121/user_list.yml" },
+    { re:/cat\s+user_list\.yml/, msg:"cat user_list.yml (read the keys before you code against them)" },
+    { fn:t => { const a = t.search(/cd\s/), b = t.search(/curl\s/), c = t.search(/cat\s/); return a >= 0 && b > a && c > b && (t.match(/&&/g) || []).length >= 2; }, msg:"All three steps in order, chained with &&" }
+  ]],
+  explain:`<h2>✅ Q15 complete — what you just did</h2>
+  <p>The cat is the point: <code>users</code> is a list of dictionaries, and each item carries exactly three keys — <code>username</code>, <code>uid</code>, <code>job</code>. alice (1201, developer), vincent (1202, developer), sandy (2201, manager), patrick (2202, manager). The playbook reads them as <code>item.username</code>, <code>item.uid</code>, <code>item.job</code> — and the key is <code>username</code>, not <code>name</code>. Coding against a data file you haven't read is how silent undefined-variable failures are born.</p>
+  <h4>How it affects the Ansible environment</h4>
+  <p>• The file now sits in the project directory next to users.yml — which matters, because vars_files paths are relative to the playbook.</p>
+  <div class="tie"><b>How it ties in:</b> data on the controller. Q15.1 writes the playbook that loops over it.</div>`
+},
+{
+  id:"Q15.1", title:"users.yml", sub:"One play, loop + when per user",
+  files:[{ path:"/home/student/ansible/users.yml", lang:"yaml" }],
+  spec:`<b>15.1. Create the users playbook.</b><br>• Create /home/student/ansible/users.yml: <b>one</b> play on <b>all</b> hosts, with privilege escalation, loading <code>user_list.yml</code> and <code>locker.yml</code> as vars_files (in that order).<br>• Task 1 creates both groups, <code>devops</code> and <code>opsmgr</code>, in a loop. Task 2 loops over <b>every</b> user and creates the developers — supplementary group devops, shell /bin/bash, fixed uid, SHA-512 hash of the vault's developer password — but only where the item is a developer <i>and</i> the host is in dev or test, spelled out as two <code>and</code> cases joined by <code>or</code>. Task 3 is the same shape for managers: opsmgr, the manager password, prod hosts only.`,
+  checks:[[
+    { fn:t => (t.match(/^- name:/gm) || []).length === 1, msg:"Exactly one play" },
+    { re:/hosts\s*:\s*all/, msg:"The play targets hosts: all (the whens decide who gets whom)" },
+    { re:/become\s*:\s*(true|yes)/i, msg:"become: true on the play (users and groups need root)" },
+    { fn:t => { const a = t.search(/-\s*user_list\.yml/), b = t.search(/-\s*locker\.yml/); return /vars_files\s*:/.test(t) && a >= 0 && b > a; }, msg:"vars_files lists user_list.yml first, then locker.yml" },
+    { re:/ansible\.builtin\.group\s*:/, msg:"Task 1 manages groups with ansible.builtin.group" },
+    { re:/name\s*:\s*"\{\{\s*item\s*\}\}"/, msg:"Group task: name: \"{{ item }}\" (the loop supplies each name)" },
+    { fn:t => /loop\s*:\s*\[?\s*devops\s*,\s*opsmgr\s*\]?/.test(t) || /loop\s*:\s*\n\s*-\s*devops\s*\n\s*-\s*opsmgr/.test(t), msg:"Group task loops over devops and opsmgr (both groups, despite the task's name)" },
+    { fn:t => (t.match(/ansible\.builtin\.user\s*:/g) || []).length >= 2, msg:"Two ansible.builtin.user tasks: developers and managers" },
+    { fn:t => (t.match(/\{\{\s*item\.username\s*\}\}/g) || []).length >= 2, msg:"Both user tasks: name: \"{{ item.username }}\" (the file's key is username, not name)" },
+    { fn:t => (t.match(/\{\{\s*item\.uid\s*\}\}/g) || []).length >= 2, msg:"Both user tasks: uid: \"{{ item.uid }}\" (fixed UID, same on every host)" },
+    { re:/groups\s*:\s*devops\b/, msg:"Developer task: groups: devops (supplementary)" },
+    { re:/groups\s*:\s*opsmgr\b/, msg:"Manager task: groups: opsmgr (supplementary)" },
+    { fn:t => (t.match(/append\s*:\s*(true|yes)/gi) || []).length >= 2, msg:"append: true on both user tasks (add the group, never strip others)" },
+    { fn:t => (t.match(/shell\s*:\s*\/bin\/bash/g) || []).length >= 2, msg:"shell: /bin/bash on both user tasks" },
+    { re:/pw_developer\s*\|\s*password_hash\(['"]sha512['"]\)/, msg:"Developer password: \"{{ pw_developer | password_hash('sha512') }}\" (a hash, never plaintext)" },
+    { re:/pw_manager\s*\|\s*password_hash\(['"]sha512['"]\)/, msg:"Manager password: \"{{ pw_manager | password_hash('sha512') }}\"" },
+    { fn:t => (t.match(/state\s*:\s*present/g) || []).length >= 3, msg:"state: present on the group task and both user tasks" },
+    { fn:t => (t.match(/loop\s*:\s*"\{\{\s*users\s*\}\}"/g) || []).length >= 2, msg:"Both user tasks loop: \"{{ users }}\" — every user, filtered by the when, not by selectattr" },
+    { fn:t => /(item\.job\s*==\s*'developer'\s+and\s+inventory_hostname\s+in\s+groups\[['"]dev['"]\]\s*\)?\s*or\s+\(?\s*item\.job\s*==\s*'developer'\s+and\s+inventory_hostname\s+in\s+groups\[['"]test['"]\])/.test(t) || /item\.job\s*==\s*'developer'\s+and\s+\(\s*inventory_hostname\s+in\s+groups\[['"]dev['"]\]\s+or\s+inventory_hostname\s+in\s+groups\[['"]test['"]\]\s*\)/.test(t), msg:"Developer when: (developer and dev) or (developer and test), checked per item" },
+    { re:/item\.job\s*==\s*'manager'\s+and\s+inventory_hostname\s+in\s+groups\[['"]prod['"]\]/, msg:"Manager when: manager and inventory_hostname in groups['prod']" },
+    { fn:t => { const chunks = t.split(/\n\s*- name:/); return chunks.some(ch => /pw_developer/.test(ch) && /groups\s*:\s*devops\b/.test(ch) && /'developer'/.test(ch)) && chunks.some(ch => /pw_manager/.test(ch) && /groups\s*:\s*opsmgr\b/.test(ch) && /'manager'/.test(ch)); }, msg:"Pairing: developer task carries devops + pw_developer; manager task carries opsmgr + pw_manager" }
+  ]],
+  explain:`<h2>✅ Q15.1 complete — what you just did</h2>
+  <p>One play, three tasks, and the filtering lives in the <code>when</code>, not the loop. Both user tasks visit <i>every</i> user on <i>every</i> host; the when is evaluated once per item, so a single task produces changed lines for the users it creates and skipping lines for the rest. Task 1's name says "devops" but its loop creates both groups, everywhere — including serverd, which gets groups and no users at all.</p>
+  <h4>How it affects the Ansible environment</h4>
+  <p>• Who lands where: servera (dev) gets alice and vincent; serverc (prod) gets sandy and patrick; serverb — in both test and prod, the Q11 overlap again — gets all four. Trace sandy on serverb: task 2's when is false (she is not a developer), task 3's is true, so she lands in opsmgr only.<br>
+  • <code>password_hash('sha512')</code> salts randomly on every run, so without <code>update_password: on_create</code> (a production refinement, not in this playbook) the user tasks report changed forever — the password itself never changes. The user module masks the password in output, so the vault values never print.<br>
+  • <code>append: true</code> is <code>usermod -aG</code>, not <code>-G</code>: it adds the supplementary group without stripping any other. It matters most on serverb, where both tasks touch the same host.<br>
+  • Fixed UIDs are a promise: if UID 1201 already belongs to someone else on a host, the task fails with "uid 1201 is not unique".</p>
+  <div class="tie"><b>How it ties in:</b> Q14's vault, Q12's devops group, Q11's overlap, Q1's groups — this play spends all of them. Q15.2 runs it, and the run needs Q14's password file.</div>`
+},
+{
+  id:"Q15.2", title:"Run users.yml", sub:"With --vault-password-file", cmd:true,
+  files:[{ path:"shell", lang:"cmd" }],
+  spec:`<b>15.2. Run the playbook.</b><br>• Run <code>users.yml</code> with ansible-playbook, passing the vault password file — ansible.cfg does not set one, and locker.yml cannot be decrypted without it.<br>• Type the command and press <b>Enter</b>.`,
+  checks:[[
+    { re:/ansible-playbook\s+users\.yml\s+--vault-password-file\s+secret\.txt/, msg:"ansible-playbook users.yml --vault-password-file secret.txt" },
+    { fn:t => !/sudo/.test(t), msg:"No sudo on the run command" }
+  ]],
+  explain:`<h2>✅ Q15.2 complete — what you just did</h2>
+  <p>The flag is load-bearing: without it the run stops before task 1 with "Attempting to decrypt but no vault secrets found", because vars_files are loaded before any task runs. With it, Ansible decrypts locker.yml in memory on the controller — the plaintext passwords exist only there, and only hashes travel to the hosts. Expect changed and skipping lines interleaved inside tasks 2 and 3: that is the per-item when working, not flapping.</p>
+  <h4>How it affects the Ansible environment</h4>
+  <p>• Same play, second tool: <code>ansible-navigator run users.yml -m stdout --vault-password-file secret.txt</code> — and keep secret.txt inside ~/ansible, because only the project directory is sure to be visible inside the navigator container.</p>
+  <div class="tie"><b>How it ties in:</b> the run is the claim. Q15.3 through Q15.6 verify placement, hashes, and groups.</div>`
+},
+{
+  id:"Q15.3", title:"Verify: id alice", sub:"Developer on dev+test only", cmd:true,
+  files:[{ path:"shell", lang:"cmd" }],
+  spec:`<b>15.3. Verify a developer.</b><br>• On all hosts, run <code>id alice</code> ad hoc. Pass means <code>uid=1201(alice)</code> with devops among the groups on servera and serverb — and <code>no such user</code> on serverc and serverd, which is <i>correct</i>, not a failure of the playbook.<br>• Type the command and press <b>Enter</b>.`,
+  checks:[[
+    { re:/ansible\s+all\s+-m\s+ansible\.builtin\.command\s+-a\s*['"]id\s+alice['"]/, msg:"ansible all -m ansible.builtin.command -a 'id alice'" }
+  ]],
+  explain:`<h2>✅ Q15.3 complete — what you just did</h2>
+  <p><code>id</code> answers three things at once: the account exists, the fixed UID from the data file was honored (1201, not whatever was free), and the supplementary group membership landed — devops sits in the groups list, while the primary group is alice's own. The FAILED lines on serverc and serverd are the when conditions made visible: developers were never supposed to exist there.</p>
+  <h4>How it affects the Ansible environment</h4>
+  <p>• Nothing changes. Learning to read a verify where half the output is red — and correct — is half of reading Ansible output at all.</p>
+  <div class="tie"><b>How it ties in:</b> developers placed. Q15.4 checks the mirror image.</div>`
+},
+{
+  id:"Q15.4", title:"Verify: id sandy", sub:"Manager on prod only", cmd:true,
+  files:[{ path:"shell", lang:"cmd" }],
+  spec:`<b>15.4. Verify a manager.</b><br>• On all hosts, run <code>id sandy</code> ad hoc. Pass means <code>uid=2201(sandy)</code> with opsmgr on serverb and serverc only.<br>• Type the command and press <b>Enter</b>.`,
+  checks:[[
+    { re:/ansible\s+all\s+-m\s+ansible\.builtin\.command\s+-a\s*['"]id\s+sandy['"]/, msg:"ansible all -m ansible.builtin.command -a 'id sandy'" }
+  ]],
+  explain:`<h2>✅ Q15.4 complete — what you just did</h2>
+  <p>The mirror of Q15.3: sandy exists exactly where task 3's when let her — prod hosts, serverb and serverc — with the manager UID block (2201) and opsmgr membership. Her presence on serverb is the overlap working for her: task 2 skipped her there (not a developer), task 3 created her (manager on prod). One host, two verdicts, both correct.</p>
+  <h4>How it affects the Ansible environment</h4>
+  <p>• Nothing changes. Placement proven for both roles; Q15.5 proves the passwords were stored as hashes, and Q15.6 proves the groups exist even where no user does.</p>
+  <div class="tie"><b>How it ties in:</b> people placed. Q15.5 checks what is sitting in /etc/shadow.</div>`
+},
+{
+  id:"Q15.5", title:"Verify: shadow hashes", sub:"shell + cut, expect $6$", cmd:true,
+  files:[{ path:"shell", lang:"cmd" }],
+  spec:`<b>15.5. Verify the password hashes.</b><br>• On all hosts, with privilege escalation (<code>-b</code>), use the <b>shell</b> module to read alice's and sandy's shadow entries, keeping the name and hash fields and truncating the output. Pass means each hash starts with <code>$6$</code>.<br>• Type the command and press <b>Enter</b>.`,
+  checks:[[
+    { re:/ansible\s+all\s+-b\s+-m\s+ansible\.builtin\.shell\s+-a\s*['"]getent\s+shadow\s+alice\s+sandy\s*\|\s*cut\s+-d:\s+-f1,2\s*\|\s*cut\s+-c1-12['"]/, msg:"ansible all -b -m ansible.builtin.shell -a 'getent shadow alice sandy | cut -d: -f1,2 | cut -c1-12'" }
+  ]],
+  explain:`<h2>✅ Q15.5 complete — what you just did</h2>
+  <p>Every printed hash opens with <code>$6$</code> — the SHA-512 crypt identifier — proving the vault plaintext was hashed before it reached /etc/shadow, never stored raw. Three details carry the command: <code>-b</code> because shadow is root-only; the <b>shell</b> module because pipes do not exist under command (command would pass the <code>|</code> to getent as a literal argument); and the double cut, which shows the hash's identity without parading the full hash in your scrollback.</p>
+  <h4>How it affects the Ansible environment</h4>
+  <p>• Nothing changes. Hosts where a user does not exist simply print nothing for that name — the same correct absence as the id checks.</p>
+  <div class="tie"><b>How it ties in:</b> hashes proven. Q15.6 closes with the groups themselves.</div>`
+},
+{
+  id:"Q15.6", title:"Verify: getent group", sub:"Both groups on every host", cmd:true,
+  files:[{ path:"shell", lang:"cmd" }],
+  spec:`<b>15.6. Verify the groups.</b><br>• On all hosts, look up both groups in the group database. Pass means <code>devops</code> and <code>opsmgr</code> lines on <i>every</i> host — including serverd, which has the groups and no users — with members listed where users were added.<br>• Type the command and press <b>Enter</b>.`,
+  checks:[[
+    { re:/ansible\s+all\s+-m\s+ansible\.builtin\.command\s+-a\s*['"]getent\s+group\s+devops\s+opsmgr['"]/, msg:"ansible all -m ansible.builtin.command -a 'getent group devops opsmgr'" }
+  ]],
+  explain:`<h2>✅ Q15.6 complete — what you just did</h2>
+  <p>Task 1 had no when, so both groups exist on all four hosts — the member lists are the fingerprint of the two user tasks: devops carries alice and vincent on servera and serverb, opsmgr carries sandy and patrick on serverb and serverc, and serverd's lines end with empty member fields, exactly as designed. That closes Q15.</p>
+  <h4>How it affects the Ansible environment</h4>
+  <p>• Nothing changes. Say it the senior way: "The when is checked for each user on each host, so servera gets the two developers, serverc gets the two managers, and serverb gets all four because it's in both test and prod. serverd only gets the groups."</p>
+  <div class="tie"><b>The whole arc:</b> Q0 tuned your editor, Q1 configured the runner, Q2 fixed the repos everything installs from, Q3–Q5 built plays and proved them, Q4 and Q6 stocked the controller with collections and roles, Q7 taught you to author a role, Q8 composed all of it into one system, Q9 taught storage to branch on facts, Q10 built one host's file out of every host's facts, Q11 aimed different content at different groups and showed what an overlap costs, Q12 built a shared directory the way teams actually share, Q13 turned each host's own facts into its own report, Q14 locked the project's secrets away from the project itself, and Q15 spent those secrets — looping a data file, filtering per item, and landing every user exactly where the conditions said. That layering — set up, do, verify — is the exam.</div>`
 }
 ];
 // ===PURE-END===
@@ -1833,7 +1951,58 @@ pw_manager: Imamgr
 "Q14.3": { hint:`head with -1 on locker.yml — you are only after the $ANSIBLE_VAULT header line.`,
   answer:[{ path:"shell", text:"head -1 locker.yml" }] },
 "Q14.4": { hint:`ansible-vault view locker.yml with --vault-password-file secret.txt — view decrypts to the screen and writes nothing.`,
-  answer:[{ path:"shell", text:"ansible-vault view locker.yml --vault-password-file secret.txt" }] }
+  answer:[{ path:"shell", text:"ansible-vault view locker.yml --vault-password-file secret.txt" }] },
+"Q15": { hint:`One chained line: cd ~/ansible && curl -o user_list.yml http://10.1.10.121/user_list.yml && cat user_list.yml — download it, then read its keys (username, uid, job).`,
+  answer:[{ path:"shell", text:"cd ~/ansible && curl -o user_list.yml http://10.1.10.121/user_list.yml && cat user_list.yml" }] },
+"Q15.1": { hint:`ONE play: hosts: all, become: true, vars_files user_list.yml then locker.yml. Group task loops over devops and opsmgr with name: "{{ item }}". Both user tasks loop: "{{ users }}" with name/uid from item.username/item.uid, append: true, shell /bin/bash, state: present — developers get groups: devops + pw_developer hashed sha512 with when (developer and dev) or (developer and test); managers get opsmgr + pw_manager with when manager and prod. No selectattr — the when does the filtering.`,
+  answer:[{ path:"/home/student/ansible/users.yml", text:`---
+- name: Manage Users and Groups
+  hosts: all
+  become: true
+  vars_files:
+    - user_list.yml
+    - locker.yml
+  tasks:
+    - name: Ensure devops group exist
+      ansible.builtin.group:
+        name: "{{ item }}"
+        state: present
+      loop:
+        - devops
+        - opsmgr
+    - name: create users whose job is a developer on dev and test host group
+      ansible.builtin.user:
+        name: "{{ item.username }}"
+        uid: "{{ item.uid }}"
+        groups: devops
+        append: true
+        shell: /bin/bash
+        password: "{{ pw_developer | password_hash('sha512') }}"
+        state: present
+      loop: "{{ users }}"
+      when: (item.job == 'developer' and inventory_hostname in groups['dev']) or (item.job == 'developer' and inventory_hostname in groups['test'])
+    - name: create users whose job is manager on database host group
+      ansible.builtin.user:
+        name: "{{ item.username }}"
+        uid: "{{ item.uid }}"
+        groups: opsmgr
+        append: true
+        shell: /bin/bash
+        password: "{{ pw_manager | password_hash('sha512') }}"
+        state: present
+      loop: "{{ users }}"
+      when: item.job == 'manager' and inventory_hostname in groups['prod']
+` }] },
+"Q15.2": { hint:`ansible-playbook users.yml with --vault-password-file secret.txt — without the flag, the vault cannot be decrypted and the run stops before task 1.`,
+  answer:[{ path:"shell", text:"ansible-playbook users.yml --vault-password-file secret.txt" }] },
+"Q15.3": { hint:`ansible all, the command module, and an -a argument running id alice. No -b — id is a normal read.`,
+  answer:[{ path:"shell", text:"ansible all -m ansible.builtin.command -a 'id alice'" }] },
+"Q15.4": { hint:`ansible all, the command module, and an -a argument running id sandy.`,
+  answer:[{ path:"shell", text:"ansible all -m ansible.builtin.command -a 'id sandy'" }] },
+"Q15.5": { hint:`ansible all with -b, the SHELL module (pipes need shell, not command), and the getent shadow pipeline for alice and sandy with the two cuts.`,
+  answer:[{ path:"shell", text:"ansible all -b -m ansible.builtin.shell -a 'getent shadow alice sandy | cut -d: -f1,2 | cut -c1-12'" }] },
+"Q15.6": { hint:`ansible all, the command module, and an -a argument running getent group devops opsmgr — both groups, in that order.`,
+  answer:[{ path:"shell", text:"ansible all -m ansible.builtin.command -a 'getent group devops opsmgr'" }] }
 };
 
 function runChecks(q, texts){
