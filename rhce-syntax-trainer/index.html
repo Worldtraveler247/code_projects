@@ -141,7 +141,7 @@
   <p id="finishstats" style="line-height:1.7"></p>
   <p style="color:var(--amber)">Press [Enter] to run it again from Q0.</p>
 </div>
-<footer>Built from your own direct-answer sheet (Q0 setup + Q1–Q8) and your study guide (Q9). Nothing here is the answer key — every file was typed by you, keyboard only.</footer>
+<footer>Built from your own direct-answer sheet (Q0 setup + Q1–Q8) and your updated Q9 notes. Nothing here is the answer key — every file was typed by you, keyboard only.</footer>
 
 <script>
 "use strict";
@@ -866,61 +866,77 @@ const QUESTIONS = [
   <div class="tie"><b>How it ties in:</b> Q8 closes the web stack. Act 4 changes the subject to the machines themselves — Q9 starts it with storage that has a fallback plan.</div>`
 },
 {
-  id:"Q9", title:"lvm.yml", sub:"LVM with block/rescue fallback",
+  id:"Q9", title:"lvm.yml", sub:"LVM, fail guard + block/rescue fallback",
   files:[{ path:"/home/student/ansible/lvm.yml", lang:"yaml" }],
-  spec:`<b>9. Create a logical volume with error handling.</b><br>• Create a playbook called /home/student/ansible/lvm.yml that runs on all hosts.<br>• If the volume group <code>yellowtail</code> does not exist on a host, display the message <code>Volume group does not exist</code> and take no further action on that host.<br>• If it exists, try to create a logical volume called <code>data</code> of 1500 MiB. If that fails, display <code>Could not create logical volume at that size</code> and create it at 800 MiB instead.<br>• Format the logical volume with the ext4 filesystem. Do not mount it.`,
+  spec:`<b>9. Create a logical volume with error handling.</b><br>• Create a playbook called /home/student/ansible/lvm.yml that runs on all managed nodes, with privilege escalation.<br>• If the volume group <code>yellowtail</code> does not exist on a host, that host must fail with the message <code>Volume group does not exist</code>, so nothing is created or formatted there.<br>• Where it exists, create a logical volume called <code>data</code> at 1500 MiB. If that fails, display <code>Could not create logical volume at that size</code> and create it at 800 MiB instead.<br>• Format the logical volume with the ext4 filesystem. Do not mount it.`,
   checks:[[
     { re:/hosts\s*:\s*all/, msg:"The play targets hosts: all" },
-    { re:/msg:\s*Volume group does not exist/, msg:"Debug message: Volume group does not exist" },
-    { fn:t => /ansible_facts\[['"]lvm['"]\]\[['"]vgs['"]\]\[['"]yellowtail['"]\]\s+is\s+not\s+defined/.test(t), msg:"A when guard tests that the yellowtail VG is NOT defined (missing-VG message)" },
-    { fn:t => /ansible_facts\[['"]lvm['"]\]\[['"]vgs['"]\]\[['"]yellowtail['"]\]\s+is\s+defined/.test(t), msg:"A when guard tests that the yellowtail VG IS defined (wraps the build block)" },
-    { re:/block\s*:/, msg:"Uses a block for the guarded work" },
+    { re:/become\s*:\s*(true|yes)/i, msg:"become: true on the play (LVM facts and lvol both need root)" },
+    { re:/ansible\.builtin\.fail\s*:/, msg:"The guard is an ansible.builtin.fail task" },
+    { re:/msg:\s*"Volume group does not exist"/, msg:"Fail message: \"Volume group does not exist\"" },
+    { fn:t => /['"]yellowtail['"]\s+not\s+in\s+ansible_facts\[['"]lvm['"]\]\[['"]vgs['"]\]/.test(t), msg:"when: 'yellowtail' not in ansible_facts['lvm']['vgs']" },
+    { re:/block\s*:/, msg:"Uses a block for the size attempt" },
     { re:/rescue\s*:/, msg:"Uses a rescue for the size fallback" },
     { fn:t => (t.match(/community\.general\.lvol\s*:/g) || []).length >= 2, msg:"Two lvol tasks: the 1500 MiB attempt and the 800 MiB fallback" },
     { re:/vg\s*:\s*yellowtail/, msg:"lvol tasks use vg: yellowtail" },
     { re:/lv\s*:\s*data/, msg:"lvol tasks use lv: data" },
     { re:/size\s*:\s*1500m/, msg:"First attempt: size: 1500m" },
-    { re:/msg:\s*Could not create logical volume at that size/, msg:"Rescue message: Could not create logical volume at that size" },
+    { fn:t => (t.match(/state\s*:\s*present/g) || []).length >= 2, msg:"Both lvol tasks use state: present" },
+    { re:/msg:\s*"Could not create logical volume at that size"/, msg:"Rescue message: \"Could not create logical volume at that size\"" },
     { re:/size\s*:\s*800m/, msg:"Fallback: size: 800m" },
     { re:/community\.general\.filesystem\s*:/, msg:"Formats with community.general.filesystem" },
     { re:/fstype\s*:\s*ext4/, msg:"fstype: ext4" },
     { re:/dev\s*:\s*\/dev\/yellowtail\/data/, msg:"dev: /dev/yellowtail/data" }
   ]],
   explain:`<h2>✅ Q9 complete — what you just did</h2>
-  <p>You wrote triage, in YAML. First check: is the patient — the <code>yellowtail</code> volume group — even on scene? If not, no treatment: print "Volume group does not exist" and stop. If it is, attempt the full intervention (1500 MiB). If that fails partway, the standing fallback order fires instead of a hard failure: announce "Could not create logical volume at that size" and perform the smaller intervention (800 MiB) the scene can support. Only a volume that exists either way gets the final step — the ext4 format. No mounting; transport is not part of this call.</p>
+  <p>You wrote one play that expects the fleet to differ — and handles each difference on purpose. The guard is not a condition sprinkled over later tasks; it is a <code>fail</code> task up front. On a host with no <code>yellowtail</code> VG it prints "Volume group does not exist" and marks that host failed — and Ansible drops a failed host from the rest of the play. That removal <i>is</i> the guard, which is why the format task needs no <code>when</code> of its own.</p>
   <h4>How it affects the Ansible environment</h4>
-  <p>• <code>block</code>/<code>rescue</code> is Ansible's try/catch: rescue runs only when a task in its block fails, which is exactly where a fallback belongs — not in a second playbook, not in a shell script.<br>
-  • The guards read gathered facts: <code>ansible_facts['lvm']['vgs']</code> only contains a VG that actually exists — and facts only carry LVM data at all when <code>lvm2</code> is installed on the managed node.<br>
-  • Placement is the whole question: the format task sits <i>inside</i> the VG-exists guard but <i>outside</i> the rescue, so it runs after either the 1500 or the 800 path — and never on a host with no VG.<br>
-  • Both modules are <code>community.general</code> — this question silently depends on Q4's collections being shelved correctly.</p>
-  <div class="tie"><b>How it ties in:</b> Act 4's pattern starts here: read a reported fact first, then act — never act blind. Q9.1 runs it, Q9.2 proves it.</div>`
+  <p>• <code>become: true</code> sits on the play because both halves need root: gathering LVM facts and running <code>lvol</code>. Set here, it holds even if ansible.cfg has become off (the Q1 thread).<br>
+  • <code>ansible_facts['lvm']['vgs']</code> is a dictionary keyed by VG name, so <code>'yellowtail' not in …</code> tests whether the key exists. The outer double quotes on the <code>when</code> are required because the value itself starts with a quote character. And the facts only carry LVM data at all when <code>lvm2</code> is installed on the managed node (the Q2 thread).<br>
+  • <code>block</code>/<code>rescue</code> is try/catch: rescue runs only when the block fails, and a successful rescue counts the host as <code>rescued</code>, not <code>failed</code>. It covers exactly one retry — if the 800 MiB attempt fails for a different reason (VG full, lvm2 missing), that host ends failed, as it should.<br>
+  • Both storage modules are <code>community.general</code> — another silent debt to Q4's collections.<br>
+  • Production caveat worth stealing: a silent fallback to a smaller volume should also raise an alert or a ticket, or the capacity problem stays hidden until the disk fills.</p>
+  <div class="tie"><b>How it ties in:</b> Act 4's pattern starts here — branch on gathered facts, never act blind. These same <code>ansible_facts</code> conditions return in Q10 and Q13. Q9.1 runs it; Q9.2 and Q9.3 prove it two different ways.</div>`
 },
 {
   id:"Q9.1", title:"Run lvm.yml", sub:"ansible-playbook lvm.yml", cmd:true,
   files:[{ path:"shell", lang:"cmd" }],
-  spec:`<b>9.1. Run the playbook.</b><br>• Run <code>lvm.yml</code> with ansible-playbook and watch which path each host takes — the full 1500 MiB creation, the 800 MiB rescue, or the missing-VG message.<br>• Type the command and press <b>Enter</b>.`,
+  spec:`<b>9.1. Run the playbook.</b><br>• Run <code>lvm.yml</code> with ansible-playbook and read the recap host by host — each host tells you which path it took.<br>• Type the command and press <b>Enter</b>.`,
   checks:[[
     { re:/ansible-playbook\s+lvm\.yml/, msg:"ansible-playbook lvm.yml" },
     { fn:t => !/sudo/.test(t), msg:"No sudo on the run command" }
   ]],
   explain:`<h2>✅ Q9.1 complete — what you just did</h2>
-  <p>One run, three possible stories — and all three are success if the right one fires on the right host: a roomy VG takes the 1500 MiB volume cleanly, a tight VG trips the rescue and lands at 800 MiB with the warning printed, and a host with no yellowtail VG at all prints its message and is skipped without failing the run.</p>
+  <p>Read the recap like a triage board. In the practice setup: servera comes back clean (1500 MiB created), serverb shows <code>rescued=1</code> (the 800 MiB fallback fired), and serverc shows <code>failed=1</code> — on purpose. Expect red <code>fatal:</code> output on serverc: that is the fail module doing its job, not a broken playbook. Check that its message reads "Volume group does not exist". The other hosts continued; only serverc was removed.</p>
   <h4>How it affects the Ansible environment</h4>
-  <p>• A rescued task does not fail the play. That is the design: the exam grades the messages and the final volume, not a spotless run — a "failed=0" summary with the rescue path taken is a pass, not a blemish.</p>
-  <div class="tie"><b>How it ties in:</b> the run is the claim. Q9.2 checks the volumes themselves.</div>`
+  <p>• Same play, second tool: <code>ansible-navigator run lvm.yml -m stdout</code> executes it identically — the exam accepts either, and the recap means the same thing in both.</p>
+  <div class="tie"><b>How it ties in:</b> the run is the claim — including the intended failure. Q9.2 and Q9.3 check the storage itself.</div>`
 },
 {
-  id:"Q9.2", title:"Verify: lvs yellowtail", sub:"Ad hoc lvs on all hosts", cmd:true,
+  id:"Q9.2", title:"Verify: lvs yellowtail", sub:"Ad hoc lvs, with -b", cmd:true,
   files:[{ path:"shell", lang:"cmd" }],
-  spec:`<b>9.2. Verify the logical volume.</b><br>• On all hosts, run <code>lvs yellowtail</code> through an ad hoc command and confirm the <code>data</code> volume exists, at the size each host could support.<br>• Type the command and press <b>Enter</b>.`,
+  spec:`<b>9.2. Verify the logical volumes.</b><br>• On all hosts, with privilege escalation (<code>-b</code>), run <code>lvs yellowtail</code> through an ad hoc command and confirm the <code>data</code> volume exists at the size each host could support.<br>• Type the command and press <b>Enter</b>.`,
   checks:[[
-    { re:/ansible\s+all\s+-m\s+ansible\.builtin\.command\s+-a\s*['"]lvs\s+yellowtail['"]/, msg:"ansible all -m ansible.builtin.command -a 'lvs yellowtail'" }
+    { re:/ansible\s+all\s+-b\s+-m\s+ansible\.builtin\.command\s+-a\s*['"]lvs\s+yellowtail['"]/, msg:"ansible all -b -m ansible.builtin.command -a 'lvs yellowtail'" }
   ]],
   explain:`<h2>✅ Q9.2 complete — what you just did</h2>
-  <p>You read the storage truth straight from each host: the <code>data</code> LV listed under the yellowtail VG, sized 1500 MiB where there was room and 800 MiB where the rescue fired — and nothing at all on the host that never had the VG, exactly as designed. That closes Q9.</p>
+  <p>You read the storage truth straight from each host: the <code>data</code> LV listed under the yellowtail VG — 1500 MiB where there was room, 800 MiB where the rescue fired, and nothing on the host that never had the VG, exactly as designed. The <code>-b</code> matters: LVM queries need root, the same reason the play itself becomes.</p>
   <h4>How it affects the Ansible environment</h4>
-  <p>• Nothing changes; this is the run → verify rhythm applied to storage. The playbook's output claimed three different paths; <code>lvs</code> is the independent witness that the volumes match the claims.</p>
-  <div class="tie"><b>The whole arc:</b> Q0 tuned your editor, Q1 configured the runner, Q2 fixed the repos everything installs from, Q3–Q5 built plays and proved them, Q4 and Q6 stocked the controller with collections and roles, Q7 taught you to author a role, Q8 composed all of it into one system, and Q9 taught storage to fail gracefully — triage, not hope. That layering — set up, do, verify — is the exam.</div>`
+  <p>• Nothing changes; this proves existence and size. It does not prove the format — a volume can exist and still be unformatted. That is Q9.3's job.</p>
+  <div class="tie"><b>How it ties in:</b> existence first, then identity — the same one-two as Q8's config grep followed by the config test.</div>`
+},
+{
+  id:"Q9.3", title:"Verify: blkid the volume", sub:"Ad hoc blkid, with -b", cmd:true,
+  files:[{ path:"shell", lang:"cmd" }],
+  spec:`<b>9.3. Verify the filesystem.</b><br>• On all hosts, with privilege escalation (<code>-b</code>), run <code>blkid /dev/yellowtail/data</code> through an ad hoc command and confirm it reports an ext4 filesystem.<br>• Type the command and press <b>Enter</b>.`,
+  checks:[[
+    { re:/ansible\s+all\s+-b\s+-m\s+ansible\.builtin\.command\s+-a\s*['"]blkid\s+\/dev\/yellowtail\/data['"]/, msg:"ansible all -b -m ansible.builtin.command -a 'blkid /dev/yellowtail/data'" }
+  ]],
+  explain:`<h2>✅ Q9.3 complete — what you just did</h2>
+  <p><code>blkid</code> reads the device's own signature and answers with its filesystem type — <code>TYPE="ext4"</code> is the volume itself testifying that the format task landed, on exactly the hosts the fail guard let through. Existence (Q9.2) plus identity (Q9.3): both halves of the requirement now have independent proof. That closes Q9.</p>
+  <h4>How it affects the Ansible environment</h4>
+  <p>• Nothing changes. Note what is absent from both proofs: any mount output. The volume is formatted and deliberately unmounted — the requirement's last clause, verified by omission.</p>
+  <div class="tie"><b>The whole arc:</b> Q0 tuned your editor, Q1 configured the runner, Q2 fixed the repos everything installs from, Q3–Q5 built plays and proved them, Q4 and Q6 stocked the controller with collections and roles, Q7 taught you to author a role, Q8 composed all of it into one system, and Q9 taught storage to branch on facts — fail loudly where the VG is missing, fall back where it is small. That layering — set up, do, verify — is the exam.</div>`
 }
 ];
 // ===PURE-END===
@@ -1131,43 +1147,45 @@ collections:
   answer:[{ path:"shell", text:"curl -s http://serverb/hello.php | head -5; curl -s http://serverc/hello.php | head -5" }] },
 "Q8.11": { hint:`One line: a for loop over 1 2 3 4, and inside it a quiet curl to http://serverd — the balancer's own address, no page name.`,
   answer:[{ path:"shell", text:"for i in 1 2 3 4; do curl -s http://serverd; done" }] },
-"Q9": { hint:`Triage in YAML: a debug task guarded by "is not defined" prints the missing-VG message. The build sits in a block guarded by "is defined", with a nested block/rescue inside it — 1500m in the try, the warning message plus 800m in the rescue. The ext4 format task goes last: inside the guard, outside the rescue. No mount task.`,
+"Q9": { hint:`One play, become: true. The guard is a task, not a condition on the block: ansible.builtin.fail carrying the missing-VG message, fired by when: "'yellowtail' not in ansible_facts['lvm']['vgs']". Then a single block/rescue task — lvol at 1500m with state: present in the block; the warning message, then lvol at 800m, in the rescue. The ext4 format task goes last with NO when — the fail task already removed VG-less hosts from the play.`,
   answer:[{ path:"/home/student/ansible/lvm.yml", text:`---
-- name: Create data LV
+- name: Create a logical volume
   hosts: all
+  become: true
   tasks:
-    - name: Report missing VG
-      ansible.builtin.debug:
-        msg: Volume group does not exist
-      when: ansible_facts['lvm']['vgs']['yellowtail'] is not defined
-    - name: Build LV when VG exists
-      when: ansible_facts['lvm']['vgs']['yellowtail'] is defined
+    - name: Fail if volume group yellowtail does not exist
+      ansible.builtin.fail:
+        msg: "Volume group does not exist"
+      when: "'yellowtail' not in ansible_facts['lvm']['vgs']"
+    - name: Create logical volume with size
       block:
-        - name: Try 1500 MiB
-          block:
-            - name: Create LV 1500 MiB
-              community.general.lvol:
-                vg: yellowtail
-                lv: data
-                size: 1500m
-          rescue:
-            - name: Size warning
-              ansible.builtin.debug:
-                msg: Could not create logical volume at that size
-            - name: Create LV 800 MiB
-              community.general.lvol:
-                vg: yellowtail
-                lv: data
-                size: 800m
-        - name: Format ext4
-          community.general.filesystem:
-            fstype: ext4
-            dev: /dev/yellowtail/data
+        - name: Create 1500 MiB logical volume
+          community.general.lvol:
+            vg: yellowtail
+            lv: data
+            size: 1500m
+            state: present
+      rescue:
+        - name: Display size error message
+          ansible.builtin.debug:
+            msg: "Could not create logical volume at that size"
+        - name: Create 800 MiB logical volume instead
+          community.general.lvol:
+            vg: yellowtail
+            lv: data
+            size: 800m
+            state: present
+    - name: Format logical volume with ext4 filesystem
+      community.general.filesystem:
+        fstype: ext4
+        dev: /dev/yellowtail/data
 ` }] },
 "Q9.1": { hint:`A plain ansible-playbook run of lvm.yml — no sudo.`,
   answer:[{ path:"shell", text:"ansible-playbook lvm.yml" }] },
-"Q9.2": { hint:`ansible all, the command module, and an -a argument running lvs on the yellowtail VG.`,
-  answer:[{ path:"shell", text:"ansible all -m ansible.builtin.command -a 'lvs yellowtail'" }] }
+"Q9.2": { hint:`ansible all with -b, the command module, and an -a argument running lvs on the yellowtail VG.`,
+  answer:[{ path:"shell", text:"ansible all -b -m ansible.builtin.command -a 'lvs yellowtail'" }] },
+"Q9.3": { hint:`ansible all with -b, the command module, and an -a argument running blkid on /dev/yellowtail/data.`,
+  answer:[{ path:"shell", text:"ansible all -b -m ansible.builtin.command -a 'blkid /dev/yellowtail/data'" }] }
 };
 
 function runChecks(q, texts){
