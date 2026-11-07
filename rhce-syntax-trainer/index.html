@@ -141,7 +141,7 @@
   <p id="finishstats" style="line-height:1.7"></p>
   <p style="color:var(--amber)">Press [Enter] to run it again from Q0.</p>
 </div>
-<footer>Built from your own direct-answer sheet (Q0 setup + Q1–Q8) and your updated Q9 notes. Nothing here is the answer key — every file was typed by you, keyboard only.</footer>
+<footer>Built from your own direct-answer sheet (Q0 setup + Q1–Q8) and your updated Q9–Q10 notes. Nothing here is the answer key — every file was typed by you, keyboard only.</footer>
 
 <script>
 "use strict";
@@ -957,7 +957,118 @@ const QUESTIONS = [
   <p><code>blkid</code> reads the device's own signature and answers with its filesystem type — <code>TYPE="ext4"</code> is the volume itself testifying that the format task landed, on exactly the hosts the fail guard let through. Existence (Q9.2) plus identity (Q9.3): both halves of the requirement now have independent proof. That closes Q9.</p>
   <h4>How it affects the Ansible environment</h4>
   <p>• Nothing changes. Note what is absent from both proofs: any mount output. The volume is formatted and deliberately unmounted — the requirement's last clause, verified by omission.</p>
-  <div class="tie"><b>The whole arc:</b> Q0 tuned your editor, Q1 configured the runner, Q2 fixed the repos everything installs from, Q3–Q5 built plays and proved them, Q4 and Q6 stocked the controller with collections and roles, Q7 taught you to author a role, Q8 composed all of it into one system, and Q9 taught storage to branch on facts — fail loudly where the VG is missing, fall back where it is small. That layering — set up, do, verify — is the exam.</div>`
+  <div class="tie"><b>How it ties in:</b> Act 4 continues — Q10 builds one file out of every host's facts, using the same fact-reading habit Q9 started.</div>`
+},
+{
+  id:"Q10", title:"Download hosts.j2", sub:"curl -o from the exam server", cmd:true,
+  files:[{ path:"shell", lang:"cmd" }],
+  spec:`<b>10. Download the template.</b><br>• Pull <code>hosts.j2</code> from the exam server (<code>http://10.1.10.121/hosts.j2</code>) into the project root — it sits next to the playbook, <i>not</i> in a role's <code>templates/</code> directory.<br>• Type the command and press <b>Enter</b>.`,
+  checks:[[
+    { re:/curl\s+-o\s+hosts\.j2\s+https?:\/\/10\.1\.10\.121\/hosts\.j2/, msg:"curl -o hosts.j2 http://10.1.10.121/hosts.j2" }
+  ]],
+  explain:`<h2>✅ Q10 complete — what you just did</h2>
+  <p>You fetched the template skeleton: the two localhost lines are already in it. What it is missing is the loop — the three lines you add in Q10.1 are the entire question, because they are what make one host's file describe every host.</p>
+  <h4>How it affects the Ansible environment</h4>
+  <p>• Location is a lookup rule: in a playbook, the template module finds <code>src:</code> relative to the playbook's directory. That is why this file lives in the project root — contrast Q7, where the template lived inside the role and was found by the role's own lookup.</p>
+  <div class="tie"><b>How it ties in:</b> same download pattern as Q8's four files. Q10.1 completes the template; Q10.2 builds the two-play playbook that renders it.</div>`
+},
+{
+  id:"Q10.1", title:"hosts.j2", sub:"Complete the cross-host loop",
+  files:[{ path:"/home/student/ansible/hosts.j2", lang:"jinja" }],
+  spec:`<b>10.1. Complete the template.</b><br>• The downloaded file already has the two localhost lines. Add the loop: for every host in the inventory, print one line — that host's IPv4 address, its FQDN, and its short hostname, space-separated.<br>• Type the complete file, localhost lines included.`,
+  checks:[[
+    { re:/127\.0\.0\.1\s+localhost/, msg:"First localhost line kept" },
+    { re:/::1\s+localhost/, msg:"Second localhost line (::1) kept" },
+    { fn:t => { const m = t.match(/\{%\s*for\s+(\w+)\s+in\s+groups\[['"]all['"]\]\s*%\}/); if (!m) return false; const hv = new RegExp("hostvars\\[" + m[1] + "\\]", "g"); return (t.match(hv) || []).length >= 3; }, msg:"A {% for %} loop over groups['all'], reading hostvars[<loop var>] at least 3 times" },
+    { re:/\[['"]ansible_facts['"]\]\[['"]default_ipv4['"]\]\[['"]address['"]\]/, msg:"The IP: ['ansible_facts']['default_ipv4']['address']" },
+    { re:/\[['"]ansible_facts['"]\]\[['"]fqdn['"]\]/, msg:"The FQDN: ['ansible_facts']['fqdn']" },
+    { re:/\[['"]ansible_facts['"]\]\[['"]hostname['"]\]/, msg:"The short name: ['ansible_facts']['hostname']" },
+    { fn:t => (t.match(/\{\{/g) || []).length >= 3, msg:"The three values print through {{ }} expression tags" },
+    { re:/\{%\s*endfor\s*%\}/, msg:"Loop closed with {% endfor %}" }
+  ]],
+  explain:`<h2>✅ Q10.1 complete — what you just did</h2>
+  <p>You wrote the only cross-host mechanism in the exam so far. <code>{% %}</code> is logic — it prints nothing; <code>{{ }}</code> prints a value; the spaces between the three expressions are literal text that become the columns of the hosts file. The loop variable (<code>x</code> here) is any name you choose, as long as <code>hostvars[…]</code> uses the same one, unquoted: <code>hostvars['x']</code> would look for a host literally named x.</p>
+  <h4>How it affects the Ansible environment</h4>
+  <p>• Why <code>hostvars</code> is non-negotiable: a bare <code>ansible_facts['fqdn']</code> always means the host the template renders <i>on</i> — servera — so every line would come out as servera. <code>hostvars[x]</code> switches to whichever host the loop is visiting.<br>
+  • The render happens once, on the controller, from facts already in memory; only the finished text is copied to servera. Servera never contacts the other hosts.<br>
+  • Order follows the inventory, not IP or alphabet, and hosts in several groups still appear once — <code>all</code> is deduplicated. No blank lines appear between entries because Ansible renders with trim_blocks on.</p>
+  <div class="tie"><b>How it ties in:</b> this is the mechanism behind the production version of Q8's backend list — a config built from the whole fleet's facts. It only works if the facts exist, which is Q10.2's first play.</div>`
+},
+{
+  id:"Q10.2", title:"hosts.yml", sub:"Facts play + deploy play",
+  files:[{ path:"/home/student/ansible/hosts.yml", lang:"yaml" }],
+  spec:`<b>10.2. Create the playbook.</b><br>• Create /home/student/ansible/hosts.yml with two plays.<br>• Play 1 runs on all hosts and only gathers facts — it has no tasks.<br>• Play 2 runs on the dev group with privilege escalation and renders hosts.j2 to <code>/etc/myhosts</code> with mode 0644.`,
+  checks:[[
+    { fn:t => (t.match(/^- name:/gm) || []).length >= 2, msg:"Two plays" },
+    { re:/hosts\s*:\s*all/, msg:"Play 1 targets hosts: all" },
+    { re:/gather_facts\s*:\s*true/, msg:"Play 1 sets gather_facts: true" },
+    { re:/hosts\s*:\s*dev/, msg:"Play 2 targets hosts: dev" },
+    { re:/become\s*:\s*(true|yes)/i, msg:"Play 2 sets become: true (writing in /etc needs root)" },
+    { re:/ansible\.builtin\.template\s*:/, msg:"Renders with ansible.builtin.template" },
+    { re:/src\s*:\s*hosts\.j2/, msg:"src: hosts.j2" },
+    { re:/dest\s*:\s*\/etc\/myhosts/, msg:"dest: /etc/myhosts" },
+    { re:/mode\s*:\s*["']?0644["']?/, msg:"mode: 0644" }
+  ]],
+  explain:`<h2>✅ Q10.2 complete — what you just did</h2>
+  <p>Two plays, two jobs. The first is roll call: it exists purely so the controller holds every host's facts in memory — <code>hostvars</code> is only populated for hosts whose facts were gathered in this run. The second is the only play that changes anything: on dev, as root, it renders the template and lands it at <code>/etc/myhosts</code> — deliberately <i>not</i> <code>/etc/hosts</code>.</p>
+  <h4>How it affects the Ansible environment</h4>
+  <p>• Skip play 1 and the render dies with an undefined error — the facts for serverc simply are not there when servera's file is built. Rule: a template that reads other hosts' facts needs those facts gathered first.<br>
+  • <code>mode</code> is quoted so YAML hands the module the string 0644 instead of reading it as an octal number.<br>
+  • <code>become: true</code> is written on the play even though it might be set elsewhere — writing to <code>/etc</code> needs root, and the play says so itself (the Q9 lesson).</p>
+  <div class="tie"><b>How it ties in:</b> Q1's inventory groups decide everything here — <code>all</code> for the facts, <code>dev</code> for the file. Q10.3 runs it.</div>`
+},
+{
+  id:"Q10.3", title:"Run hosts.yml", sub:"ansible-playbook hosts.yml", cmd:true,
+  files:[{ path:"shell", lang:"cmd" }],
+  spec:`<b>10.3. Run the playbook.</b><br>• Run <code>hosts.yml</code> with ansible-playbook: play 1 gathers from all four hosts, play 2 changes only servera.<br>• Type the command and press <b>Enter</b>.`,
+  checks:[[
+    { re:/ansible-playbook\s+hosts\.yml/, msg:"ansible-playbook hosts.yml" },
+    { fn:t => !/sudo/.test(t), msg:"No sudo on the run command" }
+  ]],
+  explain:`<h2>✅ Q10.3 complete — what you just did</h2>
+  <p>One run, two phases: a facts sweep across the whole inventory, then a single changed host. If play 2 reports servera changed and nothing else moved, the shape is right — the other hosts were read, not written.</p>
+  <h4>How it affects the Ansible environment</h4>
+  <p>• Same play, second tool: <code>ansible-navigator run hosts.yml -m stdout</code> executes it identically.</p>
+  <div class="tie"><b>How it ties in:</b> the claim is a six-line file on servera. Q10.4 reads it; Q10.5 and Q10.6 cross-check it.</div>`
+},
+{
+  id:"Q10.4", title:"Verify: cat /etc/myhosts", sub:"On dev", cmd:true,
+  files:[{ path:"shell", lang:"cmd" }],
+  spec:`<b>10.4. Verify the rendered file.</b><br>• On the dev hosts, use an ad hoc command to print <code>/etc/myhosts</code>. Pass means: the 2 localhost lines, then one line per inventory host, each IP matched to its own name.<br>• Type the command and press <b>Enter</b>.`,
+  checks:[[
+    { re:/ansible\s+dev\s+-m\s+ansible\.builtin\.command\s+-a\s*['"]cat\s+\/etc\/myhosts['"]/, msg:"ansible dev -m ansible.builtin.command -a 'cat /etc/myhosts'" }
+  ]],
+  explain:`<h2>✅ Q10.4 complete — what you just did</h2>
+  <p>You read the product itself: six lines — two localhost, four hosts — each address beside its own FQDN and short name. If all four host lines were identical, that is the missing-<code>hostvars</code> mistake made visible; if a host is missing, the loop ranged over the wrong group.</p>
+  <h4>How it affects the Ansible environment</h4>
+  <p>• Nothing changes. Note who is absent: the controller — it is not in the inventory, so it is not in <code>groups['all']</code>, so it gets no line.</p>
+  <div class="tie"><b>How it ties in:</b> content proven. Q10.5 proves the addresses against the hosts themselves; Q10.6 proves the file's permissions.</div>`
+},
+{
+  id:"Q10.5", title:"Verify: cross-check IPs", sub:"setup filter on all", cmd:true,
+  files:[{ path:"shell", lang:"cmd" }],
+  spec:`<b>10.5. Cross-check the addresses.</b><br>• On all hosts, gather just the default IPv4 fact with the setup module's filter, and confirm each host's address matches its line in /etc/myhosts.<br>• Type the command and press <b>Enter</b>.`,
+  checks:[[
+    { re:/ansible\s+all\s+-m\s+ansible\.builtin\.setup\s+-a\s*['"]filter=ansible_default_ipv4['"]/, msg:"ansible all -m ansible.builtin.setup -a 'filter=ansible_default_ipv4'" }
+  ]],
+  explain:`<h2>✅ Q10.5 complete — what you just did</h2>
+  <p>You audited the file against reality: each host reports its own <code>default_ipv4</code> address — the same fact the template read through <code>hostvars</code> — and every value must match the line written for that host. The file is only trustworthy because it was built from these facts; this check closes the loop.</p>
+  <h4>How it affects the Ansible environment</h4>
+  <p>• Nothing changes. Same filtered setup call as Q9.0's precheck — one fact, read directly, no full fact dump.</p>
+  <div class="tie"><b>How it ties in:</b> facts built the file (Q10.2), facts audit it here. Q10.6 is the last proof — the file's metadata.</div>`
+},
+{
+  id:"Q10.6", title:"Verify: file permissions", sub:"ls -l on dev", cmd:true,
+  files:[{ path:"shell", lang:"cmd" }],
+  spec:`<b>10.6. Verify the permissions.</b><br>• On the dev hosts, list <code>/etc/myhosts</code> with <code>ls -l</code> through an ad hoc command. Pass means <code>-rw-r--r--</code> and root ownership.<br>• Type the command and press <b>Enter</b>.`,
+  checks:[[
+    { re:/ansible\s+dev\s+-m\s+ansible\.builtin\.command\s+-a\s*['"]ls\s+-l\s+\/etc\/myhosts['"]/, msg:"ansible dev -m ansible.builtin.command -a 'ls -l /etc/myhosts'" }
+  ]],
+  explain:`<h2>✅ Q10.6 complete — what you just did</h2>
+  <p>The metadata matches the playbook's promises: <code>-rw-r--r--</code> is the quoted <code>mode: "0644"</code> made visible, and root ownership is <code>become: true</code> made visible. Content (Q10.4), addresses (Q10.5), metadata (Q10.6) — three independent proofs. That closes Q10.</p>
+  <h4>How it affects the Ansible environment</h4>
+  <p>• Nothing changes. And the fleet property worth remembering: add a host to the inventory and the next run adds its line automatically — the file maintains itself because it was never typed by hand.</p>
+  <div class="tie"><b>The whole arc:</b> Q0 tuned your editor, Q1 configured the runner, Q2 fixed the repos everything installs from, Q3–Q5 built plays and proved them, Q4 and Q6 stocked the controller with collections and roles, Q7 taught you to author a role, Q8 composed all of it into one system, Q9 taught storage to branch on facts, and Q10 built one host's file out of every host's facts. That layering — set up, do, verify — is the exam.</div>`
 }
 ];
 // ===PURE-END===
@@ -1216,7 +1327,40 @@ ansible-playbook lvm.yml --syntax-check
 "Q9.2": { hint:`ansible all with -b, the command module, and an -a argument running lvs on the yellowtail VG.`,
   answer:[{ path:"shell", text:"ansible all -b -m ansible.builtin.command -a 'lvs yellowtail'" }] },
 "Q9.3": { hint:`ansible all with -b, the command module, and an -a argument running blkid on /dev/yellowtail/data.`,
-  answer:[{ path:"shell", text:"ansible all -b -m ansible.builtin.command -a 'blkid /dev/yellowtail/data'" }] }
+  answer:[{ path:"shell", text:"ansible all -b -m ansible.builtin.command -a 'blkid /dev/yellowtail/data'" }] },
+"Q10": { hint:`curl with -o hosts.j2, from the exam server's address — the file server is 10.1.10.121.`,
+  answer:[{ path:"shell", text:"curl -o hosts.j2 http://10.1.10.121/hosts.j2" }] },
+"Q10.1": { hint:`Keep the two localhost lines. Then a three-line loop: {% for x in groups['all'] %}, one print line reading hostvars[x] three times — default_ipv4 address, fqdn, hostname — and {% endfor %}. The loop variable is never quoted inside hostvars[…].`,
+  answer:[{ path:"/home/student/ansible/hosts.j2", text:`127.0.0.1 localhost localhost.localdomain localhost4 localhost4.localdomain4
+::1 localhost localhost.localdomain localhost6 localhost6.localdomain6
+{% for x in groups['all'] %}
+{{ hostvars[x]['ansible_facts']['default_ipv4']['address'] }} {{ hostvars[x]['ansible_facts']['fqdn'] }} {{ hostvars[x]['ansible_facts']['hostname'] }}
+{% endfor %}
+` }] },
+"Q10.2": { hint:`Two plays. Play 1: hosts: all, gather_facts: true, no tasks at all. Play 2: hosts: dev, become: true, one template task — src hosts.j2, dest /etc/myhosts, mode "0644" (quoted).`,
+  answer:[{ path:"/home/student/ansible/hosts.yml", text:`---
+- name: Gather facts from every host
+  hosts: all
+  gather_facts: true
+
+- name: Deploy /etc/myhosts
+  hosts: dev
+  become: true
+  tasks:
+    - name: Render template
+      ansible.builtin.template:
+        src: hosts.j2
+        dest: /etc/myhosts
+        mode: "0644"
+` }] },
+"Q10.3": { hint:`A plain ansible-playbook run of hosts.yml — no sudo.`,
+  answer:[{ path:"shell", text:"ansible-playbook hosts.yml" }] },
+"Q10.4": { hint:`ansible dev, the command module, and an -a argument catting /etc/myhosts.`,
+  answer:[{ path:"shell", text:"ansible dev -m ansible.builtin.command -a 'cat /etc/myhosts'" }] },
+"Q10.5": { hint:`ansible all, the setup module, and an -a argument filtering to ansible_default_ipv4.`,
+  answer:[{ path:"shell", text:"ansible all -m ansible.builtin.setup -a 'filter=ansible_default_ipv4'" }] },
+"Q10.6": { hint:`ansible dev, the command module, and an -a argument running ls -l on /etc/myhosts.`,
+  answer:[{ path:"shell", text:"ansible dev -m ansible.builtin.command -a 'ls -l /etc/myhosts'" }] }
 };
 
 function runChecks(q, texts){
