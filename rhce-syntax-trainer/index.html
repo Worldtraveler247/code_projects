@@ -141,7 +141,7 @@
   <p id="finishstats" style="line-height:1.7"></p>
   <p style="color:var(--amber)">Press [Enter] to run it again from Q0.</p>
 </div>
-<footer>Built from your own direct-answer sheet (Q0 setup + Q1–Q8) and your updated Q9–Q10 notes. Nothing here is the answer key — every file was typed by you, keyboard only.</footer>
+<footer>Built from your own direct-answer sheet (Q0 setup + Q1–Q8) and your updated Q9–Q11 notes. Nothing here is the answer key — every file was typed by you, keyboard only.</footer>
 
 <script>
 "use strict";
@@ -1068,7 +1068,75 @@ const QUESTIONS = [
   <p>The metadata matches the playbook's promises: <code>-rw-r--r--</code> is the umask default made visible (the playbook sets no mode — the question specified none), and root ownership is <code>become: true</code> made visible. Content (Q10.4), addresses (Q10.5), metadata (Q10.6) — three independent proofs. That closes Q10.</p>
   <h4>How it affects the Ansible environment</h4>
   <p>• Nothing changes. And the fleet property worth remembering: add a host to the inventory and the next run adds its line automatically — the file maintains itself because it was never typed by hand.</p>
-  <div class="tie"><b>The whole arc:</b> Q0 tuned your editor, Q1 configured the runner, Q2 fixed the repos everything installs from, Q3–Q5 built plays and proved them, Q4 and Q6 stocked the controller with collections and roles, Q7 taught you to author a role, Q8 composed all of it into one system, Q9 taught storage to branch on facts, and Q10 built one host's file out of every host's facts. That layering — set up, do, verify — is the exam.</div>`
+  <div class="tie"><b>How it ties in:</b> that closes Q10. Q11 reuses this question's exact pattern — one play aimed at every host, with tasks narrowed by a group <code>when</code> — three times in a single playbook.</div>`
+},
+{
+  id:"Q11", title:"issues.yml", sub:"Per-group /etc/issue, overlap trap",
+  files:[{ path:"/home/student/ansible/issues.yml", lang:"yaml" }],
+  spec:`<b>11. Modify file content based on host group.</b><br>• Create /home/student/ansible/issues.yml: one play that runs on <b>all</b> hosts, with privilege escalation.<br>• It replaces <code>/etc/issue</code> per group: <code>Development</code> on dev, <code>Test</code> on test, <code>Production</code> on prod — one copy task per group, each gated by a <code>when</code> on group membership, in the order dev, test, prod.`,
+  checks:[[
+    { fn:t => (t.match(/^- name:/gm) || []).length === 1, msg:"Exactly one play" },
+    { re:/hosts\s*:\s*all/, msg:"The play targets hosts: all (each task's when does the narrowing)" },
+    { re:/become\s*:\s*(true|yes)/i, msg:"become: true on the play (writing /etc/issue needs root)" },
+    { fn:t => (t.match(/ansible\.builtin\.copy\s*:/g) || []).length >= 3, msg:"Three ansible.builtin.copy tasks, one per group" },
+    { fn:t => (t.match(/dest\s*:\s*\/etc\/issue[ \t]*$/gm) || []).length >= 3, msg:"Every task writes dest: /etc/issue (exactly — not issue.txt)" },
+    { fn:t => { const chunks = t.split(/\n\s*- name:/); return chunks.some(ch => /content\s*:\s*Development\b/.test(ch) && /groups\[['"]dev['"]\]/.test(ch)); }, msg:"The dev task writes content: Development" },
+    { fn:t => { const chunks = t.split(/\n\s*- name:/); return chunks.some(ch => /content\s*:\s*Test\b/.test(ch) && /groups\[['"]test['"]\]/.test(ch)); }, msg:"The test task writes content: Test" },
+    { fn:t => { const chunks = t.split(/\n\s*- name:/); return chunks.some(ch => /content\s*:\s*Production\b/.test(ch) && /groups\[['"]prod['"]\]/.test(ch)); }, msg:"The prod task writes content: Production" },
+    { re:/when\s*:\s*inventory_hostname\s+in\s+groups\[['"]dev['"]\]/, msg:"when: inventory_hostname in groups['dev']" },
+    { re:/when\s*:\s*inventory_hostname\s+in\s+groups\[['"]test['"]\]/, msg:"when: inventory_hostname in groups['test']" },
+    { re:/when\s*:\s*inventory_hostname\s+in\s+groups\[['"]prod['"]\]/, msg:"when: inventory_hostname in groups['prod']" },
+    { fn:t => { const d = t.search(/groups\[['"]dev['"]\]/), s = t.search(/groups\[['"]test['"]\]/), p = t.search(/groups\[['"]prod['"]\]/); return d >= 0 && s > d && p > s; }, msg:"Task order is dev, then test, then prod — so on a host in two groups, the prod write lands last and wins" }
+  ]],
+  explain:`<h2>✅ Q11 complete — what you just did</h2>
+  <p>One play considers every host, and three near-identical tasks divide the work: each writes the whole of <code>/etc/issue</code> with <code>copy</code>'s <code>content:</code> (text written directly, no source file) for exactly one group. The task names say "issue.txt" — labels only; the file that matters is the <code>dest:</code>, and it is <code>/etc/issue</code>, the pre-login banner.</p>
+  <h4>How it affects the Ansible environment</h4>
+  <p>• The three <code>when</code> conditions are <b>not</b> exclusive — one host can pass more than one. servera (dev) gets <code>Development</code>; serverc (prod) gets <code>Production</code>; serverd is in none of the three groups, so all three tasks skip it and its banner never changes.<br>
+  • serverb is in both <code>test</code> and <code>prod</code>. Tasks run top to bottom, so it is written twice — <code>Test</code>, then <code>Production</code> — and the last write wins. <b>No host ends up showing Test</b>, because the only test host is also in prod. Reorder the tasks and the precedence moves with them.<br>
+  • <code>content: Development</code> carries no trailing newline, so at a console the login prompt lands right after the word. Harmless for the exam; in production you would write the newline explicitly.</p>
+  <div class="tie"><b>How it ties in:</b> the <code>when: inventory_hostname in groups[…]</code> pattern is Q10.2's, tripled. The overlap is the lesson, and it returns in Q15, where serverb receives both developer and manager accounts. Q11.1 runs it.</div>`
+},
+{
+  id:"Q11.1", title:"Run issues.yml", sub:"ansible-playbook issues.yml", cmd:true,
+  files:[{ path:"shell", lang:"cmd" }],
+  spec:`<b>11.1. Run the playbook.</b><br>• Run <code>issues.yml</code> with ansible-playbook and read the recap host by host — serverb's numbers are the interesting ones.<br>• Type the command and press <b>Enter</b>.`,
+  checks:[[
+    { re:/ansible-playbook\s+issues\.yml/, msg:"ansible-playbook issues.yml" },
+    { fn:t => !/sudo/.test(t), msg:"No sudo on the run command" }
+  ]],
+  explain:`<h2>✅ Q11.1 complete — what you just did</h2>
+  <p>Read the recap against the group table. servera: one task fired, <code>changed=1</code>. serverc: the same. serverd: three skips, nothing changed. And serverb: <code>changed=2</code> — both the test and prod tasks wrote it, in order, so it ends on <code>Production</code>. Two changes on one host is the overlap showing up in the numbers.</p>
+  <h4>How it affects the Ansible environment</h4>
+  <p>• Same play, second tool: <code>ansible-navigator run issues.yml -m stdout</code> executes it identically.</p>
+  <div class="tie"><b>How it ties in:</b> the recap claims the writes. Q11.2 reads the banners themselves; Q11.3 runs it again and exposes the cost of the overlap.</div>`
+},
+{
+  id:"Q11.2", title:"Verify: cat /etc/issue", sub:"On all hosts", cmd:true,
+  files:[{ path:"shell", lang:"cmd" }],
+  spec:`<b>11.2. Verify the banners.</b><br>• On all hosts, use an ad hoc command to print <code>/etc/issue</code>. Pass means: servera <code>Development</code>, serverb <code>Production</code>, serverc <code>Production</code>, serverd unchanged.<br>• Type the command and press <b>Enter</b>.`,
+  checks:[[
+    { re:/ansible\s+all\s+(-b\s+)?-m\s+ansible\.builtin\.command\s+-a\s*['"]cat\s+\/etc\/issue['"]/, msg:"ansible all -m ansible.builtin.command -a 'cat /etc/issue'" }
+  ]],
+  explain:`<h2>✅ Q11.2 complete — what you just did</h2>
+  <p>The files testify: <code>Development</code> on servera, <code>Production</code> on serverc — and <code>Production</code>, not <code>Test</code>, on serverb, because the prod task ran after the test task on a host that belongs to both. serverd prints whatever banner it always had; no task ever touched it. Note the command needs no <code>-b</code>: reading a world-readable banner is not root work, unlike Q9's LVM checks.</p>
+  <h4>How it affects the Ansible environment</h4>
+  <p>• Nothing changes. The end state is exactly right on every host — which is what makes Q11.3's finding subtle: a playbook can be correct and still not be idempotent.</p>
+  <div class="tie"><b>How it ties in:</b> content proven. Q11.3 tests the property this playbook quietly lacks.</div>`
+},
+{
+  id:"Q11.3", title:"Run again: idempotency trap", sub:"serverb changed=2, every time", cmd:true,
+  files:[{ path:"shell", lang:"cmd" }],
+  spec:`<b>11.3. Run it a second time.</b><br>• Run <code>issues.yml</code> again and compare the recap with the first run, host by host.<br>• Type the command and press <b>Enter</b>.`,
+  checks:[[
+    { re:/ansible-playbook\s+issues\.yml/, msg:"ansible-playbook issues.yml" },
+    { fn:t => !/sudo/.test(t), msg:"No sudo on the run command" }
+  ]],
+  explain:`<h2>✅ Q11.3 complete — what you just did</h2>
+  <p>servera and serverc now report <code>changed=0</code> — the file already matches, so nothing is written; that is idempotence. serverb reports <code>changed=2</code> again, and it will on every run forever: the test task rewrites <code>Test</code> over <code>Production</code> (a change), then the prod task rewrites <code>Production</code> over <code>Test</code> (another change). The end state is always right, but the playbook never settles — on a real fleet that noise hides genuine drift and fires any attached handler every single run.</p>
+  <h4>How it affects the Ansible environment</h4>
+  <p>• The production fix is one task with explicit precedence — a single <code>copy</code> whose content is chosen by a conditional (prod, then test, then dev) — so each host is written once. The exam wants the three-task version above; know both, and know why they differ.<br>
+  • Say it the senior way: "serverb is in both test and prod, so it's written twice and ends with Production, because the prod task runs last — and it reports changed on every run. In production I'd collapse this into one task with an explicit precedence."</p>
+  <div class="tie"><b>The whole arc:</b> Q0 tuned your editor, Q1 configured the runner, Q2 fixed the repos everything installs from, Q3–Q5 built plays and proved them, Q4 and Q6 stocked the controller with collections and roles, Q7 taught you to author a role, Q8 composed all of it into one system, Q9 taught storage to branch on facts, Q10 built one host's file out of every host's facts, and Q11 aimed different content at different groups — and showed what an overlap costs. That layering — set up, do, verify — is the exam.</div>`
 }
 ];
 // ===PURE-END===
@@ -1356,7 +1424,35 @@ ansible-playbook lvm.yml --syntax-check
 "Q10.5": { hint:`ansible all, the setup module, and an -a argument filtering to ansible_default_ipv4.`,
   answer:[{ path:"shell", text:"ansible all -m ansible.builtin.setup -a 'filter=ansible_default_ipv4'" }] },
 "Q10.6": { hint:`ansible dev, the command module, and an -a argument running ls -l on /etc/myhosts.`,
-  answer:[{ path:"shell", text:"ansible dev -m ansible.builtin.command -a 'ls -l /etc/myhosts'" }] }
+  answer:[{ path:"shell", text:"ansible dev -m ansible.builtin.command -a 'ls -l /etc/myhosts'" }] },
+"Q11": { hint:`One play, hosts: all, become: true. Three copy tasks in order — Development, Test, Production — each dest: /etc/issue and each gated by when: inventory_hostname in groups['<that group>']. Order is graded: prod must come last so it wins on serverb.`,
+  answer:[{ path:"/home/student/ansible/issues.yml", text:`---
+- name: Modify File Content Based on Host Group
+  hosts: all
+  become: true
+  tasks:
+    - name: Modify issue.txt based on dev group
+      ansible.builtin.copy:
+        dest: /etc/issue
+        content: Development
+      when: inventory_hostname in groups['dev']
+    - name: Modify issue.txt based on test group
+      ansible.builtin.copy:
+        dest: /etc/issue
+        content: Test
+      when: inventory_hostname in groups['test']
+    - name: Modify issue.txt based on prod group
+      ansible.builtin.copy:
+        dest: /etc/issue
+        content: Production
+      when: inventory_hostname in groups['prod']
+` }] },
+"Q11.1": { hint:`A plain ansible-playbook run of issues.yml — no sudo.`,
+  answer:[{ path:"shell", text:"ansible-playbook issues.yml" }] },
+"Q11.2": { hint:`ansible all, the command module, and an -a argument catting /etc/issue. No -b needed — the banner is world-readable.`,
+  answer:[{ path:"shell", text:"ansible all -m ansible.builtin.command -a 'cat /etc/issue'" }] },
+"Q11.3": { hint:`The same ansible-playbook run of issues.yml a second time — then read serverb's recap: changed=2 again.`,
+  answer:[{ path:"shell", text:"ansible-playbook issues.yml" }] }
 };
 
 function runChecks(q, texts){
