@@ -141,7 +141,7 @@
   <p id="finishstats" style="line-height:1.7"></p>
   <p style="color:var(--amber)">Press [Enter] to run it again from Q0.</p>
 </div>
-<footer>Built from your own direct-answer sheet (Q0 setup + Q1–Q8) and your updated Q9–Q12 notes. Nothing here is the answer key — every file was typed by you, keyboard only.</footer>
+<footer>Built from your own direct-answer sheet (Q0 setup + Q1–Q8) and your updated Q9–Q13 notes. Nothing here is the answer key — every file was typed by you, keyboard only.</footer>
 
 <script>
 "use strict";
@@ -1260,7 +1260,95 @@ const QUESTIONS = [
   <p><code>getent group devops</code> reads the name-service view of the group database — the same lookup the system itself performs — and answers with the group's line and GID. The empty member field is correct: this question creates the group and the structure; the people arrive later. That closes Q12.</p>
   <h4>How it affects the Ansible environment</h4>
   <p>• Nothing changes. Say it the senior way: "The tasks are in dependency order — the group must exist before the directory can use it, and the directory must exist before the file goes in. The one outside dependency is /var/www/html, which means httpd has to be installed on servera."</p>
-  <div class="tie"><b>The whole arc:</b> Q0 tuned your editor, Q1 configured the runner, Q2 fixed the repos everything installs from, Q3–Q5 built plays and proved them, Q4 and Q6 stocked the controller with collections and roles, Q7 taught you to author a role, Q8 composed all of it into one system, Q9 taught storage to branch on facts, Q10 built one host's file out of every host's facts, Q11 aimed different content at different groups and showed what an overlap costs, and Q12 built a shared directory the way teams actually share — group first, SGID inheritance, then a link into the web root. That layering — set up, do, verify — is the exam.</div>`
+  <div class="tie"><b>How it ties in:</b> that closes Q12. Q13 returns to facts — the same gathered data Q10 read through hostvars, this time written into a file on each host itself.</div>`
+},
+{
+  id:"Q13", title:"hwreport.yml", sub:"get_url template + lineinfile facts",
+  files:[{ path:"/home/student/ansible/hwreport.yml", lang:"yaml" }],
+  spec:`<b>13. Generate a hardware report.</b><br>• Create /home/student/ansible/hwreport.yml: one play on <b>all</b> hosts, with privilege escalation, producing <code>/root/hwreport.txt</code> on every managed node. Everything happens <i>inside</i> the playbook — never download anything by hand.<br>• Task 1 downloads <code>hwreport.empty</code> from the exam server onto each node as /root/hwreport.txt, forcing a fresh copy. Tasks 2–6 each replace one labelled line with a fact value: inventory host name, total memory in MB, BIOS version, and the sizes of disks <code>sda</code> and <code>sdb</code> (the labels in the lab's file — match the file, not the question's vda/vdb wording). A missing disk must read <code>NONE</code>.`,
+  checks:[[
+    { fn:t => (t.match(/^- name:/gm) || []).length === 1, msg:"Exactly one play" },
+    { re:/hosts\s*:\s*all/, msg:"The play targets hosts: all (every node writes its own report)" },
+    { re:/become\s*:\s*(true|yes)/i, msg:"become: true on the play (/root is root-only)" },
+    { re:/ansible\.builtin\.get_url\s*:/, msg:"Task 1 downloads with ansible.builtin.get_url" },
+    { fn:t => !/ansible\.builtin\.uri\s*:/.test(t), msg:"Not ansible.builtin.uri — uri fails every re-run with '304 Not Modified'" },
+    { re:/url\s*:\s*https?:\/\/10\.1\.10\.121\/hwreport\.empty/, msg:"url: http://10.1.10.121/hwreport.empty" },
+    { re:/dest\s*:\s*\/root\/hwreport\.txt/, msg:"get_url dest: /root/hwreport.txt (on each managed node)" },
+    { re:/force\s*:\s*(true|yes)/i, msg:"force: true — every run starts from a fresh template" },
+    { fn:t => (t.match(/ansible\.builtin\.lineinfile\s*:/g) || []).length >= 5, msg:"Five ansible.builtin.lineinfile tasks, one per line (replace has no line: option — that pairing is the screenshot bug)" },
+    { fn:t => (t.match(/path\s*:\s*\/root\/hwreport\.txt/g) || []).length >= 5, msg:"Every lineinfile task edits path: /root/hwreport.txt" },
+    { re:/regexp\s*:\s*["']\^Inventory host name["']/, msg:"regexp: '^Inventory host name'" },
+    { re:/Inventory host name=\{\{\s*inventory_hostname\s*\}\}/, msg:"line: \"Inventory host name={{ inventory_hostname }}\" (a magic variable, not a fact)" },
+    { re:/regexp\s*:\s*["']\^Total memory in MB["']/, msg:"regexp: '^Total memory in MB'" },
+    { fn:t => /Total memory in MB=\{\{\s*(ansible_memtotal_mb|ansible_facts\[['"]memtotal_mb['"]\])\s*\}\}/.test(t), msg:"line: \"Total memory in MB={{ ansible_memtotal_mb }}\"" },
+    { re:/regexp\s*:\s*["']\^BIOS version["']/, msg:"regexp: '^BIOS version'" },
+    { fn:t => /BIOS version=\{\{\s*(ansible_bios_version|ansible_facts\[['"]bios_version['"]\])\s*\}\}/.test(t), msg:"line: \"BIOS version={{ ansible_bios_version }}\"" },
+    { re:/regexp\s*:\s*["']\^Size of disk device sda["']/, msg:"regexp: '^Size of disk device sda' — the lab file's label (sda, not the question's vda)" },
+    { re:/ansible_devices\[['"]sda['"]\]\[['"]size['"]\]\s*\|\s*default\(['"]NONE['"]\)/, msg:"sda value: ansible_devices['sda']['size'] | default('NONE')" },
+    { re:/regexp\s*:\s*["']\^Size of disk device sdb["']/, msg:"regexp: '^Size of disk device sdb'" },
+    { re:/ansible_devices\[['"]sdb['"]\]\[['"]size['"]\]\s*\|\s*default\(['"]NONE['"]\)/, msg:"sdb value: ansible_devices['sdb']['size'] | default('NONE')" },
+    { fn:t => { const a = t.search(/ansible\.builtin\.get_url\s*:/), b = t.search(/ansible\.builtin\.lineinfile\s*:/), c = t.search(/Size of disk device sda/), d = t.search(/Size of disk device sdb=\{\{/); return a >= 0 && b > a && c >= 0 && d > c; }, msg:"Order: download first, then the five line edits, sda before sdb" }
+  ]],
+  explain:`<h2>✅ Q13 complete — what you just did</h2>
+  <p>Each host builds its own report. Task 1 fetches the empty template onto the node itself — there is no curl step and no file on the controller, because the grader re-runs this playbook on clean hosts and only playbook work counts. Five <code>lineinfile</code> tasks then each find one bare label by its <code>regexp</code> and replace the <i>whole line</i> with label=value, the values coming from facts gathered on that host.</p>
+  <h4>How it affects the Ansible environment</h4>
+  <p>• Two instructor bugs are designed out. <code>replace</code> has no <code>line:</code> option — module and option come as a pair (lineinfile: regexp+line; replace: regexp+replace), and the wrong pairing dies with "Unsupported parameters". And <code>uri</code> fails any re-run with a 304; <code>get_url</code> with <code>force: true</code> always replaces, so every run starts from a clean template — which is also why re-runs always report changed even though the final file is identical.<br>
+  • <code>| default('NONE')</code> is the tested idea: on a host with no sdb, <code>ansible_devices['sdb']</code> is undefined, and without the filter the task dies with "'dict object' has no attribute 'sdb'". Memory and BIOS need no default — every host has them. (A replace-based version with <code>replace:</code> also works in the lab; this trainer grades the lineinfile version.)<br>
+  • The question says vda/vdb; the lab file and the lab hosts say sda/sdb, because the VMs run on vSphere (SCSI), not KVM (virtio). Match the file's labels and the hosts' devices, never the question's wording. Task names are labels only — "Update vda size" edits the sda line.</p>
+  <div class="tie"><b>How it ties in:</b> the facts are Q10's data read locally instead of through hostvars, and the <code>default</code> filter joins Q9's fail guard in the "host is missing something" toolkit. Q13.1 runs it.</div>`
+},
+{
+  id:"Q13.1", title:"Run hwreport.yml", sub:"ansible-playbook hwreport.yml", cmd:true,
+  files:[{ path:"shell", lang:"cmd" }],
+  spec:`<b>13.1. Run the playbook.</b><br>• Run <code>hwreport.yml</code> with ansible-playbook. All four hosts download their own template and fill in their own facts.<br>• Type the command and press <b>Enter</b>.`,
+  checks:[[
+    { re:/ansible-playbook\s+hwreport\.yml/, msg:"ansible-playbook hwreport.yml" },
+    { fn:t => !/sudo/.test(t), msg:"No sudo on the run command" }
+  ]],
+  explain:`<h2>✅ Q13.1 complete — what you just did</h2>
+  <p>Expect a clean sweep: in the lab run, the first pass came back <code>ok=7 changed=5 failed=0</code> on all four hosts, and a re-run also finished <code>failed=0</code> — the get_url fix doing its job, where the screenshot's uri version would have died at task 1 with a 304. The changed count on re-runs is the forced fresh template being refilled, not drift.</p>
+  <h4>How it affects the Ansible environment</h4>
+  <p>• Same play, second tool: <code>ansible-navigator run hwreport.yml -m stdout</code> executes it identically.</p>
+  <div class="tie"><b>How it ties in:</b> the run is the claim. Q13.2 reads the reports; Q13.3 and Q13.4 audit them two different ways.</div>`
+},
+{
+  id:"Q13.2", title:"Verify: cat the reports", sub:"With -b, /root is root-only", cmd:true,
+  files:[{ path:"shell", lang:"cmd" }],
+  spec:`<b>13.2. Verify the reports.</b><br>• On all hosts, with privilege escalation (<code>-b</code>), print <code>/root/hwreport.txt</code>. Pass means five <code>label=value</code> lines per host and no bare labels left.<br>• Type the command and press <b>Enter</b>.`,
+  checks:[[
+    { re:/ansible\s+all\s+-b\s+-m\s+ansible\.builtin\.command\s+-a\s*['"]cat\s+\/root\/hwreport\.txt['"]/, msg:"ansible all -b -m ansible.builtin.command -a 'cat /root/hwreport.txt'" }
+  ]],
+  explain:`<h2>✅ Q13.2 complete — what you just did</h2>
+  <p>Four reports, each describing its own host: its inventory name, its memory, its BIOS, its disk sizes — and <code>NONE</code> anywhere a disk is absent. The <code>-b</code> is not decoration: /root is unreadable to the login user, so without become the cat fails on every host even though the playbook succeeded.</p>
+  <h4>How it affects the Ansible environment</h4>
+  <p>• Nothing changes. Reading your own output back is the weakest proof, though — it shows the file, not that the values are true. Q13.3 checks the values against the hosts' facts.</p>
+  <div class="tie"><b>How it ties in:</b> content first, then truth, then completeness — the same proof ladder as Q12's link checks.</div>`
+},
+{
+  id:"Q13.3", title:"Verify: cross-check devices", sub:"setup filter=ansible_devices", cmd:true,
+  files:[{ path:"shell", lang:"cmd" }],
+  spec:`<b>13.3. Cross-check the disk sizes.</b><br>• On all hosts, gather just the devices fact with the setup module's filter, and confirm each host's sda/sdb sizes match its report — and that a host with no sdb key shows <code>NONE</code> in the report.<br>• Type the command and press <b>Enter</b>.`,
+  checks:[[
+    { re:/ansible\s+all\s+-m\s+ansible\.builtin\.setup\s+-a\s*['"]filter=ansible_devices['"]/, msg:"ansible all -m ansible.builtin.setup -a 'filter=ansible_devices'" }
+  ]],
+  explain:`<h2>✅ Q13.3 complete — what you just did</h2>
+  <p>You audited the report against the source it was templated from: <code>ansible_devices</code> is the exact fact the two disk lines read, so every size in every report must appear here, under the same host. The host whose fact output has no sdb key at all is the one whose report must read <code>Size of disk device sdb=NONE</code> — that pairing is the default filter, proven.</p>
+  <h4>How it affects the Ansible environment</h4>
+  <p>• Nothing changes. Same filtered setup call as Q9.0 and Q10.5 — one fact family, read directly, no full fact dump.</p>
+  <div class="tie"><b>How it ties in:</b> facts built the file (Q13), facts audit it here. Q13.4 proves no line was left behind.</div>`
+},
+{
+  id:"Q13.4", title:"Verify: no bare labels left", sub:"grep -L = finds nothing", cmd:true,
+  files:[{ path:"shell", lang:"cmd" }],
+  spec:`<b>13.4. Verify completeness.</b><br>• On all hosts, with privilege escalation (<code>-b</code>), run <code>grep -L = /root/hwreport.txt</code> — it lists the file only if it contains <i>no</i> line with an <code>=</code>. Pass means <code>rc=1</code> and no output on every host: every label got its value.<br>• Type the command and press <b>Enter</b>.`,
+  checks:[[
+    { re:/ansible\s+all\s+-b\s+-m\s+ansible\.builtin\.command\s+-a\s*['"]grep\s+-L\s+=\s+\/root\/hwreport\.txt['"]/, msg:"ansible all -b -m ansible.builtin.command -a \"grep -L = /root/hwreport.txt\"" }
+  ]],
+  explain:`<h2>✅ Q13.4 complete — what you just did</h2>
+  <p>A negative proof: <code>grep -L</code> names files that do <i>not</i> contain the pattern, so silence plus exit code 1 is the pass — every report has at least one <code>=</code> line, which combined with Q13.2's five-line shape means no bare label survived. It is the fastest possible completeness check: one command, no reading. That closes Q13.</p>
+  <h4>How it affects the Ansible environment</h4>
+  <p>• Nothing changes. Say it the senior way: "The disk lines use a default('NONE') filter, so a host without that disk writes NONE instead of failing — and because the template is re-downloaded each run, every run reports changed even when the final file is the same."</p>
+  <div class="tie"><b>The whole arc:</b> Q0 tuned your editor, Q1 configured the runner, Q2 fixed the repos everything installs from, Q3–Q5 built plays and proved them, Q4 and Q6 stocked the controller with collections and roles, Q7 taught you to author a role, Q8 composed all of it into one system, Q9 taught storage to branch on facts, Q10 built one host's file out of every host's facts, Q11 aimed different content at different groups and showed what an overlap costs, Q12 built a shared directory the way teams actually share, and Q13 turned each host's own facts into its own report — with a safe placeholder for whatever it doesn't have. That layering — set up, do, verify — is the exam.</div>`
 }
 ];
 // ===PURE-END===
@@ -1617,7 +1705,52 @@ ansible-playbook lvm.yml --syntax-check
 "Q12.5": { hint:`ansible dev, the command module, ls -l with --time-style=full-iso on the link path — the timestamp proves this run created it.`,
   answer:[{ path:"shell", text:"ansible dev -m ansible.builtin.command -a 'ls -l --time-style=full-iso /var/www/html/webdev'" }] },
 "Q12.6": { hint:`ansible dev, the command module, and an -a argument running getent group devops.`,
-  answer:[{ path:"shell", text:"ansible dev -m ansible.builtin.command -a 'getent group devops'" }] }
+  answer:[{ path:"shell", text:"ansible dev -m ansible.builtin.command -a 'getent group devops'" }] },
+"Q13": { hint:`One play, hosts: all, become: true. Task 1: get_url (NOT uri — 304 on re-runs) from http://10.1.10.121/hwreport.empty to /root/hwreport.txt with force: true. Then five lineinfile tasks (NOT replace — it has no line: option), each path: /root/hwreport.txt, a regexp on the file's sda/sdb labels, and a line with the value: inventory_hostname, ansible_memtotal_mb, ansible_bios_version, and ansible_devices['sda'/'sdb']['size'] | default('NONE').`,
+  answer:[{ path:"/home/student/ansible/hwreport.yml", text:`---
+- name: Generate a Hardware Report
+  hosts: all
+  become: true
+  tasks:
+    - name: Download hwreport.empty
+      ansible.builtin.get_url:
+        url: http://10.1.10.121/hwreport.empty
+        dest: /root/hwreport.txt
+        force: true
+    - name: Update inventory hostname
+      ansible.builtin.lineinfile:
+        path: /root/hwreport.txt
+        regexp: '^Inventory host name'
+        line: "Inventory host name={{ inventory_hostname }}"
+    - name: Update total memory
+      ansible.builtin.lineinfile:
+        path: /root/hwreport.txt
+        regexp: '^Total memory in MB'
+        line: "Total memory in MB={{ ansible_memtotal_mb }}"
+    - name: Update BIOS version
+      ansible.builtin.lineinfile:
+        path: /root/hwreport.txt
+        regexp: '^BIOS version'
+        line: "BIOS version={{ ansible_bios_version }}"
+    - name: Update vda size
+      ansible.builtin.lineinfile:
+        path: /root/hwreport.txt
+        regexp: '^Size of disk device sda'
+        line: "Size of disk device sda={{ ansible_devices['sda']['size'] | default('NONE') }}"
+    - name: Update vdb size
+      ansible.builtin.lineinfile:
+        path: /root/hwreport.txt
+        regexp: '^Size of disk device sdb'
+        line: "Size of disk device sdb={{ ansible_devices['sdb']['size'] | default('NONE') }}"
+` }] },
+"Q13.1": { hint:`A plain ansible-playbook run of hwreport.yml — no sudo.`,
+  answer:[{ path:"shell", text:"ansible-playbook hwreport.yml" }] },
+"Q13.2": { hint:`ansible all with -b, the command module, and an -a argument catting /root/hwreport.txt — the -b matters, /root is root-only.`,
+  answer:[{ path:"shell", text:"ansible all -b -m ansible.builtin.command -a 'cat /root/hwreport.txt'" }] },
+"Q13.3": { hint:`ansible all, the setup module, and an -a argument filtering to ansible_devices — no -b on this one.`,
+  answer:[{ path:"shell", text:"ansible all -m ansible.builtin.setup -a 'filter=ansible_devices'" }] },
+"Q13.4": { hint:`ansible all with -b, the command module, and a double-quoted -a argument: grep -L = /root/hwreport.txt — silence and rc=1 is the pass.`,
+  answer:[{ path:"shell", text:"ansible all -b -m ansible.builtin.command -a \"grep -L = /root/hwreport.txt\"" }] }
 };
 
 function runChecks(q, texts){
