@@ -141,7 +141,7 @@
   <p id="finishstats" style="line-height:1.7"></p>
   <p style="color:var(--amber)">Press [Enter] to run it again from Q0.</p>
 </div>
-<footer>Built from your own direct-answer sheet (Q0 setup + Q1–Q8) and your updated Q9–Q11 notes. Nothing here is the answer key — every file was typed by you, keyboard only.</footer>
+<footer>Built from your own direct-answer sheet (Q0 setup + Q1–Q8) and your updated Q9–Q12 notes. Nothing here is the answer key — every file was typed by you, keyboard only.</footer>
 
 <script>
 "use strict";
@@ -1136,7 +1136,131 @@ const QUESTIONS = [
   <h4>How it affects the Ansible environment</h4>
   <p>• The production fix is one task with explicit precedence — a single <code>copy</code> whose content is chosen by a conditional (prod, then test, then dev) — so each host is written once. The exam wants the three-task version above; know both, and know why they differ.<br>
   • Say it the senior way: "serverb is in both test and prod, so it's written twice and ends with Production, because the prod task runs last — and it reports changed on every run. In production I'd collapse this into one task with an explicit precedence."</p>
-  <div class="tie"><b>The whole arc:</b> Q0 tuned your editor, Q1 configured the runner, Q2 fixed the repos everything installs from, Q3–Q5 built plays and proved them, Q4 and Q6 stocked the controller with collections and roles, Q7 taught you to author a role, Q8 composed all of it into one system, Q9 taught storage to branch on facts, Q10 built one host's file out of every host's facts, and Q11 aimed different content at different groups — and showed what an overlap costs. That layering — set up, do, verify — is the exam.</div>`
+  <div class="tie"><b>How it ties in:</b> that closes Q11. Q12 builds on Q1's groups again — this time the play itself targets dev, so no task needs a when at all.</div>`
+},
+{
+  id:"Q12.0", title:"Precheck: /var/www/html exists", sub:"ls -ld on dev", cmd:true,
+  files:[{ path:"shell", lang:"cmd" }],
+  spec:`<b>12.0. Precheck the outside dependency.</b><br>• On the dev hosts, list <code>/var/www/html</code> itself with <code>ls -ld</code> through an ad hoc command. It must already exist — the playbook's last task puts a symlink inside it.<br>• Type the command and press <b>Enter</b>.`,
+  checks:[[
+    { re:/ansible\s+dev\s+-m\s+ansible\.builtin\.command\s+-a\s*['"]ls\s+-ld\s+\/var\/www\/html['"]/, msg:"ansible dev -m ansible.builtin.command -a 'ls -ld /var/www/html'" }
+  ]],
+  explain:`<h2>✅ Q12.0 complete — what you just did</h2>
+  <p>You verified the one thing Q12 needs but does not create: <code>/var/www/html</code> exists on servera because the httpd package is installed there. If this had answered "No such file or directory", the symlink task in Q12 would fail — and <code>force: true</code> would not save it, because force replaces a file at the link's path; it never creates a missing parent directory.</p>
+  <h4>How it affects the Ansible environment</h4>
+  <p>• Nothing changes. If the directory were missing, the fix is installing httpd first (<code>ansible dev -b -m ansible.builtin.dnf -a 'name=httpd state=present'</code>) — an extra step, added only if the question allows it.</p>
+  <div class="tie"><b>How it ties in:</b> same habit as Q9.0's precheck — confirm the ground before you build on it. Q12 writes the playbook.</div>`
+},
+{
+  id:"Q12", title:"webcontent.yml", sub:"Group, SGID directory, file, symlink",
+  files:[{ path:"/home/student/ansible/webcontent.yml", lang:"yaml" }],
+  spec:`<b>12. Create the web content structure.</b><br>• Create /home/student/ansible/webcontent.yml: one play on the <b>dev</b> hosts, with privilege escalation. Do not create /webdev by hand — the playbook does the work.<br>• Four tasks, in this order: create the group <code>devops</code>; create the directory <code>/webdev</code> owned by that group with mode <code>2775</code>; create <code>/webdev/index.html</code> containing <code>Development</code>; symlink <code>/var/www/html/webdev</code> to <code>/webdev</code>, with force.`,
+  checks:[[
+    { fn:t => (t.match(/^- name:/gm) || []).length === 1, msg:"Exactly one play" },
+    { re:/hosts\s*:\s*dev\b/, msg:"The play targets hosts: dev (servera only — the play does the targeting, so no task needs a when)" },
+    { re:/become\s*:\s*(true|yes)/i, msg:"become: true on the play (groups and /var/www need root)" },
+    { re:/ansible\.builtin\.group\s*:/, msg:"Task 1 manages the group with ansible.builtin.group" },
+    { fn:t => { const chunks = t.split(/\n\s*- name:/); return chunks.some(ch => /ansible\.builtin\.group\s*:/.test(ch) && /name\s*:\s*devops\b/.test(ch) && /state\s*:\s*present/.test(ch)); }, msg:"The group task: name: devops, state: present" },
+    { re:/ansible\.builtin\.file\s*:/, msg:"The file module manages the directory and the link" },
+    { re:/state\s*:\s*directory/, msg:"Directory task: state: directory" },
+    { re:/path\s*:\s*\/webdev[ \t]*$/m, msg:"Directory task: path: /webdev" },
+    { re:/group\s*:\s*devops\b/, msg:"Directory task: group: devops" },
+    { re:/mode\s*:\s*["']2775["']/, msg:"mode: \"2775\" — quoted, so YAML keeps it a string (2 = SGID, then rwxrwxr-x)" },
+    { re:/ansible\.builtin\.copy\s*:/, msg:"index.html is written with ansible.builtin.copy" },
+    { re:/dest\s*:\s*\/webdev\/index\.html/, msg:"copy dest: /webdev/index.html" },
+    { re:/content\s*:\s*Development\b/, msg:"copy content: Development" },
+    { re:/state\s*:\s*link/, msg:"Link task: state: link" },
+    { re:/src\s*:\s*\/webdev\//, msg:"Link task: src: /webdev/ — the target, trailing slash included, exactly as specified" },
+    { re:/path\s*:\s*\/var\/www\/html\/webdev/, msg:"Link task: path: /var/www/html/webdev — where the link lives" },
+    { re:/force\s*:\s*(true|yes)/i, msg:"Link task: force: true" },
+    { fn:t => { const a = t.search(/ansible\.builtin\.group\s*:/), b = t.search(/state\s*:\s*directory/), c = t.search(/ansible\.builtin\.copy\s*:/), d = t.search(/state\s*:\s*link/); return a >= 0 && b > a && c > b && d > c; }, msg:"Task order is group, directory, file, link — the dependency order" }
+  ]],
+  explain:`<h2>✅ Q12 complete — what you just did</h2>
+  <p>Four tasks build one shared team directory, and the file's order is the dependency order: the group exists before the directory names it as owner (else "failed to look up group devops"), the directory exists before the file goes inside it (else "Destination directory /webdev does not exist"), and the link comes last. Because the play targets <code>dev</code>, no task needs a <code>when</code> — contrast Q11, where the play aimed at all and every task narrowed itself.</p>
+  <h4>How it affects the Ansible environment</h4>
+  <p>• The <code>2</code> in <code>2775</code> is SGID: anything created under /webdev inherits the devops group — that inheritance is what makes a shared directory actually shared. index.html is created by root yet still lands in group devops. The mode is quoted because unquoted <code>2775</code> is a YAML integer and produces the wrong permissions.<br>
+  • On the link task, <code>src</code> is the target and <code>path</code> is the link itself — same order as <code>ln -s TARGET LINK_NAME</code>. Swap them and force tries to convert /webdev itself into a link and fails. The trailing slash on <code>src: /webdev/</code> is stored in the link exactly as written and resolves to the same directory.<br>
+  • <code>force: true</code> creates the link even if the target is missing and replaces a plain file sitting at the path — it does not create parent directories, which is why Q12.0 checked /var/www/html first.</p>
+  <div class="tie"><b>How it ties in:</b> the devops group created here is the one Q15's developers join on servera. If a variant question also asks for the page to be <i>served</i>, the usual missing piece is SELinux labeling on /webdev (a 403 with correct permissions) — never fix that with setenforce 0. Q12.1 runs it.</div>`
+},
+{
+  id:"Q12.1", title:"Run webcontent.yml", sub:"ansible-playbook webcontent.yml", cmd:true,
+  files:[{ path:"shell", lang:"cmd" }],
+  spec:`<b>12.1. Run the playbook.</b><br>• Run <code>webcontent.yml</code> with ansible-playbook. Only servera is in dev, so only servera changes.<br>• Type the command and press <b>Enter</b>.`,
+  checks:[[
+    { re:/ansible-playbook\s+webcontent\.yml/, msg:"ansible-playbook webcontent.yml" },
+    { fn:t => !/sudo/.test(t), msg:"No sudo on the run command" }
+  ]],
+  explain:`<h2>✅ Q12.1 complete — what you just did</h2>
+  <p>Four tasks, four changes on servera, silence from everyone else — the other hosts were never in the play. Run it a second time and every task reports ok with <code>changed=0</code>: unlike Q11's serverb, this playbook is fully idempotent, because each task states exactly one end state and nothing overwrites anything else.</p>
+  <h4>How it affects the Ansible environment</h4>
+  <p>• Same play, second tool: <code>ansible-navigator run webcontent.yml -m stdout</code> executes it identically.</p>
+  <div class="tie"><b>How it ties in:</b> the run is the claim. Q12.2 through Q12.6 prove it five ways — the directory, the content, the link itself, the link's provenance, and the group.</div>`
+},
+{
+  id:"Q12.2", title:"Verify: ls -ld both paths", sub:"SGID s + link arrow", cmd:true,
+  files:[{ path:"shell", lang:"cmd" }],
+  spec:`<b>12.2. Verify the directory and the link.</b><br>• On the dev hosts, list <code>/webdev</code> and <code>/var/www/html/webdev</code> themselves with <code>ls -ld</code> in one ad hoc command. Pass means <code>drwxrwsr-x</code> with group devops on the first, and an <code>l</code> line with an arrow to /webdev/ on the second.<br>• Type the command and press <b>Enter</b>.`,
+  checks:[[
+    { re:/ansible\s+dev\s+-m\s+ansible\.builtin\.command\s+-a\s*['"]ls\s+-ld\s+\/webdev\s+\/var\/www\/html\/webdev['"]/, msg:"ansible dev -m ansible.builtin.command -a 'ls -ld /webdev /var/www/html/webdev'" }
+  ]],
+  explain:`<h2>✅ Q12.2 complete — what you just did</h2>
+  <p>Two lines carry the whole question: <code>drwxrwsr-x … root devops … /webdev</code> — the <code>s</code> sitting in the group triplet is SGID made visible — and <code>lrwxrwxrwx … /var/www/html/webdev -&gt; /webdev/</code>, the arrow showing the stored target, trailing slash and all. The <code>-d</code> is what makes ls describe the paths themselves instead of their contents.</p>
+  <h4>How it affects the Ansible environment</h4>
+  <p>• Nothing changes. Trap worth memorizing: put a trailing slash on the link's path (<code>ls -ld /var/www/html/webdev/</code>) and ls follows the link and shows /webdev's details instead — you would be inspecting the target while believing you inspected the link.</p>
+  <div class="tie"><b>How it ties in:</b> level 1 proof — the link exists and points the right way. Q12.3 proves it works; Q12.4 proves it structurally.</div>`
+},
+{
+  id:"Q12.3", title:"Verify: cat through the link", sub:"Reads index.html via the symlink", cmd:true,
+  files:[{ path:"shell", lang:"cmd" }],
+  spec:`<b>12.3. Verify the content through the link.</b><br>• On the dev hosts, print <code>/var/www/html/webdev/index.html</code> — the path goes <i>through</i> the symlink. Pass means it prints <code>Development</code>.<br>• Type the command and press <b>Enter</b>.`,
+  checks:[[
+    { re:/ansible\s+dev\s+-m\s+ansible\.builtin\.command\s+-a\s*['"]cat\s+\/var\/www\/html\/webdev\/index\.html['"]/, msg:"ansible dev -m ansible.builtin.command -a 'cat /var/www/html/webdev/index.html'" }
+  ]],
+  explain:`<h2>✅ Q12.3 complete — what you just did</h2>
+  <p><code>Development</code> arrived by a path that only works if three things are all true: the link exists, its target resolves, and the file sits inside the target. Catting the real path (/webdev/index.html) would prove only the third. A dangling link — link present, target missing — fails here with "No such file or directory" even though Q12.2's listing looked fine.</p>
+  <h4>How it affects the Ansible environment</h4>
+  <p>• Nothing changes. This is the difference between a link that exists and a link that works — the same existence-versus-identity split as Q9's lvs then blkid.</p>
+  <div class="tie"><b>How it ties in:</b> level 3 proof done. Q12.4 inspects the link itself as data, without following it.</div>`
+},
+{
+  id:"Q12.4", title:"Verify: stat the link", sub:"follow=false, lnk_target", cmd:true,
+  files:[{ path:"shell", lang:"cmd" }],
+  spec:`<b>12.4. Verify the link structurally.</b><br>• On the dev hosts, stat <code>/var/www/html/webdev</code> with the stat module, with <code>follow=false</code> so it inspects the link itself, not its target.<br>• Type the command and press <b>Enter</b>.`,
+  checks:[[
+    { re:/ansible\s+dev\s+-m\s+ansible\.builtin\.stat\s+-a\s*['"]path=\/var\/www\/html\/webdev\s+follow=false['"]/, msg:"ansible dev -m ansible.builtin.stat -a 'path=/var/www/html/webdev follow=false'" }
+  ]],
+  explain:`<h2>✅ Q12.4 complete — what you just did</h2>
+  <p>The JSON answers as data what ls showed as text: <code>"exists": true</code>, <code>"islnk": true</code> (a link, not a real directory someone made by hand), <code>"lnk_target": "/webdev/"</code> — the raw stored target, exactly what <code>src:</code> wrote — and <code>"lnk_source": "/webdev"</code>, the resolved target with the slash normalized away. <code>follow=false</code> is the whole point: with the default follow behavior, stat would describe /webdev and islnk would never appear.</p>
+  <h4>How it affects the Ansible environment</h4>
+  <p>• Nothing changes — stat is a pure read, and it returns facts a playbook could branch on, not just text for a human.</p>
+  <div class="tie"><b>How it ties in:</b> level 2 proof, machine-readable. Q12.5 answers the last question: was this link made by <i>this</i> run?</div>`
+},
+{
+  id:"Q12.5", title:"Verify: link provenance", sub:"ls -l --time-style=full-iso", cmd:true,
+  files:[{ path:"shell", lang:"cmd" }],
+  spec:`<b>12.5. Verify the link is yours.</b><br>• On the dev hosts, list the link with a full ISO timestamp. Pass means today's date and an arrow to <code>/webdev/</code> — an old date, or a target without the trailing slash, is a leftover from an earlier attempt.<br>• Type the command and press <b>Enter</b>.`,
+  checks:[[
+    { re:/ansible\s+dev\s+-m\s+ansible\.builtin\.command\s+-a\s*['"]ls\s+-l\s+--time-style=full-iso\s+\/var\/www\/html\/webdev['"]/, msg:"ansible dev -m ansible.builtin.command -a 'ls -l --time-style=full-iso /var/www/html/webdev'" }
+  ]],
+  explain:`<h2>✅ Q12.5 complete — what you just did</h2>
+  <p>Provenance is the proof level people skip: a correct-looking link can be yesterday's leftover that your task never actually replaced, and every other check would still pass. The full-iso timestamp dates the link's creation, and the arrow re-confirms the stored target. Today's date plus <code>-&gt; /webdev/</code> means this run did the work.</p>
+  <h4>How it affects the Ansible environment</h4>
+  <p>• Nothing changes. Graders — and senior admins — trust work they can attribute; this is how you attribute it.</p>
+  <div class="tie"><b>How it ties in:</b> levels 1–4 covered: exists, points correctly, works, and is yours. Q12.6 closes with the group the whole structure hangs on.</div>`
+},
+{
+  id:"Q12.6", title:"Verify: getent group devops", sub:"Group exists on servera", cmd:true,
+  files:[{ path:"shell", lang:"cmd" }],
+  spec:`<b>12.6. Verify the group.</b><br>• On the dev hosts, look up the <code>devops</code> group in the system group database. Pass means a line like <code>devops:x:&lt;GID&gt;:</code> — the member list is still empty; members arrive in Q15.<br>• Type the command and press <b>Enter</b>.`,
+  checks:[[
+    { re:/ansible\s+dev\s+-m\s+ansible\.builtin\.command\s+-a\s*['"]getent\s+group\s+devops['"]/, msg:"ansible dev -m ansible.builtin.command -a 'getent group devops'" }
+  ]],
+  explain:`<h2>✅ Q12.6 complete — what you just did</h2>
+  <p><code>getent group devops</code> reads the name-service view of the group database — the same lookup the system itself performs — and answers with the group's line and GID. The empty member field is correct: this question creates the group and the structure; the people arrive later. That closes Q12.</p>
+  <h4>How it affects the Ansible environment</h4>
+  <p>• Nothing changes. Say it the senior way: "The tasks are in dependency order — the group must exist before the directory can use it, and the directory must exist before the file goes in. The one outside dependency is /var/www/html, which means httpd has to be installed on servera."</p>
+  <div class="tie"><b>The whole arc:</b> Q0 tuned your editor, Q1 configured the runner, Q2 fixed the repos everything installs from, Q3–Q5 built plays and proved them, Q4 and Q6 stocked the controller with collections and roles, Q7 taught you to author a role, Q8 composed all of it into one system, Q9 taught storage to branch on facts, Q10 built one host's file out of every host's facts, Q11 aimed different content at different groups and showed what an overlap costs, and Q12 built a shared directory the way teams actually share — group first, SGID inheritance, then a link into the web root. That layering — set up, do, verify — is the exam.</div>`
 }
 ];
 // ===PURE-END===
@@ -1452,7 +1576,48 @@ ansible-playbook lvm.yml --syntax-check
 "Q11.2": { hint:`ansible all, the command module, and an -a argument catting /etc/issue. No -b needed — the banner is world-readable.`,
   answer:[{ path:"shell", text:"ansible all -m ansible.builtin.command -a 'cat /etc/issue'" }] },
 "Q11.3": { hint:`The same ansible-playbook run of issues.yml a second time — then read serverb's recap: changed=2 again.`,
-  answer:[{ path:"shell", text:"ansible-playbook issues.yml" }] }
+  answer:[{ path:"shell", text:"ansible-playbook issues.yml" }] },
+"Q12.0": { hint:`ansible dev, the command module, and an -a argument running ls -ld on /var/www/html — the directory the link will live inside.`,
+  answer:[{ path:"shell", text:"ansible dev -m ansible.builtin.command -a 'ls -ld /var/www/html'" }] },
+"Q12": { hint:`One play on dev, become: true, four tasks in dependency order: group devops present; file state: directory on /webdev with group: devops and mode: "2775" (quoted); copy Development to /webdev/index.html; file state: link with src: /webdev/ (target, trailing slash) and path: /var/www/html/webdev (the link), force: true.`,
+  answer:[{ path:"/home/student/ansible/webcontent.yml", text:`---
+- name: Create a webcontent file
+  hosts: dev
+  become: true
+  tasks:
+    - name: Create devops group
+      ansible.builtin.group:
+        name: devops
+        state: present
+    - name: Create /webdev directory
+      ansible.builtin.file:
+        state: directory
+        path: /webdev
+        group: devops
+        mode: "2775"
+    - name: Creating index.html file
+      ansible.builtin.copy:
+        dest: /webdev/index.html
+        content: Development
+    - name: Create symbolic link
+      ansible.builtin.file:
+        state: link
+        src: /webdev/
+        path: /var/www/html/webdev
+        force: true
+` }] },
+"Q12.1": { hint:`A plain ansible-playbook run of webcontent.yml — no sudo.`,
+  answer:[{ path:"shell", text:"ansible-playbook webcontent.yml" }] },
+"Q12.2": { hint:`ansible dev, the command module, ls -ld on both paths in one -a argument: /webdev first, then /var/www/html/webdev — no trailing slash on the link.`,
+  answer:[{ path:"shell", text:"ansible dev -m ansible.builtin.command -a 'ls -ld /webdev /var/www/html/webdev'" }] },
+"Q12.3": { hint:`ansible dev, the command module, and an -a argument catting the index.html path through the link: /var/www/html/webdev/index.html.`,
+  answer:[{ path:"shell", text:"ansible dev -m ansible.builtin.command -a 'cat /var/www/html/webdev/index.html'" }] },
+"Q12.4": { hint:`ansible dev, the stat module (not command), and an -a argument: path=/var/www/html/webdev follow=false — follow=false is what inspects the link itself.`,
+  answer:[{ path:"shell", text:"ansible dev -m ansible.builtin.stat -a 'path=/var/www/html/webdev follow=false'" }] },
+"Q12.5": { hint:`ansible dev, the command module, ls -l with --time-style=full-iso on the link path — the timestamp proves this run created it.`,
+  answer:[{ path:"shell", text:"ansible dev -m ansible.builtin.command -a 'ls -l --time-style=full-iso /var/www/html/webdev'" }] },
+"Q12.6": { hint:`ansible dev, the command module, and an -a argument running getent group devops.`,
+  answer:[{ path:"shell", text:"ansible dev -m ansible.builtin.command -a 'getent group devops'" }] }
 };
 
 function runChecks(q, texts){
