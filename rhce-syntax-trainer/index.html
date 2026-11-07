@@ -970,7 +970,7 @@ const QUESTIONS = [
   <p>You fetched the template skeleton: the two localhost lines are already in it. What it is missing is the loop — the three lines you add in Q10.1 are the entire question, because they are what make one host's file describe every host.</p>
   <h4>How it affects the Ansible environment</h4>
   <p>• Location is a lookup rule: in a playbook, the template module finds <code>src:</code> relative to the playbook's directory. That is why this file lives in the project root — contrast Q7, where the template lived inside the role and was found by the role's own lookup.</p>
-  <div class="tie"><b>How it ties in:</b> same download pattern as Q8's four files. Q10.1 completes the template; Q10.2 builds the two-play playbook that renders it.</div>`
+  <div class="tie"><b>How it ties in:</b> same download pattern as Q8's four files. Q10.1 completes the template; Q10.2 builds the playbook that renders it.</div>`
 },
 {
   id:"Q10.1", title:"hosts.j2", sub:"Complete the cross-host loop",
@@ -992,41 +992,41 @@ const QUESTIONS = [
   <p>• Why <code>hostvars</code> is non-negotiable: a bare <code>ansible_facts['fqdn']</code> always means the host the template renders <i>on</i> — servera — so every line would come out as servera. <code>hostvars[x]</code> switches to whichever host the loop is visiting.<br>
   • The render happens once, on the controller, from facts already in memory; only the finished text is copied to servera. Servera never contacts the other hosts.<br>
   • Order follows the inventory, not IP or alphabet, and hosts in several groups still appear once — <code>all</code> is deduplicated. No blank lines appear between entries because Ansible renders with trim_blocks on.</p>
-  <div class="tie"><b>How it ties in:</b> this is the mechanism behind the production version of Q8's backend list — a config built from the whole fleet's facts. It only works if the facts exist, which is Q10.2's first play.</div>`
+  <div class="tie"><b>How it ties in:</b> this is the mechanism behind the production version of Q8's backend list — a config built from the whole fleet's facts. It only works if the facts exist, which is why Q10.2's play targets every host.</div>`
 },
 {
-  id:"Q10.2", title:"hosts.yml", sub:"Facts play + deploy play",
+  id:"Q10.2", title:"hosts.yml", sub:"One play, when narrows to dev",
   files:[{ path:"/home/student/ansible/hosts.yml", lang:"yaml" }],
-  spec:`<b>10.2. Create the playbook.</b><br>• Create /home/student/ansible/hosts.yml with two plays.<br>• Play 1 runs on all hosts and only gathers facts — it has no tasks.<br>• Play 2 runs on the dev group with privilege escalation and renders hosts.j2 to <code>/etc/myhosts</code> with mode 0644.`,
+  spec:`<b>10.2. Create the playbook.</b><br>• Create /home/student/ansible/hosts.yml with <b>one</b> play that runs on <b>all</b> hosts, with privilege escalation.<br>• Its single task renders hosts.j2 to <code>/etc/myhosts</code> — but only on hosts in the dev group, controlled by a <code>when</code> on the task.<br>• No permissions are specified for the file.`,
   checks:[[
-    { fn:t => (t.match(/^- name:/gm) || []).length >= 2, msg:"Two plays" },
-    { re:/hosts\s*:\s*all/, msg:"Play 1 targets hosts: all" },
-    { re:/gather_facts\s*:\s*true/, msg:"Play 1 sets gather_facts: true" },
-    { re:/hosts\s*:\s*dev/, msg:"Play 2 targets hosts: dev" },
-    { re:/become\s*:\s*(true|yes)/i, msg:"Play 2 sets become: true (writing in /etc needs root)" },
+    { fn:t => (t.match(/^- name:/gm) || []).length === 1, msg:"Exactly one play" },
+    { re:/hosts\s*:\s*all/, msg:"The play targets hosts: all (so every host gathers facts)" },
+    { re:/become\s*:\s*(true|yes)/i, msg:"become: true on the play (writing in /etc needs root)" },
+    { fn:t => !/hosts\s*:\s*dev/.test(t), msg:"No hosts: dev anywhere — the when does the narrowing, not the play target" },
     { re:/ansible\.builtin\.template\s*:/, msg:"Renders with ansible.builtin.template" },
     { re:/src\s*:\s*hosts\.j2/, msg:"src: hosts.j2" },
     { re:/dest\s*:\s*\/etc\/myhosts/, msg:"dest: /etc/myhosts" },
-    { re:/mode\s*:\s*["']?0644["']?/, msg:"mode: 0644" }
+    { fn:t => /when\s*:\s*inventory_hostname\s+in\s+groups\[['"]dev['"]\]/.test(t), msg:"when: inventory_hostname in groups['dev']" }
   ]],
   explain:`<h2>✅ Q10.2 complete — what you just did</h2>
-  <p>Two plays, two jobs. The first is roll call: it exists purely so the controller holds every host's facts in memory — <code>hostvars</code> is only populated for hosts whose facts were gathered in this run. The second is the only play that changes anything: on dev, as root, it renders the template and lands it at <code>/etc/myhosts</code> — deliberately <i>not</i> <code>/etc/hosts</code>.</p>
+  <p>One play does both jobs. Because it targets <code>all</code>, every host joins and gathers its facts — that is what fills <code>hostvars</code> for the template's loop. The single task then renders the file, but its <code>when</code> narrows the write: <code>inventory_hostname</code> is the name of the host the task is running for right now, <code>groups['dev']</code> is dev's list of hosts, and <code>in</code> asks whether the first is in the second. True on servera; false — and skipped — on the other three.</p>
   <h4>How it affects the Ansible environment</h4>
-  <p>• Skip play 1 and the render dies with an undefined error — the facts for serverc simply are not there when servera's file is built. Rule: a template that reads other hosts' facts needs those facts gathered first.<br>
-  • <code>mode</code> is quoted so YAML hands the module the string 0644 instead of reading it as an octal number.<br>
-  • <code>become: true</code> is written on the play even though it might be set elsewhere — writing to <code>/etc</code> needs root, and the play says so itself (the Q9 lesson).</p>
-  <div class="tie"><b>How it ties in:</b> Q1's inventory groups decide everything here — <code>all</code> for the facts, <code>dev</code> for the file. Q10.3 runs it.</div>`
+  <p>• Expect <code>skipping</code> on serverb, serverc, and serverd, with <code>skipped=1</code> in their recaps. That is the when working, not a problem.<br>
+  • Aim the play at <code>dev</code> instead and it breaks the other way: only servera's facts get gathered, <code>hostvars['ec-serverc']</code> is empty at render time, and the run dies with an undefined error. Gather wide, write narrow.<br>
+  • You have seen this condition from the other direction in Q8: <code>'balancers' in group_names</code> asks "is this group in my list of groups?" Q10 asks "am I in this group's list of hosts?" Same answer, opposite direction.<br>
+  • No <code>mode:</code> is set, because the question specifies no permissions — a new file takes the umask default, normally 0644. Add a mode only when a question asks for one.</p>
+  <div class="tie"><b>How it ties in:</b> Q1's inventory groups run the whole question — <code>all</code> fills the facts, <code>dev</code> picks the writer. Q10.3 runs it.</div>`
 },
 {
   id:"Q10.3", title:"Run hosts.yml", sub:"ansible-playbook hosts.yml", cmd:true,
   files:[{ path:"shell", lang:"cmd" }],
-  spec:`<b>10.3. Run the playbook.</b><br>• Run <code>hosts.yml</code> with ansible-playbook: play 1 gathers from all four hosts, play 2 changes only servera.<br>• Type the command and press <b>Enter</b>.`,
+  spec:`<b>10.3. Run the playbook.</b><br>• Run <code>hosts.yml</code> with ansible-playbook: every host gathers facts, and the task writes only on dev, skipping the rest.<br>• Type the command and press <b>Enter</b>.`,
   checks:[[
     { re:/ansible-playbook\s+hosts\.yml/, msg:"ansible-playbook hosts.yml" },
     { fn:t => !/sudo/.test(t), msg:"No sudo on the run command" }
   ]],
   explain:`<h2>✅ Q10.3 complete — what you just did</h2>
-  <p>One run, two phases: a facts sweep across the whole inventory, then a single changed host. If play 2 reports servera changed and nothing else moved, the shape is right — the other hosts were read, not written.</p>
+  <p>One play, two outcomes: every host gathers facts, then the task fires only on servera. Expect changed on servera and <code>skipping</code> on serverb, serverc, and serverd — <code>skipped=1</code> in their recaps is the when doing its job, and it means the other hosts were read, not written.</p>
   <h4>How it affects the Ansible environment</h4>
   <p>• Same play, second tool: <code>ansible-navigator run hosts.yml -m stdout</code> executes it identically.</p>
   <div class="tie"><b>How it ties in:</b> the claim is a six-line file on servera. Q10.4 reads it; Q10.5 and Q10.6 cross-check it.</div>`
@@ -1065,7 +1065,7 @@ const QUESTIONS = [
     { re:/ansible\s+dev\s+-m\s+ansible\.builtin\.command\s+-a\s*['"]ls\s+-l\s+\/etc\/myhosts['"]/, msg:"ansible dev -m ansible.builtin.command -a 'ls -l /etc/myhosts'" }
   ]],
   explain:`<h2>✅ Q10.6 complete — what you just did</h2>
-  <p>The metadata matches the playbook's promises: <code>-rw-r--r--</code> is the quoted <code>mode: "0644"</code> made visible, and root ownership is <code>become: true</code> made visible. Content (Q10.4), addresses (Q10.5), metadata (Q10.6) — three independent proofs. That closes Q10.</p>
+  <p>The metadata matches the playbook's promises: <code>-rw-r--r--</code> is the umask default made visible (the playbook sets no mode — the question specified none), and root ownership is <code>become: true</code> made visible. Content (Q10.4), addresses (Q10.5), metadata (Q10.6) — three independent proofs. That closes Q10.</p>
   <h4>How it affects the Ansible environment</h4>
   <p>• Nothing changes. And the fleet property worth remembering: add a host to the inventory and the next run adds its line automatically — the file maintains itself because it was never typed by hand.</p>
   <div class="tie"><b>The whole arc:</b> Q0 tuned your editor, Q1 configured the runner, Q2 fixed the repos everything installs from, Q3–Q5 built plays and proved them, Q4 and Q6 stocked the controller with collections and roles, Q7 taught you to author a role, Q8 composed all of it into one system, Q9 taught storage to branch on facts, and Q10 built one host's file out of every host's facts. That layering — set up, do, verify — is the exam.</div>`
@@ -1337,21 +1337,17 @@ ansible-playbook lvm.yml --syntax-check
 {{ hostvars[x]['ansible_facts']['default_ipv4']['address'] }} {{ hostvars[x]['ansible_facts']['fqdn'] }} {{ hostvars[x]['ansible_facts']['hostname'] }}
 {% endfor %}
 ` }] },
-"Q10.2": { hint:`Two plays. Play 1: hosts: all, gather_facts: true, no tasks at all. Play 2: hosts: dev, become: true, one template task — src hosts.j2, dest /etc/myhosts, mode "0644" (quoted).`,
+"Q10.2": { hint:`ONE play: hosts: all, become: true, a single template task (src hosts.j2, dest /etc/myhosts, no mode), and the task carries when: inventory_hostname in groups['dev']. There is no second play and no hosts: dev anywhere.`,
   answer:[{ path:"/home/student/ansible/hosts.yml", text:`---
-- name: Gather facts from every host
+- name: Generate /etc/hosts using j2 file
   hosts: all
-  gather_facts: true
-
-- name: Deploy /etc/myhosts
-  hosts: dev
   become: true
   tasks:
-    - name: Render template
+    - name: Create /etc/myhosts using j2 file
       ansible.builtin.template:
         src: hosts.j2
         dest: /etc/myhosts
-        mode: "0644"
+      when: inventory_hostname in groups['dev']
 ` }] },
 "Q10.3": { hint:`A plain ansible-playbook run of hosts.yml — no sudo.`,
   answer:[{ path:"shell", text:"ansible-playbook hosts.yml" }] },
