@@ -974,20 +974,22 @@ const QUESTIONS = [
 },
 {
   id:"Q10.1", title:"hosts.j2", sub:"Complete the cross-host loop",
-  files:[{ path:"/home/student/ansible/hosts.j2", lang:"jinja" }],
-  spec:`<b>10.1. Complete the template.</b><br>• The downloaded file already has the two localhost lines. Add the loop: for every host in the inventory, print one line — that host's IPv4 address, its FQDN, and its short hostname, space-separated.<br>• Type the complete file, localhost lines included.`,
+  files:[{ path:"/home/student/ansible/hosts.j2", lang:"jinja", preset:`127.0.0.1   localhost localhost.localdomain localhost4 localhost4.localdomain4
+::1         localhost localhost.localdomain localhost6 localhost6.localdomain6
+` }],
+  spec:`<b>10.1. Complete the template.</b><br>• The editor already has the downloaded file's two localhost lines in it — that part is given. Add the loop below them: for every host in the inventory, print one line — that host's IPv4 address, its FQDN, and its short hostname, space-separated.<br>• You only type the three loop lines; the localhost lines are the preset.`,
   checks:[[
     { re:/127\.0\.0\.1\s+localhost/, msg:"First localhost line kept" },
     { re:/::1\s+localhost/, msg:"Second localhost line (::1) kept" },
-    { fn:t => { const m = t.match(/\{%\s*for\s+(\w+)\s+in\s+groups\[['"]all['"]\]\s*%\}/); if (!m) return false; const hv = new RegExp("hostvars\\[" + m[1] + "\\]", "g"); return (t.match(hv) || []).length >= 3; }, msg:"A {% for %} loop over groups['all'], reading hostvars[<loop var>] at least 3 times" },
-    { re:/\[['"]ansible_facts['"]\]\[['"]default_ipv4['"]\]\[['"]address['"]\]/, msg:"The IP: ['ansible_facts']['default_ipv4']['address']" },
-    { re:/\[['"]ansible_facts['"]\]\[['"]fqdn['"]\]/, msg:"The FQDN: ['ansible_facts']['fqdn']" },
-    { re:/\[['"]ansible_facts['"]\]\[['"]hostname['"]\]/, msg:"The short name: ['ansible_facts']['hostname']" },
+    { re:/\{%\s*for\s+x\s+in\s+groups\[['"]all['"]\]\s*%\}/, msg:"{% for x in groups['all'] %}" },
+    { re:/hostvars\[x\]\[['"]ansible_facts['"]\]\[['"]default_ipv4['"]\]\[['"]address['"]\]/, msg:"The IP: hostvars[x]['ansible_facts']['default_ipv4']['address']" },
+    { re:/hostvars\[x\]\[['"]ansible_facts['"]\]\[['"]fqdn['"]\]/, msg:"The FQDN: hostvars[x]['ansible_facts']['fqdn']" },
+    { re:/hostvars\[x\]\[['"]ansible_facts['"]\]\[['"]hostname['"]\]/, msg:"The short name: hostvars[x]['ansible_facts']['hostname']" },
     { fn:t => (t.match(/\{\{/g) || []).length >= 3, msg:"The three values print through {{ }} expression tags" },
     { re:/\{%\s*endfor\s*%\}/, msg:"Loop closed with {% endfor %}" }
   ]],
   explain:`<h2>✅ Q10.1 complete — what you just did</h2>
-  <p>You wrote the only cross-host mechanism in the exam so far. <code>{% %}</code> is logic — it prints nothing; <code>{{ }}</code> prints a value; the spaces between the three expressions are literal text that become the columns of the hosts file. The loop variable (<code>x</code> here) is any name you choose, as long as <code>hostvars[…]</code> uses the same one, unquoted: <code>hostvars['x']</code> would look for a host literally named x.</p>
+  <p>You wrote the only cross-host mechanism in the exam so far. <code>{% %}</code> is logic — it prints nothing; <code>{{ }}</code> prints a value; the spaces between the three expressions are literal text that become the columns of the hosts file. The loop variable is <code>x</code>, and <code>hostvars[x]</code> must use that same name, unquoted: <code>hostvars['x']</code> would look for a host literally named x.</p>
   <h4>How it affects the Ansible environment</h4>
   <p>• Why <code>hostvars</code> is non-negotiable: a bare <code>ansible_facts['fqdn']</code> always means the host the template renders <i>on</i> — servera — so every line would come out as servera. <code>hostvars[x]</code> switches to whichever host the loop is visiting.<br>
   • The render happens once, on the controller, from facts already in memory; only the finished text is copied to servera. Servera never contacts the other hosts.<br>
@@ -1799,7 +1801,7 @@ ansible-playbook lvm.yml --syntax-check
   answer:[{ path:"shell", text:"ansible all -b -m ansible.builtin.command -a 'blkid /dev/yellowtail/data'" }] },
 "Q10": { hint:`curl with -o hosts.j2, from the exam server's address — the file server is 10.1.10.121.`,
   answer:[{ path:"shell", text:"curl -o hosts.j2 http://10.1.10.121/hosts.j2" }] },
-"Q10.1": { hint:`Keep the two localhost lines. Then a three-line loop: {% for x in groups['all'] %}, one print line reading hostvars[x] three times — default_ipv4 address, fqdn, hostname — and {% endfor %}. The loop variable is never quoted inside hostvars[…].`,
+"Q10.1": { hint:`The two localhost lines are already in the editor. Add a three-line loop below them: {% for x in groups['all'] %}, one print line reading hostvars[x] three times — default_ipv4 address, fqdn, hostname — and {% endfor %}. The x is never quoted inside hostvars[…].`,
   answer:[{ path:"/home/student/ansible/hosts.j2", text:`127.0.0.1 localhost localhost.localdomain localhost4 localhost4.localdomain4
 ::1 localhost localhost.localdomain localhost6 localhost6.localdomain6
 {% for x in groups['all'] %}
@@ -2326,7 +2328,8 @@ function renderStage(){
   h += "<h1>" + q.id + ": " + q.title + "</h1>";
   h += "<div class='spec'>" + q.spec + "</div>";
   q.files.forEach((f, fi) => {
-    const val = saved[fi] ? saved[fi].replace(/&/g, "&amp;").replace(/</g, "&lt;") : "";
+    const raw = saved[fi] !== undefined ? saved[fi] : (f.preset || "");
+    const val = raw.replace(/&/g, "&amp;").replace(/</g, "&lt;");
     if (q.cmd) {
       h += "<div class='fileblock'><div class='filehead'><span class='prompt'>[student@controller ansible]$</span> <span class='cmd'>type the command, then press Enter to run it</span><span class='lang'>shell</span></div>"
         + "<textarea class='cmdinput' id='ta" + fi + "' spellcheck='false' autocomplete='off' autocapitalize='off' placeholder='" + placeholders(f).replace(/'/g, "&#39;") + "'>" + val + "</textarea></div>";
@@ -2345,7 +2348,7 @@ function renderStage(){
   h += "<div class='feedback' id='fb'></div>";
   h += "<div class='explain' id='ex'>" + q.explain + "<div class='nextline' id='nextline'></div></div>";
   gel("stage").innerHTML = h;
-  if (q.cmd) { wireCmd(0); } else { q.files.forEach((f, fi) => { wireEditor(fi); gutterSync(fi); caretSync(fi); syntaxSync(fi); }); }
+  if (q.cmd) { wireCmd(0); } else { q.files.forEach((f, fi) => { wireEditor(fi); gutterSync(fi); caretSync(fi); syntaxSync(fi); if (f.preset && saved[fi] === undefined) { const ta = gel("ta" + fi); if (ta) { const end = ta.value.length; try { ta.setSelectionRange(end, end); } catch(e){} caretSync(fi); } } }); }
   updateNextline();
   if (state.done.has(state.cur)) gel("ex").className = "explain show";
   wireHelp(q);
