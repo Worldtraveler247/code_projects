@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="dark">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'self' https://static.cloudflareinsights.com; connect-src 'self' https://cloudflareinsights.com; img-src 'self' data:; form-action https://buttondown.com; base-uri 'none'; object-src 'none'">
+    <meta name="description" content="The Daily Brief for Monday, November 9, 2026: security incidents, senior security advice, engineering explainers, and tech news.">
+    <title>The Daily Brief · Nov 9, 2026</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="icon" href="../../../favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="../../../style.css">
+    <link rel="stylesheet" href="../../newsletter.css">
+</head>
+<body class="brief-page">
+    <a href="#main-content" class="skip-nav">Skip to main content</a>
+    <nav class="brief-nav">
+        <a href="../../../index.html">← App Hub</a>
+        <a href="../../">All issues</a>
+    </nav>
+    
+<header class="brief-masthead">
+    <p class="brief-eyebrow">THE DAILY BRIEF</p>
+    <h1>Monday, November 9, 2026</h1>
+    <ol class="brief-toc">
+        <li><a href="#current-events">Current Events</a></li><li><a href="#security-advice">Senior Security Advice</a></li><li><a href="#tech-news">Tech News</a></li>
+    </ol>
+</header>
+<main id="main-content" class="brief">
+    
+    <article class="brief-section" id="current-events">
+        <p class="brief-kicker">Current Events</p>
+        <h2>The MGM Resorts Scattered Spider Breach</h2>
+        
+            
+            <p>A single phone call to a help desk put a fifteen-billion-dollar casino company's slot machines, hotel key cards, and reservation systems out of commission for ten days. No malware had to sneak past a firewall -- the attackers just asked nicely, and an employee believed them. Today: the MGM Resorts breach, and the Okta identity technique behind it that still shows up in attacks today.</p>
+<p>Here's how it actually happened. According to the joint CISA and FBI advisory on the group known as Scattered Spider, and Okta's own security write-up on the technique, the attackers called MGM's IT help desk, impersonated an employee, and talked their way into a password reset for a Super Administrator account inside MGM's Okta tenant -- no exploit, no phishing email, just a convincing phone call, a technique researchers call vishing. With that account, the attackers used a legitimate Okta feature called inbound federation to register a second, attacker-controlled identity provider inside MGM's environment. Okta calls this cross-tenant impersonation: once that rogue identity provider was trusted, the attackers could impersonate any user in the organization and access whatever that user could reach.</p>
+<p>From there, the chain moved fast. According to reporting corroborated by multiple security firms, the attackers rode that access into administrative rights over MGM's Azure environment, and from Azure into Domain Admin privileges on MGM's Active Directory. Within about a day of that escalation, the ALPHV ransomware group -- also known as BlackCat -- deployed ransomware across MGM's systems. Slot machines went dark. Hotel key cards stopped working. Reservation and payment systems went down across MGM properties on the Las Vegas Strip and beyond.</p>
+<p>Root cause, in one sentence: a help desk could reset credentials for the single most powerful account in the identity system over the phone, with no verification step strong enough to catch a skilled social engineer.</p>
+<p>Here's what actually held. MGM's own investigation found no evidence that passwords, bank account numbers, or payment card data were exposed -- the financial data path stayed separated from the identity compromise that caused the outage itself. MGM's cyber insurance covered the roughly one-hundred-million-dollar cost the company later disclosed, and the company says it restored virtually all guest-facing systems within about ten days.</p>
+<p>So what would a senior engineer flag from this one? A senior engineer never treats a help desk's authority to reset a privileged account as a side process outside the security boundary -- it IS the security boundary, and it deserves the same scrutiny as any authentication system. On an AWS lab, that is a concrete, checkable habit: knowing exactly which API calls create a new trust relationship into your identity system, and making sure at least one alert fires the moment one appears.</p>
+
+        
+            <h3>Timeline</h3>
+            <table>
+<thead>
+<tr>
+<th>Date</th>
+<th>Event</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Early September 2023</td>
+<td>Scattered Spider social-engineers an MGM IT help desk employee by phone, obtaining a credential/MFA reset on a Super Administrator Okta account.</td>
+</tr>
+<tr>
+<td>Early September 2023</td>
+<td>Attackers register a second, attacker-controlled identity provider via Okta's inbound federation feature, enabling cross-tenant impersonation of MGM users.</td>
+</tr>
+<tr>
+<td>Early-to-mid September 2023</td>
+<td>Attackers escalate from the compromised Okta tenant to administrative rights in MGM's Azure environment, then to Domain Admin on Active Directory.</td>
+</tr>
+<tr>
+<td>September 10-11, 2023 (reporting varies)</td>
+<td>ALPHV/BlackCat ransomware is deployed; MGM shuts down significant portions of its systems; slot machines, digital room keys, and reservation systems are disrupted across properties.</td>
+</tr>
+<tr>
+<td>September 13, 2023</td>
+<td>MGM files a Form 8-K with the SEC disclosing the cybersecurity issue.</td>
+</tr>
+<tr>
+<td>~September 20, 2023</td>
+<td>MGM reports virtually all guest-facing systems restored, roughly ten days after the outage began.</td>
+</tr>
+<tr>
+<td>October 5, 2023</td>
+<td>MGM files a second Form 8-K estimating approximately $100 million in impact, with less than $10 million in one-time response costs.</td>
+</tr>
+<tr>
+<td>November 16, 2023</td>
+<td>CISA and the FBI publish joint advisory AA23-320A on Scattered Spider's tactics, later updated in July 2025.</td>
+</tr>
+</tbody>
+</table>
+<p><em>Note: public reporting differs on the exact date ransomware was deployed, with some sources citing September 10th and others September 11th or 12th; MGM's own 8-Ks do not state an exact intrusion date, so this script states the disclosure dates it can confirm and flags the deployment date as approximate. Attribution of the ransomware operation to ALPHV/BlackCat, and the help-desk vishing entry vector, come from security-firm and CISA reporting rather than MGM's own 8-K text, which does not name a threat actor.</em></p>
+
+        
+            <h3>Control Failures</h3>
+            <table>
+<thead>
+<tr>
+<th>#</th>
+<th>Failure</th>
+<th>NIST SP 800-53 Rev 5 Control Family</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>A help desk could reset authentication factors on a Super Administrator account based on a phone call, with no verification step resistant to social engineering.</td>
+<td><strong>IA-5</strong> — Authenticator Management</td>
+</tr>
+<tr>
+<td>2</td>
+<td>The compromised account held full Super Administrator rights rather than a scoped, task-limited role for routine help-desk-adjacent work.</td>
+<td><strong>AC-6</strong> — Least Privilege</td>
+</tr>
+<tr>
+<td>3</td>
+<td>Registering a new, attacker-controlled identity provider inside the Okta tenant — a security-critical configuration change — was not gated by any change-approval process.</td>
+<td><strong>CM-3</strong> — Configuration Change Control</td>
+</tr>
+<tr>
+<td>4</td>
+<td>The new federated identity provider and the resulting anomalous admin sessions were not flagged before the attacker pivoted into Azure and Active Directory.</td>
+<td><strong>AU-6</strong> — Audit Record Review, Analysis, and Reporting</td>
+</tr>
+<tr>
+<td>5</td>
+<td>Compromise of the identity provider cascaded unchecked into Azure administrative rights and Active Directory Domain Admin, with no segmentation slowing that escalation.</td>
+<td><strong>SC-7</strong> — Boundary Protection</td>
+</tr>
+</tbody>
+</table>
+
+        
+            <h3>What Held</h3>
+            <ul>
+<li><strong>Separation of the payment data path.</strong> MGM's investigation found no evidence that passwords, bank account numbers, or payment card data were exposed, even though the identity compromise was severe — a sign that at least the financial-data boundary held where the identity boundary didn't.</li>
+<li><strong>Cyber insurance as a financial backstop.</strong> MGM said its cyber insurance was expected to cover the roughly $100 million cost of the incident, limiting the balance-sheet damage from a ten-day operational shutdown.</li>
+<li><strong>Fast public disclosure of the technique.</strong> Okta published its own &quot;Cross-Tenant Impersonation&quot; advisory within the same month, in August 2023, giving every other Okta customer concrete detection and prevention guidance before most of them had ever heard of the technique.</li>
+</ul>
+
+        
+            <h3>Sources</h3>
+            <ul>
+<li><a href="https://www.cisa.gov/news-events/cybersecurity-advisories/aa23-320a" target="_blank" rel="noopener noreferrer">Scattered Spider — Joint Cybersecurity Advisory AA23-320A — CISA and FBI (primary)</a></li>
+<li><a href="https://sec.okta.com/articles/2023/08/cross-tenant-impersonation-prevention-and-detection" target="_blank" rel="noopener noreferrer">Cross-Tenant Impersonation: Prevention and Detection — Okta Security (primary)</a></li>
+<li><a href="https://www.sec.gov/Archives/edgar/data/789570/000119312523233855/d502352d8k.htm" target="_blank" rel="noopener noreferrer">MGM Resorts International — Form 8-K, September 13, 2023 (primary)</a></li>
+<li><a href="https://www.sec.gov/Archives/edgar/data/789570/000119312523251667/d461062d8k.htm" target="_blank" rel="noopener noreferrer">MGM Resorts International — Form 8-K, October 5, 2023 (primary)</a></li>
+<li><a href="https://www.fox5vegas.com/2023/10/05/mgm-estimates-100-million-loss-due-cyberattack" target="_blank" rel="noopener noreferrer">MGM estimates $100 million loss due to cyberattack — Fox5 Las Vegas</a></li>
+<li><a href="https://www.darkreading.com/attacks-breaches/how-the-okta-cross-tenant-impersonation-attacks-succeeded" target="_blank" rel="noopener noreferrer">How the Okta Cross-Tenant Impersonation Attacks Succeeded — Dark Reading</a></li>
+<li><a href="https://www.acalvio.com/blog/identity-security/defending-against-identity-impersonation-attacks-at-mgm-resorts/" target="_blank" rel="noopener noreferrer">Defending Against Identity Impersonation Attacks at MGM Resorts — Acalvio</a></li>
+<li><a href="https://www.tenable.com/blog/the-mgm-breach-and-the-role-of-idp-in-modern-cyber-attacks" target="_blank" rel="noopener noreferrer">The MGM Breach and the Role of IdP in Modern Cyber Attacks — Tenable</a></li>
+</ul>
+<p><strong>Tomorrow's Thread:</strong> Day 53 moves to the cloud misconfiguration and IAM family — a documented exposed object-storage or over-permissive IAM-role incident not yet covered in this folder, a different family from today's identity and credential compromise topic.</p>
+
+        
+    </article>
+    
+    <article class="brief-section" id="security-advice">
+        <p class="brief-kicker">Senior Security Advice</p>
+        <h2>Enforce Full-Disk Encryption on Every Endpoint</h2>
+        
+            <h3>The Advice</h3>
+            <p>Turn on full-disk encryption on every laptop and workstation, and verify the encryption key is actually protected, not just that the toggle is switched on.</p>
+
+        
+            <h3>Why It Matters</h3>
+            <p>A laptop is lost or stolen somewhere in almost every organization, usually at an airport, a coffee shop, or a parked car. Without full-disk encryption, anyone who pulls the drive can read every file on it directly, no login prompt required: contracts, source code, cached credentials, customer records, whatever happens to be sitting on disk. With full-disk encryption properly configured, that same stolen laptop is just an expensive brick — the data on it is unreadable without the key.</p>
+<p>This is exactly the scenario NIST describes in its guide to storage encryption for end-user devices: a device in someone else's hands poses a different risk than a device still in your custody, and full-disk encryption is the control built for that moment. It is also one of the most common breach-notification triggers in the real world — &quot;unencrypted laptop stolen from employee's car&quot; is a recurring incident class, and it is almost always treated as a reportable data breach specifically because the drive wasn't encrypted. Encrypt it, and the same theft is a lost-asset ticket instead of a breach disclosure.</p>
+
+        
+            <h3>How to Implement It</h3>
+            <ol>
+<li>Enable the platform-native full-disk encryption tool across the fleet through your device management system — BitLocker on Windows, FileVault on macOS, LUKS on Linux — rather than relying on each user to turn it on themselves.</li>
+<li>Require the encryption to use a FIPS-validated cryptographic module, not just an approved algorithm; DISA's STIG guidance is explicit that the module implementing the encryption has to be separately validated, not just the algorithm it uses.</li>
+<li>Store recovery keys centrally, in your device management or identity platform, never locally on the same machine or in a shared document. A recovery key sitting next to the encrypted drive defeats the control.</li>
+<li>Set policy so new devices can't reach corporate resources until compliance reporting confirms encryption is active — don't let an unencrypted device join simply because no one checked.</li>
+<li>Verify the control continuously, not once at provisioning: pull a compliance report from your device management console on a schedule and flag any device reporting encryption as off, suspended, or unknown, and periodically spot-check a sample of devices directly rather than trusting the dashboard alone.</li>
+</ol>
+
+        
+            <h3>The Pushback You&#39;ll Hear</h3>
+            <p>&quot;Encryption slows the machine down and support tickets will pile up over forgotten recovery keys.&quot; Modern full-disk encryption has negligible performance overhead on current hardware with AES-NI acceleration, and centralized recovery-key storage in the device management platform turns a locked-out user into a five-minute help-desk lookup instead of a wiped laptop. The cost of that workflow is far smaller than the cost of one unencrypted laptop walking out the door.</p>
+
+        
+            <h3>Sources</h3>
+            <ul>
+<li>NIST Special Publication 800-111, &quot;Guide to Storage Encryption Technologies for End User Devices&quot;: https://csrc.nist.gov/pubs/sp/800/111/final</li>
+<li>CIS Critical Security Controls, &quot;Encrypt Data at Rest&quot; (Control 13.6 / data protection guidance on full-disk encryption for laptops, desktops, and mobile devices): https://essentialguide.docs.cisecurity.org/en/v1.0.0/bp/encrypt_data_at_rest.html</li>
+<li>DISA Windows 10 Security Technical Implementation Guide, rule requiring BitLocker full-disk encryption with FIPS-validated cryptography (mirrored text): https://tenable.com/audits/items/DISA_STIG_Windows_10_v3r2.audit:58ee246bf2266272c30e3c2457b4d209</li>
+</ul>
+
+        
+    </article>
+    
+    <article class="brief-section" id="tech-news">
+        <p class="brief-kicker">Tech News</p>
+        
+        
+            
+            <p>If you run VMware's virtualization software, a Chinese state-linked hacking group found a way to break in and erase the evidence of that break-in at the same time. And a switch vulnerability I told you about two nights ago just turned out to be a lot worse than anyone first said. Two stories tonight: a logging flaw that lets attackers vanish from their own crime scene, and an update on Friday's Zyxel story that changes the picture.</p>
+<p>Start with VMware. According to Broadcom's own security advisory, corroborated by CrowdStrike's threat intelligence team and confirmed in CISA's Known Exploited Vulnerabilities catalog, the flaw is CVE-2026-41709 — an insufficient-logging weakness in VMware ESX, the hypervisor that runs a huge share of the world's virtual machines. CrowdStrike ties the exploitation to a China-nexus group it tracks as Warp Panda, also identified in other reporting as UNC5221 or Clay Typhoon. The group used this as a zero-day to carry out administrative actions inside ESX without any of it showing up in the audit logs. Broadcom itself actually rates the flaw a mild 2.7 out of 10, because on paper it's &quot;just&quot; a logging gap. CISA clearly disagrees — it's in the Known Exploited Vulnerabilities catalog with a November 11th deadline for federal agencies. That's three days from now. Here's my take: a senior engineer doesn't score a vulnerability only by what it lets an attacker do — they score it by what it lets an attacker hide. If your evidence trail can be silently switched off, every other control you run is operating on faith.</p>
+<p>Which brings us to an update. Friday, I told you Zyxel had patched a GS1900 switch flaw that hadn't been confirmed exploited yet. Here's what's changed: according to The Hacker News and CSOonline, both citing Zyxel's own corrected advisory, researchers now say nearly a thousand of those switches had already been compromised since mid-August — and the vendor had been pointing at the wrong vulnerability the entire time. Security firm GreyNoise had tied the attack campaign to an older, already-patched bug; it turns out the real culprit was the flaw Friday's patch addressed, and even Zyxel's October fix didn't fully close it. My read: don't just confirm a patch shipped — confirm it actually matches the vulnerability doing the damage, because two different bugs on the same device can look identical from the outside.</p>
+<p>So here's the through-line tonight: a control is only as good as your ability to prove it's working — in your logs, and in your patch notes.</p>
+<p>If you run ESX, check your version against CVE-2026-41709 before Wednesday's federal deadline. If you run GS1900 switches, confirm your firmware names this exact CVE, not just &quot;the latest version.&quot;</p>
+
+        
+            <h3>Sources</h3>
+            <ul>
+<li><a href="https://thehackernews.com/2026/10/china-linked-hackers-exploited-vmware.html" target="_blank" rel="noopener noreferrer">China-Linked Hackers Exploited VMware ESX Zero-Day to Take Over Remote Support Servers — The Hacker News</a></li>
+<li><a href="https://securityweek.com/chinese-hackers-quietly-used-low-severity-esxi-logging-flaw-as-zero-day" target="_blank" rel="noopener noreferrer">Chinese hackers quietly used low-severity ESXi logging flaw as zero-day — SecurityWeek</a></li>
+<li><a href="https://securityaffairs.com/?p=202050" target="_blank" rel="noopener noreferrer">U.S. CISA adds Linux Kernel and Broadcom VMware ESX flaws to its Known Exploited Vulnerabilities catalog — Security Affairs</a></li>
+<li><a href="https://thehackernews.com/2026/11/zyxel-gs1900-patch-fails-to-block-zero.html" target="_blank" rel="noopener noreferrer">Zyxel GS1900 patch fails to block zero-day — The Hacker News</a></li>
+<li><a href="https://www.csoonline.com/article/4245028/zyxel-patches-a-zero-day-hiding-behind-an-old-fix.html" target="_blank" rel="noopener noreferrer">Zyxel patches a zero-day hiding behind an old fix — CSOonline</a></li>
+<li><a href="https://www.helpnetsecurity.com/2026/09/22/zyxel-switches-cve-2026-7273-vulnerability-exploited/" target="_blank" rel="noopener noreferrer">Attacker compromised nearly 1000 Zyxel switches since August (CVE-2026-7273) — Help Net Security</a></li>
+<li><a href="https://www.esecurityplanet.com/cybersecurity-threats/news-zyxel-gs1900-zero-day-cve-2026-107441/" target="_blank" rel="noopener noreferrer">Zyxel GS1900 Zero-Day: Why June's Patch Failed and Which Firmware Fixes It — eSecurity Planet</a></li>
+</ul>
+
+        
+    </article>
+    
+    <section class="brief-subscribe" id="subscribe">
+    <h2>Get The Daily Brief by email</h2>
+    <p>One short email each morning. Unsubscribe anytime.</p>
+    <form action="https://buttondown.com/api/emails/embed-subscribe/cybercider" method="post">
+        <label for="bd-email">Email address</label>
+        <input type="email" name="email" id="bd-email" required autocomplete="email" placeholder="you@example.com">
+        <button type="submit">Subscribe</button>
+    </form>
+</section>
+</main>
+
+    <footer><p class="copyright">The Daily Brief · Eddie Camacho</p></footer>
+<!-- cf-web-analytics (managed by tools/inject_analytics.py) -->
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "f728a20b49cc4a0fbe02cde72f03301c"}'></script>
+</body>
+</html>
