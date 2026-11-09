@@ -615,13 +615,13 @@ const QUESTIONS = [
 {
   id:"Q7.4", title:"roles/apache/templates/index.html.j2", sub:"The web page template",
   files:[{ path:"/home/student/ansible/roles/apache/templates/index.html.j2", lang:"jinja" }],
-  spec:`<b>7.4. Create the template.</b><br>• Inside the apache role, edit <code>templates/index.html.j2</code>.<br>• The page prints the host's fully qualified domain name fact, and the address from its default IPv4 fact — so every web server serves a page that names itself.<br>• The task in Q7.3 already points at this file; it has to exist, with this content, for the run to succeed.`,
+  spec:`<b>7.4. Create the template.</b><br>• Inside the apache role, edit <code>templates/index.html.j2</code>.<br>• The page is a single greeting line: <code>Welcome to {{ ansible_facts['fqdn'] }} and the IP Address is {{ ansible_facts['default_ipv4']['address'] }}</code> — the host's fully qualified domain name fact, and the address from its default IPv4 fact, so every web server serves a page that names itself.<br>• The task in Q7.3 already points at this file; it has to exist, with this content, for the run to succeed.`,
   checks:[[
-      { re:/ansible_facts\[['"]fqdn['"]\]/, msg:"The line uses ansible_facts['fqdn']" },
-      { re:/ansible_facts\[['"]default_ipv4['"]\]\[['"]address['"]\]/, msg:"The line uses ansible_facts['default_ipv4']['address']" }
+      { re:/Welcome to\s*\{\{\s*ansible_facts\[['"]fqdn['"]\]\s*\}\}/, msg:"The line opens: Welcome to {{ ansible_facts['fqdn'] }}" },
+      { re:/and the IP Address is\s*\{\{\s*ansible_facts\[['"]default_ipv4['"]\]\[['"]address['"]\]\s*\}\}/, msg:"The line continues: and the IP Address is {{ ansible_facts['default_ipv4']['address'] }}" }
     ]],
   explain:`<h2>✅ Q7.4 complete — what you just did</h2>
-  <p>You wrote the Jinja template the role deploys as the web index page. It contains no hard-coded hostnames — it renders each host's own <code>fqdn</code> fact and <code>default_ipv4</code> address, so the same file produces a different, correct page on serverb and serverc.</p>
+  <p>You wrote the Jinja template the role deploys as the web index page. It contains no hard-coded hostnames — the one greeting line, <code>Welcome to {{ ansible_facts['fqdn'] }} and the IP Address is {{ ansible_facts['default_ipv4']['address'] }}</code>, renders each host's own <code>fqdn</code> fact and <code>default_ipv4</code> address, so the same file produces a different, correct page on serverb and serverc.</p>
   <h4>How it affects the Ansible environment</h4>
   <p>• Templates are how Ansible turns facts into files: at deploy time the engine evaluates the expressions against the target host's facts and writes the rendered result to /var/www/html/index.html — with the SELinux type the Q7.3 task specified.</p>
   <div class="tie"><b>How it ties in:</b> this page is your verification tool in Q7.7 — when curl shows each server's own name and IP, you know the whole chain worked. One piece left: the playbook that runs the role, Q7.5.</div>`
@@ -1681,9 +1681,8 @@ collections:
     dest: /var/www/html/index.html
     setype: httpd_sys_content_t
 ` }] },
-"Q7.4": { hint:`Two fact expressions, one per line: the fqdn fact, and the address inside the default_ipv4 fact — both as ansible_facts[...] lookups in {{ }} braces.`,
-  answer:[{ path:"/home/student/ansible/roles/apache/templates/index.html.j2", text:`{{ ansible_facts['fqdn'] }}
-{{ ansible_facts['default_ipv4']['address'] }}
+"Q7.4": { hint:`One greeting line: "Welcome to" + the fqdn fact in {{ }} braces, then "and the IP Address is" + the address inside the default_ipv4 fact — both as ansible_facts[...] lookups.`,
+  answer:[{ path:"/home/student/ansible/roles/apache/templates/index.html.j2", text:`Welcome to {{ ansible_facts['fqdn'] }} and the IP Address is {{ ansible_facts['default_ipv4']['address'] }}
 ` }] },
 "Q7.5": { hint:`hosts: webservers, become: true, and one task that includes the apache role by name (ansible.builtin.include_role).`,
   answer:[{ path:"/home/student/ansible/role.yml", text:`---
