@@ -773,8 +773,8 @@ const QUESTIONS = [
     { re:/hosts\s*:\s*all/, msg:"The play targets hosts: all" },
     { re:/become\s*:\s*(true|yes)/i, msg:"become: true on the play" },
     { re:/haproxy_backend_servers\s*:/, msg:"Variable haproxy_backend_servers is defined" },
-    { fn:t => near(t, /name\s*:\s*serverb/, [/address\s*:\s*(10\.1\.12\.161|172\.25\.250\.11)/, /port\s*:\s*80/], 160), msg:"Backend entry: serverb with its IP address and port 80 as separate keys" },
-    { fn:t => near(t, /name\s*:\s*serverc/, [/address\s*:\s*(10\.1\.12\.162|172\.25\.250\.12)/, /port\s*:\s*80/], 160), msg:"Backend entry: serverc with its IP address and port 80 as separate keys" },
+    { fn:t => near(t, /name\s*:\s*serverb(?![.\w])/, [/address\s*:\s*10\.1\.12\.161\b/, /port\s*:\s*80/], 160), msg:"Backend entry: name serverb, address 10.1.12.161, port 80 as separate keys" },
+    { fn:t => near(t, /name\s*:\s*serverc(?![.\w])/, [/address\s*:\s*10\.1\.12\.162\b/, /port\s*:\s*80/], 160), msg:"Backend entry: name serverc, address 10.1.12.162, port 80 as separate keys" },
     { fn:t => near(t, /php_packages\s*:/, [/(^|[-\[,'"]\s*)php(?![-\w])/, /(^|[-\[,'"]\s*)php-cli\b/, /(^|[-\[,'"]\s*)php-common\b/], 240), msg:"php_packages lists php, php-cli and php-common" },
     { fn:t => /role\s*:\s*balancer[\s\S]{0,160}?when\s*:[^\n]*['"]balancers['"]\s+in\s+group_names/.test(t), msg:"role: balancer with when: 'balancers' in group_names" },
     { fn:t => /role\s*:\s*phpinfo[\s\S]{0,160}?when\s*:[^\n]*['"]webservers['"]\s+in\s+group_names/.test(t), msg:"role: phpinfo with when: 'webservers' in group_names" },
@@ -1712,16 +1712,16 @@ collections:
   answer:[{ path:"shell", text:"ls -l roles.yml roles/balancer/templates/ roles/phpinfo/templates/ roles/phpinfo/tasks/" }] },
 "Q8.6": { hint:`One play, hosts: all. Backend servers are a list of dicts with name, address, and port as separate keys, and php_packages is overridden in the same vars. The roles: section applies balancer and phpinfo conditionally — each role entry carries its own when on group_names — and the firewall opening sits in post_tasks, also guarded to balancers.`,
   answer:[{ path:"/home/student/ansible/roles.yml", text:`---
-- name: Configure balancers and web servers
+- name: Including Roles
   hosts: all
   become: true
   vars:
     haproxy_backend_servers:
-      - name: serverb.lab.example.com
-        address: 172.25.250.11
+      - name: serverb
+        address: 10.1.12.161
         port: 80
-      - name: serverc.lab.example.com
-        address: 172.25.250.12
+      - name: serverc
+        address: 10.1.12.162
         port: 80
     php_packages:
       - php
@@ -1733,12 +1733,12 @@ collections:
     - role: phpinfo
       when: "'webservers' in group_names"
   post_tasks:
-    - name: Permit http in the firewall
+    - name: Open http on balancer
       ansible.posix.firewalld:
         service: http
-        state: enabled
-        immediate: true
         permanent: true
+        immediate: true
+        state: enabled
       when: "'balancers' in group_names"
 ` }] },
 "Q8.7": { hint:`A plain ansible-playbook run of roles.yml — no sudo.`,
