@@ -2609,6 +2609,12 @@ const AUDIO_SECTIONS = {
   "Q15": { file: "audio/q15.mp3", parts: 8, mins: "about 7½ minutes" },
   "Q16": { file: "audio/q16.mp3", parts: 6, mins: "about 5½ minutes" }
 };
+// NotebookLM deep-dive episodes, streamed straight from GitHub Release assets
+// (the repo's gn-audio release) — a real file URL, so the browser streams it
+// and playback starts immediately instead of assembling base64 parts.
+const DEEPDIVE_SECTIONS = {
+  "Q15": { url: "https://github.com/Worldtraveler247/code_projects/releases/download/gn-audio/q15.mp3", mins: "about 21 minutes" }
+};
 function wireHelp(q){
   const help = HELP[q.id]; if (!help) return;
   const lb = gel("listenbtn"), aud = gel("audiobox");
@@ -2638,6 +2644,27 @@ function wireHelp(q){
         }
         if (!open) { const a = aud.querySelector("audio"); if (a) a.pause(); }
         lb.textContent = open ? "🔊 Hide audio" : "🔊 Listen — " + sec + " explained";
+      });
+    }
+  }
+  const db = gel("deepbtn"), dbox = gel("deepbox");
+  if (db && dbox) {
+    const sec = (q.id.match(/^Q\d+/) || [null])[0];
+    const dd = sec ? DEEPDIVE_SECTIONS[sec] : null;
+    if (!dd) { db.style.display = "none"; }
+    else {
+      db.textContent = "🎙 Deep dive — " + sec + " (NotebookLM)";
+      db.addEventListener("click", () => {
+        const open = dbox.classList.toggle("show");
+        if (open && !dbox.dataset.loaded) {
+          dbox.dataset.loaded = "1";
+          const title = "<div class='atitle'>🎙 " + sec + " — NotebookLM deep dive (" + dd.mins + "). It streams, so it starts right away — and like the narration, it walks through the answers for this question.</div>";
+          dbox.innerHTML = title + "<audio controls preload='metadata' src='" + dd.url + "'></audio>";
+          const a = dbox.querySelector("audio");
+          a.addEventListener("error", () => { dbox.innerHTML = title + "<div class='atitle'>the deep-dive file is not on the server yet — once it has been uploaded to the gn-audio release, this plays it</div>"; delete dbox.dataset.loaded; });
+        }
+        if (!open) { const a = dbox.querySelector("audio"); if (a) a.pause(); }
+        db.textContent = open ? "🎙 Hide deep dive" : "🎙 Deep dive — " + sec + " (NotebookLM)";
       });
     }
   }
@@ -2729,8 +2756,9 @@ function renderStage(){
       + "<div class='statusline'><span class='mode'>-- INSERT --</span><span>" + f.path + "</span><span class='pos' id='pos" + fi + "'>Ln 1, Col 1</span></div><div class='tablist' id='tablist" + fi + "'></div></div>";
   });
   h += "<div class='keys'><b>[Ctrl+Enter / F2]</b> check &nbsp;<b>[Alt+↑/↓]</b> switch file &nbsp;<b>[Alt+→]</b> next question &nbsp;<b>[Alt+←]</b> previous &nbsp;<b>[Tab]</b> complete path (shell-style) · in files: indent · <b>[Shift+Tab]</b> outdent · <b>[Ctrl+C]</b> clear the shell (^C) &nbsp;::&nbsp; attempts: <span class='n' id='att'>" + (state.attempts[state.cur] || 0) + "</span></div>";
-  h += "<div class='helprow'><button class='hbtn' id='checkbtn'>▶ Check</button><button class='hbtn' id='hintbtn'>💡 Hint</button><button class='hbtn' id='revealbtn'>👁 Reveal answer</button><button class='hbtn' id='listenbtn'>🔊 Listen</button><button class='hbtn' id='nextbtn'>Next ▸</button></div>";
+  h += "<div class='helprow'><button class='hbtn' id='checkbtn'>▶ Check</button><button class='hbtn' id='hintbtn'>💡 Hint</button><button class='hbtn' id='revealbtn'>👁 Reveal answer</button><button class='hbtn' id='listenbtn'>🔊 Listen</button><button class='hbtn' id='deepbtn'>🎙 Deep dive</button><button class='hbtn' id='nextbtn'>Next ▸</button></div>";
   h += "<div class='audiobox' id='audiobox'></div>";
+  h += "<div class='audiobox' id='deepbox'></div>";
   h += "<div class='hintbox' id='hintbox'></div>";
   h += "<div class='answerbox' id='answerbox'></div>";
   h += "<div class='feedback' id='fb'></div>";
