@@ -791,8 +791,8 @@ const QUESTIONS = [
     { re:/hosts\s*:\s*all/, msg:"The play targets hosts: all" },
     { re:/become\s*:\s*(true|yes)/i, msg:"become: true on the play" },
     { re:/haproxy_backend_servers\s*:/, msg:"Variable haproxy_backend_servers is defined" },
-    { fn:t => near(t, /name\s*:\s*serverb(?![.\w])/, [/address\s*:\s*10\.1\.12\.161\b/, /port\s*:\s*80/], 160), msg:"Backend entry: name serverb, address 10.1.12.161, port 80 as separate keys" },
-    { fn:t => near(t, /name\s*:\s*serverc(?![.\w])/, [/address\s*:\s*10\.1\.12\.162\b/, /port\s*:\s*80/], 160), msg:"Backend entry: name serverc, address 10.1.12.162, port 80 as separate keys" },
+    { fn:t => near(t, /name\s*:\s*serverb\.lab\.example\.com/, [/address\s*:\s*172\.25\.250\.11\b/, /port\s*:\s*80/], 160), msg:"Backend entry: name serverb.lab.example.com, address 172.25.250.11, port 80 as separate keys" },
+    { fn:t => near(t, /name\s*:\s*serverc\.lab\.example\.com/, [/address\s*:\s*172\.25\.250\.12\b/, /port\s*:\s*80/], 160), msg:"Backend entry: name serverc.lab.example.com, address 172.25.250.12, port 80 as separate keys" },
     { fn:t => near(t, /php_packages\s*:/, [/(^|[-\[,'"]\s*)php(?![-\w])/, /(^|[-\[,'"]\s*)php-cli\b/, /(^|[-\[,'"]\s*)php-common\b/], 240), msg:"php_packages lists php, php-cli and php-common" },
     { fn:t => /role\s*:\s*balancer[\s\S]{0,160}?when\s*:[^\n]*['"]balancers['"]\s+in\s+group_names/.test(t), msg:"role: balancer with when: 'balancers' in group_names" },
     { fn:t => /role\s*:\s*phpinfo[\s\S]{0,160}?when\s*:[^\n]*['"]webservers['"]\s+in\s+group_names/.test(t), msg:"role: phpinfo with when: 'webservers' in group_names" },
@@ -807,7 +807,7 @@ const QUESTIONS = [
   • <code>php_packages</code> in play vars <b>overrides</b> the phpinfo role's default variable — variable precedence in action: the play's value wins, so exactly php, php-cli, and php-common get installed.<br>
   • The guards use <code>group_names</code> — the list of groups the <i>current</i> host belongs to — the mirror image of Q3's <code>inventory_hostname in groups[...]</code> test. Roles listed under <code>roles:</code> load statically, and <code>post_tasks</code> run only after all roles finish, which is why the firewall opening on the balancer happens last.</p>
   <h4>The tech underneath</h4>
-  <p>HAProxy will round-robin between the two backends: hit <code>http://serverd</code> four times and the answers alternate serverb, serverc — that's your verification that the whole chain works.</p>
+  <p>HAProxy will round-robin between the two backends: hit <code>http://serverd.lab.example.com</code> four times and the answers alternate serverb, serverc — that's your verification that the whole chain works.</p>
   <div class="tie"><b>How it ties in:</b> everything converges here — the roles exist under these names because of Q6, the firewalld module because of Q4, the repos and php packages because of Q2 and Q3, and the webservers/balancers groups are the same inventory you've used all exam. Eight questions, one connected system.</div>`
 },
 {
@@ -872,10 +872,10 @@ const QUESTIONS = [
 {
   id:"Q8.11", title:"Verify: the balancer answers", sub:"for loop, curl serverd x4", cmd:true,
   files:[{ path:"shell", lang:"cmd" }],
-  spec:`<b>8.11. Verify the balancer is working properly.</b><br>• From the controller, request <code>http://serverd</code> four times in a row — a <code>for</code> loop over <code>1 2 3 4</code>, each pass running a quiet <code>curl -s</code> — and watch the answers rotate between the two backends.<br>• Type the one-line loop and press <b>Enter</b> to run it.`,
+  spec:`<b>8.11. Verify the balancer is working properly.</b><br>• From the controller, request <code>http://serverd.lab.example.com</code> four times in a row — a <code>for</code> loop over <code>1 2 3 4</code>, each pass running a quiet <code>curl -s</code> — and watch the answers rotate between the two backends.<br>• Type the one-line loop and press <b>Enter</b> to run it.`,
   checks:[[
     { re:/for\s+i\s+in\s+1\s+2\s+3\s+4\s*;/, msg:"for i in 1 2 3 4;" },
-    { re:/do\s+curl\s+-s\s+https?:\/\/serverd(\.lab\.example\.com)?\/?\s*;/, msg:"do curl -s http://serverd;" },
+    { re:/do\s+curl\s+-s\s+https?:\/\/serverd(\.lab\.example\.com)?\/?\s*;/, msg:"do curl -s http://serverd.lab.example.com;" },
     { re:/done\s*;?\s*$/, msg:"Loop closes with done" }
   ]],
   explain:`<h2>✅ Q8.11 complete — what you just did</h2>
@@ -1790,11 +1790,11 @@ collections:
   become: true
   vars:
     haproxy_backend_servers:
-      - name: serverb
-        address: 10.1.12.161
+      - name: serverb.lab.example.com
+        address: 172.25.250.11
         port: 80
-      - name: serverc
-        address: 10.1.12.162
+      - name: serverc.lab.example.com
+        address: 172.25.250.12
         port: 80
     php_packages:
       - php
@@ -1822,8 +1822,8 @@ collections:
   answer:[{ path:"shell", text:"ansible balancers -m ansible.builtin.command -a 'haproxy -c -f /etc/haproxy/haproxy.cfg'" }] },
 "Q8.10": { hint:`Two quiet curls on one line, separated by a semicolon: serverb's hello.php and serverc's hello.php, each piped to head -5.`,
   answer:[{ path:"shell", text:"curl -s http://serverb/hello.php | head -5; curl -s http://serverc/hello.php | head -5" }] },
-"Q8.11": { hint:`One line: a for loop over 1 2 3 4, and inside it a quiet curl to http://serverd — the balancer's own address, no page name.`,
-  answer:[{ path:"shell", text:"for i in 1 2 3 4; do curl -s http://serverd; done" }] },
+"Q8.11": { hint:`One line: a for loop over 1 2 3 4, and inside it a quiet curl to http://serverd.lab.example.com — the balancer's own address, no page name.`,
+  answer:[{ path:"shell", text:"for i in 1 2 3 4; do curl -s http://serverd.lab.example.com; done" }] },
 "Q9.0": { hint:`Every ad hoc command takes -b — your ansible.cfg has become off. Six use the command module; the facts one uses the setup module with filter=ansible_lvm; the free-disk one is lsblk with -o NAME,SIZE,TYPE,FSTYPE,MOUNTPOINTS. The last line is the playbook's own --syntax-check, and there is no --check anywhere.`,
   answer:[{ path:"shell", text:`ansible-galaxy collection list community.general
 ansible all -b -m ansible.builtin.command -a 'rpm -q lvm2'
@@ -2599,7 +2599,7 @@ const AUDIO_SECTIONS = {
   "Q5": { file: "audio/q5.mp3", parts: 7, mins: "about 7 minutes" },
   "Q6": { file: "audio/q6.mp3", parts: 6, mins: "about 5½ minutes" },
   "Q7": { file: "audio/q7.mp3", parts: 9, mins: "about 8½ minutes" },
-  "Q8": { file: "audio/q8.mp3", parts: 7, mins: "about 6½ minutes" },
+  "Q8": { file: "audio/q8.mp3", parts: 7, mins: "about 6¾ minutes" },
   "Q9": { file: "audio/q9.mp3", parts: 6, mins: "about 6 minutes" },
   "Q10": { file: "audio/q10.mp3", parts: 7, mins: "about 7 minutes" },
   "Q11": { file: "audio/q11.mp3", parts: 5, mins: "about 5 minutes" },
