@@ -1560,6 +1560,61 @@ const QUESTIONS = [
   <h4>How it affects the Ansible environment</h4>
   <p>• Nothing changes. Say it the senior way: "The when is checked for each user on each host, so servera gets the two developers, serverc gets the two managers, and serverb gets all four because it's in both test and prod. serverd only gets the groups."</p>
   <div class="tie"><b>The whole arc:</b> Q0 tuned your editor, Q1 configured the runner, Q2 fixed the repos everything installs from, Q3–Q5 built plays and proved them, Q4 and Q6 stocked the controller with collections and roles, Q7 taught you to author a role, Q8 composed all of it into one system, Q9 taught storage to branch on facts, Q10 built one host's file out of every host's facts, Q11 aimed different content at different groups and showed what an overlap costs, Q12 built a shared directory the way teams actually share, Q13 turned each host's own facts into its own report, Q14 locked the project's secrets away from the project itself, and Q15 spent those secrets — looping a data file, filtering per item, and landing every user exactly where the conditions said. That layering — set up, do, verify — is the exam.</div>`
+},
+{
+  id:"Q16", title:"Rotate a Vault Password Without Exposing the Secrets — Rekey sal.yml from insecure4sure to secure1234 in One Step, Never Decrypt-Then-Encrypt", sub:"curl -o + ansible-vault rekey", cmd:true,
+  files:[{ path:"shell", lang:"cmd" }],
+  spec:`<b>16. Rekey sal.yml — download the vault.</b><br>• In <code>~/ansible</code>, download <code>sal.yml</code> from the lab server. The file is <b>already encrypted</b> — this question rotates its password from <code>insecure4sure</code> to <code>secure1234</code> without the secrets ever sitting on disk in plaintext.<br>• Type the command and press <b>Enter</b>.`,
+  checks:[[
+    { re:/cd\s+(\/home\/student\/ansible|~\/ansible)/, msg:"cd ~/ansible" },
+    { re:/curl\s+-o\s+sal\.yml\s+http:\/\/10\.1\.10\.121\/sal\.yml/, msg:"curl -o sal.yml http://10.1.10.121/sal.yml" },
+    { fn:t => { const a = t.search(/cd\s/), b = t.search(/curl\s/); return a >= 0 && b > a && ((t.match(/&&/g) || []).length >= 1 || (t.match(/;/g) || []).length >= 1 || t.split("\n").filter(l => l.trim()).length >= 2); }, msg:"cd first, then the download — chained with && or on separate lines" }
+  ]],
+  explain:`<h2>✅ Q16 complete — what you just did</h2>
+  <p>You downloaded a vault that already exists. None of its contents are yours to write — the job is credential hygiene: the password protecting this file is changing, from <code>insecure4sure</code> to <code>secure1234</code>, and the file stays sealed the whole way through.</p>
+  <h4>How it affects the Ansible environment</h4>
+  <p>• Same download shape as Q15's user_list.yml, with one difference: that file was data to read, this one is ciphertext. <code>curl</code> moves it byte for byte; the encryption survives the trip untouched.<br>
+  • Like Q14, this question has no playbook and no Navigator equivalent — <code>ansible-vault</code> is the only tool, working here on the controller.</p>
+  <div class="tie"><b>How it ties in:</b> Q14 taught the vault as a lock you create. This is that lock's key changing — Q16.1 turns it.</div>`
+},
+{
+  id:"Q16.1", title:"Rekey the vault", sub:"ansible-vault rekey sal.yml", cmd:true,
+  files:[{ path:"shell", lang:"cmd" }],
+  spec:`<b>16.1. Rekey the vault.</b><br>• Run the rekey on <code>sal.yml</code>. At the prompts: the current password is <code>insecure4sure</code>; the new password is <code>secure1234</code>, entered twice. One command re-encrypts the file under the new key.<br>• Never do this as decrypt-then-encrypt in two steps — between those steps, the secrets sit on disk in plaintext.<br>• Type the command and press <b>Enter</b>.`,
+  checks:[[
+    { re:/ansible-vault\s+rekey\s+sal\.yml/, msg:"ansible-vault rekey sal.yml" },
+    { fn:t => !/ansible-vault\s+(decrypt|encrypt)\b/.test(t), msg:"No decrypt/encrypt two-step — rekey never leaves a plaintext window" }
+  ]],
+  explain:`<h2>✅ Q16.1 complete — what you just did</h2>
+  <p><code>rekey</code> opened the vault with the old password <i>in memory</i>, re-encrypted the identical contents under <code>secure1234</code>, and wrote back ciphertext. The plaintext never touched the disk — that single-step design is the entire point of the subcommand, and why decrypt → edit → encrypt is the one approach this question forbids.</p>
+  <h4>How it affects the Ansible environment</h4>
+  <p>• Only the key changed. The variables inside are untouched, so anything consuming sal.yml keeps working — it just needs the new password now.<br>
+  • In production this is the move after a staff departure or a suspected leak. Treat it as housekeeping, not a cure: rotate the secrets <i>inside</i> the vault as well, and remember that old Git commits still hold the old ciphertext, readable by anyone who kept the old password.</p>
+  <div class="tie"><b>How it ties in:</b> this is also why ansible.cfg carries no <code>vault_password_file</code> — Q14's locker opens with redhat123, this vault with secure1234. One global key would be wrong for one of them, every time.</div>`
+},
+{
+  id:"Q16.2", title:"Verify: still encrypted", sub:"head -1 — the $ANSIBLE_VAULT header", cmd:true,
+  files:[{ path:"shell", lang:"cmd" }],
+  spec:`<b>16.2. Prove it stayed encrypted.</b><br>• Show the first line of <code>sal.yml</code>. Pass means it still opens with the <code>$ANSIBLE_VAULT</code> header — re-encrypted under the new key, never left as plaintext.<br>• Type the command and press <b>Enter</b>.`,
+  checks:[[
+    { re:/head\s+(-1|-n\s*1)\s+sal\.yml/, msg:"head -1 sal.yml" }
+  ]],
+  explain:`<h2>✅ Q16.2 complete — what you just did</h2>
+  <p>The first line reads <code>$ANSIBLE_VAULT;1.1;AES256</code> — the same header Q14.3 checked on locker.yml. The rekey rewrote the ciphertext beneath it, but the file's identity never changed: a vault before, a vault after, and no plaintext moment in between.</p>
+  <div class="tie"><b>How it ties in:</b> sealed from the outside. Q16.3 opens it with the new key — and the old key's failure is the other half of the proof.</div>`
+},
+{
+  id:"Q16.3", title:"Verify: view with the new password", sub:"ansible-vault view sal.yml", cmd:true,
+  files:[{ path:"shell", lang:"cmd" }],
+  spec:`<b>16.3. Prove the new key works.</b><br>• View <code>sal.yml</code> and enter the new password <code>secure1234</code> at the prompt — the contents display. Then know the finished state cold: the file opens with <code>secure1234</code> and no longer opens with <code>insecure4sure</code>.<br>• Type the command and press <b>Enter</b>.`,
+  checks:[[
+    { re:/ansible-vault\s+view\s+sal\.yml/, msg:"ansible-vault view sal.yml" }
+  ]],
+  explain:`<h2>✅ Q16.3 complete — what you just did</h2>
+  <p><code>view</code> decrypted to your screen and wrote nothing — the read-only proof. The rotation is now verified from both directions: the new password opens the vault, and the old one is refused. That is exactly the finished state the task demanded: still encrypted, opens with <code>secure1234</code>, no longer opens with <code>insecure4sure</code>.</p>
+  <h4>How it affects the Ansible environment</h4>
+  <p>• Nothing on the managed hosts changed — this was controller-side key hygiene from start to finish.</p>
+  <div class="tie"><b>The vault arc:</b> Q14 created a vault and proved the seal from both sides; Q15 spent its secrets; Q16 changed the key without ever breaking the seal. Create, use, rotate — the full life of a vault.</div>`
 }
 ];
 // ===PURE-END===
@@ -2023,7 +2078,15 @@ pw_manager: Imamgr
 "Q15.5": { hint:`ansible all with -b, the SHELL module (pipes need shell, not command), and the getent shadow pipeline for alice and sandy with the two cuts.`,
   answer:[{ path:"shell", text:"ansible all -b -m ansible.builtin.shell -a 'getent shadow alice sandy | cut -d: -f1,2 | cut -c1-12'" }] },
 "Q15.6": { hint:`ansible all, the command module, and an -a argument running getent group devops opsmgr — both groups, in that order.`,
-  answer:[{ path:"shell", text:"ansible all -m ansible.builtin.command -a 'getent group devops opsmgr'" }] }
+  answer:[{ path:"shell", text:"ansible all -m ansible.builtin.command -a 'getent group devops opsmgr'" }] },
+"Q16": { hint:`cd ~/ansible, then curl -o sal.yml http://10.1.10.121/sal.yml — the file arrives already encrypted; you are rotating its key, not writing it.`,
+  answer:[{ path:"shell", text:"cd ~/ansible\ncurl -o sal.yml http://10.1.10.121/sal.yml" }] },
+"Q16.1": { hint:`ansible-vault rekey sal.yml, one command. Prompts: old insecure4sure, then secure1234 twice. Never decrypt-then-encrypt — that leaves plaintext on disk.`,
+  answer:[{ path:"shell", text:"ansible-vault rekey sal.yml" }] },
+"Q16.2": { hint:`head -1 sal.yml — you are after the $ANSIBLE_VAULT header line, proof the file stayed encrypted.`,
+  answer:[{ path:"shell", text:"head -1 sal.yml" }] },
+"Q16.3": { hint:`ansible-vault view sal.yml, and enter secure1234 at the prompt. insecure4sure failing now is the rotation working.`,
+  answer:[{ path:"shell", text:"ansible-vault view sal.yml" }] }
 };
 
 // === EQUIVALENCE CANON ===
@@ -2526,7 +2589,7 @@ function wireCmd(fi){
   });
 }
 
-// Section audio: one narrated walkthrough per main question (Q0–Q15), 5–10 minutes each.
+// Section audio: one narrated walkthrough per main question (Q1–Q16), 5–10 minutes each.
 // Sections appear here as their audio is generated; the Listen button only shows for those.
 const AUDIO_SECTIONS = {
   "Q1": { file: "audio/q1.mp3", parts: 6, mins: "about 5½ minutes" },
@@ -2543,7 +2606,8 @@ const AUDIO_SECTIONS = {
   "Q12": { file: "audio/q12.mp3", parts: 8, mins: "about 8 minutes" },
   "Q13": { file: "audio/q13.mp3", parts: 9, mins: "about 8½ minutes" },
   "Q14": { file: "audio/q14.mp3", parts: 6, mins: "about 5½ minutes" },
-  "Q15": { file: "audio/q15.mp3", parts: 8, mins: "about 7½ minutes" }
+  "Q15": { file: "audio/q15.mp3", parts: 8, mins: "about 7½ minutes" },
+  "Q16": { file: "audio/q16.mp3", parts: 6, mins: "about 5½ minutes" }
 };
 function wireHelp(q){
   const help = HELP[q.id]; if (!help) return;
