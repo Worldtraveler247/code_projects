@@ -2453,12 +2453,21 @@ function tabComplete(ta, fi){
   showTabList(fi, ms.map(k => dirDisp + k[0] + (k[1] ? "/" : "")));
   return true;
 }
+// Ctrl+C in the shell pane, like real bash: throw the current line away and start fresh (^C)
+function ctrlCancel(ta, fi){
+  ta.value = "";
+  try { ta.setSelectionRange(0, 0); } catch (err) {}
+  saveTexts();
+  const el = gel("tablist" + fi);
+  if (el) { el.textContent = "^C"; el.className = "tablist show"; }
+}
 function wireCmd(fi){
   const ta = gel("ta" + fi); if (!ta) return;
   ta.addEventListener("input", () => { saveTexts(); showTabList(fi, null); });
   ta.addEventListener("focus", () => { activeFile = fi; });
   ta.addEventListener("keydown", (e) => {
-    if (e.key === "Tab") { e.preventDefault(); if (tabComplete(ta, fi)) saveTexts(); }
+    if (e.key === "Tab") { e.preventDefault(); e.stopPropagation(); if (tabComplete(ta, fi)) saveTexts(); }
+    else if (e.ctrlKey && !e.metaKey && !e.altKey && (e.key === "c" || e.key === "C")) { e.preventDefault(); e.stopPropagation(); ctrlCancel(ta, fi); }
     else if (e.key === "Enter" && !e.ctrlKey && !e.metaKey && !e.altKey) { e.preventDefault(); doCheck(); }
   });
 }
@@ -2524,7 +2533,7 @@ function renderStage(){
       + "<textarea id='ta" + fi + "' spellcheck='false' autocomplete='off' autocapitalize='off' placeholder='" + placeholders(f).replace(/'/g, "&#39;") + "'>" + val + "</textarea></div></div>"
       + "<div class='statusline'><span class='mode'>-- INSERT --</span><span>" + f.path + "</span><span class='pos' id='pos" + fi + "'>Ln 1, Col 1</span></div><div class='tablist' id='tablist" + fi + "'></div></div>";
   });
-  h += "<div class='keys'><b>[Ctrl+Enter / F2]</b> check &nbsp;<b>[Alt+↑/↓]</b> switch file &nbsp;<b>[Alt+→]</b> next question &nbsp;<b>[Alt+←]</b> previous &nbsp;<b>[Tab]</b> complete path (shell-style) · in files: indent · <b>[Shift+Tab]</b> outdent &nbsp;::&nbsp; attempts: <span class='n' id='att'>" + (state.attempts[state.cur] || 0) + "</span></div>";
+  h += "<div class='keys'><b>[Ctrl+Enter / F2]</b> check &nbsp;<b>[Alt+↑/↓]</b> switch file &nbsp;<b>[Alt+→]</b> next question &nbsp;<b>[Alt+←]</b> previous &nbsp;<b>[Tab]</b> complete path (shell-style) · in files: indent · <b>[Shift+Tab]</b> outdent · <b>[Ctrl+C]</b> clear the shell (^C) &nbsp;::&nbsp; attempts: <span class='n' id='att'>" + (state.attempts[state.cur] || 0) + "</span></div>";
   h += "<div class='helprow'><button class='hbtn' id='checkbtn'>▶ Check</button><button class='hbtn' id='hintbtn'>💡 Hint</button><button class='hbtn' id='revealbtn'>👁 Reveal answer</button><button class='hbtn' id='nextbtn'>Next ▸</button></div>";
   h += "<div class='hintbox' id='hintbox'></div>";
   h += "<div class='answerbox' id='answerbox'></div>";
