@@ -1564,7 +1564,7 @@ const QUESTIONS = [
 {
   id:"Q16", title:"Rotate a Vault Password Without Exposing the Secrets — Rekey sal.yml from insecure4sure to secure1234 in One Step, Never Decrypt-Then-Encrypt", sub:"curl -o + ansible-vault rekey", cmd:true,
   files:[{ path:"shell", lang:"cmd" }],
-  spec:`<b>16. Rekey sal.yml — download the vault.</b><br>• In <code>~/ansible</code>, download <code>sal.yml</code> from the lab server. The file is <b>already encrypted</b> — this question rotates its password from <code>insecure4sure</code> to <code>secure1234</code> without the secrets ever sitting on disk in plaintext.<br>• Type the command and press <b>Enter</b>.`,
+  spec:`<b>16. Rekey sal.yml — download the vault.</b><br>• In <code>~/ansible</code>, download <code>sal.yml</code> from <code>http://10.1.10.121/sal.yml</code>. The file is <b>already encrypted</b> — this question rotates its password from <code>insecure4sure</code> to <code>secure1234</code> without the secrets ever sitting on disk in plaintext.<br>• Type the command and press <b>Enter</b>.`,
   checks:[[
     { re:/cd\s+(\/home\/student\/ansible|~\/ansible)/, msg:"cd ~/ansible" },
     { re:/curl\s+-o\s+sal\.yml\s+http:\/\/10\.1\.10\.121\/sal\.yml/, msg:"curl -o sal.yml http://10.1.10.121/sal.yml" },
