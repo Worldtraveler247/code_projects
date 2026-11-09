@@ -184,7 +184,7 @@ function lineWith(text, must, also){
 }
 const QUESTIONS = [
 {
-  id:"Q0", title:"~/.vimrc", sub:"Editor setup — do this first",
+  id:"Q0", title:"Set Up Your Editor First — Make vim Behave for YAML: 2-Space Indents, Auto-Indent, Line Numbers", sub:"Editor setup — do this first",
   files:[{ path:"/home/student/.vimrc", lang:"vim" }],
   spec:`<b>Task.</b> Before any playbook work, set up your editor. Create <code>~/.vimrc</code> with a single <code>autocmd</code> line so that whenever vim opens a <b>YAML</b> file, these <b>buffer-local</b> settings apply:
   <br>• tabstop <b>2</b> (<code>ts</code>), softtabstop <b>2</b> (<code>sts</code>), shiftwidth <b>2</b> (<code>sw</code>)
@@ -215,7 +215,7 @@ const QUESTIONS = [
 },
 
 {
-  id:"Q1", title:"ansible-navigator.yml", sub:"Execution environment config",
+  id:"Q1", title:"Configure the Execution Environment — ansible-navigator Runs Playbooks in a Podman Container (creator-ee Image, stdout Mode)", sub:"Execution environment config",
   files:[{ path:"/home/student/ansible/ansible-navigator.yml", lang:"yaml" }],
   spec:`<b>Task.</b> On <b>controller</b>, in the project root next to <code>ansible.cfg</code>, create <code>ansible-navigator.yml</code> so that navigator runs playbooks inside an execution environment. Requirements:
   <br>• Top-level key <code>ansible-navigator</code>.
@@ -247,7 +247,7 @@ const QUESTIONS = [
   <div class="tie"><b>How it ties in:</b> every playbook you write from Q3 onward can be launched through navigator and will pick up this file automatically, because it lives in the project root next to <code>ansible.cfg</code>. Configuration first, content second — that's the exam's shape too.</div>`
 },
 {
-  id:"Q2", title:"repo_key.sh", sub:"Ad hoc commands — GPG key + YUM repositories",
+  id:"Q2", title:"Set Up Trusted Software Sources — Import the GPG Key and Configure BaseOS + AppStream Repos on All Hosts, Ad Hoc Only (GPG Check On)", sub:"Ad hoc commands — GPG key + YUM repositories",
   files:[{ path:"/home/student/ansible/repo_key.sh", lang:"bash" }],
   spec:`<b>2. Configure YUM Repositories Using Ad Hoc Commands</b><br>• Create a shell script called /home/student/ansible/repo_key.sh that uses Ansible ad hoc commands to import the GPG key below and configure the following YUM repositories on all managed hosts:<br>• GPG key to import: http://apt.sw.be/RPM-GPG-KEY.dag.txt<br>• Repository Name: BaseOS<br>• Description: BaseOS Repo<br>• Base URL: http://10.1.14.36/RHEL9/BaseOS<br>• GPG Check: Enabled<br>• GPG Key: http://apt.sw.be/RPM-GPG-KEY.dag.txt<br>• Enabled: Yes<br>• Repository Name: AppStream<br>• Description: AppStream Repo<br>• Base URL: http://10.1.14.36/RHEL9/AppStream<br>• GPG Check: Enabled<br>• GPG Key: http://apt.sw.be/RPM-GPG-KEY.dag.txt<br>• Enabled: Yes`,
   checks:[[
@@ -273,7 +273,7 @@ const QUESTIONS = [
   <div class="tie"><b>How it ties in:</b> Q3's <code>dnf</code> installs — and even the definition of the "RPM Development Tools" package group — come from the metadata of the repos you just created. No Q2, no Q3.</div>`
 },
 {
-  id:"Q3", title:"packages.yml", sub:"One play, task-level when guards",
+  id:"Q3", title:"The Right Packages on the Right Hosts — php + MariaDB for dev/test/prod; Development Tools Group and Full Updates for dev Only (when Guards)", sub:"One play, task-level when guards",
   files:[{ path:"/home/student/ansible/packages.yml", lang:"yaml" }],
   spec:`<b>3. Manage Packages and Package Groups Using a Playbook</b><br>• Create a playbook called /home/student/ansible/packages.yml<br>• The playbook must perform the following tasks:<br>• Install the php and mariadb packages on hosts in the dev, test, and prod groups<br>• Install the RPM Development Tools package group on hosts in the dev group<br>• Update all packages to the latest version on hosts in the dev group`,
   checks:[[
@@ -330,7 +330,7 @@ const QUESTIONS = [
   <div class="tie"><b>How it ties in:</b> run → verify is the rhythm of the whole exam: Q2 ended with repolist checks, Q7 ends with curl, Q8 with curl loops. On to Q4 — Galaxy collections.</div>`
 },
 {
-  id:"Q4", title:"Create the collections directory", sub:"cd, mkdir -p, vim — one line", cmd:true,
+  id:"Q4", title:"Install Collections from Ansible Galaxy — Declare Them in collections/requirements.yml, Install, and List to Prove They Landed", sub:"cd, mkdir -p, vim — one line", cmd:true,
   files:[{ path:"shell", lang:"cmd" }],
   spec:`<b>4. Install Collections Using Ansible Galaxy — setup first.</b><br>• The requirements file lives at <code>/home/student/ansible/collections/requirements.yml</code> — but the <code>collections</code> directory does not exist yet, and vim cannot save a file into a directory that isn't there.<br>• In <b>one chained command line</b>: change into the ansible project directory, create the <code>collections</code> directory (with parents, and no error if it already exists), then open <code>collections/requirements.yml</code> in vim.<br>• Type the command at the prompt and press <b>Enter</b> to run it.`,
   checks:[[
@@ -400,7 +400,7 @@ const QUESTIONS = [
   <div class="tie"><b>How it ties in:</b> same rhythm as Q3.1 → Q3.2 — do the step, then prove it with an independent command. Q4 is now fully closed: directory, file, install, verify. On to Q5, the timesync role.</div>`
 },
 {
-  id:"Q5", title:"Install RHEL System Roles", sub:"sudo dnf install rhel-system-roles", cmd:true,
+  id:"Q5", title:"Configure Time Synchronization with a Red Hat System Role — Feed timesync One Variable, Then Prove the Config File and the Running Daemon", sub:"sudo dnf install rhel-system-roles", cmd:true,
   files:[{ path:"shell", lang:"cmd" }],
   spec:`<b>5. Configure Time Synchronization — install the roles first.</b><br>• The timesync role is one of Red Hat's system roles, and the package that provides them is not installed on the controller yet.<br>• Run dnf as root (sudo) and install the <code>rhel-system-roles</code> package, non-interactively, so the install never stops to ask for confirmation.<br>• Type the command at the prompt and press <b>Enter</b> to run it.`,
   checks:[[
@@ -499,7 +499,7 @@ const QUESTIONS = [
   <div class="tie"><b>How it ties in:</b> Q5 is fully closed. Q6 returns to downloaded Galaxy roles — the same roles:/requirements pattern as Q4, one level up.</div>`
 },
 {
-  id:"Q6", title:"Create the roles directory", sub:"cd, mkdir -p, vim — one line", cmd:true,
+  id:"Q6", title:"Install Roles from Ansible Galaxy — Declare Them in roles/requirements.yml and Pull Them Down for Playbooks to Call", sub:"cd, mkdir -p, vim — one line", cmd:true,
   files:[{ path:"shell", lang:"cmd" }],
   spec:`<b>6. Install Roles Using Ansible Galaxy — setup first.</b><br>• The requirements file lives at <code>/home/student/ansible/roles/requirements.yml</code> — but the <code>roles</code> directory does not exist yet.<br>• In <b>one chained command line</b>: change into the ansible project directory, create the <code>roles</code> directory (with parents, no error if it already exists), then open <code>roles/requirements.yml</code> in vim.<br>• Type the command at the prompt and press <b>Enter</b> to run it.`,
   checks:[[
@@ -565,7 +565,7 @@ const QUESTIONS = [
   <div class="tie"><b>How it ties in:</b> Q6 is closed — directory, requirements, install, verify. Q7 flips from installing other people's roles to authoring your own.</div>`
 },
 {
-  id:"Q7", title:"Go to the roles directory", sub:"cd /home/student/ansible/roles", cmd:true,
+  id:"Q7", title:"Build a Role from Scratch — Scaffold a Web Server Role, Write Its Tasks and Greeting Template (Hostname + IP from Facts), Deploy and Curl It", sub:"cd /home/student/ansible/roles", cmd:true,
   files:[{ path:"shell", lang:"cmd" }],
   spec:`<b>7. Create and Use a Role to Deploy a Web Server — set up.</b><br>• The new role will be created inside the project's <code>roles</code> directory.<br>• Change into that directory now: <code>/home/student/ansible/roles</code>.<br>• Type the command at the prompt and press <b>Enter</b> to run it.`,
   checks:[[
@@ -692,7 +692,7 @@ const QUESTIONS = [
   <div class="tie"><b>How it ties in:</b> Q7 is closed — directory, scaffold, verify, tasks, template, playbook, run, verify. Q8 takes these exact pieces (the balancer role from Q6, this template pattern) and composes them into the capstone.</div>`
 },
 {
-  id:"Q8", title:"Create the role directories", sub:"mkdir -p for the downloads", cmd:true,
+  id:"Q8", title:"Put Downloaded Roles to Work — Run balancer + phpinfo by Host Group, Override the Backend List, Open the Firewall, Prove Traffic Alternates", sub:"mkdir -p for the downloads", cmd:true,
   files:[{ path:"shell", lang:"cmd" }],
   spec:`<b>8. Use Galaxy Roles in a Playbook — set up the directories.</b><br>• The next steps download files into the two roles from Q6 — into <code>roles/balancer/templates</code>, <code>roles/phpinfo/templates</code>, and <code>roles/phpinfo/tasks</code>.<br>• From <code>~/ansible</code>, create all three directories in one command, with parents.<br>• Type the command at the prompt and press <b>Enter</b> to run it.`,
   checks:[[
@@ -907,7 +907,7 @@ const QUESTIONS = [
   <div class="tie"><b>How it ties in:</b> two minutes here is the difference between reading a recap and being surprised by it. On to Q9.</div>`
 },
 {
-  id:"Q9", title:"lvm.yml", sub:"LVM, fail guard + block/rescue fallback",
+  id:"Q9", title:"Grow Storage Without Breaking It — LVM Volume at Full Size, Smaller Fallback via block/rescue, and Refuse to Run Without the Volume Group", sub:"LVM, fail guard + block/rescue fallback",
   files:[{ path:"/home/student/ansible/lvm.yml", lang:"yaml" }],
   spec:`<b>9. Create a logical volume with error handling.</b><br>• Create a playbook called /home/student/ansible/lvm.yml that runs on all managed nodes, with privilege escalation.<br>• If the volume group <code>yellowtail</code> does not exist on a host, that host must fail with the message <code>Volume group does not exist</code>, so nothing is created or formatted there.<br>• Where it exists, create a logical volume called <code>data</code> at 1500 MiB. If that fails, display <code>Could not create logical volume at that size</code> and create it at 800 MiB instead.<br>• Format the logical volume with the ext4 filesystem. Do not mount it.`,
   checks:[[
@@ -980,7 +980,7 @@ const QUESTIONS = [
   <div class="tie"><b>How it ties in:</b> Act 4 continues — Q10 builds one file out of every host's facts, using the same fact-reading habit Q9 started.</div>`
 },
 {
-  id:"Q10", title:"Download hosts.j2", sub:"curl -o from the exam server", cmd:true,
+  id:"Q10", title:"Generate /etc/myhosts from a Template — Loop Over the Whole Inventory, Deploy Only to the dev Group", sub:"curl -o from the exam server", cmd:true,
   files:[{ path:"shell", lang:"cmd" }],
   spec:`<b>10. Download the template.</b><br>• Pull <code>hosts.j2</code> from the exam server (<code>http://10.1.10.121/hosts.j2</code>) into the project root — it sits next to the playbook, <i>not</i> in a role's <code>templates/</code> directory.<br>• Type the command and press <b>Enter</b>.`,
   checks:[[
@@ -1093,7 +1093,7 @@ const QUESTIONS = [
   <div class="tie"><b>How it ties in:</b> that closes Q10. Q11 reuses this question's exact pattern — one play aimed at every host, with tasks narrowed by a group <code>when</code> — three times in a single playbook.</div>`
 },
 {
-  id:"Q11", title:"issues.yml", sub:"Per-group /etc/issue, overlap trap",
+  id:"Q11", title:"One File, Three Contents — /etc/issue by Host Group (Development / Test / Production); on Overlapping Hosts the Last Task Wins", sub:"Per-group /etc/issue, overlap trap",
   files:[{ path:"/home/student/ansible/issues.yml", lang:"yaml" }],
   spec:`<b>11. Modify file content based on host group.</b><br>• Create /home/student/ansible/issues.yml: one play that runs on <b>all</b> hosts, with privilege escalation.<br>• It replaces <code>/etc/issue</code> per group: <code>Development</code> on dev, <code>Test</code> on test, <code>Production</code> on prod — one copy task per group, each gated by a <code>when</code> on group membership, in the order dev, test, prod.`,
   checks:[[
@@ -1174,7 +1174,7 @@ const QUESTIONS = [
   <div class="tie"><b>How it ties in:</b> same habit as Q9.0's precheck — confirm the ground before you build on it. Q12 writes the playbook.</div>`
 },
 {
-  id:"Q12", title:"webcontent.yml", sub:"Group, SGID directory, file, symlink",
+  id:"Q12", title:"Serve a Shared Web Directory — /webdev for the devops Group (setgid 2775), index.html Inside, Symlinked into the Web Root", sub:"Group, SGID directory, file, symlink",
   files:[{ path:"/home/student/ansible/webcontent.yml", lang:"yaml" }],
   spec:`<b>12. Create the web content structure.</b><br>• Create /home/student/ansible/webcontent.yml: one play on the <b>dev</b> hosts, with privilege escalation. Do not create /webdev by hand — the playbook does the work.<br>• Four tasks, in this order: create the group <code>devops</code>; create the directory <code>/webdev</code> owned by that group with mode <code>2775</code>; create <code>/webdev/index.html</code> containing <code>Development</code>; symlink <code>/var/www/html/webdev</code> to <code>/webdev</code>, with force.`,
   checks:[[
@@ -1285,7 +1285,7 @@ const QUESTIONS = [
   <div class="tie"><b>How it ties in:</b> that closes Q12. Q13 returns to facts — the same gathered data Q10 read through hostvars, this time written into a file on each host itself.</div>`
 },
 {
-  id:"Q13", title:"hwreport.yml", sub:"get_url template + lineinfile facts",
+  id:"Q13", title:"Generate a Hardware Report on Every Node — Download the Empty Template in the Playbook, Fill Each Labelled Line from Facts (Missing Disk = NONE)", sub:"get_url template + lineinfile facts",
   files:[{ path:"/home/student/ansible/hwreport.yml", lang:"yaml" }],
   spec:`<b>13. Generate a hardware report.</b><br>• Create /home/student/ansible/hwreport.yml: one play on <b>all</b> hosts, with privilege escalation, producing <code>/root/hwreport.txt</code> on every managed node. Everything happens <i>inside</i> the playbook — never download anything by hand.<br>• Task 1 downloads <code>hwreport.empty</code> from the exam server onto each node as /root/hwreport.txt, forcing a fresh copy. Tasks 2–6 each replace one labelled line with a fact value: inventory host name, total memory in MB, BIOS version, and the sizes of disks <code>sda</code> and <code>sdb</code> (the labels in the lab's file — match the file, not the question's vda/vdb wording). A missing disk must read <code>NONE</code>.`,
   checks:[[
@@ -1373,7 +1373,7 @@ const QUESTIONS = [
   <div class="tie"><b>How it ties in:</b> that closes Q13. Q14 leaves the managed nodes entirely — it works on the controller, protecting the secrets that Q15's playbook will consume.</div>`
 },
 {
-  id:"Q14", title:"secret.txt password file", sub:"echo + chmod 600", cmd:true,
+  id:"Q14", title:"Encrypt the Secrets — Vault File Holding the Developer + Manager Passwords, Unlocked by a 600 Password File Kept Out of ansible.cfg", sub:"echo + chmod 600", cmd:true,
   files:[{ path:"shell", lang:"cmd" }],
   spec:`<b>14. Create the vault password file.</b><br>• In <code>~/ansible</code>: write the vault password <code>redhat123</code> into <code>secret.txt</code> and lock its permissions down to <code>600</code>, chained in one command line. No vim needed.<br>• Type the command and press <b>Enter</b>.`,
   checks:[[
@@ -1444,7 +1444,7 @@ const QUESTIONS = [
   <div class="tie"><b>How it ties in:</b> that closes Q14. Q15 is the vault's payoff — the playbook that finally spends pw_developer and pw_manager.</div>`
 },
 {
-  id:"Q15", title:"Download user_list.yml", sub:"curl -o + cat the keys", cmd:true,
+  id:"Q15", title:"Create Users from Data, Not by Hand — Developers (devops) on dev/test Hosts, Managers (opsmgr) on prod Hosts, Passwords from the Vault", sub:"curl -o + cat the keys", cmd:true,
   files:[{ path:"shell", lang:"cmd" }],
   spec:`<b>15. Download the user list.</b><br>• From <code>~/ansible</code>: download <code>user_list.yml</code> from the exam server and immediately <code>cat</code> it — you need to read its keys before writing the playbook that consumes them.<br>• Type the command and press <b>Enter</b>.`,
   checks:[[
