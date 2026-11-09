@@ -74,6 +74,10 @@
   .hbtn:hover{border-color:var(--amber);color:var(--amber)}
   .hintbox{display:none;border:1px dashed var(--amber);background:#1d1a12;color:#f2e3b3;padding:12px 14px;margin:0 0 12px;line-height:1.6;font-size:14px}
   .hintbox.show{display:block}
+  .audiobox{display:none;border:1px solid var(--cyan);background:#08181a;padding:12px 14px;margin:0 0 12px}
+  .audiobox.show{display:block}
+  .audiobox .atitle{color:var(--cyan);font-size:13px;margin-bottom:8px}
+  .audiobox audio{width:100%}
   .answerbox{display:none;border:1px solid #f85149;background:#160d0d;margin:0 0 12px}
   .answerbox.show{display:block}
   .anspath{color:var(--amber);font-size:12.5px;padding:8px 12px 0}
@@ -2471,8 +2475,41 @@ function wireCmd(fi){
   });
 }
 
+// Section audio: one narrated walkthrough per main question (Q0–Q15), 5–10 minutes each.
+// Sections appear here as their audio is generated; the Listen button only shows for those.
+const AUDIO_SECTIONS = { "Q5": { file: "audio/q5.mp3", parts: 8, mins: "about 8 minutes" } };
 function wireHelp(q){
   const help = HELP[q.id]; if (!help) return;
+  const lb = gel("listenbtn"), aud = gel("audiobox");
+  if (lb && aud) {
+    const sec = (q.id.match(/^Q\d+/) || [null])[0];
+    const info = sec ? AUDIO_SECTIONS[sec] : null;
+    if (!info) { lb.style.display = "none"; }
+    else {
+      lb.textContent = "🔊 Listen — " + sec + " explained";
+      lb.addEventListener("click", () => {
+        const open = aud.classList.toggle("show");
+        if (open && !aud.dataset.loaded) {
+          aud.dataset.loaded = "1";
+          const title = "<div class='atitle'>🔊 " + sec + " — the logic, narrated (" + info.mins + "). It walks through the answers for this whole question, so it will spoil the steps you have not done yet.</div>";
+          aud.innerHTML = title + "<div class='atitle'>loading the audio…</div>";
+          // audio ships as base64 text in numbered parts (the publish pipeline is text-only with a
+          // per-push size limit); fetch the parts, join them, and decode into a playable blob here
+          const reqs = [];
+          for (let i = 1; i <= (info.parts || 1); i++) reqs.push(fetch(info.file + ".b64.part" + i).then(r => { if (!r.ok) throw new Error("part " + i); return r.text(); }));
+          Promise.all(reqs).then(chunks => chunks.join("")).then(b64 => {
+            const bin = atob(b64.replace(/\s+/g, ""));
+            const bytes = new Uint8Array(bin.length);
+            for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+            const url = URL.createObjectURL(new Blob([bytes], { type: "audio/mpeg" }));
+            aud.innerHTML = title + "<audio controls src='" + url + "'></audio>";
+          }).catch(() => { aud.innerHTML = title + "<div class='atitle'>the audio failed to load — check your connection, then close and reopen this panel</div>"; delete aud.dataset.loaded; });
+        }
+        if (!open) { const a = aud.querySelector("audio"); if (a) a.pause(); }
+        lb.textContent = open ? "🔊 Hide audio" : "🔊 Listen — " + sec + " explained";
+      });
+    }
+  }
   const hb = gel("hintbtn"), rb = gel("revealbtn"), hbox = gel("hintbox"), abox = gel("answerbox");
   const cb = gel("checkbtn"), nb = gel("nextbtn");
   if (cb) cb.addEventListener("click", () => doCheck());
@@ -2533,7 +2570,8 @@ function renderStage(){
       + "<div class='statusline'><span class='mode'>-- INSERT --</span><span>" + f.path + "</span><span class='pos' id='pos" + fi + "'>Ln 1, Col 1</span></div><div class='tablist' id='tablist" + fi + "'></div></div>";
   });
   h += "<div class='keys'><b>[Ctrl+Enter / F2]</b> check &nbsp;<b>[Alt+↑/↓]</b> switch file &nbsp;<b>[Alt+→]</b> next question &nbsp;<b>[Alt+←]</b> previous &nbsp;<b>[Tab]</b> complete path (shell-style) · in files: indent · <b>[Shift+Tab]</b> outdent · <b>[Ctrl+C]</b> clear the shell (^C) &nbsp;::&nbsp; attempts: <span class='n' id='att'>" + (state.attempts[state.cur] || 0) + "</span></div>";
-  h += "<div class='helprow'><button class='hbtn' id='checkbtn'>▶ Check</button><button class='hbtn' id='hintbtn'>💡 Hint</button><button class='hbtn' id='revealbtn'>👁 Reveal answer</button><button class='hbtn' id='nextbtn'>Next ▸</button></div>";
+  h += "<div class='helprow'><button class='hbtn' id='checkbtn'>▶ Check</button><button class='hbtn' id='hintbtn'>💡 Hint</button><button class='hbtn' id='revealbtn'>👁 Reveal answer</button><button class='hbtn' id='listenbtn'>🔊 Listen</button><button class='hbtn' id='nextbtn'>Next ▸</button></div>";
+  h += "<div class='audiobox' id='audiobox'></div>";
   h += "<div class='hintbox' id='hintbox'></div>";
   h += "<div class='answerbox' id='answerbox'></div>";
   h += "<div class='feedback' id='fb'></div>";
