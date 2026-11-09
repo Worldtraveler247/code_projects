@@ -78,6 +78,19 @@
   .audiobox.show{display:block}
   .audiobox .atitle{color:var(--cyan);font-size:13px;margin-bottom:8px}
   .audiobox audio{width:100%}
+  #modebtn{cursor:pointer;color:var(--amber);border-color:var(--amber);font:inherit}
+  #modebtn:hover{background:#1d1a12}
+  .stepper{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:0 0 6px}
+  .stepper .slabel{color:var(--dim);font-size:12px;margin-right:4px}
+  .schip{border:1px solid var(--line);background:#000;color:var(--dim);padding:3px 9px;font-size:12px;cursor:pointer}
+  .schip.done{color:var(--green);border-color:var(--green)}
+  .schip.current{color:#fff;border-color:var(--red);background:#1a1a1a}
+  .schip.locked{opacity:.45;cursor:not-allowed}
+  .pbar{height:4px;background:#1a1a1a;margin:0 0 14px}
+  .pbar>i{display:block;height:100%;background:var(--green)}
+  .lockstage{border:1px dashed var(--amber);background:#14110a;padding:26px 22px;text-align:center;line-height:1.8}
+  .lockstage .big{font-size:20px;color:var(--amber)}
+  .lockstage button{margin-top:10px}
   .answerbox{display:none;border:1px solid #f85149;background:#160d0d;margin:0 0 12px}
   .answerbox.show{display:block}
   .anspath{color:var(--amber);font-size:12.5px;padding:8px 12px 0}
@@ -132,13 +145,14 @@
   <div class="pill">[student@controller ~/ansible]$</div>
   <div class="pill time">exam clock: <b id="clock">00:00</b> / 150:00</div>
   <div class="pill">passed: <b id="score">0 / 9</b></div>
+  <button class="pill" id="modebtn" title="Guided: inside each question, a step unlocks when the step before it passes. Practice: everything open, jump anywhere.">mode: GUIDED</button>
 </header>
-<div id="ttybar">The run starts at Q0 and goes in order — or click any question on the left to jump straight to it. Click an editor box to type. &nbsp;[Ctrl+Enter or F2] check &nbsp;[Alt+↑/↓] switch file &nbsp;[Alt+→] next &nbsp;[Alt+←] previous &nbsp;::&nbsp; grading follows the real system — any valid syntax that produces the required result passes</div>
+<div id="ttybar">Guided mode walks each question in order — pass a step to unlock the next one inside that question. Questions themselves stay open: start any question from the list. Flip the mode toggle up top to Practice if you want to jump anywhere. Your passes are saved in this browser. &nbsp;[Ctrl+Enter or F2] check &nbsp;[Alt+↑/↓] switch file &nbsp;[Alt+→] next &nbsp;[Alt+←] previous &nbsp;::&nbsp; grading follows the real system — any valid syntax that produces the required result passes</div>
 <main>
   <nav>
     <h3>EXAM QUESTIONS</h3>
     <div id="qlist"></div>
-    <p class="navnote">The exam builds on itself, so the run starts at Q0 and flows in order — but every question is open: click any of them to start there. Q0 sets up your editor first; every editor after that behaves exactly like the .vimrc you wrote: 2-space indents, auto-indent, line numbers, cursor line + column lit.</p>
+    <p class="navnote">Each question is a chain: inside it, steps unlock in order as you pass them (Guided mode). Questions themselves are all open — start any question here. Practice mode (toggle in the header) unlocks every step for free drilling. Passes persist in this browser; use the reset link below to start clean. Q0 sets up your editor first; every editor after that behaves exactly like the .vimrc you wrote: 2-space indents, auto-indent, line numbers, cursor line + column lit.<br><br><a href="#" id="resetprogress" style="color:var(--amber)">reset saved progress</a></p>
   </nav>
   <section id="stage"></section>
 </main>
@@ -2117,6 +2131,42 @@ function runChecks(q, texts){
 }
 // === ENGINE ===
 const state = { cur: 0, unlocked: 0, done: new Set(), attempts: {}, texts: {}, finished: false };
+// --- Guided / Practice modes ------------------------------------------------
+// Guided (default): inside one question, a step unlocks only when the step
+// before it in that question has passed. Questions themselves are never
+// locked — any question can be started from the list. Practice: all steps
+// open. Passes and the chosen mode persist in localStorage.
+try {
+  const savedDone = JSON.parse(localStorage.getItem("rhce-done") || "[]");
+  if (Array.isArray(savedDone)) savedDone.forEach(i => { if (Number.isInteger(i) && i >= 0 && i < QUESTIONS.length) state.done.add(i); });
+  state.mode = localStorage.getItem("rhce-mode") === "practice" ? "practice" : "guided";
+} catch (e) { state.mode = "guided"; }
+function sectionOf(id){ const m = String(id).match(/^Q\d+/); return m ? m[0] : id; }
+function sectionSteps(sec){ const out = []; QUESTIONS.forEach((q, i) => { if (sectionOf(q.id) === sec) out.push(i); }); return out; }
+function isUnlocked(i){
+  if (state.mode === "practice" || state.done.has(i)) return true;
+  const steps = sectionSteps(sectionOf(QUESTIONS[i].id));
+  const pos = steps.indexOf(i);
+  return pos <= 0 || state.done.has(steps[pos - 1]);
+}
+function persistProgress(){
+  try {
+    localStorage.setItem("rhce-done", JSON.stringify(Array.from(state.done)));
+    localStorage.setItem("rhce-mode", state.mode);
+  } catch (e) {}
+}
+function prevStepOf(i){
+  const steps = sectionSteps(sectionOf(QUESTIONS[i].id));
+  const pos = steps.indexOf(i);
+  return pos > 0 ? steps[pos - 1] : i;
+}
+function flashLock(i){
+  if (!ttyBar) return;
+  const prev = QUESTIONS[prevStepOf(i)];
+  ttyBar.textContent = "!! 🔒 " + QUESTIONS[i].id + " is locked in Guided mode — pass " + prev.id + " first. To jump freely instead, flip the mode toggle in the header to PRACTICE.";
+  if (ttyTimer) clearTimeout(ttyTimer);
+  ttyTimer = setTimeout(() => { ttyBar.textContent = ttyOrig; }, 4500);
+}
 let activeFile = 0;
 const start = Date.now();
 setInterval(() => {
@@ -2135,11 +2185,12 @@ function renderNav(){
   const el = gel("qlist"); el.innerHTML = "";
   QUESTIONS.forEach((q, i) => {
     const d = document.createElement("div");
-    d.className = "qitem" + (i === state.cur ? " current" : "") + (state.done.has(i) ? " done" : "");
-    const mk = state.done.has(i) ? "✔" : (i === state.cur ? ">" : "·");
+    const locked = !isUnlocked(i);
+    d.className = "qitem" + (i === state.cur ? " current" : "") + (state.done.has(i) ? " done" : "") + (locked ? " locked" : "");
+    const mk = state.done.has(i) ? "✔" : (locked ? "🔒" : (i === state.cur ? ">" : "·"));
     d.innerHTML = "<span class='mk'>" + mk + "</span>" + q.id + " " + q.title + "<small>" + q.sub + "</small>";
-    d.title = "Go to " + q.id;
-    d.onclick = () => { if (i !== state.cur) goQuestion(i); };
+    d.title = locked ? (q.id + " is locked in Guided mode — pass " + QUESTIONS[prevStepOf(i)].id + " first, or switch to Practice mode") : ("Go to " + q.id);
+    d.onclick = () => { if (locked) { flashLock(i); return; } if (i !== state.cur) goQuestion(i); };
     el.appendChild(d);
   });
   gel("score").textContent = state.done.size + " / " + QUESTIONS.length;
@@ -2477,7 +2528,7 @@ function wireCmd(fi){
 
 // Section audio: one narrated walkthrough per main question (Q0–Q15), 5–10 minutes each.
 // Sections appear here as their audio is generated; the Listen button only shows for those.
-const AUDIO_SECTIONS = { "Q5": { file: "audio/q5.mp3", parts: 8, mins: "about 8 minutes" } };
+const AUDIO_SECTIONS = { "Q5": { file: "audio/q5.mp3", parts: 7, mins: "about 7 minutes" } };
 function wireHelp(q){
   const help = HELP[q.id]; if (!help) return;
   const lb = gel("listenbtn"), aud = gel("audiobox");
@@ -2515,7 +2566,10 @@ function wireHelp(q){
   if (cb) cb.addEventListener("click", () => doCheck());
   if (nb) {
     if (state.cur >= QUESTIONS.length - 1) nb.style.display = "none";
-    else nb.addEventListener("click", () => goQuestion(state.cur + 1));
+    else {
+      if (!isUnlocked(state.cur + 1)) nb.textContent = "Next ▸ 🔒";
+      nb.addEventListener("click", () => goQuestion(state.cur + 1));
+    }
   }
   if (!hb || !rb) return;
   hb.addEventListener("click", () => {
@@ -2554,6 +2608,31 @@ function renderStage(){
   let h = "";
   h += "<div class='crumb'>EXAM 1 :: QUESTION " + (state.cur + 1) + " OF " + QUESTIONS.length + " :: student @ controller :: /home/student/ansible</div>";
   h += "<h1>" + q.id + ": " + q.title + "</h1>";
+  if (!isUnlocked(state.cur)) {
+    const prev = QUESTIONS[prevStepOf(state.cur)];
+    h += "<div class='lockstage'><div class='big'>🔒 Locked in Guided mode</div>"
+      + "This step builds on " + prev.id + " — pass that step first and this one opens.<br>"
+      + "Or flip the <b>mode toggle</b> in the header to <b>Practice</b> and jump anywhere.<br>"
+      + "<button class='hbtn' id='goprevbtn'>Go to " + prev.id + " ▸</button></div>";
+    gel("stage").innerHTML = h;
+    const gp = gel("goprevbtn");
+    if (gp) gp.addEventListener("click", () => goQuestion(prevStepOf(state.cur)));
+    return;
+  }
+  const steps = sectionSteps(sectionOf(q.id));
+  if (steps.length > 1) {
+    const pos = steps.indexOf(state.cur);
+    h += "<div class='stepper'><span class='slabel'>" + sectionOf(q.id) + " · step " + (pos + 1) + " of " + steps.length + "</span>";
+    steps.forEach(si => {
+      const sq = QUESTIONS[si];
+      const lk = !isUnlocked(si);
+      const cls = state.done.has(si) ? "done" : (si === state.cur ? "current" : (lk ? "locked" : ""));
+      const mark = state.done.has(si) ? "✔ " : (lk ? "🔒 " : "");
+      h += "<button class='schip " + cls + "' data-step='" + si + "'>" + mark + sq.id + "</button>";
+    });
+    h += "</div>";
+  }
+  h += "<div class='pbar'><i style='width:" + Math.round(100 * state.done.size / QUESTIONS.length) + "%'></i></div>";
   h += "<div class='spec'>" + q.spec + "</div>";
   q.files.forEach((f, fi) => {
     const raw = saved[fi] !== undefined ? saved[fi] : (f.preset || "");
@@ -2577,6 +2656,13 @@ function renderStage(){
   h += "<div class='feedback' id='fb'></div>";
   h += "<div class='explain' id='ex'>" + q.explain + "<div class='nextline' id='nextline'></div></div>";
   gel("stage").innerHTML = h;
+  gel("stage").querySelectorAll(".schip").forEach(chip => {
+    chip.addEventListener("click", () => {
+      const si = parseInt(chip.getAttribute("data-step"), 10);
+      if (!isUnlocked(si)) { flashLock(si); return; }
+      if (si !== state.cur) goQuestion(si);
+    });
+  });
   if (q.cmd) { wireCmd(0); } else { q.files.forEach((f, fi) => { wireEditor(fi); gutterSync(fi); caretSync(fi); syntaxSync(fi); if (f.preset && saved[fi] === undefined) { const ta = gel("ta" + fi); if (ta) { const end = ta.value.length; try { ta.setSelectionRange(end, end); } catch(e){} caretSync(fi); } } }); }
   updateNextline();
   if (state.done.has(state.cur)) gel("ex").className = "explain show";
@@ -2594,6 +2680,7 @@ function doCheck(){
   const fb = gel("fb");
   if (bad.length === 0) {
     state.done.add(state.cur);
+    persistProgress();
     fb.className = "feedback show good";
     fb.innerHTML = "<b>[OK] syntax accepted</b> — all " + res.length + " requirements met in " + state.attempts[state.cur] + " attempt" + (state.attempts[state.cur] > 1 ? "s" : "") + ". Read the breakdown below — that's the part that makes it stick.";
     gel("ex").className = "explain show";
@@ -2608,6 +2695,7 @@ function doCheck(){
 
 function goQuestion(i){
   if (i < 0 || i >= QUESTIONS.length) return;
+  if (i !== state.cur && !isUnlocked(i)) { flashLock(i); return; }
   saveTexts();
   state.cur = i; activeFile = 0;
   renderNav(); renderStage();
@@ -2679,6 +2767,16 @@ document.addEventListener("wheel", (e) => {
   const canScroll = up ? t.scrollTop > 0 : (t.scrollTop + t.clientHeight < t.scrollHeight - 1);
   if (!canScroll) { sec.scrollTop += e.deltaY; e.preventDefault(); }
 }, { passive: false });
+
+const modeBtn = gel("modebtn");
+function syncModeBtn(){ if (modeBtn) modeBtn.textContent = state.mode === "practice" ? "mode: PRACTICE" : "mode: GUIDED"; }
+if (modeBtn) modeBtn.addEventListener("click", () => {
+  state.mode = state.mode === "practice" ? "guided" : "practice";
+  persistProgress(); syncModeBtn(); renderNav(); renderStage();
+});
+syncModeBtn();
+const rstLink = gel("resetprogress");
+if (rstLink) rstLink.addEventListener("click", (e) => { e.preventDefault(); state.done.clear(); state.finished = false; persistProgress(); renderNav(); renderStage(); });
 
 renderNav();
 renderStage();
