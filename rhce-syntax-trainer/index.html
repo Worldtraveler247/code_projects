@@ -2604,13 +2604,23 @@ document.addEventListener("keydown", (e) => {
   if (!state.finished && tag !== "TEXTAREA" && e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) focusEditor(activeFile);
 });
 
-// Mouse lock: a real exam terminal takes keys, not clicks.
+// Mouse guidance: a real exam terminal takes keys, not clicks — but the page must always scroll.
+// The wheel is NEVER intercepted: wherever the pointer sits (spec, editor, feedback), scrolling
+// the question page top-to-bottom has to work. Clicks inside a file box focus that box's editor,
+// so the mouse can move from box to box; other stray clicks just flash the reminder bar.
 const ttyBar = gel("ttybar");
 const ttyOrig = ttyBar ? ttyBar.textContent : "";
 let ttyTimer = null;
-["mousedown", "mouseup", "click", "dblclick", "contextmenu", "wheel"].forEach(ev => {
+["mousedown", "mouseup", "click", "dblclick", "contextmenu"].forEach(ev => {
   document.addEventListener(ev, (e) => {
-    if (e.target && (e.target.tagName === "TEXTAREA" || (e.target.closest && (e.target.closest("nav") || e.target.closest(".hbtn"))))) return; // mouse may use the question list (scroll + click), focus an editor, or use the hint/reveal buttons
+    const t = e.target;
+    if (t && (t.tagName === "TEXTAREA" || (t.closest && (t.closest("nav") || t.closest(".hbtn"))))) return; // mouse may use the question list (scroll + click), focus an editor, or use the hint/reveal buttons
+    const block = t && t.closest ? t.closest(".fileblock") : null;
+    if (block) {
+      // clicked a box's header, status line or frame: hand focus to that box's editor, no lock
+      if (ev === "click") { const ta = block.querySelector("textarea"); if (ta) ta.focus(); }
+      return;
+    }
     e.preventDefault();
     if (ttyBar) {
       ttyBar.textContent = "!! mouse works on the question list and editor focus only. [Ctrl+Enter / F2] check · [Alt+↑/↓] switch file · [Alt+←/→] switch question";
@@ -2619,6 +2629,19 @@ let ttyTimer = null;
     }
   }, { passive: false });
 });
+
+// Wheel hand-off: inside an editor box the wheel scrolls that box first; once the box can
+// scroll no further in that direction, the wheel moves the whole question page instead of
+// getting trapped — so the page always scrolls top to bottom, from any box.
+document.addEventListener("wheel", (e) => {
+  const t = e.target;
+  if (!t || t.tagName !== "TEXTAREA") return;
+  const sec = t.closest ? t.closest("section") : null;
+  if (!sec) return;
+  const up = e.deltaY < 0;
+  const canScroll = up ? t.scrollTop > 0 : (t.scrollTop + t.clientHeight < t.scrollHeight - 1);
+  if (!canScroll) { sec.scrollTop += e.deltaY; e.preventDefault(); }
+}, { passive: false });
 
 renderNav();
 renderStage();
