@@ -2528,7 +2528,23 @@ function wireCmd(fi){
 
 // Section audio: one narrated walkthrough per main question (Q0–Q15), 5–10 minutes each.
 // Sections appear here as their audio is generated; the Listen button only shows for those.
-const AUDIO_SECTIONS = { "Q5": { file: "audio/q5.mp3", parts: 7, mins: "about 7 minutes" } };
+const AUDIO_SECTIONS = {
+  "Q1": { file: "audio/q1.mp3", parts: 6, mins: "about 5½ minutes" },
+  "Q2": { file: "audio/q2.mp3", parts: 6, mins: "about 5½ minutes" },
+  "Q3": { file: "audio/q3.mp3", parts: 7, mins: "about 6 minutes" },
+  "Q4": { file: "audio/q4.mp3", parts: 7, mins: "about 7 minutes" },
+  "Q5": { file: "audio/q5.mp3", parts: 7, mins: "about 7 minutes" },
+  "Q6": { file: "audio/q6.mp3", parts: 6, mins: "about 5½ minutes" },
+  "Q7": { file: "audio/q7.mp3", parts: 9, mins: "about 8½ minutes" },
+  "Q8": { file: "audio/q8.mp3", parts: 7, mins: "about 6½ minutes" },
+  "Q9": { file: "audio/q9.mp3", parts: 6, mins: "about 6 minutes" },
+  "Q10": { file: "audio/q10.mp3", parts: 7, mins: "about 7 minutes" },
+  "Q11": { file: "audio/q11.mp3", parts: 5, mins: "about 5 minutes" },
+  "Q12": { file: "audio/q12.mp3", parts: 8, mins: "about 8 minutes" },
+  "Q13": { file: "audio/q13.mp3", parts: 9, mins: "about 8½ minutes" },
+  "Q14": { file: "audio/q14.mp3", parts: 6, mins: "about 5½ minutes" },
+  "Q15": { file: "audio/q15.mp3", parts: 8, mins: "about 7½ minutes" }
+};
 function wireHelp(q){
   const help = HELP[q.id]; if (!help) return;
   const lb = gel("listenbtn"), aud = gel("audiobox");
