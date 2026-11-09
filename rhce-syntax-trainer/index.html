@@ -66,6 +66,8 @@
   .statusline .mode{color:var(--amber);font-weight:700}
   .statusline .pos{color:var(--amber)}
   .cmdinput{position:static;width:100%;height:52px;background:#000;color:#e8e8e8;border:1px solid var(--line);border-top:none;padding:12px 14px;font-family:inherit;font-size:14px;line-height:21px;resize:none;outline:none;white-space:pre}
+  .tablist{display:none;background:#050505;border:1px solid var(--line);border-top:none;color:var(--amber);padding:6px 14px;font-size:12.5px;white-space:pre-wrap;line-height:1.8}
+  .tablist.show{display:block}
   .helprow{display:flex;flex-wrap:wrap;gap:10px;margin:2px 0 12px}
   .hbtn,.qitem{touch-action:manipulation}
   .hbtn{background:#161b22;border:1px solid var(--line);color:var(--ink);padding:8px 14px;font:inherit;font-size:13px;cursor:pointer;border-radius:4px}
@@ -398,7 +400,7 @@ const QUESTIONS = [
 {
   id:"Q5.1", title:"Verify the timesync role exists", sub:"ls the collection roles, grep timesync", cmd:true,
   files:[{ path:"shell", lang:"cmd" }],
-  spec:`<b>5.1. Verify the install.</b><br>• List the roles inside the installed collection — they live under <code>/usr/share/ansible/collections/ansible_collections/redhat/rhel_system_roles/roles/</code> — and filter the listing down to the one role this question needs.<br>• Type the command at the prompt and press <b>Enter</b> to run it.`,
+  spec:`<b>5.1. Verify the install.</b><br>• List the roles inside the installed collection — they live under <code>/usr/share/ansible/collections/ansible_collections/redhat/rhel_system_roles/roles/</code> — and filter the listing down to the one role this question needs.<br>• <b>Tab works like the real shell here</b> — type <code>/u</code> and press <b>Tab</b> to complete <code>/usr/</code>, and keep going level by level; when more than one entry matches, Tab lists the choices, just like bash.<br>• Type the command at the prompt and press <b>Enter</b> to run it.`,
   checks:[[
     { re:/ls\s+\/usr\/share\/ansible\/collections\/ansible_collections\/redhat\/rhel_system_roles\/roles\/?/, msg:"ls of the redhat.rhel_system_roles collection's roles/ directory" },
     { re:/\|\s*grep\s+timesync\b/, msg:"The listing is piped through grep timesync" }
@@ -2187,14 +2189,16 @@ function focusEditor(fi){
 function wireEditor(fi){
   const ta = gel("ta" + fi); if (!ta) return;
   const lang = QUESTIONS[state.cur].files[fi].lang;
-  ta.addEventListener("input", () => { saveTexts(); gutterSync(fi); caretSync(fi); syntaxSync(fi); });
+  ta.addEventListener("input", () => { saveTexts(); gutterSync(fi); caretSync(fi); syntaxSync(fi); showTabList(fi, null); });
   ta.addEventListener("scroll", () => { gutterSync(fi); caretSync(fi); syntaxSync(fi); });
   ta.addEventListener("keyup", () => caretSync(fi));
   ta.addEventListener("focus", () => { activeFile = fi; caretSync(fi); });
   ta.addEventListener("keydown", (e) => {
     if (e.key === "Tab") {
-      // vim: Tab steps to the next sts stop; with a selection it indents the lines (>>); Shift+Tab outdents (<<)
+      // bash-style path completion first: if the word at the caret is a path, Tab completes it like the real shell
       e.preventDefault();
+      if (!e.shiftKey && ta.selectionStart === ta.selectionEnd && tabComplete(ta, fi)) { saveTexts(); gutterSync(fi); caretSync(fi); syntaxSync(fi); return; }
+      // vim: Tab steps to the next sts stop; with a selection it indents the lines (>>); Shift+Tab outdents (<<)
       const s0 = ta.selectionStart, e0 = ta.selectionEnd;
       if (e.shiftKey) shiftLines(ta, -1);
       else if (s0 !== e0) shiftLines(ta, 1);
@@ -2358,12 +2362,104 @@ function syntaxSync(fi){
   pre.style.transform = "translate(" + (-ta.scrollLeft) + "px," + (-ta.scrollTop) + "px)";
 }
 // ===HELPERS-END===
+// ===TAB COMPLETION (bash-style, against the controller's filesystem as the exam presents it)===
+const FS_HOME = "/home/student";
+const FS_CWD = "/home/student/ansible";
+const FS_TREE = {
+  "/": [["usr",1],["etc",1],["var",1],["root",1],["home",1],["dev",1],["opt",1],["tmp",1],["webdev",1]],
+  "/usr": [["share",1],["bin",1],["lib",1],["sbin",1]],
+  "/usr/share": [["ansible",1]],
+  "/usr/share/ansible": [["collections",1]],
+  "/usr/share/ansible/collections": [["ansible_collections",1]],
+  "/usr/share/ansible/collections/ansible_collections": [["redhat",1]],
+  "/usr/share/ansible/collections/ansible_collections/redhat": [["rhel_system_roles",1]],
+  "/usr/share/ansible/collections/ansible_collections/redhat/rhel_system_roles": [["roles",1]],
+  "/usr/share/ansible/collections/ansible_collections/redhat/rhel_system_roles/roles": [["ad_integration",1],["certificate",1],["cockpit",1],["crypto_policies",1],["firewall",1],["ha_cluster",1],["journald",1],["kernel_settings",1],["kdump",1],["keylime_server",1],["logging",1],["metrics",1],["nbde_client",1],["nbde_server",1],["network",1],["postfix",1],["rhc",1],["selinux",1],["snapshot",1],["sshd",1],["storage",1],["system",1],["timesync",1],["tlog",1],["vpn",1]],
+  "/home": [["student",1]],
+  "/home/student": [["ansible",1],[".vimrc",0]],
+  "/home/student/ansible": [["ansible.cfg",0],["inventory",0],["site.yml",0],["timesync.yml",0],["webcontent.yml",0],["hwreport.yml",0],["users.yml",0],["user_list.yml",0],["locker.yml",0],["secret.txt",0],["hosts.yml",0],["hosts.j2",0],["issues.yml",0],["lvm.yml",0],["packages.yml",0],["roles.yml",0],["role.yml",0],["repo_key.sh",0],["ansible-navigator.yml",0],["collections",1],["roles",1],["templates",1]],
+  "/home/student/ansible/collections": [["requirements.yml",0],["ansible_collections",1]],
+  "/home/student/ansible/roles": [["requirements.yml",0],["apache",1]],
+  "/home/student/ansible/roles/apache": [["tasks",1],["templates",1],["handlers",1]],
+  "/home/student/ansible/roles/apache/tasks": [["main.yml",0]],
+  "/home/student/ansible/roles/apache/templates": [["index.html.j2",0]],
+  "/home/student/ansible/templates": [["hosts.j2",0]],
+  "/etc": [["myhosts",0],["issue",0],["chrony.conf",0],["hosts",0],["fstab",0],["passwd",0],["shadow",0],["haproxy",1],["yum.repos.d",1]],
+  "/etc/haproxy": [["haproxy.cfg",0]],
+  "/etc/yum.repos.d": [["BaseOS.repo",0],["AppStream.repo",0]],
+  "/var": [["www",1],["log",1]],
+  "/var/www": [["html",1]],
+  "/var/www/html": [["webdev",1],["index.html",0]],
+  "/webdev": [["index.html",0]],
+  "/root": [["hwreport.txt",0],["anaconda-ks.cfg",0]],
+  "/dev": [["yellowtail",1],["sda",0],["sdb",0]],
+  "/dev/yellowtail": [["data",0]]
+};
+const SHELL_COMMANDS = ["ansible","ansible-config","ansible-doc","ansible-galaxy","ansible-navigator","ansible-playbook","ansible-vault","cat","cd","chmod","chown","cp","curl","dnf","echo","grep","id","ls","lsblk","mkdir","mount","mv","podman","pwd","rm","scp","ssh","sudo","systemctl","tar","touch","vim","yum"];
+function commonPrefix(arr){
+  let p = arr[0] || "";
+  for (const s of arr.slice(1)) { let i = 0; while (i < p.length && p[i] === s[i]) i++; p = p.slice(0, i); if (!p) break; }
+  return p;
+}
+function showTabList(fi, items){
+  const el = gel("tablist" + fi); if (!el) return;
+  if (!items || !items.length) { el.className = "tablist"; el.textContent = ""; return; }
+  el.textContent = items.join("   ");
+  el.className = "tablist show";
+}
+// Returns true when Tab was consumed as a completion (or a candidate listing), false to fall through.
+function tabComplete(ta, fi){
+  if (ta.selectionStart !== ta.selectionEnd) return false;
+  const pos = ta.selectionStart, val = ta.value;
+  const lineStart = val.lastIndexOf("\n", pos - 1) + 1;
+  const before = val.slice(lineStart, pos);
+  const wm = before.match(/(\S+)$/);
+  if (!wm) return false;
+  let word = wm[1];
+  const wordStart = pos - word.length;
+  let pre = "";
+  const qm = word.match(/^(['"])([\s\S]*)$/);
+  if (qm) { pre = qm[1]; word = qm[2]; }
+  const eq = word.lastIndexOf("=");
+  if (eq > 0) { pre += word.slice(0, eq + 1); word = word.slice(eq + 1); }
+  if (!word) return false;
+  const isFirst = before.slice(0, before.length - wm[1].length).trim() === "";
+  if (!word.includes("/") && isFirst) {
+    const ms = SHELL_COMMANDS.filter(c => c.startsWith(word));
+    if (!ms.length) return false;
+    if (ms.length === 1) { ta.setRangeText(pre + ms[0] + " ", wordStart, pos, "end"); showTabList(fi, null); return true; }
+    const cp = commonPrefix(ms);
+    if (cp.length > word.length) { ta.setRangeText(pre + cp, wordStart, pos, "end"); return true; }
+    showTabList(fi, ms); return true;
+  }
+  let lookup = word;
+  if (word === "~") { ta.setRangeText(pre + "~/", wordStart, pos, "end"); showTabList(fi, null); return true; }
+  if (word.startsWith("~/")) lookup = FS_HOME + word.slice(1);
+  else if (!word.startsWith("/")) lookup = FS_CWD + "/" + word;
+  const slash = lookup.lastIndexOf("/");
+  const dirAbs = lookup.slice(0, slash) || "/";
+  const partial = lookup.slice(slash + 1);
+  const dirDisp = word.slice(0, word.lastIndexOf("/") + 1);
+  const kids = FS_TREE[dirAbs];
+  if (!kids) return false;
+  const ms = kids.filter(k => k[0].startsWith(partial));
+  if (!ms.length) return false;
+  if (ms.length === 1) {
+    ta.setRangeText(pre + dirDisp + ms[0][0] + (ms[0][1] ? "/" : ""), wordStart, pos, "end");
+    showTabList(fi, null); return true;
+  }
+  const cp = commonPrefix(ms.map(k => k[0]));
+  if (cp.length > partial.length) { ta.setRangeText(pre + dirDisp + cp, wordStart, pos, "end"); return true; }
+  showTabList(fi, ms.map(k => dirDisp + k[0] + (k[1] ? "/" : "")));
+  return true;
+}
 function wireCmd(fi){
   const ta = gel("ta" + fi); if (!ta) return;
-  ta.addEventListener("input", saveTexts);
+  ta.addEventListener("input", () => { saveTexts(); showTabList(fi, null); });
   ta.addEventListener("focus", () => { activeFile = fi; });
   ta.addEventListener("keydown", (e) => {
-    if (e.key === "Enter" && !e.ctrlKey && !e.metaKey && !e.altKey) { e.preventDefault(); doCheck(); }
+    if (e.key === "Tab") { e.preventDefault(); if (tabComplete(ta, fi)) saveTexts(); }
+    else if (e.key === "Enter" && !e.ctrlKey && !e.metaKey && !e.altKey) { e.preventDefault(); doCheck(); }
   });
 }
 
@@ -2419,16 +2515,16 @@ function renderStage(){
     const val = raw.replace(/&/g, "&amp;").replace(/</g, "&lt;");
     if (q.cmd) {
       h += "<div class='fileblock'><div class='filehead'><span class='prompt'>[student@controller ansible]$</span> <span class='cmd'>type the command, then press Enter to run it</span><span class='lang'>shell</span></div>"
-        + "<textarea class='cmdinput' id='ta" + fi + "' spellcheck='false' autocomplete='off' autocapitalize='off' placeholder='" + placeholders(f).replace(/'/g, "&#39;") + "'>" + val + "</textarea></div>";
+        + "<textarea class='cmdinput' id='ta" + fi + "' spellcheck='false' autocomplete='off' autocapitalize='off' placeholder='" + placeholders(f).replace(/'/g, "&#39;") + "'>" + val + "</textarea><div class='tablist' id='tablist" + fi + "'></div></div>";
       return;
     }
     h += "<div class='fileblock'><div class='filehead'><span class='prompt'>[student@controller ansible]$</span> <span class='cmd'>vim " + f.path + "</span><span class='lang'>" + f.lang + "</span></div>"
       + "<div class='vimedit'><pre class='gutter'><span id='gut" + fi + "'>1</span></pre>"
       + "<div class='editwrap'><div class='hl'><pre class='syntax' id='syn" + fi + "'></pre><div class='hl-line' id='hll" + fi + "'></div><div class='hl-col' id='hlc" + fi + "'></div></div>"
       + "<textarea id='ta" + fi + "' spellcheck='false' autocomplete='off' autocapitalize='off' placeholder='" + placeholders(f).replace(/'/g, "&#39;") + "'>" + val + "</textarea></div></div>"
-      + "<div class='statusline'><span class='mode'>-- INSERT --</span><span>" + f.path + "</span><span class='pos' id='pos" + fi + "'>Ln 1, Col 1</span></div></div>";
+      + "<div class='statusline'><span class='mode'>-- INSERT --</span><span>" + f.path + "</span><span class='pos' id='pos" + fi + "'>Ln 1, Col 1</span></div><div class='tablist' id='tablist" + fi + "'></div></div>";
   });
-  h += "<div class='keys'><b>[Ctrl+Enter / F2]</b> check &nbsp;<b>[Alt+↑/↓]</b> switch file &nbsp;<b>[Alt+→]</b> next question &nbsp;<b>[Alt+←]</b> previous &nbsp;<b>[Tab]</b> indent · <b>[Shift+Tab]</b> outdent &nbsp;::&nbsp; attempts: <span class='n' id='att'>" + (state.attempts[state.cur] || 0) + "</span></div>";
+  h += "<div class='keys'><b>[Ctrl+Enter / F2]</b> check &nbsp;<b>[Alt+↑/↓]</b> switch file &nbsp;<b>[Alt+→]</b> next question &nbsp;<b>[Alt+←]</b> previous &nbsp;<b>[Tab]</b> complete path (shell-style) · in files: indent · <b>[Shift+Tab]</b> outdent &nbsp;::&nbsp; attempts: <span class='n' id='att'>" + (state.attempts[state.cur] || 0) + "</span></div>";
   h += "<div class='helprow'><button class='hbtn' id='checkbtn'>▶ Check</button><button class='hbtn' id='hintbtn'>💡 Hint</button><button class='hbtn' id='revealbtn'>👁 Reveal answer</button><button class='hbtn' id='nextbtn'>Next ▸</button></div>";
   h += "<div class='hintbox' id='hintbox'></div>";
   h += "<div class='answerbox' id='answerbox'></div>";
