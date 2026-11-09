@@ -127,7 +127,7 @@
   <div class="pill time">exam clock: <b id="clock">00:00</b> / 150:00</div>
   <div class="pill">passed: <b id="score">0 / 9</b></div>
 </header>
-<div id="ttybar">The run starts at Q0 and goes in order — or click any question on the left to jump straight to it. Click an editor box to type. &nbsp;[Ctrl+Enter or F2] check &nbsp;[Alt+↑/↓] switch file &nbsp;[Alt+→] next &nbsp;[Alt+←] previous</div>
+<div id="ttybar">The run starts at Q0 and goes in order — or click any question on the left to jump straight to it. Click an editor box to type. &nbsp;[Ctrl+Enter or F2] check &nbsp;[Alt+↑/↓] switch file &nbsp;[Alt+→] next &nbsp;[Alt+←] previous &nbsp;::&nbsp; grading follows the real system — any valid syntax that produces the required result passes</div>
 <main>
   <nav>
     <h3>EXAM QUESTIONS</h3>
@@ -141,7 +141,7 @@
   <p id="finishstats" style="line-height:1.7"></p>
   <p style="color:var(--amber)">Press [Enter] to run it again from Q0.</p>
 </div>
-<footer>Built from your own direct-answer sheet (Q0 setup + Q1–Q8) and your updated Q9–Q15 notes. Nothing here is the answer key — every file was typed by you, keyboard only.</footer>
+<footer>Built from your own direct-answer sheet (Q0 setup + Q1–Q8) and your updated Q9–Q15 notes. Nothing here is the answer key — every file was typed by you, keyboard only.<br>Grading follows the real system: any syntax Ansible/Linux accepts that produces the required result passes — not just one memorized spelling.</footer>
 
 <script>
 "use strict";
@@ -259,11 +259,11 @@ const QUESTIONS = [
   checks:[[
     { re:/hosts\s*:\s*all/, msg:"The play targets hosts: all" },
     { re:/become\s*:\s*(true|yes)/i, msg:"become: true on the play" },
-    { fn:t => near(t, /(ansible\.builtin\.)?dnf\s*:/, [/-\s*php\b/, /-\s*mariadb\b/], 340), msg:"One dnf task installs php and mariadb together as a list" },
+    { fn:t => near(t, /(ansible\.builtin\.)?dnf\s*:/, [/(^|[-\[,'"]\s*)php(?![-\w])/, /(^|[-\[,'"]\s*)mariadb\b/], 340), msg:"One dnf task installs php and mariadb together as a list" },
     { re:/state\s*:\s*present/, msg:"Package installs use state: present" },
-    { fn:t => t.split("\n").some(l => /when\s*:/.test(l) && /groups\[['"]dev['"]\]/.test(l) && /groups\[['"]test['"]\]/.test(l) && /groups\[['"]prod['"]\]/.test(l)), msg:"A when condition testing membership in dev, test AND prod groups" },
+    { fn:t => t.split("\n").some(l => /when\s*:/.test(l) && ((/groups\[['"]dev['"]\]/.test(l) && /groups\[['"]test['"]\]/.test(l) && /groups\[['"]prod['"]\]/.test(l)) || (/['"]dev['"]\s+in\s+group_names/.test(l) && /['"]test['"]\s+in\s+group_names/.test(l) && /['"]prod['"]\s+in\s+group_names/.test(l)))), msg:"A when condition testing membership in dev, test AND prod groups" },
     { re:/@RPM Development Tools/, msg:"The group is named with the @ prefix: '@RPM Development Tools'" },
-    { fn:t => t.split("\n").filter(l => /when\s*:/.test(l) && /groups\[['"]dev['"]\]/.test(l) && !/test|prod/.test(l)).length >= 2, msg:"Two when conditions restricted to dev hosts only (group install + full update)" },
+    { fn:t => t.split("\n").filter(l => /when\s*:/.test(l) && (/groups\[['"]dev['"]\]/.test(l) || /['"]dev['"]\s+in\s+group_names/.test(l)) && !/test|prod/.test(l)).length >= 2, msg:"Two when conditions restricted to dev hosts only (group install + full update)" },
     { re:/name\s*:\s*['"]?\*['"]?/, msg:"The update task targets name: '*'" },
     { re:/state\s*:\s*latest/, msg:"The update task uses state: latest" }
   ]],
@@ -500,8 +500,8 @@ const QUESTIONS = [
   files:[{ path:"/home/student/ansible/roles/requirements.yml", lang:"yaml" }],
   spec:`<b>6. Install Roles Using Ansible Galaxy</b><br>• Use a requirements file located at /home/student/ansible/roles/requirements.yml to download and install the following roles to /home/student/ansible/roles:<br>• geerlingguy.haproxy — the name of this role should be balancer<br>• geerlingguy.php — the name of this role should be phpinfo`,
   checks:[[
-    { fn:t => near(t, /src\s*:\s*geerlingguy\.haproxy/, [/name\s*:\s*balancer/], 140) || near(t, /name\s*:\s*balancer/, [/src\s*:\s*geerlingguy\.haproxy/], 140), msg:"geerlingguy.haproxy with name: balancer in the same entry" },
-    { fn:t => near(t, /src\s*:\s*geerlingguy\.php/, [/name\s*:\s*phpinfo/], 140) || near(t, /name\s*:\s*phpinfo/, [/src\s*:\s*geerlingguy\.php/], 140), msg:"geerlingguy.php with name: phpinfo in the same entry" }
+    { fn:t => near(t, /src\s*:\s*["']?geerlingguy\.haproxy/, [/name\s*:\s*["']?balancer["']?/], 220) || near(t, /name\s*:\s*["']?balancer["']?/, [/src\s*:\s*["']?geerlingguy\.haproxy/], 220), msg:"geerlingguy.haproxy with name: balancer in the same entry" },
+    { fn:t => near(t, /src\s*:\s*["']?geerlingguy\.php/, [/name\s*:\s*["']?phpinfo["']?/], 220) || near(t, /name\s*:\s*["']?phpinfo["']?/, [/src\s*:\s*["']?geerlingguy\.php/], 220), msg:"geerlingguy.php with name: phpinfo in the same entry" }
   ]],
   explain:`<h2>✅ Q6 complete — what you just did</h2>
   <p>You declared two Galaxy roles — but the real skill in this question is the <b>rename</b>. <code>src</code> says where the role comes from; <code>name</code> says what it will be called <b>on this controller</b>. After install, the roles live at <code>roles/balancer</code> and <code>roles/phpinfo</code>, and playbooks must call them by those local names.</p>
@@ -589,16 +589,16 @@ const QUESTIONS = [
   files:[{ path:"/home/student/ansible/roles/apache/tasks/main.yml", lang:"yaml" }],
   spec:`<b>7. Create and Use a Role to Deploy a Web Server</b><br>• Create a role named apache in /home/student/ansible/roles<br>• The role must perform the following:<br>• Install the httpd package<br>• Enable and start the httpd service on boot<br>• Ensure the firewall is enabled and running with a rule to allow access to the web server<br>• Create a template file called index.html.j2 that outputs: Welcome to HOSTNAME and the IP Address is IPV4ADDRESS<br>• Use the template to generate /var/www/html/index.html on the managed hosts<br>• Create a playbook called /home/student/ansible/role.yml that runs this role on hosts in the webservers host group`,
   checks:[[
-      { fn:t => near(t, /(ansible\.builtin\.)?dnf\s*:/, [/-\s*httpd\b/, /-\s*firewalld\b/], 300), msg:"A dnf task installing httpd and firewalld together" },
+      { fn:t => near(t, /(ansible\.builtin\.)?dnf\s*:/, [/(^|[-\[,'"]\s*)httpd\b/, /(^|[-\[,'"]\s*)firewalld\b/], 300), msg:"A dnf task installing httpd and firewalld together" },
       { re:/state\s*:\s*present/, msg:"Packages use state: present" },
       { fn:t => /(ansible\.builtin\.)?service\s*:/.test(t) && /name\s*:\s*["']?\{\{\s*item\s*\}\}["']?/.test(t), msg:"The service task uses name: \"{{ item }}\"" },
       { re:/state\s*:\s*started/, msg:"Services use state: started" },
       { re:/enabled\s*:\s*(true|yes)/i, msg:"Services are enabled: true" },
-      { fn:t => near(t, /loop\s*:/, [/-\s*httpd\b/, /-\s*firewalld\b/], 140), msg:"The service task loops over httpd and firewalld" },
+      { fn:t => near(t, /loop\s*:/, [/(^|[-\[,'"]\s*)httpd\b/, /(^|[-\[,'"]\s*)firewalld\b/], 200), msg:"The service task loops over httpd and firewalld" },
       { fn:t => /(ansible\.posix\.)?firewalld\s*:/.test(t) && /service\s*:\s*["']?\{\{\s*item\s*\}\}["']?/.test(t), msg:"The firewalld task uses service: \"{{ item }}\"" },
       { re:/immediate\s*:\s*(true|yes)/i, msg:"firewalld immediate: true" },
       { re:/permanent\s*:\s*(true|yes)/i, msg:"firewalld permanent: true" },
-      { fn:t => near(t, /loop\s*:/, [/-\s*http\b/, /-\s*https\b/], 140) && /(ansible\.posix\.)?firewalld\s*:[\s\S]{0,260}state\s*:\s*enabled/.test(t), msg:"The firewalld task loops over http and https with state: enabled" },
+      { fn:t => near(t, /loop\s*:/, [/(^|[-\[,'"]\s*)http(?![-\w])/, /(^|[-\[,'"]\s*)https\b/], 200) && /(ansible\.posix\.)?firewalld\s*:[\s\S]{0,260}state\s*:\s*enabled/.test(t), msg:"The firewalld task loops over http and https with state: enabled" },
       { fn:t => /(ansible\.builtin\.)?template\s*:/.test(t) && /src\s*:\s*index\.html\.j2/.test(t), msg:"A template task with src: index.html.j2" },
       { re:/dest\s*:\s*\/var\/www\/html\/index\.html/, msg:"dest: /var/www/html/index.html" },
       { re:/setype\s*:\s*httpd_sys_content_t/, msg:"setype: httpd_sys_content_t" }
@@ -773,7 +773,7 @@ const QUESTIONS = [
     { re:/haproxy_backend_servers\s*:/, msg:"Variable haproxy_backend_servers is defined" },
     { fn:t => near(t, /name\s*:\s*serverb/, [/address\s*:\s*(10\.1\.12\.161|172\.25\.250\.11)/, /port\s*:\s*80/], 160), msg:"Backend entry: serverb with its IP address and port 80 as separate keys" },
     { fn:t => near(t, /name\s*:\s*serverc/, [/address\s*:\s*(10\.1\.12\.162|172\.25\.250\.12)/, /port\s*:\s*80/], 160), msg:"Backend entry: serverc with its IP address and port 80 as separate keys" },
-    { fn:t => near(t, /php_packages\s*:/, [/-\s*php\b/, /-\s*php-cli\b/, /-\s*php-common\b/], 200), msg:"php_packages lists php, php-cli and php-common" },
+    { fn:t => near(t, /php_packages\s*:/, [/(^|[-\[,'"]\s*)php(?![-\w])/, /(^|[-\[,'"]\s*)php-cli\b/, /(^|[-\[,'"]\s*)php-common\b/], 240), msg:"php_packages lists php, php-cli and php-common" },
     { fn:t => /role\s*:\s*balancer[\s\S]{0,160}?when\s*:[^\n]*['"]balancers['"]\s+in\s+group_names/.test(t), msg:"role: balancer with when: 'balancers' in group_names" },
     { fn:t => /role\s*:\s*phpinfo[\s\S]{0,160}?when\s*:[^\n]*['"]webservers['"]\s+in\s+group_names/.test(t), msg:"role: phpinfo with when: 'webservers' in group_names" },
     { re:/post_tasks\s*:/, msg:"A post_tasks section after the roles" },
@@ -839,8 +839,8 @@ const QUESTIONS = [
   files:[{ path:"shell", lang:"cmd" }],
   spec:`<b>8.10. Verify the PHP pages.</b><br>• From the controller, request <code>hello.php</code> from each web server — <code>http://serverb/hello.php</code> and <code>http://serverc/hello.php</code> — quietly (<code>-s</code>), showing just the first 5 lines of each answer.<br>• Type both commands on one line, separated with <code>;</code>, and press <b>Enter</b>.`,
   checks:[[
-    { re:/curl\s+-s\s+https?:\/\/serverb(\.lab\.example\.com)?\/hello\.php/, msg:"curl -s http://serverb/hello.php" },
-    { re:/curl\s+-s\s+https?:\/\/serverc(\.lab\.example\.com)?\/hello\.php/, msg:"curl -s http://serverc/hello.php" },
+    { re:/curl\s+(-s\s+)?https?:\/\/serverb(\.lab\.example\.com)?\/hello\.php/, msg:"curl -s http://serverb/hello.php" },
+    { re:/curl\s+(-s\s+)?https?:\/\/serverc(\.lab\.example\.com)?\/hello\.php/, msg:"curl -s http://serverc/hello.php" },
     { fn:t => (t.match(/head\s+-5/g) || []).length >= 2, msg:"Each answer is trimmed with | head -5" }
   ]],
   explain:`<h2>✅ Q8.10 complete — what you just did</h2>
@@ -894,17 +894,17 @@ const QUESTIONS = [
     { re:/hosts\s*:\s*all/, msg:"The play targets hosts: all" },
     { re:/become\s*:\s*(true|yes)/i, msg:"become: true on the play (LVM facts and lvol both need root)" },
     { re:/ansible\.builtin\.fail\s*:/, msg:"The guard is an ansible.builtin.fail task" },
-    { re:/msg:\s*"Volume group does not exist"/, msg:"Fail message: \"Volume group does not exist\"" },
-    { fn:t => /['"]yellowtail['"]\s+not\s+in\s+ansible_facts\[['"]lvm['"]\]\[['"]vgs['"]\]/.test(t), msg:"when: 'yellowtail' not in ansible_facts['lvm']['vgs']" },
+    { re:/msg:\s*["']Volume group does not exist["']/, msg:"Fail message: \"Volume group does not exist\"" },
+    { fn:t => /['"]yellowtail['"]\s+not\s+in\s+ansible_facts\[['"]lvm['"]\]\[['"]vgs['"]\]/.test(t) || /['"]yellowtail['"]\s+not\s+in\s+ansible_lvm\[['"]vgs['"]\]/.test(t) || /['"]yellowtail['"]\s+not\s+in\s+ansible_lvm\.vgs\b/.test(t), msg:"when: 'yellowtail' not in ansible_facts['lvm']['vgs']" },
     { re:/block\s*:/, msg:"Uses a block for the size attempt" },
     { re:/rescue\s*:/, msg:"Uses a rescue for the size fallback" },
     { fn:t => (t.match(/community\.general\.lvol\s*:/g) || []).length >= 2, msg:"Two lvol tasks: the 1500 MiB attempt and the 800 MiB fallback" },
     { re:/vg\s*:\s*yellowtail/, msg:"lvol tasks use vg: yellowtail" },
     { re:/lv\s*:\s*data/, msg:"lvol tasks use lv: data" },
-    { re:/size\s*:\s*1500m/, msg:"First attempt: size: 1500m" },
+    { re:/size\s*:\s*["']?1500(?!\d)\s*(m|mb|mib)?\b/i, msg:"First attempt: size: 1500m" },
     { fn:t => (t.match(/state\s*:\s*present/g) || []).length >= 2, msg:"Both lvol tasks use state: present" },
-    { re:/msg:\s*"Could not create logical volume at that size"/, msg:"Rescue message: \"Could not create logical volume at that size\"" },
-    { re:/size\s*:\s*800m/, msg:"Fallback: size: 800m" },
+    { re:/msg:\s*["']Could not create logical volume at that size["']/, msg:"Rescue message: \"Could not create logical volume at that size\"" },
+    { re:/size\s*:\s*["']?800(?!\d)\s*(m|mb|mib)?\b/i, msg:"Fallback: size: 800m" },
     { re:/community\.general\.filesystem\s*:/, msg:"Formats with community.general.filesystem" },
     { re:/fstype\s*:\s*ext4/, msg:"fstype: ext4" },
     { re:/dev\s*:\s*\/dev\/yellowtail\/data/, msg:"dev: /dev/yellowtail/data" }
@@ -1008,7 +1008,7 @@ const QUESTIONS = [
     { re:/ansible\.builtin\.template\s*:/, msg:"Renders with ansible.builtin.template" },
     { re:/src\s*:\s*hosts\.j2/, msg:"src: hosts.j2" },
     { re:/dest\s*:\s*\/etc\/myhosts/, msg:"dest: /etc/myhosts" },
-    { fn:t => /when\s*:\s*inventory_hostname\s+in\s+groups\[['"]dev['"]\]/.test(t), msg:"when: inventory_hostname in groups['dev']" }
+    { fn:t => /when\s*:\s*inventory_hostname\s+in\s+groups\[['"]dev['"]\]/.test(t) || /when\s*:.*['"]dev['"]\s+in\s+group_names/.test(t), msg:"when: inventory_hostname in groups['dev']" }
   ]],
   explain:`<h2>✅ Q10.2 complete — what you just did</h2>
   <p>One play does both jobs. Because it targets <code>all</code>, every host joins and gathers its facts — that is what fills <code>hostvars</code> for the template's loop. The single task then renders the file, but its <code>when</code> narrows the write: <code>inventory_hostname</code> is the name of the host the task is running for right now, <code>groups['dev']</code> is dev's list of hosts, and <code>in</code> asks whether the first is in the second. True on servera; false — and skipped — on the other three.</p>
@@ -1082,13 +1082,13 @@ const QUESTIONS = [
     { re:/become\s*:\s*(true|yes)/i, msg:"become: true on the play (writing /etc/issue needs root)" },
     { fn:t => (t.match(/ansible\.builtin\.copy\s*:/g) || []).length >= 3, msg:"Three ansible.builtin.copy tasks, one per group" },
     { fn:t => (t.match(/dest\s*:\s*\/etc\/issue[ \t]*$/gm) || []).length >= 3, msg:"Every task writes dest: /etc/issue (exactly — not issue.txt)" },
-    { fn:t => { const chunks = t.split(/\n\s*- name:/); return chunks.some(ch => /content\s*:\s*Development\b/.test(ch) && /groups\[['"]dev['"]\]/.test(ch)); }, msg:"The dev task writes content: Development" },
-    { fn:t => { const chunks = t.split(/\n\s*- name:/); return chunks.some(ch => /content\s*:\s*Test\b/.test(ch) && /groups\[['"]test['"]\]/.test(ch)); }, msg:"The test task writes content: Test" },
-    { fn:t => { const chunks = t.split(/\n\s*- name:/); return chunks.some(ch => /content\s*:\s*Production\b/.test(ch) && /groups\[['"]prod['"]\]/.test(ch)); }, msg:"The prod task writes content: Production" },
-    { re:/when\s*:\s*inventory_hostname\s+in\s+groups\[['"]dev['"]\]/, msg:"when: inventory_hostname in groups['dev']" },
-    { re:/when\s*:\s*inventory_hostname\s+in\s+groups\[['"]test['"]\]/, msg:"when: inventory_hostname in groups['test']" },
-    { re:/when\s*:\s*inventory_hostname\s+in\s+groups\[['"]prod['"]\]/, msg:"when: inventory_hostname in groups['prod']" },
-    { fn:t => { const d = t.search(/groups\[['"]dev['"]\]/), s = t.search(/groups\[['"]test['"]\]/), p = t.search(/groups\[['"]prod['"]\]/); return d >= 0 && s > d && p > s; }, msg:"Task order is dev, then test, then prod — so on a host in two groups, the prod write lands last and wins" }
+    { fn:t => { const chunks = t.split(/\n\s*- name:/); return chunks.some(ch => /content\s*:\s*Development\b/.test(ch) && (/groups\[['"]dev['"]\]/.test(ch) || /['"]dev['"]\s+in\s+group_names/.test(ch))); }, msg:"The dev task writes content: Development" },
+    { fn:t => { const chunks = t.split(/\n\s*- name:/); return chunks.some(ch => /content\s*:\s*Test\b/.test(ch) && (/groups\[['"]test['"]\]/.test(ch) || /['"]test['"]\s+in\s+group_names/.test(ch))); }, msg:"The test task writes content: Test" },
+    { fn:t => { const chunks = t.split(/\n\s*- name:/); return chunks.some(ch => /content\s*:\s*Production\b/.test(ch) && (/groups\[['"]prod['"]\]/.test(ch) || /['"]prod['"]\s+in\s+group_names/.test(ch))); }, msg:"The prod task writes content: Production" },
+    { fn:t => /when\s*:\s*inventory_hostname\s+in\s+groups\[['"]dev['"]\]/.test(t) || /when\s*:.*['"]dev['"]\s+in\s+group_names/.test(t), msg:"when: inventory_hostname in groups['dev']" },
+    { fn:t => /when\s*:\s*inventory_hostname\s+in\s+groups\[['"]test['"]\]/.test(t) || /when\s*:.*['"]test['"]\s+in\s+group_names/.test(t), msg:"when: inventory_hostname in groups['test']" },
+    { fn:t => /when\s*:\s*inventory_hostname\s+in\s+groups\[['"]prod['"]\]/.test(t) || /when\s*:.*['"]prod['"]\s+in\s+group_names/.test(t), msg:"when: inventory_hostname in groups['prod']" },
+    { fn:t => { const pos = g => { const cand = [t.search(new RegExp("groups\\[['\"]" + g + "['\"]\\]")), t.search(new RegExp("['\"]" + g + "['\"]\\s+in\\s+group_names"))].filter(x => x >= 0); return cand.length ? Math.min.apply(null, cand) : -1; }; const d = pos("dev"), s = pos("test"), p = pos("prod"); return d >= 0 && s > d && p > s; }, msg:"Task order is dev, then test, then prod — so on a host in two groups, the prod write lands last and wins" }
   ]],
   explain:`<h2>✅ Q11 complete — what you just did</h2>
   <p>One play considers every host, and three near-identical tasks divide the work: each writes the whole of <code>/etc/issue</code> with <code>copy</code>'s <code>content:</code> (text written directly, no source file) for exactly one group. The task names say "issue.txt" — labels only; the file that matters is the <code>dest:</code>, and it is <code>/etc/issue</code>, the pre-login banner.</p>
@@ -1167,7 +1167,7 @@ const QUESTIONS = [
     { re:/state\s*:\s*directory/, msg:"Directory task: state: directory" },
     { re:/path\s*:\s*\/webdev[ \t]*$/m, msg:"Directory task: path: /webdev" },
     { re:/group\s*:\s*devops\b/, msg:"Directory task: group: devops" },
-    { re:/mode\s*:\s*["']2775["']/, msg:"mode: \"2775\" — quoted, so YAML keeps it a string (2 = SGID, then rwxrwxr-x)" },
+    { re:/mode\s*:\s*["']0?2775["']/, msg:"mode: \"2775\" — quoted, so YAML keeps it a string (2 = SGID, then rwxrwxr-x)" },
     { re:/ansible\.builtin\.copy\s*:/, msg:"index.html is written with ansible.builtin.copy" },
     { re:/dest\s*:\s*\/webdev\/index\.html/, msg:"copy dest: /webdev/index.html" },
     { re:/content\s*:\s*Development\b/, msg:"copy content: Development" },
@@ -1230,7 +1230,7 @@ const QUESTIONS = [
   files:[{ path:"shell", lang:"cmd" }],
   spec:`<b>12.4. Verify the link structurally.</b><br>• On the dev hosts, stat <code>/var/www/html/webdev</code> with the stat module, with <code>follow=false</code> so it inspects the link itself, not its target.<br>• Type the command and press <b>Enter</b>.`,
   checks:[[
-    { re:/ansible\s+dev\s+-m\s+ansible\.builtin\.stat\s+-a\s*['"]path=\/var\/www\/html\/webdev\s+follow=false['"]/, msg:"ansible dev -m ansible.builtin.stat -a 'path=/var/www/html/webdev follow=false'" }
+    { re:/ansible\s+dev\s+-m\s+ansible\.builtin\.stat\s+-a\s*['"](path=\/var\/www\/html\/webdev\s+follow=false|follow=false\s+path=\/var\/www\/html\/webdev)['"]/, msg:"ansible dev -m ansible.builtin.stat -a 'path=/var/www/html/webdev follow=false'" }
   ]],
   explain:`<h2>✅ Q12.4 complete — what you just did</h2>
   <p>The JSON answers as data what ls showed as text: <code>"exists": true</code>, <code>"islnk": true</code> (a link, not a real directory someone made by hand), <code>"lnk_target": "/webdev/"</code> — the raw stored target, exactly what <code>src:</code> wrote — and <code>"lnk_source": "/webdev"</code>, the resolved target with the slash normalized away. <code>follow=false</code> is the whole point: with the default follow behavior, stat would describe /webdev and islnk would never appear.</p>
@@ -1360,7 +1360,7 @@ const QUESTIONS = [
     { re:/cd\s+(\/home\/student\/ansible|~\/ansible)/, msg:"cd ~/ansible" },
     { re:/echo\s+['"]redhat123['"]\s*>\s*secret\.txt/, msg:"echo 'redhat123' > secret.txt" },
     { re:/chmod\s+600\s+secret\.txt/, msg:"chmod 600 secret.txt" },
-    { fn:t => { const a = t.search(/cd\s/), b = t.search(/echo\s/), c = t.search(/chmod\s/); return a >= 0 && b > a && c > b && (t.match(/&&/g) || []).length >= 2; }, msg:"All three steps in order, chained with &&" }
+    { fn:t => { const a = t.search(/cd\s/), b = t.search(/echo\s/), c = t.search(/chmod\s/); return a >= 0 && b > a && c > b && ((t.match(/&&/g) || []).length >= 2 || (t.match(/;/g) || []).length >= 2 || t.split("\n").filter(l => l.trim()).length >= 3); }, msg:"All three steps in order, chained with &&" }
   ]],
   explain:`<h2>✅ Q14 complete — what you just did</h2>
   <p>You made the key before the lock: a one-line file holding the vault password, with mode <code>600</code> so only your user can read it. Every later vault command points at this file with <code>--vault-password-file</code> instead of prompting, which is what makes the vault usable by playbooks and scripts, not just by a human at a keyboard.</p>
@@ -1431,7 +1431,7 @@ const QUESTIONS = [
     { re:/cd\s+(\/home\/student\/ansible|~\/ansible)/, msg:"cd ~/ansible" },
     { re:/curl\s+-o\s+user_list\.yml\s+https?:\/\/10\.1\.10\.121\/user_list\.yml/, msg:"curl -o user_list.yml http://10.1.10.121/user_list.yml" },
     { re:/cat\s+user_list\.yml/, msg:"cat user_list.yml (read the keys before you code against them)" },
-    { fn:t => { const a = t.search(/cd\s/), b = t.search(/curl\s/), c = t.search(/cat\s/); return a >= 0 && b > a && c > b && (t.match(/&&/g) || []).length >= 2; }, msg:"All three steps in order, chained with &&" }
+    { fn:t => { const a = t.search(/cd\s/), b = t.search(/curl\s/), c = t.search(/cat\s/); return a >= 0 && b > a && c > b && ((t.match(/&&/g) || []).length >= 2 || (t.match(/;/g) || []).length >= 2 || t.split("\n").filter(l => l.trim()).length >= 3); }, msg:"All three steps in order, chained with &&" }
   ]],
   explain:`<h2>✅ Q15 complete — what you just did</h2>
   <p>The cat is the point: <code>users</code> is a list of dictionaries, and each item carries exactly three keys — <code>username</code>, <code>uid</code>, <code>job</code>. alice (1201, developer), vincent (1202, developer), sandy (2201, manager), patrick (2202, manager). The playbook reads them as <code>item.username</code>, <code>item.uid</code>, <code>item.job</code> — and the key is <code>username</code>, not <code>name</code>. Coding against a data file you haven't read is how silent undefined-variable failures are born.</p>
@@ -1462,9 +1462,9 @@ const QUESTIONS = [
     { re:/pw_manager\s*\|\s*password_hash\(['"]sha512['"]\)/, msg:"Manager password: \"{{ pw_manager | password_hash('sha512') }}\"" },
     { fn:t => (t.match(/state\s*:\s*present/g) || []).length >= 3, msg:"state: present on the group task and both user tasks" },
     { fn:t => (t.match(/loop\s*:\s*"\{\{\s*users\s*\}\}"/g) || []).length >= 2, msg:"Both user tasks loop: \"{{ users }}\" — every user, filtered by the when, not by selectattr" },
-    { fn:t => /(item\.job\s*==\s*'developer'\s+and\s+inventory_hostname\s+in\s+groups\[['"]dev['"]\]\s*\)?\s*or\s+\(?\s*item\.job\s*==\s*'developer'\s+and\s+inventory_hostname\s+in\s+groups\[['"]test['"]\])/.test(t) || /item\.job\s*==\s*'developer'\s+and\s+\(\s*inventory_hostname\s+in\s+groups\[['"]dev['"]\]\s+or\s+inventory_hostname\s+in\s+groups\[['"]test['"]\]\s*\)/.test(t), msg:"Developer when: (developer and dev) or (developer and test), checked per item" },
-    { re:/item\.job\s*==\s*'manager'\s+and\s+inventory_hostname\s+in\s+groups\[['"]prod['"]\]/, msg:"Manager when: manager and inventory_hostname in groups['prod']" },
-    { fn:t => { const chunks = t.split(/\n\s*- name:/); return chunks.some(ch => /pw_developer/.test(ch) && /groups\s*:\s*devops\b/.test(ch) && /'developer'/.test(ch)) && chunks.some(ch => /pw_manager/.test(ch) && /groups\s*:\s*opsmgr\b/.test(ch) && /'manager'/.test(ch)); }, msg:"Pairing: developer task carries devops + pw_developer; manager task carries opsmgr + pw_manager" }
+    { fn:t => /(item\.job\s*==\s*['"]developer['"]\s+and\s+inventory_hostname\s+in\s+groups\[['"]dev['"]\]\s*\)?\s*or\s+\(?\s*item\.job\s*==\s*['"]developer['"]\s+and\s+inventory_hostname\s+in\s+groups\[['"]test['"]\])/.test(t) || /item\.job\s*==\s*['"]developer['"]\s+and\s+\(\s*inventory_hostname\s+in\s+groups\[['"]dev['"]\]\s+or\s+inventory_hostname\s+in\s+groups\[['"]test['"]\]\s*\)/.test(t) || /item\.job\s*==\s*['"]developer['"]\s+and\s+\(\s*['"]dev['"]\s+in\s+group_names\s+or\s+['"]test['"]\s+in\s+group_names\s*\)/.test(t) || /(item\.job\s*==\s*['"]developer['"]\s+and\s+['"]dev['"]\s+in\s+group_names\s*\)?\s*or\s+\(?\s*item\.job\s*==\s*['"]developer['"]\s+and\s+['"]test['"]\s+in\s+group_names)/.test(t), msg:"Developer when: (developer and dev) or (developer and test), checked per item" },
+    { fn:t => /item\.job\s*==\s*['"]manager['"]\s+and\s+inventory_hostname\s+in\s+groups\[['"]prod['"]\]/.test(t) || /item\.job\s*==\s*['"]manager['"]\s+and\s+['"]prod['"]\s+in\s+group_names/.test(t), msg:"Manager when: manager and inventory_hostname in groups['prod']" },
+    { fn:t => { const chunks = t.split(/\n\s*- name:/); return chunks.some(ch => /pw_developer/.test(ch) && /groups\s*:\s*devops\b/.test(ch) && /['"]developer['"]/.test(ch)) && chunks.some(ch => /pw_manager/.test(ch) && /groups\s*:\s*opsmgr\b/.test(ch) && /['"]manager['"]/.test(ch)); }, msg:"Pairing: developer task carries devops + pw_developer; manager task carries opsmgr + pw_manager" }
   ]],
   explain:`<h2>✅ Q15.1 complete — what you just did</h2>
   <p>One play, three tasks, and the filtering lives in the <code>when</code>, not the loop. Both user tasks visit <i>every</i> user on <i>every</i> host; the when is evaluated once per item, so a single task produces changed lines for the users it creates and skipping lines for the rest. Task 1's name says "devops" but its loop creates both groups, everywhere — including serverd, which gets groups and no users at all.</p>
@@ -2007,6 +2007,84 @@ pw_manager: Imamgr
   answer:[{ path:"shell", text:"ansible all -m ansible.builtin.command -a 'getent group devops opsmgr'" }] }
 };
 
+// === EQUIVALENCE CANON ===
+// Grading follows the real system: an answer passes if its syntax is valid AND
+// produces the required result — it does not have to match one stored spelling.
+// Every check runs against the raw text AND two canonical copies that rewrite
+// ONLY spellings Ansible/Linux treat as identical:
+//   - YAML boolean spellings (yes/no/on/off/True/False/...) -> true/false
+//   - FQCN module names (ansible.builtin.copy) <-> short names (copy)
+//   - runs of spaces collapsed, spaces around "=" in key=value args removed
+//   - trailing whitespace stripped, ~/ <-> /home/student/
+//   - ad hoc flag order (-b hoisted after the host pattern, --become -> -b)
+//   - curl / ansible-vault / ansible-playbook flag order, curl noise flags
+// Values, names, sizes, IPs and structure are never rewritten, tabs in YAML
+// still fail, and every forbidden-approach check still runs on the raw text.
+const BUILTIN_MODS = ["copy","file","template","dnf","yum","service","systemd","command","shell","setup","debug","fail","get_url","uri","lineinfile","replace","blockinfile","user","group","stat","fetch","slurp","find","assert","set_fact","meta","pause","raw","script","unarchive","archive","package","mount","cron","hostname","authorized_key","wait_for","include_tasks","import_tasks","include_role","import_role","ping"];
+const MOD_FQCN = { firewalld:"ansible.posix.firewalld", lvol:"community.general.lvol", filesystem:"community.general.filesystem" };
+function fqcnOf(name){ return MOD_FQCN[name] || ("ansible.builtin." + name); }
+const BOOL_WORDS = "yes|no|on|off|True|False|TRUE|FALSE|Yes|No|On|Off|YES|NO|ON|OFF";
+function boolVal(w){ return /^(yes|on|true)$/i.test(w) ? "true" : "false"; }
+function canonBase(t){
+  return t.split("\n").map(line => {
+    let s = line.replace(/[ \t]+$/, "");
+    const m = s.match(/^(\s*)(.*)$/);
+    const ind = m[1]; let rest = m[2];
+    rest = rest.replace(/ {2,}/g, " ");
+    rest = rest.replace(/([A-Za-z_][\w.-]*)\s+=\s*(?!=)/g, "$1=");
+    rest = rest.replace(new RegExp("=\\s*(" + BOOL_WORDS + ")\\b", "g"), (mm, w) => "=" + boolVal(w));
+    rest = rest.replace(new RegExp("(:\\s*)(" + BOOL_WORDS + ")(?=\\s*(#.*)?$|\\s*[,}\\]])", "g"), (mm, pre, w) => pre + boolVal(w));
+    return ind + rest;
+  }).join("\n");
+}
+function hoistBecome(line){
+  // Move a standalone -b (outside any quotes) to just after the host pattern.
+  const parts = line.split(/('[^']*'|"[^"]*")/);
+  let found = false;
+  for (let i = 0; i < parts.length && !found; i += 2) {
+    if (/(^|\s)-b(?=\s|$)/.test(parts[i])) {
+      parts[i] = parts[i].replace(/(^|\s)-b(?=\s|$)/, "$1").replace(/ {2,}/g, " ");
+      found = true;
+    }
+  }
+  if (!found) return line;
+  return parts.join("").replace(/^(\s*ansible\s+\S+)\s*/, "$1 -b ");
+}
+function canonCmd(t){
+  return t.split("\n").map(line => {
+    let s = line;
+    if (/^\s*ansible\s+\S/.test(s) && !/^\s*ansible-(playbook|galaxy|vault|navigator)/.test(s)) {
+      s = s.replace(/--become\b/, "-b");
+      s = hoistBecome(s);
+    }
+    if (/\bcurl\b/.test(s)) {
+      s = s.replace(/curl\s+-O\s+(https?:\/\/\S+\/([^\/\s]+))/, "curl -o $2 $1");
+      s = s.replace(/curl\s+(https?:\/\/\S+)\s+-o\s+(\S+)/, "curl -o $2 $1");
+      s = s.replace(/\s+-(L|f|k)(?=\s|$)/g, "").replace(/\s+--(location|fail|insecure)(?=\s|$)/g, "").replace(/-sS\b/g, "-s");
+    }
+    s = s.replace(/(ansible-vault\s+(?:create|view|edit|encrypt|decrypt|rekey))\s+(--vault-password-file\s+\S+)\s+(\S+)/, "$1 $3 $2");
+    s = s.replace(/(ansible-playbook)\s+(--vault-password-file\s+\S+)\s+(\S+\.yml)/, "$1 $3 $2");
+    s = s.replace(/(ansible-playbook)\s+--syntax-check\s+(\S+\.yml)/, "$1 $2 --syntax-check");
+    return s;
+  }).join("\n");
+}
+function canonShort(t){
+  return t.replace(/\b(?:ansible\.builtin|ansible\.posix|community\.general)\.(\w+)/g, "$1")
+          .split("\n").map(l => l.replace(/\/home\/student\//g, "~/")).join("\n");
+}
+function canonFqcn(t){
+  let out = t.replace(/^(\s*-?\s*)([a-z_][\w]*)(:)(\s|$)/gm, (m, pre, name, colon, post) =>
+    (BUILTIN_MODS.indexOf(name) >= 0 || MOD_FQCN[name]) ? pre + fqcnOf(name) + colon + post : m);
+  out = out.replace(/(-m\s+)([a-z_][\w]*)\b/g, (m, pre, name) =>
+    (BUILTIN_MODS.indexOf(name) >= 0 || MOD_FQCN[name]) ? pre + fqcnOf(name) : m);
+  return out.split("\n").map(l => l.replace(/~\//g, "/home/student/")).join("\n");
+}
+function canonForm(t, dir, lang){
+  let s = canonBase(t);
+  if (lang === "cmd" || lang === "bash") s = canonCmd(s);
+  return dir === "short" ? canonShort(s) : canonFqcn(s);
+}
+
 function runChecks(q, texts){
   // YAML/Bash sanity: tabs are illegal in YAML and a classic silent killer.
   const results = [];
@@ -2015,9 +2093,18 @@ function runChecks(q, texts){
     if (f.lang === "yaml" && /\t/.test(t)) {
       results.push({ ok:false, msg:"(" + f.path.split("/").pop() + ") Contains TAB characters — YAML requires spaces. Replace tabs with spaces." });
     }
+    const variants = [t];
+    if (f.lang !== "vim" && f.lang !== "jinja") variants.push(canonForm(t, "short", f.lang), canonForm(t, "fqcn", f.lang));
     (q.checks[fi] || []).forEach(c => {
+      // Pure-negation checks (t => !/forbidden/...) never run on the short-name
+      // canonical copy: stripping an FQCN prefix could hide the forbidden token.
+      const pureNeg = c.fn && /^\s*t\s*=>\s*!/.test(c.fn.toString());
+      const vlist = pureNeg ? [variants[0], variants[2]] : variants;
       let ok = false;
-      try { ok = c.re ? c.re.test(t) : !!c.fn(t); } catch(e) { ok = false; }
+      for (let vi = 0; vi < vlist.length && !ok; vi++) {
+        if (vlist[vi] === undefined) continue;
+        try { ok = c.re ? c.re.test(vlist[vi]) : !!c.fn(vlist[vi]); } catch(e) { ok = false; }
+      }
       results.push({ ok, msg:"(" + f.path.split("/").pop() + ") " + c.msg });
     });
   });
