@@ -270,6 +270,14 @@ const QUESTIONS = [
   • <code>-b</code> (become) runs the modules as root — writing under <code>/etc/yum.repos.d</code> and the RPM keyring requires it. Your verification steps close the loop: <code>dnf repolist</code> shows both repos on every node, and <code>rpm -q gpg-pubkey</code> shows the imported key.</p>
   <h4>The tech underneath</h4>
   <p>Ad hoc commands push a single module over SSH with no playbook structure — right for one-time setup, wrong tool for ongoing state. Inside <code>-a</code> the pattern is space-separated <code>key=value</code> pairs, quoting any value that contains spaces, like the repo descriptions.</p>
+  <h4>Command anatomy — what every part does, and what breaks without it</h4>
+  <p>• <code>ansible all</code> — the pattern <code>all</code> aims every line at every managed node. Narrow it to one group and the other nodes never get repos — Q3's installs then fail there with no repository to read.<br>
+  • <code>-m</code> = module, named by its full FQCN (<code>ansible.builtin.rpm_key</code>, <code>ansible.builtin.yum_repository</code>). The full name can never be shadowed by a collection module that happens to share the short name.<br>
+  • <code>-a "key='...' state=present"</code> — rpm_key's arguments: <code>key=</code> is the URL of the public key to fetch, <code>state=present</code> means "make sure it is imported" (and re-running stays green).<br>
+  • Each <code>yum_repository</code> line is a set of pairs: <code>name=</code> becomes the repo's ID and its file under /etc/yum.repos.d/, <code>description=</code> is the label dnf prints, <code>baseurl=</code> is where packages are actually fetched from — one wrong character there and every dnf call against that repo errors out.<br>
+  • <code>gpgcheck=true</code> + <code>gpgkey=</code> + <code>enabled=true</code> — checking on, the key that does the checking, and the repo switched on. Drop <code>enabled=true</code> and the repo exists but dnf silently skips it.<br>
+  • <code>-b</code> at the end of all three lines — become root. Without it the keyring and /etc/yum.repos.d/ writes die with permission denied.<br>
+  • <b>Why the exam cares:</b> this script is the foundation every later package task stands on. A typo in one pair does not fail loudly here — it fails three questions later, in Q3, wearing a different error message.</p>
   <div class="tie"><b>How it ties in:</b> Q3's <code>dnf</code> installs — and even the definition of the "RPM Development Tools" package group — come from the metadata of the repos you just created. No Q2, no Q3.</div>`
 },
 {
@@ -311,6 +319,13 @@ const QUESTIONS = [
   <h4>How it affects the Ansible environment</h4>
   <p>• The <code>&amp;&amp;</code> is shell logic: the second command runs <b>only if the first exits 0</b>. A failed syntax check stops the line cold — nothing half-runs.<br>
   • The real run then connects to the inventory and applies Q3's guards host by host: php and mariadb land on dev, test, and prod; the RPM Development Tools group and the full package update happen on dev only.</p>
+  <h4>Command anatomy — what every part does, and what breaks without it</h4>
+  <p>• <code>ansible-playbook</code> — the playbook runner. This step is two runs of the same tool against the same file; only the flag changes.<br>
+  • <code>packages.yml</code> — the positional argument: the playbook to load, resolved relative to your current directory. Stand in the wrong directory and the runner reports the playbook could not be found.<br>
+  • <code>--syntax-check</code> — parse-only mode. The playbook is loaded and its structure validated, but no host is contacted and nothing runs. A green check proves the file parses — not that the tasks will succeed.<br>
+  • <code>&amp;&amp;</code> — the shell's AND: the command after it runs only if the one before it exited with status 0. It is a gate built out of an exit code.<br>
+  • The second <code>ansible-playbook packages.yml</code>, with no flag — the real execution. Same file, opposite mode.<br>
+  • <b>Why the exam cares:</b> chain them with <code>;</code> instead of <code>&amp;&amp;</code> and the real run fires even when the check just failed — you have spent a full playbook run discovering a typo the check already found. Skip the check entirely and the same typo surfaces mid-run, where it costs the run's whole time instead of ten seconds.</p>
   <div class="tie"><b>How it ties in:</b> a green playbook run is a claim, not proof. Q3.2 verifies the result on the actual hosts — the run/verify rhythm that runs through this whole exam.</div>`
 },
 {
@@ -327,6 +342,13 @@ const QUESTIONS = [
   <h4>How it affects the Ansible environment</h4>
   <p>• Nothing is modified — this is a read-only check. That is the point of verification: independent evidence, gathered with a different tool than the one that made the change.<br>
   • Note the module choice: <code>command</code> runs the binary directly with no shell, so no pipes or redirects — fine here, because this dnf command needs neither. When you do need shell features, that is the <code>shell</code> module's job.</p>
+  <h4>Command anatomy — what every part does, and what breaks without it</h4>
+  <p>• <code>ansible dev</code> — the pattern is the evidence's scope: only the dev group was supposed to receive the RPM Development Tools group, so only dev hosts are asked. Aim at <code>all</code> and the three hosts that correctly lack the group bury the one answer that matters.<br>
+  • <code>-m ansible.builtin.command</code> — the command module by FQCN: run one binary directly on the host, no shell involved.<br>
+  • <code>-a 'dnf group list --installed'</code> — the argument string is the command line executed on the host. <code>dnf group list</code> enumerates package groups; <code>--installed</code> is the load-bearing word — it restricts the list to groups actually installed on the machine.<br>
+  • The single quotes around the <code>-a</code> value — they keep the whole string together as one argument when your own shell splits the line on spaces.<br>
+  • No <code>-b</code> — deliberate: reading group metadata is not root work, so this verify runs as the plain login user.<br>
+  • <b>Why the exam cares:</b> drop <code>--installed</code> and dnf also lists groups that are merely available from the repos — "RPM Development Tools" would print even if Q3's task had never run, and your proof would prove nothing.</p>
   <div class="tie"><b>How it ties in:</b> run → verify is the rhythm of the whole exam: Q2 ended with repolist checks, Q7 ends with curl, Q8 with curl loops. On to Q4 — Galaxy collections.</div>`
 },
 {
@@ -345,6 +367,12 @@ const QUESTIONS = [
   <p>• <code>mkdir -p</code> creates <code>collections</code> <i>and any missing parents</i>, and — just as important mid-exam — it exits successfully if the directory already exists. No error, no second-guessing what state the controller is in.<br>
   • The directory has to come first: vim will happily let you type a whole buffer for a path in a nonexistent directory, then fail the save with <code>E212: Can't open file for writing</code>. That is a classic way to lose exam minutes and work.<br>
   • Chaining with <code>&amp;&amp;</code> means a failed step stops the line — you never end up editing in the wrong directory.</p>
+  <h4>Command anatomy — what every part does, and what breaks without it</h4>
+  <p>• <code>cd ~/ansible</code> — <code>~</code> expands to /home/student, so this anchors you in the project root. Every path after it is relative, and relative paths are only meaningful because this step fixed the starting point.<br>
+  • <code>&amp;&amp;</code> between all three parts — each step runs only if the previous one succeeded, so a failed cd can never turn into a collections directory created in the wrong place.<br>
+  • <code>mkdir -p collections</code> — <code>-p</code> = parents: create any missing parent directories, and treat "already exists" as success. The name <code>collections</code> is not your choice — it is the directory this project's configuration points <code>collections_path</code> at.<br>
+  • <code>vim collections/requirements.yml</code> — the exact filename matters twice over: Q4.1 writes the manifest here, and Q4.2's <code>-r</code> flag will read this same path. Save it as requirement.yml and the install step finds nothing to read.<br>
+  • <b>Why the exam cares:</b> this one line builds the stage the next three steps stand on. Get the directory or the filename wrong and nothing errors yet — the failure waits until the install, when Galaxy reads a manifest that is not where you think it is.</p>
   <div class="tie"><b>How it ties in:</b> the editor is already open on the right file — Q4.1 is filling in the requirements themselves. The same beat (mkdir -p, then vim) comes back for the roles directory in Q6.</div>`
 },
 {
@@ -382,6 +410,12 @@ const QUESTIONS = [
   <h4>How it affects the Ansible environment</h4>
   <p>• The <code>-p collections</code> flag is the whole game: it installs into <code>~/ansible/collections</code>, the path this project's <code>ansible.cfg</code> points <code>collections_path</code> at. Skip it and the collections land in <code>~/.ansible/collections</code> instead — installed, but invisible to your playbooks, which then die with "couldn't resolve module/action".<br>
   • The <code>-r</code> file is what makes this repeatable: the list lives in version control with the project, not in your memory of what you once typed.</p>
+  <h4>Command anatomy — what every part does, and what breaks without it</h4>
+  <p>• <code>cd ~/ansible &amp;&amp;</code> — the anchor again: both paths in this command are relative, so the install only lands in the project if you are standing in it. Run the same line from your home directory and you would create and stock a ~/collections the project never looks at.<br>
+  • <code>ansible-galaxy collection install</code> — tool, branch, action. The <code>collection</code> branch matters: leave it out and ansible-galaxy defaults to the role branch, which reads requirements files in a different format and installs into role paths.<br>
+  • <code>-r collections/requirements.yml</code> — r = requirements file, the input: the manifest Q4.1 wrote, naming the collections and versions to fetch. The file is only read. Without <code>-r</code> you would have to name each collection on the command line — and remember from memory which ones the project needs.<br>
+  • <code>-p collections</code> — p = collections path, the destination: unpack everything into the project's own collections directory instead of the default ~/.ansible/collections.<br>
+  • <b>Why the exam cares:</b> "installed but invisible" is this question's trap — the install can report success while your playbooks still die with "couldn't resolve module/action", because the code landed on a shelf Ansible never searches for this project. The <code>-r</code> and <code>-p</code> pair is what makes the install both repeatable and findable.</p>
   <div class="tie"><b>How it ties in:</b> Q7 and Q8 call the ansible.posix firewalld module — it only resolves because of this install. Q4.3 proves the collections actually landed where Ansible looks.</div>`
 },
 {
@@ -397,6 +431,10 @@ const QUESTIONS = [
   <h4>How it affects the Ansible environment</h4>
   <p>• Nothing changes — this is evidence-gathering. The <code>-p</code> matters as much here as in the install: without it, the list shows the default search paths, which can look fine while the project's own directory is empty.<br>
   • This is the cheapest debugging you will ever do on this exam. A missing collection discovered now costs ten seconds; discovered in Q8 it costs a playbook rewrite under time pressure.</p>
+  <h4>Command anatomy — what every part does, and what breaks without it</h4>
+  <p>• <code>ansible-galaxy collection list</code> — the read-only inventory verb: print what is installed, with versions, and change nothing.<br>
+  • <code>-p collections</code> — the same path flag as the install, and here it is the scope of the inspection: list only what lives under this directory.<br>
+  • <b>Why the exam cares:</b> omit <code>-p</code> and the list ranges over the default search paths — where system collections also live — so the output can look comfortably full while the project's own directory sits empty. You would walk into Q7 believing the firewalld module exists for your playbooks when it does not. A verify only proves something when it inspects the exact shelf the install stocked; this flag is what aims it.</p>
   <div class="tie"><b>How it ties in:</b> same rhythm as Q3.1 → Q3.2 — do the step, then prove it with an independent command. Q4 is now fully closed: directory, file, install, verify. On to Q5, the timesync role.</div>`
 },
 {
@@ -413,6 +451,12 @@ const QUESTIONS = [
   <h4>How it affects the Ansible environment</h4>
   <p>• The package lands the roles as the <code>redhat.rhel_system_roles</code> collection under <code>/usr/share/ansible/collections/</code> — a system-wide location every user and project on the controller can resolve, unlike the project-local collections from Q4.<br>
   • <code>sudo</code> gives dnf the root privileges a package install needs, and <code>-y</code> answers yes to the transaction prompt in advance — on an exam, a command that stops and waits for input is a command that burns your clock.</p>
+  <h4>Command anatomy — what every part does, and what breaks without it</h4>
+  <p>• <code>sudo</code> — run this one command as root. Installing a package writes to the RPM database and to /usr/share, both root-owned; without sudo, dnf stops with permission and lock errors.<br>
+  • <code>dnf install</code> — the package manager and its install verb: resolve the package, pull its dependencies, and put it on the controller (this is controller software, not something pushed to the managed hosts).<br>
+  • <code>-y</code> = --assumeyes — answer "yes" to the transaction prompt in advance. Without it, dnf prints the plan and waits at "Is this ok [y/N]:" for a keystroke that, in a graded or scripted terminal, may never come — the command hangs instead of finishing.<br>
+  • <code>rhel-system-roles</code> — the exact package name. Package names are matched literally: a near-miss like rhel-system-role returns "No match for argument" and nothing is installed.<br>
+  • <b>Why the exam cares:</b> Q5.2's playbook calls the role <code>redhat.rhel_system_roles.timesync</code>, and that name only resolves because this package put it on disk. If this install quietly failed — or is still sitting at a y/N prompt — the whole Q5 chain collapses two steps later at the playbook run, far from the cause.</p>
   <div class="tie"><b>How it ties in:</b> Q4 installed collections for one project; this installs roles for the whole controller. Q5.1 proves the timesync role is really there before you write a playbook that depends on it.</div>`
 },
 {
@@ -428,6 +472,12 @@ const QUESTIONS = [
   <h4>How it affects the Ansible environment</h4>
   <p>• Nothing changes — this is verification, the same habit as Q4.3. If that grep came back empty, writing the playbook anyway would only earn you a "role not found" error later, further from the cause.<br>
   • Notice the pipe: you are in a real shell here, so <code>|</code> works. Contrast Q3.2 — the <code>command</code> module runs on the host with no shell, so no pipes there. Same keyboard, two different worlds.</p>
+  <h4>Command anatomy — what every part does, and what breaks without it</h4>
+  <p>• The long path is the collection's address, one segment per layer: <code>/usr/share/ansible/collections/</code> is the system-wide collections root, <code>ansible_collections/</code> the layout directory every collection lives under, <code>redhat/</code> the namespace, <code>rhel_system_roles/</code> the collection, and <code>roles/</code> where its roles sit. Reading the path is reading the role's full name — <code>redhat.rhel_system_roles.timesync</code> — as a directory tree.<br>
+  • <code>ls</code> with that path — list a directory you do not move into; a wrong segment anywhere makes ls answer "No such file or directory", which is itself diagnostic: it tells you the package did not land where Q5 expected.<br>
+  • <code>|</code> — the pipe hands ls's output to grep as its input. You are in the controller's real shell here, so pipes exist.<br>
+  • <code>grep timesync</code> — keep only lines containing the role's name. Dozens of roles live in that directory; the filter reduces the answer to the one entry Q5.2 depends on. No matching line means grep prints nothing and exits non-zero — silence is the alarm.<br>
+  • <b>Why the exam cares:</b> this is a ten-second existence proof for the exact role the next playbook calls by name. Skip it and a missing role is discovered at the run instead — as a "role not found" failure with the playbook already written on top of the assumption.</p>
   <div class="tie"><b>How it ties in:</b> role confirmed on disk, so now the playbook in Q5.2 can resolve it.</div>`
 },
 {
@@ -464,6 +514,11 @@ const QUESTIONS = [
   <h4>How it affects the Ansible environment</h4>
   <p>• This is the first question whose run reaches out and changes <i>every managed host</i> — the earlier playbooks were scoped by group guards, but Q5.2's play targets all hosts, because every machine needs correct time (Kerberos, logs, and certificates all depend on it).<br>
   • The play ran as student and escalated with <code>become</code> only where the role needed it — that is why the command itself carries no sudo.</p>
+  <h4>Command anatomy — what every part does, and what breaks without it</h4>
+  <p>• <code>ansible-playbook</code> — the runner: read a playbook file, apply its plays to the inventory, report a recap per host. This bare command is the whole trigger for the Q5 chain.<br>
+  • <code>timesync.yml</code> — the only argument, and it is a relative filename: the runner looks for it in your current directory. Run the identical command from your home directory and it fails with "the playbook could not be found" — even though the file exists, one directory away.<br>
+  • What is absent is also anatomy: no <code>-i</code> (the inventory comes from ansible.cfg), no extra flags, and no <code>sudo</code> — privilege escalation is declared inside the play, so the controller process itself stays unprivileged. The checker rejects a sudo on this line even if the run would succeed.<br>
+  • <b>Why the exam cares:</b> name the wrong file — or stand in the wrong directory — and nothing runs at all, while every later Q5 verification fails for reasons that look like role problems. The simplest commands fail the simplest way: by pointing at nothing.</p>
   <div class="tie"><b>How it ties in:</b> a successful run is a claim. Q5.4 checks the config file the role wrote, and Q5.5 checks the daemon itself — two different layers of proof.</div>`
 },
 {
@@ -480,6 +535,12 @@ const QUESTIONS = [
   <h4>How it affects the Ansible environment</h4>
   <p>• Read-only again: ad hoc <code>command</code> calls gather evidence without changing state, which is what makes them safe to run as often as you like during the exam.<br>
   • This verifies the <i>configuration layer</i>: the file says the right thing. It says nothing yet about whether chronyd has actually picked the source up — that is a different layer, and it gets its own check.</p>
+  <h4>Command anatomy — what every part does, and what breaks without it</h4>
+  <p>• <code>ansible all</code> — every host gets asked. The role was applied to all hosts, so the proof must cover all of them; verifying one host and assuming the rest is how a single failed host slips through.<br>
+  • <code>-m ansible.builtin.command</code> — run the named binary directly on each host. No shell is started, so the argument must be one self-contained command — which grep is.<br>
+  • <code>-a 'grep pool /etc/chrony.conf'</code> — inside the quotes: <code>grep</code> the tool, <code>pool</code> the text to hunt for, <code>/etc/chrony.conf</code> the file to hunt in. The path is the contract: the timesync role writes chrony's config at exactly that location, so this reads the artifact the role was supposed to produce.<br>
+  • No <code>-b</code> — chrony.conf is world-readable, so the verify runs unprivileged; nothing here needs root.<br>
+  • <b>Why the exam cares:</b> grep for the wrong word, or in the wrong file, and the check can pass or fail independently of what the role actually did. The pattern <code>pool</code> is chosen because it is the line your Q5.2 variable created — any host missing it is a host the role did not reach.</p>
   <div class="tie"><b>How it ties in:</b> variable (Q5.2) → role → config file (Q5.4) → live daemon (Q5.5). You are tracing one fact through the whole stack.</div>`
 },
 {
@@ -496,6 +557,11 @@ const QUESTIONS = [
   <h4>How it affects the Ansible environment</h4>
   <p>• This is the deepest verification layer in the Q5 chain: package installed (Q5), role present (Q5.1), playbook written (Q5.2), playbook run (Q5.3), config on disk (Q5.4), daemon using it (Q5.5). Each step was proven before the next one was trusted.<br>
   • On the real exam this habit is what catches the silent failures — a role that "ran fine" but never restarted the service, or a config written to the wrong host group.</p>
+  <h4>Command anatomy — what every part does, and what breaks without it</h4>
+  <p>• The frame is Q5.4's, unchanged — <code>ansible all -m ansible.builtin.command -a '...'</code> — and that sameness is deliberate: same transport, same hosts, different layer of evidence.<br>
+  • <code>chronyc</code> — chrony's control client. Unlike the file Q5.4 read, this program talks to the running chronyd daemon over its control channel and reports what the daemon is doing right now.<br>
+  • <code>sources</code> — the chronyc subcommand that lists the time sources the daemon is polling, with their reachability and offset. It is the daemon's own testimony, not the config's claim.<br>
+  • <b>Why the exam cares:</b> a correct /etc/chrony.conf with a daemon that never reloaded it is a half-finished configuration — the file says one thing, the service does another. Running the config check twice would never catch that. This step exists because the graded state is a live daemon synced to your pool server, not a text file that mentions it.</p>
   <div class="tie"><b>How it ties in:</b> Q5 is fully closed. Q6 returns to downloaded Galaxy roles — the same roles:/requirements pattern as Q4, one level up.</div>`
 },
 {
@@ -513,6 +579,12 @@ const QUESTIONS = [
   <h4>How it affects the Ansible environment</h4>
   <p>• <code>roles/</code> is not just a folder: it is where this project's configuration looks for roles (<code>roles_path</code>), and it is the install target Q6.2 uses. Everything Galaxy installs for this question lands here.<br>
   • <code>mkdir -p</code> keeps the line safe to re-run — no error if the directory is already there.</p>
+  <h4>Command anatomy — what every part does, and what breaks without it</h4>
+  <p>• <code>cd ~/ansible</code> — anchor in the project root; both paths that follow are relative to it.<br>
+  • <code>&amp;&amp;</code> — the chain is stop-on-failure: no directory gets created, and no editor opens, in the wrong place.<br>
+  • <code>mkdir -p roles</code> — <code>-p</code> = parents plus no-error-if-it-exists. The directory's name is load-bearing: <code>roles</code> is where this project's <code>roles_path</code> looks, and it is the shelf Q6.2 will stock. Call it role/ and Galaxy, the playbooks, and the checker would all be looking somewhere else.<br>
+  • <code>vim roles/requirements.yml</code> — same manifest filename as Q4, different directory — and the directory is what gives it meaning: inside roles/ it is the roles manifest Galaxy's role branch reads; the identical name inside collections/ was the collections manifest. Location is part of the file's identity.<br>
+  • <b>Why the exam cares:</b> Q6 mirrors Q4 on purpose — directory, manifest, install, verify. Slip the directory name or skip the mkdir and the damage is silent now and loud in Q6.2, when the save fails or the install reads a manifest that is not there.</p>
   <div class="tie"><b>How it ties in:</b> Q4 built the collections directory; this builds the roles one. Q6.1 writes the requirements file you just opened.</div>`
 },
 {
@@ -548,6 +620,14 @@ const QUESTIONS = [
   <h4>How it affects the Ansible environment</h4>
   <p>• The <code>-p roles</code> flag is doing the same job as Q4.2's <code>-p collections</code>: install into the project, where <code>roles_path</code> points — not into your home directory's default role location, where this project's playbooks would never find them.<br>
   • The requirements file made it repeatable: anyone with this project can rebuild the same roles directory with one command.</p>
+  <h4>Command anatomy — what every part does, and what breaks without it</h4>
+  <p>• <code>cd ~/ansible &amp;&amp;</code> — the anchor: both relative paths in this command (<code>roles/requirements.yml</code> and <code>roles</code>) are measured from the project root, so the command only means what it should if you are standing there when it runs.<br>
+  • <code>ansible-galaxy role install</code> — tool, branch, action: fetch roles from Galaxy and install them. The <code>role</code> branch is what makes the requirements file's rename entries (src → name) take effect.<br>
+  • Break the command into its two halves:<br>
+  • <code>-r roles/requirements.yml</code> — the input. r = requirements file. This is the shopping list you wrote in Q6.1: geerlingguy.haproxy to be named balancer, geerlingguy.php to be named phpinfo. The file is only read — nothing is written into it.<br>
+  • <code>-p roles</code> — the destination. p = path. Each role on the list gets downloaded and unpacked as a folder inside ~/ansible/roles/, so you end up with roles/balancer/ and roles/phpinfo/, each containing its own tasks/, templates/, defaults/ and so on.<br>
+  • Metaphor: -r is the grocery list, -p is the pantry shelf you stock it on. The list doesn't hold the groceries — the shelf does.<br>
+  • <b>Why the exam cares:</b> without -p roles, ansible-galaxy installs into its default pantry, ~/.ansible/roles. But your playbooks live in ~/ansible, and when Q8's roles.yml says "run the role named balancer," Ansible looks for it in the roles/ folder sitting next to the playbook first. Installing with -p roles puts the roles exactly where the playbooks expect to find them — that is also why the command starts with cd ~/ansible.</p>
   <div class="tie"><b>How it ties in:</b> Q8's roles.yml applies <code>balancer</code> and <code>phpinfo</code> by name — those names exist because of the rename in Q6.1 and this install. Q6.3 proves they landed.</div>`
 },
 {
@@ -562,6 +642,11 @@ const QUESTIONS = [
   <h4>How it affects the Ansible environment</h4>
   <p>• Nothing changes; this is the Q4.3 habit applied to roles. Note there is no <code>-p</code> here: <code>role list</code> reports the locations Galaxy knows about, and seeing the two renamed roles in it is the proof you need before Q8 depends on them.<br>
   • Catching a missing role now costs seconds. Catching it in Q8 costs a failed playbook run.</p>
+  <h4>Command anatomy — what every part does, and what breaks without it</h4>
+  <p>• <code>ansible-galaxy role list</code> — three words, no flags: the inventory of roles Galaxy manages on this controller, printed with their versions. Nothing is read from a manifest and nothing is installed — the command only reports.<br>
+  • What you are reading for is the names: the list must show <code>balancer</code> and <code>phpinfo</code>, the local names from Q6.1's rename. If it showed geerlingguy.haproxy and geerlingguy.php instead, the rename never took effect — and Q8's playbook, which calls the roles by their new names, would fail to find them.<br>
+  • Note the contrast with Q4.3: there the list needed <code>-p collections</code> to aim it at the project's shelf. Here the bare command is the reference form — its job is simply to confirm the two renamed roles are registered before anything depends on them.<br>
+  • <b>Why the exam cares:</b> this is the last cheap checkpoint in the Q6 chain. A role that failed to install, or installed under its upstream name, costs seconds to spot now; in Q8 it costs a failed playbook run and a debugging session under time pressure.</p>
   <div class="tie"><b>How it ties in:</b> Q6 is closed — directory, requirements, install, verify. Q7 flips from installing other people's roles to authoring your own.</div>`
 },
 {
@@ -575,6 +660,11 @@ const QUESTIONS = [
   <p>You moved into the project's <code>roles/</code> directory — the directory Q6 created and installed into. Where you are standing matters for the next step: the role scaffolding command creates the role <i>inside your current directory</i>.</p>
   <h4>How it affects the Ansible environment</h4>
   <p>• A role only resolves if it sits in a directory on the <code>roles_path</code>. Creating it here — alongside <code>balancer</code> and <code>phpinfo</code> — puts your hand-written role in exactly the same place as the downloaded ones, so playbooks treat them identically.</p>
+  <h4>Command anatomy — what every part does, and what breaks without it</h4>
+  <p>• <code>cd</code> — change directory, nothing else. This whole question is one step because the step's only product is your position.<br>
+  • <code>/home/student/ansible/roles</code> — an absolute path this time, not ~/ansible: the target is the roles/ directory itself, spelled out in full so there is no ambiguity about where you end up standing. It is the directory Q6 created and stocked.<br>
+  • Why position is the product: the next step, <code>role init</code>, creates the new role inside whatever directory you are standing in — it takes no destination flag in this flow. Stand in the project root and the apache role is born one level too high, outside the roles/ shelf every playbook searches.<br>
+  • <b>Why the exam cares:</b> a role's location is half its identity — a perfectly written role in the wrong directory is indistinguishable from a missing role when the playbook runs. This cd is what makes Q7.1 land in the one place it has to.</p>
   <div class="tie"><b>How it ties in:</b> Q6 filled this directory from Galaxy; Q7.1 adds one you author yourself.</div>`
 },
 {
@@ -589,6 +679,10 @@ const QUESTIONS = [
   <h4>How it affects the Ansible environment</h4>
   <p>• This is convention over configuration: Ansible finds a role's tasks at <code>tasks/main.yml</code> and its templates under <code>templates/</code> <i>because</i> the layout says so — no path configuration anywhere. The scaffold guarantees the layout is exactly the one the engine expects.<br>
   • For this exam you will only write in two places — <code>tasks/main.yml</code> (Q7.3) and <code>templates/index.html.j2</code> (Q7.4). The rest of the skeleton can stay as generated.</p>
+  <h4>Command anatomy — what every part does, and what breaks without it</h4>
+  <p>• <code>ansible-galaxy role init</code> — same tool as the installs, opposite direction: <code>install</code> downloads someone else's role; <code>init</code> generates a fresh skeleton for a role you are about to author. No network, no manifest, no <code>-r</code> or <code>-p</code> — init writes into the current directory, which is why Q7's cd had to happen first.<br>
+  • <code>apache</code> — the role's name, and it is three things at once: the directory created (roles/apache), the name playbooks will use when they apply the role, and the name the checker looks for. Type apach and you have scaffolded a role that nothing in Q7.5 references.<br>
+  • <b>Why the exam cares:</b> init's output is a convention, not just folders: Ansible will look for the role's work in tasks/main.yml and its pages in templates/ precisely because the scaffold put them there. A mistyped name or a wrong starting directory breaks the chain silently — the skeleton exists, the playbook simply never finds it.</p>
   <div class="tie"><b>How it ties in:</b> the downloaded roles from Q6 have this same skeleton inside them — you have been using this layout all along; now you see how it is made. Q7.2 confirms it exists.</div>`
 },
 {
@@ -602,6 +696,11 @@ const QUESTIONS = [
   <p>You verified the scaffold: the listing shows the role's directories — the two you care about are <code>tasks/</code> and <code>templates/</code>. Ten seconds of looking now beats a "file not found" from the template task later.</p>
   <h4>How it affects the Ansible environment</h4>
   <p>• Nothing changes — evidence again, the same rhythm as Q4.3, Q5.1, and Q6.3: create, then confirm, then build on it.</p>
+  <h4>Command anatomy — what every part does, and what breaks without it</h4>
+  <p>• <code>ls roles/apache</code> — list the contents of the scaffold directory by path, without moving. One argument, no flags: this verify needs names, not details, so there is deliberately no <code>-l</code> here.<br>
+  • <code>roles/apache</code> — the path is the claim being tested: the role Q7.1 created, in the roles/ shelf. List the wrong path and ls either errors or shows you some other directory's contents — you would be doubting (or trusting) a scaffold you never actually looked at.<br>
+  • What the listing must contain: the standard role layout, and in particular <code>tasks/</code> and <code>templates/</code> — the two directories Q7.3 and Q7.4 are about to write into.<br>
+  • <b>Why the exam cares:</b> template and task lookups fail at playbook runtime with "file not found" errors that point at the playbook, not at the missing directory. Ten seconds of ls now proves the two folders your next files depend on are really there.</p>
   <div class="tie"><b>How it ties in:</b> skeleton confirmed. Q7.3 writes the role's tasks into tasks/main.yml.</div>`
 },
 {
@@ -675,6 +774,12 @@ const QUESTIONS = [
   <p>You ran the playbook: the apache role executed against the webservers group — serverb and serverc — installing and configuring the web service and deploying each host's own index page.</p>
   <h4>How it affects the Ansible environment</h4>
   <p>• First full author-and-run cycle of the exam: role you wrote (Q7.3, Q7.4), playbook you wrote (Q7.5), now applied. Every earlier question consumed someone else's automation; this one is yours end to end.</p>
+  <h4>Command anatomy — what every part does, and what breaks without it</h4>
+  <p>• <code>ansible-playbook</code> — the runner again; the anatomy of this step is mostly in the filename and in what the command leaves out.<br>
+  • <code>role.yml</code> — singular: the playbook Q7.5 wrote, applying your apache role. The trap is one letter — <code>roles.yml</code> (plural) is Q8's capstone playbook, a different file with different content. Muscle memory from Q8 back into Q7, or the reverse, runs the wrong playbook or fails to find any.<br>
+  • No <code>sudo</code> — the play escalates with become where it needs root on the managed hosts; wrapping the runner in sudo is checked against even if the run succeeds.<br>
+  • No inventory or limit flags — ansible.cfg supplies the inventory, and the play itself names the webservers group it targets.<br>
+  • <b>Why the exam cares:</b> this is your first end-to-end authored run — role, template, and playbook all yours. If it fails, the filename and your current directory are the first suspects, long before the role's contents: the runner can only apply the file it can find.</p>
   <div class="tie"><b>How it ties in:</b> the run claims success — Q7.7 proves it over HTTP, from the outside, the way a user would see it.</div>`
 },
 {
@@ -689,6 +794,12 @@ const QUESTIONS = [
   <p>You verified end to end, over the wire: serverb answered with serverb's name and address, serverc with serverc's. That single result proves the whole chain — httpd running, firewall open, template deployed, and the facts rendered correctly per host.</p>
   <h4>How it affects the Ansible environment</h4>
   <p>• Nothing changes — but note the level of this proof. The playbook run (Q7.6) reported what Ansible <i>did</i>; curl shows what a client actually <i>gets</i>. When the two disagree, curl is the truth that matters.</p>
+  <h4>Command anatomy — what every part does, and what breaks without it</h4>
+  <p>• <code>curl http://serverb</code> — a plain GET with no <code>-o</code>: the response body prints straight to your terminal. That is the point here — in Q8 curl saves files, but a verify wants the evidence visible, not stored.<br>
+  • <code>http://serverb</code> — the short hostname resolves through the lab's DNS, and the page it returns was rendered from serverb's own facts — its hostname and its IP. The content is host-specific, which is exactly what makes it proof.<br>
+  • <code>;</code> between the two curls — run the second command regardless of how the first ended. Contrast <code>&amp;&amp;</code>: if serverb were down, an AND-chain would skip serverc entirely and you would lose the second half of the evidence. Independent checks get a semicolon; dependent steps get &amp;&amp;.<br>
+  • <code>curl http://serverc</code> — the other web server, asked the same question. Checking only one host leaves the other's template render unverified — this check requires both answers.<br>
+  • <b>Why the exam cares:</b> each host renders the greeting from its own facts, so identical output on both would expose a template that hardcoded one host's values. Two different, correct answers are the pass; anything less is a clue, not a completion.</p>
   <div class="tie"><b>How it ties in:</b> Q7 is closed — directory, scaffold, verify, tasks, template, playbook, run, verify. Q8 takes these exact pieces (the balancer role from Q6, this template pattern) and composes them into the capstone.</div>`
 },
 {
@@ -706,6 +817,12 @@ const QUESTIONS = [
   <h4>How it affects the Ansible environment</h4>
   <p>• One <code>mkdir -p</code> with three targets: parents are created as needed and existing directories are not an error — the same safe-to-rerun habit as Q4 and Q6.<br>
   • These paths are convention, again: a role reads its templates from <code>templates/</code> and its tasks from <code>tasks/</code>, so the downloaded files only become part of the roles if they land in exactly these directories.</p>
+  <h4>Command anatomy — what every part does, and what breaks without it</h4>
+  <p>• <code>mkdir -p</code> — one command, three jobs: <code>-p</code> creates any missing parents and stays silent if a directory already exists, so the line is safe to re-run.<br>
+  • <code>roles/balancer/templates</code> — the balancer role's template drawer: Q8.2's haproxy.cfg.j2 must land here because the role's template lookup searches exactly this directory.<br>
+  • <code>roles/phpinfo/templates</code> — the same drawer in the other role, for Q8.3's hello.php.j2. Two roles, two templates directories; a download placed in the wrong role's drawer is a file the right role will never find.<br>
+  • <code>roles/phpinfo/tasks</code> — the third target is a different kind of directory: Q8.4's main.yml belongs in tasks/, the file Ansible auto-loads when the role runs.<br>
+  • <b>Why the exam cares:</b> the next four steps are curl downloads, and <code>curl -o</code> does not create parent directories — a download aimed at a directory that does not exist simply fails. Miss one of these three paths and the failure shows up one step later, attached to a download that looks like a network problem.</p>
   <div class="tie"><b>How it ties in:</b> Q8.1 to Q8.4 fetch the four files; Q8.5 proves every one of them landed.</div>`
 },
 {
@@ -721,6 +838,12 @@ const QUESTIONS = [
   <h4>How it affects the Ansible environment</h4>
   <p>• <code>curl -o</code> writes the response body to the named file instead of the terminal. Without <code>-o</code> the YAML would scroll past and nothing would be saved.<br>
   • Working from the provided skeleton is the exam's intent here: graders check the result, and the skeleton guarantees the play structure matches what the downloaded role files expect.</p>
+  <h4>Command anatomy — what every part does, and what breaks without it</h4>
+  <p>• <code>curl</code> — fetch a URL from the command line. On its own it prints the response to your terminal and saves nothing.<br>
+  • <code>-o roles.yml</code> — o = output: the next word is the local filename to save under. This is the load-bearing flag — omit it and the playbook scrolls past as text and Q8.6 has no file to complete. (Its capital sibling <code>-O</code> would reuse the server's filename instead; here they coincide, but <code>-o</code> states the name explicitly either way.)<br>
+  • <code>roles.yml</code> — the name is a contract: Q8.6 edits this file and Q8.7 runs it by this name, in the project root. Save it as role.yml and you have also planted a collision with Q7's playbook name.<br>
+  • <code>http://10.1.10.121/roles.yml</code> — the exam file server, addressed by IP, with the file named in the URL's last segment. One wrong digit and curl will still "succeed" at saving whatever came back — including an error page — as your playbook.<br>
+  • <b>Why the exam cares:</b> everything in Q8 builds on this skeleton. A download saved under the wrong name, or an error page saved under the right one, surfaces later as a YAML parse failure in a file you never wrote — the hardest kind of exam error to trace.</p>
   <div class="tie"><b>How it ties in:</b> three more downloads follow the same pattern — Q8.2 into the balancer role, Q8.3 and Q8.4 into phpinfo.</div>`
 },
 {
@@ -735,6 +858,10 @@ const QUESTIONS = [
   <p>The HAProxy config template is now part of the balancer role. When Q8.7 runs, the role renders it into <code>/etc/haproxy/haproxy.cfg</code> on serverd — looping over the <code>haproxy_backend_servers</code> variable you complete in Q8.6.</p>
   <h4>How it affects the Ansible environment</h4>
   <p>• Placement is everything: a template only belongs to the role if it sits in the role's <code>templates/</code> directory — that is the path the role's template task resolves, with no configuration anywhere saying so.</p>
+  <h4>Command anatomy — what every part does, and what breaks without it</h4>
+  <p>• <code>-o roles/balancer/templates/haproxy.cfg.j2</code> — the destination path carries three facts, and each segment is graded: <code>roles/balancer</code> says which role owns the file, <code>templates/</code> is the only directory that role's template task will ever search, and <code>haproxy.cfg.j2</code> is the exact source name the role asks for.<br>
+  • <code>http://10.1.10.121/haproxy.cfg.j2</code> — the server stores the file under the same basename; the URL's job is just to fetch it intact. curl moves bytes — it does not care that this is a Jinja template, and neither should you at this step.<br>
+  • <b>Why the exam cares:</b> role template resolution is pure convention — no config anywhere lists this path. Save the file one level up, at roles/balancer/haproxy.cfg.j2, and it exists on disk while the role insists it cannot be found: the run in Q8.7 dies with a "could not find template" error over a file you can see. Placement is the whole task.</p>
   <div class="tie"><b>How it ties in:</b> Q8.8 greps the rendered config for your backend lines — the file you just downloaded is what makes that output possible.</div>`
 },
 {
@@ -749,6 +876,11 @@ const QUESTIONS = [
   <p>The phpinfo role now has its page template — the file that becomes <code>hello.php</code> on the web servers, printing "Hello PHP World" plus the host's PHP details.</p>
   <h4>How it affects the Ansible environment</h4>
   <p>• Same convention as Q8.2: role templates live in the role's <code>templates/</code> directory. Two roles, two templates, one pattern.</p>
+  <h4>Command anatomy — what every part does, and what breaks without it</h4>
+  <p>• <code>-o roles/phpinfo/templates/hello.php.j2</code> — same anatomy as Q8.2, different role: <code>roles/phpinfo</code> owns it, <code>templates/</code> is where its template task looks, and <code>hello.php.j2</code> is the source name the role references.<br>
+  • The <code>.j2</code> extension is part of the name, not decoration: it marks the file as a Jinja2 template to be rendered at run time. Save it as hello.php and the role's src lookup misses — and a rendered-versus-static mix-up would follow even if it did not.<br>
+  • <code>http://10.1.10.121/hello.php.j2</code> — fetch this exact object from the exam server; the balancer's template from Q8.2 answers to a similar name and a similar path, and swapping the two downloads is an easy slip that only surfaces when the roles run.<br>
+  • <b>Why the exam cares:</b> Q8.10 will ask both web servers for hello.php over HTTP. That page exists only if this template is sitting in this role's templates/ directory when Q8.7 runs — the chain from this one path to that later proof has no slack in it.</p>
   <div class="tie"><b>How it ties in:</b> Q8.10 curls hello.php on both web servers — this template is what answers.</div>`
 },
 {
@@ -764,6 +896,11 @@ const QUESTIONS = [
   <h4>How it affects the Ansible environment</h4>
   <p>• <code>tasks/main.yml</code> is the one filename Ansible reads automatically when a role is applied — no playbook references it by name. Download it to the wrong name or directory and the role silently does nothing.<br>
   • Note the interplay with Q8.6: this tasks file consumes the <code>php_packages</code> variable your playbook defines — the role brings the logic, your play supplies the data.</p>
+  <h4>Command anatomy — what every part does, and what breaks without it</h4>
+  <p>• <code>-o roles/phpinfo/tasks/main.yml</code> — the destination is the most convention-bound path in the whole question set: <code>tasks/main.yml</code> is the one file Ansible loads automatically when a role is applied. No playbook ever names it — the engine simply expects it there.<br>
+  • <code>http://10.1.10.121/main.yml</code> — on the server the file has a generic name; it only becomes the phpinfo role's task list by landing at the destination path. The URL supplies the content, the <code>-o</code> path supplies the meaning.<br>
+  • This download intentionally replaces whatever tasks/main.yml the Galaxy install shipped as a placeholder. That overwrite is the task — downloading the file anywhere else leaves the placeholder in charge of the role.<br>
+  • <b>Why the exam cares:</b> save it as roles/phpinfo/main.yml, one directory too high, and the role still "runs" in Q8.7 — executing its placeholder tasks, installing nothing, deploying no page. Q8.10's missing hello.php would then look like a PHP problem when it was a path problem all along.</p>
   <div class="tie"><b>How it ties in:</b> all four downloads are done. Q8.5 verifies them before you build on them.</div>`
 },
 {
@@ -781,6 +918,12 @@ const QUESTIONS = [
   <p>You verified the whole download set in one listing: roles.yml in the project root, haproxy.cfg.j2 in the balancer's templates, hello.php.j2 in phpinfo's templates, and main.yml in phpinfo's tasks — each present and non-empty.</p>
   <h4>How it affects the Ansible environment</h4>
   <p>• Nothing changes — this is the checkpoint that keeps a failed or misdirected download from surfacing later as a cryptic template error mid-run, when it costs real time to trace.</p>
+  <h4>Command anatomy — what every part does, and what breaks without it</h4>
+  <p>• <code>ls -l</code> — the long format is the point: each entry shows its size and timestamp, so "present" also means non-empty and freshly written. A plain <code>ls</code> would confirm a name while hiding a 0-byte file — the scar of a failed download.<br>
+  • <code>roles.yml</code> — a file argument: ls prints that one file's line directly.<br>
+  • <code>roles/balancer/templates/ roles/phpinfo/templates/ roles/phpinfo/tasks/</code> — directory arguments, trailing slashes and all: ls lists each directory's contents, so you see the downloaded files inside their drawers, not just the drawers themselves.<br>
+  • Four targets in one invocation — the audit is a single glance across every landing spot Q8.1–Q8.4 used, which is what makes a swapped or missing file obvious while it is still cheap.<br>
+  • <b>Why the exam cares:</b> Q8.6 assumes all four files exist in exactly these places. Verifying them as a set — rather than trusting four separate curl commands — is what keeps a download mistake from reappearing as a template or role error mid-run, wearing a disguise.</p>
   <div class="tie"><b>How it ties in:</b> materials verified. Q8.6 completes the playbook that ties them together.</div>`
 },
 {
@@ -822,6 +965,10 @@ const QUESTIONS = [
   <p>The capstone ran: one play, all hosts, each machine getting only its role — serverd became the HAProxy balancer in front of serverb and serverc, the web servers got PHP and hello.php, and the firewall opened on the balancer in post_tasks.</p>
   <h4>How it affects the Ansible environment</h4>
   <p>• This is every earlier thread pulled tight: Q4's collections (the firewalld module), Q6's renamed roles, Q7's authoring pattern, Q8.6's variables and conditional roles — composed into a single run.</p>
+  <h4>Command anatomy — what every part does, and what breaks without it</h4>
+  <p>• <code>ansible-playbook</code> — the runner, in its barest form again: no inventory flag (ansible.cfg supplies it), no limit (the play's own host pattern and group conditions do the targeting), no sudo (the play carries its own become).<br>
+  • <code>roles.yml</code> — plural, and this time plural is correct: Q8's capstone playbook. Keep the pair straight — Q7.6 ran <code>role.yml</code>, the single-role playbook you authored; this one composes the two downloaded roles by host group. The two files differ by one letter and nothing else about them is interchangeable.<br>
+  • <b>Why the exam cares:</b> this single run is where Q4's collections, Q6's renames, and Q8.6's variables all get spent at once. If it fails to start, suspect the filename and your working directory first — the runner cannot apply a playbook it cannot find, and the error it gives you will not mention the playbook you actually meant.</p>
   <div class="tie"><b>How it ties in:</b> four verifications remain, each aimed at a different layer: the rendered config (Q8.8), the config's validity (Q8.9), the live web answer (Q8.10), and the balancer itself answering (Q8.11).</div>`
 },
 {
@@ -837,6 +984,11 @@ const QUESTIONS = [
   <p>You read the rendered truth on serverd: haproxy.cfg should list both backends — serverb and serverc with their addresses and port 80 — generated from the haproxy_backend_servers variable through the Q8.2 template.</p>
   <h4>How it affects the Ansible environment</h4>
   <p>• Read-only evidence again, aimed at exactly the hosts that should have the file — balancers only, because only serverd runs HAProxy.</p>
+  <h4>Command anatomy — what every part does, and what breaks without it</h4>
+  <p>• <code>ansible balancers</code> — the pattern names the group that runs HAProxy: serverd only. Ask <code>all</code> and the web servers answer with "file not found" failures — true, useless, and loud enough to bury the one host whose answer is the evidence.<br>
+  • <code>-m ansible.builtin.command</code> — direct execution, no shell: the argument is a single grep, which needs no shell features.<br>
+  • <code>-a 'grep server /etc/haproxy/haproxy.cfg'</code> — inside the quotes: <code>grep server</code> prints every line containing the word server, which in this config means exactly the backend lines, each of the form server NAME ADDRESS:PORT. The path is the <i>rendered</i> config on the host — not the haproxy.cfg.j2 template on the controller. Grepping the template would only prove what you downloaded, not what the run produced.<br>
+  • <b>Why the exam cares:</b> this is where Q8.6's haproxy_backend_servers variable becomes visible as generated text: serverb and serverc, the lab addresses, port 80. A backend you typed wrong in the variable shows up here verbatim — which makes this grep the fastest proofread of the capstone's data.</p>
   <div class="tie"><b>How it ties in:</b> the config contains the right lines. Q8.9 asks HAProxy itself whether the config is valid.</div>`
 },
 {
@@ -852,6 +1004,12 @@ const QUESTIONS = [
   <p>HAProxy itself signed off on its configuration: <code>haproxy -c</code> parses the file and reports it valid (or tells you the exact line that isn't), and <code>-f</code> names the file to test.</p>
   <h4>How it affects the Ansible environment</h4>
   <p>• A stronger proof than Q8.8's grep: the lines are not just present, they form a configuration the daemon accepts. Present-but-broken would pass the grep and fail here — which is why the exam checks both.</p>
+  <h4>Command anatomy — what every part does, and what breaks without it</h4>
+  <p>• Same ad hoc frame as Q8.8 — <code>balancers</code> hosts, command module — because the file under test lives only on serverd.<br>
+  • <code>haproxy</code> — the daemon binary itself, borrowed as a validator: the program that will have to live with this config is the one asked to judge it.<br>
+  • <code>-c</code> — configuration-check mode: parse the file, report it valid or name the offending line, and exit without starting anything. This flag is the difference between a test and an incident — without it, the command would try to launch HAProxy on a machine where it is already running.<br>
+  • <code>-f /etc/haproxy/haproxy.cfg</code> — f = file: which configuration to check. HAProxy has no way to guess that you mean the file the role just rendered; omit <code>-f</code> and the check has no subject.<br>
+  • <b>Why the exam cares:</b> Q8.8 proved the lines are present; this proves they compose a configuration the daemon accepts. A config can contain both backend lines and still be invalid — a typo'd keyword, a broken section — and only this step separates "text that mentions the backends" from "a balancer that will actually start".</p>
   <div class="tie"><b>How it ties in:</b> config present, config valid. Next, Q8.10 proves the application answering over HTTP, and Q8.11 proves it through the balancer.</div>`
 },
 {
@@ -867,6 +1025,12 @@ const QUESTIONS = [
   <p>Proof at the application layer: both web servers answered hello.php with "Hello PHP World" and their own names — PHP installed (with exactly the package set from Q8.6), the template deployed, the page served.</p>
   <h4>How it affects the Ansible environment</h4>
   <p>• Nothing changes; this verification chain runs downloads (Q8.5) → playbook (Q8.6) → run (Q8.7) → config contents (Q8.8) → config validity (Q8.9) → live application (Q8.10). Every layer proven with its own tool.</p>
+  <h4>Command anatomy — what every part does, and what breaks without it</h4>
+  <p>• <code>curl -s</code> — s = silent: suppress curl's progress meter and statistics. That meter is not cosmetic here — it would be written into the same output you are trying to read, garbling the evidence.<br>
+  • <code>http://serverb/hello.php</code> — the path names the page, not just the host. Ask for the bare host and you fetch Q7's index page instead: a perfectly good answer to the wrong question. <code>/hello.php</code> is the artifact this chain deployed.<br>
+  • <code>| head -5</code> — the pipe hands the response to head, which keeps the first five lines. A PHP info-style page runs to hundreds of lines; the identifying part — the Hello PHP World line and the hostname — is at the top, and head cuts the scrollback down to exactly that.<br>
+  • <code>;</code> before the serverc half — the second host is checked even if the first one fails; the two halves are independent witnesses.<br>
+  • <b>Why the exam cares:</b> the reply proves PHP <i>executed</i> — the server ran the page and returned its output. Had PHP been missing, Apache would have served the raw source or a download prompt instead: same URL, same server, completely different verdict. This command is how you tell those worlds apart.</p>
   <div class="tie"><b>How it ties in:</b> both backends answer when asked directly. One step remains — Q8.11 asks the balancer on serverd instead, which is how real traffic arrives.</div>`
 },
 {
@@ -883,6 +1047,12 @@ const QUESTIONS = [
   <h4>How it affects the Ansible environment</h4>
   <p>• Nothing changes; this completes the deepest verification chain in the set: downloads (Q8.5) → playbook (Q8.6) → run (Q8.7) → config contents (Q8.8) → config validity (Q8.9) → live backends (Q8.10) → live balancer (Q8.11). Every layer proven with its own tool.<br>
   • Why a loop, not one curl? A single request proves the balancer can reach <i>a</i> backend. Four requests prove it reaches <i>both</i> — a dead backend hiding behind a working one is exactly the failure this check exists to catch.</p>
+  <h4>Command anatomy — what every part does, and what breaks without it</h4>
+  <p>• <code>for i in 1 2 3 4</code> — a shell loop: the variable <code>i</code> takes each value in the list in turn, so the body runs four times. The number is the instrument — each iteration is a brand-new HTTP request, and therefore a brand-new balancing decision by HAProxy.<br>
+  • <code>do ... done</code> — the brackets of the loop body. Forget <code>done</code> and the shell sits at a continuation prompt waiting for the rest of a loop it thinks you are still typing: the command hangs instead of failing.<br>
+  • <code>curl -s http://serverd.lab.example.com</code> — inside the loop, the request goes to the <i>balancer</i>, by its fully qualified name — not to serverb or serverc directly as Q8.10 did. Asking the front door is the entire difference between this proof and the previous one.<br>
+  • No <code>| head</code> this time — you need each response's identifying line whole, because the pattern across the four answers (backend names alternating) is the result.<br>
+  • <b>Why the exam cares:</b> one request proves the balancer can reach a backend; four prove it reaches <i>both</i>, in turn. A dead backend hiding behind a healthy one passes every single-request check ever written — repetition is what flushes it out, and this loop is the repetition.</p>
   <div class="tie"><b>How it ties in:</b> Q8 closes the web stack. Act 4 changes the subject to the machines themselves — it opens with a precheck (Q9.0), then storage with a fallback plan (Q9).</div>`
 },
 {
@@ -904,6 +1074,16 @@ const QUESTIONS = [
   <p>Eight questions, answered before the play runs: the collection is installed, lvm2 is on every node, the facts — read with <code>-b</code>, because without it <code>vgs</code> comes back empty and the fail task fires on every host — say which hosts have yellowtail, and <code>vg_free</code> predicts each host's path before you run anything.</p>
   <p>• vg_free ≥ 1500 MiB → block succeeds · 800–1499 → rescue fires, <code>rescued=1</code> · under 800 → the rescue's retry fails too · VG missing → fail task, <code>failed=1</code> with the required message.<br>
   • An old <code>data</code> LV changes the story — <code>lvol</code> resizes it instead of creating fresh. <code>blkid</code> failing on a host with no device is expected. And <code>lsblk</code> before any <code>vgcreate</code>, always: never create a VG on a disk you haven't seen empty.</p>
+  <h4>Command anatomy — what every part does, and what breaks without it</h4>
+  <p>• Line 1, <code>ansible-galaxy collection list community.general</code> — name the one collection whose lvol and filesystem modules Q9 is about to use, and confirm it is installed before the play needs it. A missing collection otherwise surfaces as a module-resolution failure mid-run.<br>
+  • Lines 2–7 share one frame — <code>ansible all -b -m ... -a '...'</code> — and the <code>-b</code> is repeated on every line because LVM data is root-only: without become, the setup facts come back empty and the vgs output vanishes, and the precheck would report a fleet with no volume group anywhere.<br>
+  • Line 2, <code>rpm -q lvm2</code> — q = query: ask the RPM database whether the lvm2 tools are installed, changing nothing.<br>
+  • Line 3, the setup module with <code>filter=ansible_lvm</code> — filter= narrows the fact firehose to the ansible_lvm subtree alone: the volume groups and logical volumes, nothing else.<br>
+  • Line 4, <code>vgs --units m -o vg_name,vg_size,vg_free yellowtail</code> — <code>--units m</code> forces MiB, so vg_free can be compared directly against the playbook's 1500 and 800 numbers; <code>-o</code> picks exactly the three columns the decision needs; the trailing <code>yellowtail</code> scopes the report to that one VG instead of every VG on the host.<br>
+  • Line 5, <code>lvs yellowtail</code> — list the LVs already inside the VG: an existing data LV means the play will resize, not create. Line 6, <code>blkid /dev/yellowtail/data</code> — probe that device path (VG/LV form) for an existing filesystem signature; silence here on a fresh host is expected.<br>
+  • Line 7, <code>lsblk -o NAME,SIZE,TYPE,FSTYPE,MOUNTPOINTS</code> — the disk map with the columns chosen explicitly: the safety rule is to never build on a disk you have not seen.<br>
+  • Line 8, <code>ansible-playbook lvm.yml --syntax-check</code> — the parse gate for the real run — and note what is deliberately absent from the whole script: no <code>--check</code> dry run anywhere, because a dry run false-alarms on this playbook's format task.<br>
+  • <b>Why the exam cares:</b> these eight lines convert Q9's run from a surprise into a prediction — collection present, tools present, and per host: enough free space, fallback territory, or no VG at all. Skip the precheck and you will be interpreting rescued=1 and failed=1 cold, after the run, when the minutes to react are already spent.</p>
   <div class="tie"><b>How it ties in:</b> two minutes here is the difference between reading a recap and being surprised by it. On to Q9.</div>`
 },
 {
@@ -951,6 +1131,11 @@ const QUESTIONS = [
   <p>Read the recap like a triage board. In the practice setup: servera comes back clean (1500 MiB created), serverb shows <code>rescued=1</code> (the 800 MiB fallback fired), and serverc shows <code>failed=1</code> — on purpose. Expect red <code>fatal:</code> output on serverc: that is the fail module doing its job, not a broken playbook. Check that its message reads "Volume group does not exist". The other hosts continued; only serverc was removed.</p>
   <h4>How it affects the Ansible environment</h4>
   <p>• Same play, second tool: <code>ansible-navigator run lvm.yml -m stdout</code> executes it identically — the exam accepts either, and the recap means the same thing in both.</p>
+  <h4>Command anatomy — what every part does, and what breaks without it</h4>
+  <p>• <code>ansible-playbook lvm.yml</code> — two words, and both absences around them matter. The playbook name must match the file Q9 wrote; the runner finds it relative to your current directory.<br>
+  • No <code>--check</code> — a deliberate omission, not a shortcut: dry-run mode false-alarms on this playbook's format task, so a "safe" rehearsal would report failures the real run will not have. On this question, rehearsing lies and running tells the truth.<br>
+  • No <code>sudo</code> — checked explicitly. The play becomes root on the managed hosts itself; the controller-side command stays unprivileged.<br>
+  • <b>Why the exam cares:</b> the recap this run produces — ok on one host, rescued on another, failed on the third — is the designed outcome, not a malfunction. The command's job is to trigger it exactly once, for real: a dry run's imaginary recap, or a sudo-wrapped run, both miss the state the graders will inspect.</p>
   <div class="tie"><b>How it ties in:</b> the run is the claim — including the intended failure. Q9.2 and Q9.3 check the storage itself.</div>`
 },
 {
@@ -964,6 +1149,12 @@ const QUESTIONS = [
   <p>You read the storage truth straight from each host: the <code>data</code> LV listed under the yellowtail VG — 1500 MiB where there was room, 800 MiB where the rescue fired, and nothing on the host that never had the VG, exactly as designed. The <code>-b</code> matters: LVM queries need root, the same reason the play itself becomes.</p>
   <h4>How it affects the Ansible environment</h4>
   <p>• Nothing changes; this proves existence and size. It does not prove the format — a volume can exist and still be unformatted. That is Q9.3's job.</p>
+  <h4>Command anatomy — what every part does, and what breaks without it</h4>
+  <p>• <code>ansible all</code> — every host reports its own storage; the interesting answer set includes the host with no volume at all, so the pattern stays wide.<br>
+  • <code>-b</code> — become, and here it is structural: LVM inspection is root work. Drop it and the queries come back empty or denied on every host — a fleet-wide blank that looks exactly like total failure while telling you nothing.<br>
+  • <code>-m ansible.builtin.command</code> — one binary, run directly; lvs needs no shell around it.<br>
+  • <code>-a 'lvs yellowtail'</code> — <code>lvs</code> lists logical volumes; the trailing <code>yellowtail</code> scopes it to that volume group. Without the scope, lvs reports every LV on the host, and volumes from unrelated groups would blur the one verdict you need: does the data LV exist, and is it 1500 or 800?<br>
+  • <b>Why the exam cares:</b> this reads the outcome off the machines instead of trusting the recap — size is the graded property (1500 where there was room, 800 where the rescue fired), and this is the only step that measures it directly.</p>
   <div class="tie"><b>How it ties in:</b> existence first, then identity — the same one-two as Q8's config grep followed by the config test.</div>`
 },
 {
@@ -977,6 +1168,12 @@ const QUESTIONS = [
   <p><code>blkid</code> reads the device's own signature and answers with its filesystem type — <code>TYPE="ext4"</code> is the volume itself testifying that the format task landed, on exactly the hosts the fail guard let through. Existence (Q9.2) plus identity (Q9.3): both halves of the requirement now have independent proof. That closes Q9.</p>
   <h4>How it affects the Ansible environment</h4>
   <p>• Nothing changes. Note what is absent from both proofs: any mount output. The volume is formatted and deliberately unmounted — the requirement's last clause, verified by omission.</p>
+  <h4>Command anatomy — what every part does, and what breaks without it</h4>
+  <p>• The frame repeats Q9.2 exactly — <code>all</code> hosts, <code>-b</code> for root-level device access, command module — because the two verifies are a pair: existence first, then identity.<br>
+  • <code>blkid</code> — probe a block device and report the signature it finds: filesystem type, UUID, label. You are asking the device to testify about itself.<br>
+  • <code>/dev/yellowtail/data</code> — the device-mapper path, built from names: /dev/&lt;volume group&gt;/&lt;logical volume&gt;. Every segment comes from Q9's playbook — the VG you checked in the precheck, the LV whose size Q9.2 just measured. Point blkid at the raw disk instead (say /dev/sdb) and it would faithfully describe the wrong device.<br>
+  • The token to read in the output is <code>TYPE="ext4"</code> — that one pair is the format task's fingerprint.<br>
+  • <b>Why the exam cares:</b> a logical volume can exist at the perfect size and still be unformatted — Q9.2 would pass and the requirement would not be met. blkid is the only witness that can tell a formatted volume from a blank one, which is why the question ends here and not one step earlier.</p>
   <div class="tie"><b>How it ties in:</b> Act 4 continues — Q10 builds one file out of every host's facts, using the same fact-reading habit Q9 started.</div>`
 },
 {
@@ -990,6 +1187,11 @@ const QUESTIONS = [
   <p>You fetched the template skeleton: the two localhost lines are already in it. What it is missing is the loop — the three lines you add in Q10.1 are the entire question, because they are what make one host's file describe every host.</p>
   <h4>How it affects the Ansible environment</h4>
   <p>• Location is a lookup rule: in a playbook, the template module finds <code>src:</code> relative to the playbook's directory. That is why this file lives in the project root — contrast Q7, where the template lived inside the role and was found by the role's own lookup.</p>
+  <h4>Command anatomy — what every part does, and what breaks without it</h4>
+  <p>• <code>curl</code> — fetch from the exam server, as in Q8's four downloads; the shape is familiar because the pattern is the exam's standard way of handing you material.<br>
+  • <code>-o hosts.j2</code> — save under exactly this name, in the project root. The name is a contract: Q10.2's template task will ask for <code>src: hosts.j2</code>, and the template module resolves that name relative to the playbook's directory. Save it anywhere else, or under any other name, and the run fails to find its own template.<br>
+  • <code>http://10.1.10.121/hosts.j2</code> — the server's copy. Note what you are fetching this time: not a finished file but a template skeleton — the two localhost lines are in it, and the loop is not. The download being "incomplete" is the design, not a defect to fix here.<br>
+  • <b>Why the exam cares:</b> template lookup is the silent half of this question. The loop you write in Q10.1 can be perfect and the playbook will still fail if the file it lives in is not sitting where src resolution looks — this one flag-and-name pair is what puts it there.</p>
   <div class="tie"><b>How it ties in:</b> same download pattern as Q8's four files. Q10.1 completes the template; Q10.2 builds the playbook that renders it.</div>`
 },
 {
@@ -1051,6 +1253,10 @@ const QUESTIONS = [
   <p>One play, two outcomes: every host gathers facts, then the task fires only on servera. Expect changed on servera and <code>skipping</code> on serverb, serverc, and serverd — <code>skipped=1</code> in their recaps is the when doing its job, and it means the other hosts were read, not written.</p>
   <h4>How it affects the Ansible environment</h4>
   <p>• Same play, second tool: <code>ansible-navigator run hosts.yml -m stdout</code> executes it identically.</p>
+  <h4>Command anatomy — what every part does, and what breaks without it</h4>
+  <p>• <code>ansible-playbook hosts.yml</code> — the bare runner form once more: inventory from ansible.cfg, targeting from the play itself, no sudo (checked on this line as on every run step).<br>
+  • The filename is the trap of the pair: the playbook is <code>hosts.yml</code>, but the file it produces is <code>/etc/myhosts</code> — two similar names for the source and the product. Type the product's name at this prompt and the runner looks for a playbook called myhosts that does not exist; later, in Q10.4, the relationship flips and only /etc/myhosts will do.<br>
+  • <b>Why the exam cares:</b> this run is a gather-then-write: facts are collected from all four hosts so servera's template can describe all four. A failed start — wrong name, wrong directory — means no facts, no file, and three verification steps with nothing to verify, each failing in a way that points away from the real cause.</p>
   <div class="tie"><b>How it ties in:</b> the claim is a six-line file on servera. Q10.4 reads it; Q10.5 and Q10.6 cross-check it.</div>`
 },
 {
@@ -1064,6 +1270,12 @@ const QUESTIONS = [
   <p>You read the product itself: six lines — two localhost, four hosts — each address beside its own FQDN and short name. If all four host lines were identical, that is the missing-<code>hostvars</code> mistake made visible; if a host is missing, the loop ranged over the wrong group.</p>
   <h4>How it affects the Ansible environment</h4>
   <p>• Nothing changes. Note who is absent: the controller — it is not in the inventory, so it is not in <code>groups['all']</code>, so it gets no line.</p>
+  <h4>Command anatomy — what every part does, and what breaks without it</h4>
+  <p>• <code>ansible dev</code> — the narrow pattern, and here narrowness is correctness: the template task only wrote the file on dev hosts. Ask <code>all</code> and three hosts answer "No such file or directory" — accurate, expected, and loud enough to hide the one success you came for.<br>
+  • <code>-m ansible.builtin.command</code> — direct execution; cat needs no shell.<br>
+  • <code>-a 'cat /etc/myhosts'</code> — read the <i>deployed product</i>: /etc/myhosts on the host, not hosts.j2 on the controller. Verifying the source template would tell you what you downloaded and wrote; only the rendered file shows what the loop actually produced per host.<br>
+  • No <code>-b</code> — the file is world-readable, so the check runs unprivileged.<br>
+  • <b>Why the exam cares:</b> the rendered lines are the graded artifact — every host's address beside its own names. A loop that forgot hostvars renders the same host four times; a loop over the wrong group drops a line. Both mistakes are invisible in the playbook and unmistakable in this output, which is exactly why the verify reads the file and not the recap.</p>
   <div class="tie"><b>How it ties in:</b> content proven. Q10.5 proves the addresses against the hosts themselves; Q10.6 proves the file's permissions.</div>`
 },
 {
@@ -1077,6 +1289,11 @@ const QUESTIONS = [
   <p>You audited the file against reality: each host reports its own <code>default_ipv4</code> address — the same fact the template read through <code>hostvars</code> — and every value must match the line written for that host. The file is only trustworthy because it was built from these facts; this check closes the loop.</p>
   <h4>How it affects the Ansible environment</h4>
   <p>• Nothing changes. Same filtered setup call as Q9.0's precheck — one fact, read directly, no full fact dump.</p>
+  <h4>Command anatomy — what every part does, and what breaks without it</h4>
+  <p>• <code>ansible all</code> — wide again, on purpose: the audit needs every host's own report, including the hosts the file was not written to, because their addresses are lines <i>in</i> the file.<br>
+  • <code>-m ansible.builtin.setup</code> — the setup module, run ad hoc: it re-gathers facts from each host at the moment you ask. These are fresh measurements, not a replay of what the playbook collected — that independence is what makes the comparison a cross-check rather than an echo.<br>
+  • <code>-a 'filter=ansible_default_ipv4'</code> — filter= takes a pattern matched against fact names, and returns just the ansible_default_ipv4 fact: the address, gateway, and interface of the host's default route. Drop the filter and every host returns its entire fact set — thousands of lines in which the four addresses you need are technically present and practically lost.<br>
+  • <b>Why the exam cares:</b> Q10.4 showed you what the file claims; this step holds each claim against the host itself. Same filtered setup call as the Q9.0 precheck — one fact, read directly, no dump to wade through.</p>
   <div class="tie"><b>How it ties in:</b> facts built the file (Q10.2), facts audit it here. Q10.6 is the last proof — the file's metadata.</div>`
 },
 {
@@ -1090,6 +1307,11 @@ const QUESTIONS = [
   <p>The metadata matches the playbook's promises: <code>-rw-r--r--</code> is the umask default made visible (the playbook sets no mode — the question specified none), and root ownership is <code>become: true</code> made visible. Content (Q10.4), addresses (Q10.5), metadata (Q10.6) — three independent proofs. That closes Q10.</p>
   <h4>How it affects the Ansible environment</h4>
   <p>• Nothing changes. And the fleet property worth remembering: add a host to the inventory and the next run adds its line automatically — the file maintains itself because it was never typed by hand.</p>
+  <h4>Command anatomy — what every part does, and what breaks without it</h4>
+  <p>• <code>ansible dev</code> — dev only, for the same reason as Q10.4: the file exists on servera alone; the other hosts have no metadata to show.<br>
+  • <code>-a 'ls -l /etc/myhosts'</code> — <code>-l</code> is the whole instrument: the long format prints the mode string, owner, group, and size of the one named file. A plain <code>ls</code> would print only the name — proof the path exists, and nothing about the properties this step grades.<br>
+  • No <code>-d</code> here, unlike Q12's directory checks — the target is a regular file, and -l alone describes it fully. Flags follow the shape of the thing being inspected.<br>
+  • <b>Why the exam cares:</b> this catches the silent half-failures: the right content written with the wrong mode or owner, because the playbook set none and the defaults landed differently than expected. Content (Q10.4), truth (Q10.5), metadata (here) — a file is only finished when all three agree.</p>
   <div class="tie"><b>How it ties in:</b> that closes Q10. Q11 reuses this question's exact pattern — one play aimed at every host, with tasks narrowed by a group <code>when</code> — three times in a single playbook.</div>`
 },
 {
@@ -1130,6 +1352,10 @@ const QUESTIONS = [
   <p>Read the recap against the group table. servera: one task fired, <code>changed=1</code>. serverc: the same. serverd: three skips, nothing changed. And serverb: <code>changed=2</code> — both the test and prod tasks wrote it, in order, so it ends on <code>Production</code>. Two changes on one host is the overlap showing up in the numbers.</p>
   <h4>How it affects the Ansible environment</h4>
   <p>• Same play, second tool: <code>ansible-navigator run issues.yml -m stdout</code> executes it identically.</p>
+  <h4>Command anatomy — what every part does, and what breaks without it</h4>
+  <p>• <code>ansible-playbook issues.yml</code> — the bare run: no limit flag, because the play targets all hosts and lets its three task-level <code>when</code> conditions do the sorting; no sudo, as on every run step in this set.<br>
+  • <code>issues.yml</code> — the playbook's name echoes the file it writes, /etc/issue, and the echo is only a memory hook: the runner needs the playbook's exact saved name, and Q11.3 will need it again, unchanged.<br>
+  • <b>Why the exam cares:</b> the recap from this one run is a diagnostic in itself — changed=1 on the single-group hosts, changed=2 on serverb, silence from serverd. If the playbook were pointed at the wrong inventory or the run never started, that signature would never appear, and Q11.2's file contents would have nothing behind them. Read the run's numbers: they are the first draft of the verification.</p>
   <div class="tie"><b>How it ties in:</b> the recap claims the writes. Q11.2 reads the banners themselves; Q11.3 runs it again and exposes the cost of the overlap.</div>`
 },
 {
@@ -1143,6 +1369,11 @@ const QUESTIONS = [
   <p>The files testify: <code>Development</code> on servera, <code>Production</code> on serverc — and <code>Production</code>, not <code>Test</code>, on serverb, because the prod task ran after the test task on a host that belongs to both. serverd prints whatever banner it always had; no task ever touched it. Note the command needs no <code>-b</code>: reading a world-readable banner is not root work, unlike Q9's LVM checks.</p>
   <h4>How it affects the Ansible environment</h4>
   <p>• Nothing changes. The end state is exactly right on every host — which is what makes Q11.3's finding subtle: a playbook can be correct and still not be idempotent.</p>
+  <h4>Command anatomy — what every part does, and what breaks without it</h4>
+  <p>• <code>ansible all</code> — the widest pattern, chosen because every host is a witness here: servera and serverc show their group banners, serverb shows the overlap verdict, and serverd — untouched by any task — shows the banner it always had, the control case that proves the others were changed by the play.<br>
+  • <code>-a 'cat /etc/issue'</code> — read the banner file itself, at its exact path: /etc/issue is the pre-login banner this question manages. Near neighbours like /etc/motd or /etc/issue.net are different files with different jobs — reading one of them would return plausible-looking text that grades nothing.<br>
+  • No <code>-b</code>, deliberately — /etc/issue is world-readable, so there is nothing for become to unlock. Keep the contrast with Q9 and Q13 in view: the -b appears where the target is root-owned and vanishes where it is not; its presence is a property of the file, not a habit.<br>
+  • <b>Why the exam cares:</b> the contents are the graded state — one word per host (Development, Test, Production), assigned by group. This single cat per host is where the group logic stops being a claim in a playbook and becomes observable fact.</p>
   <div class="tie"><b>How it ties in:</b> content proven. Q11.3 tests the property this playbook quietly lacks.</div>`
 },
 {
@@ -1158,6 +1389,11 @@ const QUESTIONS = [
   <h4>How it affects the Ansible environment</h4>
   <p>• The production fix is one task with explicit precedence — a single <code>copy</code> whose content is chosen by a conditional (prod, then test, then dev) — so each host is written once. The exam wants the three-task version above; know both, and know why they differ.<br>
   • Say it the senior way: "serverb is in both test and prod, so it's written twice and ends with Production, because the prod task runs last — and it reports changed on every run. In production I'd collapse this into one task with an explicit precedence."</p>
+  <h4>Command anatomy — what every part does, and what breaks without it</h4>
+  <p>• The command is byte-for-byte Q11.1's — <code>ansible-playbook issues.yml</code> — and that identity is the anatomy: an idempotency test only means something if the input is exactly repeated. Change anything between the runs and you are no longer measuring the playbook's stability.<br>
+  • No <code>--check</code> — a dry run would only <i>predict</i> changes; this step needs the real changed= counters from a real application, because the property under test is what the playbook does when the world already matches it.<br>
+  • No attempt to "fix" the command — there is nothing to add. The instrument is repetition itself.<br>
+  • <b>Why the exam cares:</b> idempotency is a property of the playbook, exposed only by running it twice: ok everywhere means settled; serverb's eternal changed=2 exposes the double-write the overlap causes. Graders and production systems both re-run playbooks — a play that never settles misreports drift forever, and this unremarkable-looking rerun is how you catch it before they do.</p>
   <div class="tie"><b>How it ties in:</b> that closes Q11. Q12 builds on Q1's groups again — this time the play itself targets dev, so no task needs a when at all.</div>`
 },
 {
@@ -1171,6 +1407,11 @@ const QUESTIONS = [
   <p>You verified the one thing Q12 needs but does not create: <code>/var/www/html</code> exists on servera because the httpd package is installed there. If this had answered "No such file or directory", the symlink task in Q12 would fail — and <code>force: true</code> would not save it, because force replaces a file at the link's path; it never creates a missing parent directory.</p>
   <h4>How it affects the Ansible environment</h4>
   <p>• Nothing changes. If the directory were missing, the fix is installing httpd first (<code>ansible dev -b -m ansible.builtin.dnf -a 'name=httpd state=present'</code>) — an extra step, added only if the question allows it.</p>
+  <h4>Command anatomy — what every part does, and what breaks without it</h4>
+  <p>• <code>ansible dev</code> — dev only: Q12's play will target the dev group, so servera's filesystem is the only ground that matters. Checking the other hosts would certify directories the play never touches.<br>
+  • <code>-a 'ls -ld /var/www/html'</code> — the two flags divide the work: <code>-l</code> gives the long format (type, permissions, owner), and <code>-d</code> is the one that matters — d = directory-as-itself: describe the directory entry, do not list what is inside it. Without <code>-d</code>, ls would cheerfully list the docroot's contents and you would have verified the wrong thing — files, not the directory the symlink must live in.<br>
+  • <code>/var/www/html</code> — httpd's document root, the future parent of the link. Its existence is borrowed state: it is there because the httpd package is installed, not because anything in Q12 creates it.<br>
+  • <b>Why the exam cares:</b> the playbook's symlink task assumes this parent directory exists — and force: true replaces a file at the link's path but never creates a missing parent. This precheck is the only step that looks at the ground before the play builds on it; a "No such file or directory" here reroutes you to installing httpd instead of debugging a link that was never the problem.</p>
   <div class="tie"><b>How it ties in:</b> same habit as Q9.0's precheck — confirm the ground before you build on it. Q12 writes the playbook.</div>`
 },
 {
@@ -1217,6 +1458,10 @@ const QUESTIONS = [
   <p>Four tasks, four changes on servera, silence from everyone else — the other hosts were never in the play. Run it a second time and every task reports ok with <code>changed=0</code>: unlike Q11's serverb, this playbook is fully idempotent, because each task states exactly one end state and nothing overwrites anything else.</p>
   <h4>How it affects the Ansible environment</h4>
   <p>• Same play, second tool: <code>ansible-navigator run webcontent.yml -m stdout</code> executes it identically.</p>
+  <h4>Command anatomy — what every part does, and what breaks without it</h4>
+  <p>• <code>ansible-playbook webcontent.yml</code> — the bare run form: the play names its own target (dev), the inventory comes from ansible.cfg, and there is no sudo — the play's become does the escalating.<br>
+  • <code>webcontent.yml</code> — the file Q12 wrote, named for the content it manages. As always, the runner resolves it relative to your current directory: right command, wrong directory, no run.<br>
+  • <b>Why the exam cares:</b> four tasks fire on one host in dependency order — group, directory, file, link — and the recap should show all four changing servera and no other host appearing at all. That shape (one host, four changes, silence elsewhere) is the run telling you the targeting and the ordering both held. Anything else — a second host, a skipped task — is the first symptom, and it appears here before any of the five verifications that follow.</p>
   <div class="tie"><b>How it ties in:</b> the run is the claim. Q12.2 through Q12.6 prove it five ways — the directory, the content, the link itself, the link's provenance, and the group.</div>`
 },
 {
@@ -1230,6 +1475,11 @@ const QUESTIONS = [
   <p>Two lines carry the whole question: <code>drwxrwsr-x … root devops … /webdev</code> — the <code>s</code> sitting in the group triplet is SGID made visible — and <code>lrwxrwxrwx … /var/www/html/webdev -&gt; /webdev/</code>, the arrow showing the stored target, trailing slash and all. The <code>-d</code> is what makes ls describe the paths themselves instead of their contents.</p>
   <h4>How it affects the Ansible environment</h4>
   <p>• Nothing changes. Trap worth memorizing: put a trailing slash on the link's path (<code>ls -ld /var/www/html/webdev/</code>) and ls follows the link and shows /webdev's details instead — you would be inspecting the target while believing you inspected the link.</p>
+  <h4>Command anatomy — what every part does, and what breaks without it</h4>
+  <p>• <code>-a 'ls -ld /webdev /var/www/html/webdev'</code> — two path arguments in one ls, and the pairing is the test: the real directory and the link to it, side by side in one output, inviting direct comparison.<br>
+  • <code>-d</code> does double duty here and earns it on the second path: without it, ls aimed at a symlink-to-directory follows the link and lists the target's contents — you would be reading /webdev's insides while believing you were inspecting the link. With <code>-d</code>, both paths report as themselves.<br>
+  • <code>-l</code> supplies the type letters that carry the verdict: <code>d</code> opening /webdev's line (a directory, with the <code>s</code> for setgid in its group permissions) versus <code>l</code> opening the second line (a link), followed by the stored target after the arrow.<br>
+  • <b>Why the exam cares:</b> half of Q12's grade lives in the difference between those two lines' first characters and the arrow's target. One command shows both objects as they are; drop the <code>-d</code> and the link — the fragile half of the structure — becomes invisible at the exact moment you came to inspect it.</p>
   <div class="tie"><b>How it ties in:</b> level 1 proof — the link exists and points the right way. Q12.3 proves it works; Q12.4 proves it structurally.</div>`
 },
 {
@@ -1243,6 +1493,11 @@ const QUESTIONS = [
   <p><code>Development</code> arrived by a path that only works if three things are all true: the link exists, its target resolves, and the file sits inside the target. Catting the real path (/webdev/index.html) would prove only the third. A dangling link — link present, target missing — fails here with "No such file or directory" even though Q12.2's listing looked fine.</p>
   <h4>How it affects the Ansible environment</h4>
   <p>• Nothing changes. This is the difference between a link that exists and a link that works — the same existence-versus-identity split as Q9's lvs then blkid.</p>
+  <h4>Command anatomy — what every part does, and what breaks without it</h4>
+  <p>• <code>-a 'cat /var/www/html/webdev/index.html'</code> — read the path as three segments, because each one proves a different layer: <code>/var/www/html/webdev</code> is the link, <code>/index.html</code> is the file inside the link's target, and the kernel resolves the first into /webdev before the second can be opened. The read only succeeds if every layer holds.<br>
+  • The through-the-link route is the deliberate choice: catting /webdev/index.html directly would prove the file exists and say nothing about the link. This path cannot be answered without traversing the link — it is a test the link itself can fail.<br>
+  • <code>cat</code> — the plainest reader: whole file, no flags, because the file is one line of content and that line ("Development") is the entire verdict.<br>
+  • <b>Why the exam cares:</b> a dangling symlink — target deleted, path mistyped — passes Q12.2's listing with a beautiful arrow and fails here with "No such file or directory". Existence and function are different properties; this is the step that grades function, the one a web server (and a user) would actually experience.</p>
   <div class="tie"><b>How it ties in:</b> level 3 proof done. Q12.4 inspects the link itself as data, without following it.</div>`
 },
 {
@@ -1256,6 +1511,12 @@ const QUESTIONS = [
   <p>The JSON answers as data what ls showed as text: <code>"exists": true</code>, <code>"islnk": true</code> (a link, not a real directory someone made by hand), <code>"lnk_target": "/webdev/"</code> — the raw stored target, exactly what <code>src:</code> wrote — and <code>"lnk_source": "/webdev"</code>, the resolved target with the slash normalized away. <code>follow=false</code> is the whole point: with the default follow behavior, stat would describe /webdev and islnk would never appear.</p>
   <h4>How it affects the Ansible environment</h4>
   <p>• Nothing changes — stat is a pure read, and it returns facts a playbook could branch on, not just text for a human.</p>
+  <h4>Command anatomy — what every part does, and what breaks without it</h4>
+  <p>• <code>-m ansible.builtin.stat</code> — a different kind of module: stat runs no command on the host and prints no text — it returns structured data about one filesystem object. That is why this verify can assert facts (islnk, lnk_target) instead of asking you to eyeball an ls line.<br>
+  • <code>-a 'path=/var/www/html/webdev follow=false'</code> — note the grammar change: this -a holds <code>key=value</code> pairs for the module, not a shell command. <code>path=</code> names the object under inspection — the link's own path, not its target's.<br>
+  • <code>follow=false</code> — the load-bearing pair. stat's default is to follow symlinks and describe the target; with follow=true you would get /webdev's data and "islnk" would never appear. false pins the inspection to the link itself, which is the only way lnk_target — the raw stored destination — gets reported.<br>
+  • The pairs' order inside -a does not matter — key=value arguments are a set, not a sequence, unlike the positional words of a shell command.<br>
+  • <b>Why the exam cares:</b> this is the machine-readable verdict on the link's structure: a real directory someone made by hand, a link to the wrong target, and the correct link all look similar in a listing — stat separates them into fields a grader (or a later task) can check exactly.</p>
   <div class="tie"><b>How it ties in:</b> level 2 proof, machine-readable. Q12.5 answers the last question: was this link made by <i>this</i> run?</div>`
 },
 {
@@ -1269,6 +1530,11 @@ const QUESTIONS = [
   <p>Provenance is the proof level people skip: a correct-looking link can be yesterday's leftover that your task never actually replaced, and every other check would still pass. The full-iso timestamp dates the link's creation, and the arrow re-confirms the stored target. Today's date plus <code>-&gt; /webdev/</code> means this run did the work.</p>
   <h4>How it affects the Ansible environment</h4>
   <p>• Nothing changes. Graders — and senior admins — trust work they can attribute; this is how you attribute it.</p>
+  <h4>Command anatomy — what every part does, and what breaks without it</h4>
+  <p>• <code>-a 'ls -l --time-style=full-iso /var/www/html/webdev'</code> — one path this time, the link alone: the question has narrowed from "does it exist and point right" (Q12.2) to "when was it made".<br>
+  • <code>-l</code> — the long format: for a symlink named directly, ls shows the link's own line — type letter <code>l</code>, the arrow with its stored target, and the link's own timestamps — rather than the target's contents.<br>
+  • <code>--time-style=full-iso</code> — replaces ls's default date rendering with complete ISO timestamps: full date, time down to fractions, and the timezone. The default style is the saboteur here: for anything older than six months it prints the year instead of the time, and even for fresh files it abbreviates — either way, the precision that separates "created by this run" from "left over from earlier" is exactly what the default throws away.<br>
+  • <b>Why the exam cares:</b> provenance is the property none of the other checks can see. A link left behind by a previous attempt — correct target, correct permissions — passes Q12.2 through Q12.4 while your playbook's link task may have silently failed. The timestamp is how you attribute the work to this run.</p>
   <div class="tie"><b>How it ties in:</b> levels 1–4 covered: exists, points correctly, works, and is yours. Q12.6 closes with the group the whole structure hangs on.</div>`
 },
 {
@@ -1282,6 +1548,11 @@ const QUESTIONS = [
   <p><code>getent group devops</code> reads the name-service view of the group database — the same lookup the system itself performs — and answers with the group's line and GID. The empty member field is correct: this question creates the group and the structure; the people arrive later. That closes Q12.</p>
   <h4>How it affects the Ansible environment</h4>
   <p>• Nothing changes. Say it the senior way: "The tasks are in dependency order — the group must exist before the directory can use it, and the directory must exist before the file goes in. The one outside dependency is /var/www/html, which means httpd has to be installed on servera."</p>
+  <h4>Command anatomy — what every part does, and what breaks without it</h4>
+  <p>• <code>ansible dev</code> — dev hosts only: the group task in Q12 ran inside a play aimed at dev, so servera is where the group must be provable.<br>
+  • <code>-a 'getent group devops'</code> — three words: <code>getent</code> queries the system's name-service switch databases — the same lookup the operating system itself performs when anything asks "what is this group" — rather than reading one file. <code>group</code> selects which database, and <code>devops</code> is the key to look up, spelled exactly as the playbook's group task created it.<br>
+  • Silence is the failure mode to know: a missing key makes getent print nothing and exit with a non-zero status — no error message, just absence. A near-miss spelling (devop, dev-ops) produces exactly that silence.<br>
+  • <b>Why the exam cares:</b> the whole /webdev structure hangs on this group — it owns the directory, and the setgid bit makes new files inherit it. If the group lookup fails, the ownership chain in Q12.2's listing has nothing behind it. This step verifies the foundation using the system's own lookup path, the same one every process on the host will use.</p>
   <div class="tie"><b>How it ties in:</b> that closes Q12. Q13 returns to facts — the same gathered data Q10 read through hostvars, this time written into a file on each host itself.</div>`
 },
 {
@@ -1331,6 +1602,10 @@ const QUESTIONS = [
   <p>Expect a clean sweep: in the lab run, the first pass came back <code>ok=7 changed=5 failed=0</code> on all four hosts, and a re-run also finished <code>failed=0</code> — the get_url fix doing its job, where the screenshot's uri version would have died at task 1 with a 304. The changed count on re-runs is the forced fresh template being refilled, not drift.</p>
   <h4>How it affects the Ansible environment</h4>
   <p>• Same play, second tool: <code>ansible-navigator run hwreport.yml -m stdout</code> executes it identically.</p>
+  <h4>Command anatomy — what every part does, and what breaks without it</h4>
+  <p>• <code>ansible-playbook hwreport.yml</code> — the bare run again: no limit (the play targets all hosts — every node gets a report), no sudo, inventory from ansible.cfg.<br>
+  • <code>hwreport.yml</code> — playbook name versus product name: the playbook is hwreport.yml, the file it builds on each host is /root/hwreport.txt. Keep the pair straight the way Q10.3 taught with hosts.yml and /etc/myhosts — the runner wants the .yml, the verifications want the .txt.<br>
+  • <b>Why the exam cares:</b> this run is download-and-fill repeated identically on four hosts, so its recap should be a clean sweep — same ok/changed pattern everywhere. A host that breaks the pattern (a 304-style failure on the template download, a missing fact) is visible in the recap's asymmetry before you read a single report, which is why this unremarkable command deserves a careful read rather than a shrug.</p>
   <div class="tie"><b>How it ties in:</b> the run is the claim. Q13.2 reads the reports; Q13.3 and Q13.4 audit them two different ways.</div>`
 },
 {
@@ -1344,6 +1619,11 @@ const QUESTIONS = [
   <p>Four reports, each describing its own host: its inventory name, its memory, its BIOS, its disk sizes — and <code>NONE</code> anywhere a disk is absent. The <code>-b</code> is not decoration: /root is unreadable to the login user, so without become the cat fails on every host even though the playbook succeeded.</p>
   <h4>How it affects the Ansible environment</h4>
   <p>• Nothing changes. Reading your own output back is the weakest proof, though — it shows the file, not that the values are true. Q13.3 checks the values against the hosts' facts.</p>
+  <h4>Command anatomy — what every part does, and what breaks without it</h4>
+  <p>• <code>ansible all</code> — all four hosts: each report is host-specific (its own name, memory, disks), so the evidence set is only complete when every host answers.<br>
+  • <code>-b</code> — the pair to Q13.3's bare command: /root is root's home, mode-restricted, so the cat is refused to the login user on every host. Without become, this verify fails four times in a row on a playbook that actually succeeded — the loudest false alarm in the question.<br>
+  • <code>-a 'cat /root/hwreport.txt'</code> — the product file at its absolute path. <code>cat</code>, whole file: at five lines, the report is small enough that sampling (head, tail) would only risk hiding a line.<br>
+  • <b>Why the exam cares:</b> this is the content read-back — the labels, in order, with the values the template filled. It cannot prove the values true (that is Q13.3's audit), but it is where structural mistakes surface: a label with no value, a host describing another host, a disk line missing entirely. Read for shape here; audit for truth next.</p>
   <div class="tie"><b>How it ties in:</b> content first, then truth, then completeness — the same proof ladder as Q12's link checks.</div>`
 },
 {
@@ -1357,6 +1637,11 @@ const QUESTIONS = [
   <p>You audited the report against the source it was templated from: <code>ansible_devices</code> is the exact fact the two disk lines read, so every size in every report must appear here, under the same host. The host whose fact output has no sdb key at all is the one whose report must read <code>Size of disk device sdb=NONE</code> — that pairing is the default filter, proven.</p>
   <h4>How it affects the Ansible environment</h4>
   <p>• Nothing changes. Same filtered setup call as Q9.0 and Q10.5 — one fact family, read directly, no full fact dump.</p>
+  <h4>Command anatomy — what every part does, and what breaks without it</h4>
+  <p>• <code>ansible all -m ansible.builtin.setup</code> — the fact gatherer, run ad hoc so the facts are fresh from the hosts at audit time, not replayed from the playbook's run.<br>
+  • <code>-a 'filter=ansible_devices'</code> — the filter names one fact family: the device's disks, with their sizes and partitions. It is a precise choice — ansible_devices is the exact fact the report's two disk lines were templated from, so this output and the report are two readings of the same source, taken independently. Drop the filter and each host returns its full fact set; the disk data would be present and practically unfindable under exam time pressure.<br>
+  • No <code>-b</code> — the deliberate contrast with Q13.2: gathering device facts does not read root-owned files, so become stays off. The -b tracks what the target demands, step by step, not a blanket habit.<br>
+  • <b>Why the exam cares:</b> this is the audit that separates "the template printed something" from "the template printed the truth" — every size in every report must appear here, under the same host, and the host with no sdb key in this output is precisely the host whose report must read NONE.</p>
   <div class="tie"><b>How it ties in:</b> facts built the file (Q13), facts audit it here. Q13.4 proves no line was left behind.</div>`
 },
 {
@@ -1370,6 +1655,12 @@ const QUESTIONS = [
   <p>A negative proof: <code>grep -L</code> names files that do <i>not</i> contain the pattern, so silence plus exit code 1 is the pass — every report has at least one <code>=</code> line, which combined with Q13.2's five-line shape means no bare label survived. It is the fastest possible completeness check: one command, no reading. That closes Q13.</p>
   <h4>How it affects the Ansible environment</h4>
   <p>• Nothing changes. Say it the senior way: "The disk lines use a default('NONE') filter, so a host without that disk writes NONE instead of failing — and because the template is re-downloaded each run, every run reports changed even when the final file is the same."</p>
+  <h4>Command anatomy — what every part does, and what breaks without it</h4>
+  <p>• <code>-a "grep -L = /root/hwreport.txt"</code> — the case of one letter carries the whole step: <code>-L</code> (capital) lists files that do <i>not</i> contain the pattern, while <code>-l</code> (lowercase) lists files that <i>do</i>. Swap them and the proof inverts — you would be listing every report that has a completed line and reading it as failure.<br>
+  • The pattern is a single character, <code>=</code>: every finished line has the form LABEL=value, so a file containing at least one <code>=</code> has at least one completed label — and a template whose lines were never filled would contain none.<br>
+  • <code>-b</code> rides along for Q13.2's reason: the file sits in /root, unreadable without become, and a permission failure would otherwise masquerade as a result.<br>
+  • The double quotes around this -a (where sibling steps use single quotes) change nothing — either quote keeps the string together as one argument; what matters is that <code>grep -L =</code> and the path arrive as a single -a value, not fragments.<br>
+  • <b>Why the exam cares:</b> this is a negative proof, and its success looks like nothing happening: no filenames printed, grep exiting 1 because nothing matched its (inverse) request. Read that silence wrong — or flip the flag's case — and a complete set of reports looks broken, inviting you to "fix" the one thing that was never wrong.</p>
   <div class="tie"><b>How it ties in:</b> that closes Q13. Q14 leaves the managed nodes entirely — it works on the controller, protecting the secrets that Q15's playbook will consume.</div>`
 },
 {
@@ -1387,6 +1678,12 @@ const QUESTIONS = [
   <h4>How it affects the Ansible environment</h4>
   <p>• The password file is itself a secret — in production it never goes into Git (it belongs in .gitignore) and the password itself comes from a secrets manager through a script. Here it is a lab file with lab permissions.<br>
   • Deliberately <i>not</i> done: adding <code>vault_password_file</code> to ansible.cfg. Q16's vault uses a different password, and a global setting would silently point every command at the wrong key. Explicit flags beat global state.</p>
+  <h4>Command anatomy — what every part does, and what breaks without it</h4>
+  <p>• <code>cd ~/ansible &amp;&amp;</code> — the password file must live beside the vault it will unlock, in the project directory, because every later command names it by the relative path <code>secret.txt</code>. Create it anywhere else and Q14.1's flag points at a file that is not there.<br>
+  • <code>echo 'redhat123'</code> — echo writes its argument plus a newline (Ansible trims the newline when it reads a vault password file, so the password is exactly redhat123). The single quotes keep the shell from interpreting anything in the string — a habit that matters the day a password contains a $ or a space.<br>
+  • <code>&gt; secret.txt</code> — the redirect creates the file (or truncates it) and sends echo's output into it. The filename is the one Q14.1 and Q15.2 will pass to --vault-password-file.<br>
+  • <code>chmod 600 secret.txt</code> — the octal is the security of the whole question: 6 = read+write for the owner, 0 for group, 0 for everyone else. At 644 the vault's password would be readable by any account on the machine, and the encryption built on top of it would be theatre. This step is checked on the mode exactly.<br>
+  • <b>Why the exam cares:</b> three properties are graded here — right directory, right content, right permissions — and each clause of the chain carries one of them. Drop the chmod and you have built a strong lock and left its key under a doormat everyone can reach.</p>
   <div class="tie"><b>How it ties in:</b> the key exists. Q14.1 uses it to create the lock itself.</div>`
 },
 {
@@ -1401,6 +1698,11 @@ const QUESTIONS = [
   <p><code>ansible-vault create</code> made a new file and opened it in an editor for exactly one purpose: whatever you save is encrypted on the way out, with AES256, using the password in secret.txt. On disk the file will never exist in plaintext — that is the entire point of create over "write it, then encrypt it", which leaves a plaintext window.</p>
   <h4>How it affects the Ansible environment</h4>
   <p>• Q14 is the exam's odd one out: no playbook, no managed hosts, and no ansible-navigator equivalent — ansible-vault is the only tool. Nothing on servera–d changed.</p>
+  <h4>Command anatomy — what every part does, and what breaks without it</h4>
+  <p>• <code>ansible-vault create</code> — the subcommand is the design decision: <code>create</code> makes a brand-new file that is encrypted from its first byte — the editor session it opens encrypts whatever you save, on the way out. Its sibling <code>encrypt</code> converts a file that already exists as plaintext, which means the plaintext had to sit on disk first; that window is precisely what this question refuses. (The checker also rejects building the file with plain vim for the same reason.)<br>
+  • <code>locker.yml</code> — the new vault's filename, created in your current directory — which is why Q14's cd came first. Q15.1's playbook will reference this exact name in vars_files.<br>
+  • <code>--vault-password-file secret.txt</code> — where the password comes from: read it from the 600-permission file instead of prompting. The interactive prompt would work for you, once, at a keyboard — but no playbook run can answer a prompt, and the whole point of Q14's setup is a key the automation can use. A wrong path here (or running from the wrong directory, since the path is relative) fails with the password file not found.<br>
+  • <b>Why the exam cares:</b> create plus password-file is the only flow in this set that never exposes plaintext and stays usable by later steps. Every alternative trades one of those away — and Q15.2 will spend exactly the mechanism this command sets up.</p>
   <div class="tie"><b>How it ties in:</b> the editor is open. Q14.2 is what you type into it.</div>`
 },
 {
@@ -1428,6 +1730,11 @@ const QUESTIONS = [
   <p>The header is the file's own declaration: vault format 1.1, AES256 cipher. It is also the fastest possible audit — any file in a project that should be a vault and does <i>not</i> start with that line is plaintext, whatever its name claims. Everything below that line is ciphertext blocks.</p>
   <h4>How it affects the Ansible environment</h4>
   <p>• Nothing changes. Note the header is metadata, not proof of the contents — Q14.4 opens the file properly and reads what is actually inside.</p>
+  <h4>Command anatomy — what every part does, and what breaks without it</h4>
+  <p>• <code>head -1</code> — print exactly the first line and stop. <code>-1</code> is the count: one line. The vault format guarantees that line is the header, so one line is the entire audit.<br>
+  • <code>locker.yml</code> — the file named bare, resolved from your current directory: as always in this arc, the command assumes you are standing in ~/ansible where the vault lives.<br>
+  • Why not <code>cat</code>: the rest of the file is ciphertext rendered as long hex blocks — printing it would flood the terminal with data that carries no information, while the verdict sits entirely in line 1: $ANSIBLE_VAULT;1.1;AES256. A plaintext YAML file wearing a vault's name would show its first YAML line instead, and this check would catch it instantly.<br>
+  • <b>Why the exam cares:</b> the header is a file's sworn statement about its own format. This is the fastest possible encryption audit — one line, no password needed, no decryption performed — and it separates "is a vault" from "is named like one", a distinction the rest of the Q14/Q15 arc depends on.</p>
   <div class="tie"><b>How it ties in:</b> sealed on the outside. Q14.4 checks the inside matches what you typed.</div>`
 },
 {
@@ -1441,6 +1748,11 @@ const QUESTIONS = [
   <p><code>view</code> decrypts to the screen and writes nothing — the file on disk stays ciphertext. You have now proven the round trip: the password file opens the vault, and the vault holds exactly the two values Q15 will spend. That closes Q14.</p>
   <h4>How it affects the Ansible environment</h4>
   <p>• Say it the senior way: "The secrets are encrypted at rest with AES256, so the file can live in the project and in Git. The password comes from a file with 600 permissions, passed explicitly on every command — never baked into ansible.cfg."</p>
+  <h4>Command anatomy — what every part does, and what breaks without it</h4>
+  <p>• <code>ansible-vault view</code> — view is the read-only subcommand: decrypt in memory, print to the screen, write nothing anywhere. Its neighbours are the sabotage options: <code>decrypt</code> would replace locker.yml with its own plaintext — destroying the vault to inspect it — and <code>edit</code> would open an editor and re-encrypt on save, an unnecessary risk for a check.<br>
+  • <code>locker.yml</code> — the same vault Q14.1 created; after this command it must still be ciphertext on disk, byte for byte the sealed file.<br>
+  • <code>--vault-password-file secret.txt</code> — the same key file that created the lock must be the one that opens it: hand vault a different password file and decryption fails outright (an HMAC verification error), which is the correct behaviour — the key either matches or nothing is revealed.<br>
+  • <b>Why the exam cares:</b> this completes the round trip the question is really testing — password file opens vault, vault yields exactly the two values Q14.2 typed. If the round trip works here, Q15.2's playbook can repeat it unattended; if it only "should" work, Q15 fails in the middle of a run instead of at this quiet checkpoint.</p>
   <div class="tie"><b>How it ties in:</b> that closes Q14. Q15 is the vault's payoff — the playbook that finally spends pw_developer and pw_manager.</div>`
 },
 {
@@ -1457,6 +1769,12 @@ const QUESTIONS = [
   <p>The cat is the point: <code>users</code> is a list of dictionaries, and each item carries exactly three keys — <code>username</code>, <code>uid</code>, <code>job</code>. alice (1201, developer), vincent (1202, developer), sandy (2201, manager), patrick (2202, manager). The playbook reads them as <code>item.username</code>, <code>item.uid</code>, <code>item.job</code> — and the key is <code>username</code>, not <code>name</code>. Coding against a data file you haven't read is how silent undefined-variable failures are born.</p>
   <h4>How it affects the Ansible environment</h4>
   <p>• The file now sits in the project directory next to users.yml — which matters, because vars_files paths are relative to the playbook.</p>
+  <h4>Command anatomy — what every part does, and what breaks without it</h4>
+  <p>• <code>cd ~/ansible &amp;&amp;</code> — the anchor: the download and the read both happen in the project directory, because Q15.1's vars_files will look for user_list.yml relative to the playbook.<br>
+  • <code>curl -o user_list.yml http://10.1.10.121/user_list.yml</code> — the standard download shape, and the filename is again a contract: users.yml will name <code>user_list.yml</code> in vars_files, literally. Save it as users_list.yml and the playbook fails at load time, before a single task.<br>
+  • <code>&amp;&amp; cat user_list.yml</code> — the third link is the step's real payload: print the downloaded data before writing a line of playbook against it. The && guarantees the cat only runs on a file that actually arrived.<br>
+  • What the cat buys you: the true key names — <code>username</code>, <code>uid</code>, <code>job</code>. Guess instead (say, <code>name</code>) and every loop item resolves that key to nothing, quietly, per user.<br>
+  • <b>Why the exam cares:</b> data-driven playbooks are only as right as your reading of the data file. Ten seconds of cat here is the cheapest insurance in the whole question — the alternative is debugging undefined variables inside a loop, mid-run, four hosts deep.</p>
   <div class="tie"><b>How it ties in:</b> data on the controller. Q15.1 writes the playbook that loops over it.</div>`
 },
 {
@@ -1507,6 +1825,12 @@ const QUESTIONS = [
   <p>The flag is load-bearing: without it the run stops before task 1 with "Attempting to decrypt but no vault secrets found", because vars_files are loaded before any task runs. With it, Ansible decrypts locker.yml in memory on the controller — the plaintext passwords exist only there, and only hashes travel to the hosts. Expect changed and skipping lines interleaved inside tasks 2 and 3: that is the per-item when working, not flapping.</p>
   <h4>How it affects the Ansible environment</h4>
   <p>• Same play, second tool: <code>ansible-navigator run users.yml -m stdout --vault-password-file secret.txt</code> — and keep secret.txt inside ~/ansible, because only the project directory is sure to be visible inside the navigator container.</p>
+  <h4>Command anatomy — what every part does, and what breaks without it</h4>
+  <p>• <code>ansible-playbook users.yml</code> — the playbook comes first as the positional argument: what to run. It is found relative to your current directory, like every run in this set.<br>
+  • <code>--vault-password-file secret.txt</code> — the flag is the run's key, and every word of it matters: <code>--vault-password-file</code> names the mechanism (a file), and <code>secret.txt</code> is a <i>relative</i> path — resolved from where you are standing, so the run only finds its key if you are in ~/ansible. From another directory the same command fails before anything else can.<br>
+  • What the flag is not: it is not <code>--ask-vault-pass</code>, the interactive alternative, which would stop the run at a keyboard prompt — and there is deliberately no ansible.cfg setting to fall back on, because Q14's design keeps the key choice explicit per command.<br>
+  • No <code>sudo</code> — the decryption happens in memory in your own process; nothing about spending vault secrets needs a privileged controller.<br>
+  • <b>Why the exam cares:</b> vars_files are loaded before task 1, so this flag decides whether the run starts at all — without it, the playbook dies at the door with "Attempting to decrypt but no vault secrets found", and no partial progress exists to salvage. It is the single most load-bearing flag in the question.</p>
   <div class="tie"><b>How it ties in:</b> the run is the claim. Q15.3 through Q15.6 verify placement, hashes, and groups.</div>`
 },
 {
@@ -1520,6 +1844,12 @@ const QUESTIONS = [
   <p><code>id</code> answers three things at once: the account exists, the fixed UID from the data file was honored (1201, not whatever was free), and the supplementary group membership landed — devops sits in the groups list, while the primary group is alice's own. The FAILED lines on serverc and serverd are the when conditions made visible: developers were never supposed to exist there.</p>
   <h4>How it affects the Ansible environment</h4>
   <p>• Nothing changes. Learning to read a verify where half the output is red — and correct — is half of reading Ansible output at all.</p>
+  <h4>Command anatomy — what every part does, and what breaks without it</h4>
+  <p>• <code>ansible all</code> — the wide pattern is the method: this verify needs the negative results in frame. Developers must exist on servera and serverb and must <i>not</i> exist on serverc and serverd, so all four hosts are asked and the two failures are part of the pass.<br>
+  • <code>-m ansible.builtin.command</code> — direct execution of one binary; id needs no shell around it.<br>
+  • <code>-a 'id alice'</code> — <code>id</code> answers three graded facts in one line: the account exists, its <code>uid=</code> is 1201 (the fixed value from the data file, not the next free number), and its group list contains devops. Any one of the three being wrong is a different bug — placement, data, or group task — and this one call separates them.<br>
+  • No <code>-b</code> — id reads public account information; there is nothing root-owned behind it.<br>
+  • <b>Why the exam cares:</b> narrow the pattern to dev,test "to keep the output clean" and you have deleted the evidence that the when conditions also kept alice <i>off</i> the prod hosts. On this question, the red FAILED lines on the excluded hosts are not noise around the proof — they are half of it.</p>
   <div class="tie"><b>How it ties in:</b> developers placed. Q15.4 checks the mirror image.</div>`
 },
 {
@@ -1533,6 +1863,11 @@ const QUESTIONS = [
   <p>The mirror of Q15.3: sandy exists exactly where task 3's when let her — prod hosts, serverb and serverc — with the manager UID block (2201) and opsmgr membership. Her presence on serverb is the overlap working for her: task 2 skipped her there (not a developer), task 3 created her (manager on prod). One host, two verdicts, both correct.</p>
   <h4>How it affects the Ansible environment</h4>
   <p>• Nothing changes. Placement proven for both roles; Q15.5 proves the passwords were stored as hashes, and Q15.6 proves the groups exist even where no user does.</p>
+  <h4>Command anatomy — what every part does, and what breaks without it</h4>
+  <p>• The frame is Q15.3's, word for word — <code>ansible all -m ansible.builtin.command -a 'id ...'</code> — and the symmetry is the design: the same instrument, aimed at the mirror-image user, so the two outputs can be laid side by side.<br>
+  • <code>-a 'id sandy'</code> — the argument swaps in the manager: what you read for is <code>uid=2201</code> (the manager block from the data file, distinct from the developers' 1200s) and <code>opsmgr</code> in the group list.<br>
+  • The geography flips: sandy exists on serverb and serverc (prod) and is refused on servera and serverd — and serverb appears in <i>both</i> steps' success columns, because it sits in both test and prod. One host, two opposite-looking verdicts across the pair of checks, both correct.<br>
+  • <b>Why the exam cares:</b> either verify alone could pass with a broken playbook — swap the two tasks' conditions and alice's check fails but sandy's might still look plausible at a glance. Only the pair, read together, proves the when logic routes by job <i>and</i> host group, which is the entire question.</p>
   <div class="tie"><b>How it ties in:</b> people placed. Q15.5 checks what is sitting in /etc/shadow.</div>`
 },
 {
@@ -1546,6 +1881,13 @@ const QUESTIONS = [
   <p>Every printed hash opens with <code>$6$</code> — the SHA-512 crypt identifier — proving the vault plaintext was hashed before it reached /etc/shadow, never stored raw. Three details carry the command: <code>-b</code> because shadow is root-only; the <b>shell</b> module because pipes do not exist under command (command would pass the <code>|</code> to getent as a literal argument); and the double cut, which shows the hash's identity without parading the full hash in your scrollback.</p>
   <h4>How it affects the Ansible environment</h4>
   <p>• Nothing changes. Hosts where a user does not exist simply print nothing for that name — the same correct absence as the id checks.</p>
+  <h4>Command anatomy — what every part does, and what breaks without it</h4>
+  <p>• <code>-b</code> — first difference from its sibling verifies, and it is forced: /etc/shadow is root-only, so without become the getent call returns nothing at all.<br>
+  • <code>-m ansible.builtin.shell</code> — the shell module (not command): the argument contains pipes, and pipes are the shell's grammar. Under the command module the <code>|</code> would be handed to getent as a literal argument and the pipeline would silently not exist.<br>
+  • <code>getent shadow alice sandy</code> — one call, two keys: the <code>shadow</code> database (the passwd database holds no hashes at all), and both users named so a single run audits both roles.<br>
+  • <code>cut -d: -f1,2</code> — the first cut works on fields: <code>-d:</code> sets the delimiter to the shadow file's colon, <code>-f1,2</code> keeps fields 1 and 2 — username and password hash — and drops the password-aging fields you do not need.<br>
+  • <code>cut -c1-12</code> — the second cut works on characters, not fields: the first twelve characters of each surviving line, which is exactly enough to show the name and the <code>$6$</code> that identifies a SHA-512 crypt hash, without parading the full hash. Order matters: fields first, then characters — swap the two cuts and the character slice would mangle the lines before the fields could be selected.<br>
+  • <b>Why the exam cares:</b> this is the step that proves the vault's plaintext was hashed before storage, never written raw — and it proves it while modelling the professional habit of showing the minimum evidence: hash family visible, full hash kept out of scrollback and logs.</p>
   <div class="tie"><b>How it ties in:</b> hashes proven. Q15.6 closes with the groups themselves.</div>`
 },
 {
@@ -1559,6 +1901,11 @@ const QUESTIONS = [
   <p>Task 1 had no when, so both groups exist on all four hosts — the member lists are the fingerprint of the two user tasks: devops carries alice and vincent on servera and serverb, opsmgr carries sandy and patrick on serverb and serverc, and serverd's lines end with empty member fields, exactly as designed. That closes Q15.</p>
   <h4>How it affects the Ansible environment</h4>
   <p>• Nothing changes. Say it the senior way: "The when is checked for each user on each host, so servera gets the two developers, serverc gets the two managers, and serverb gets all four because it's in both test and prod. serverd only gets the groups."</p>
+  <h4>Command anatomy — what every part does, and what breaks without it</h4>
+  <p>• <code>ansible all</code> — all four hosts, because the claim under test is universal: task 1 of the play had no <code>when</code>, so both groups must exist everywhere, including on serverd where no user ever lands.<br>
+  • <code>-a 'getent group devops opsmgr'</code> — one getent call with two keys: the <code>group</code> database, both group names, one answer line per group per host. Asking for them in a single call keeps each host's two lines adjacent, which is what makes the pattern readable at a glance.<br>
+  • The payload is at the <i>end</i> of each line: the member list. devops carries alice and vincent where developers were placed, opsmgr carries sandy and patrick where managers were, and serverd's lines end empty — that emptiness is a designed outcome, not missing data, and misreading it as failure is the step's trap.<br>
+  • <b>Why the exam cares:</b> users can be verified host by host, but the group structure is the playbook's scaffolding — if a group were missing where a user task expected it, Q15.3 and Q15.4 would have failed noisily; this step proves the scaffolding stands even on the host that received nothing else, closing the question's last unverified claim.</p>
   <div class="tie"><b>The whole arc:</b> Q0 tuned your editor, Q1 configured the runner, Q2 fixed the repos everything installs from, Q3–Q5 built plays and proved them, Q4 and Q6 stocked the controller with collections and roles, Q7 taught you to author a role, Q8 composed all of it into one system, Q9 taught storage to branch on facts, Q10 built one host's file out of every host's facts, Q11 aimed different content at different groups and showed what an overlap costs, Q12 built a shared directory the way teams actually share, Q13 turned each host's own facts into its own report, Q14 locked the project's secrets away from the project itself, and Q15 spent those secrets — looping a data file, filtering per item, and landing every user exactly where the conditions said. That layering — set up, do, verify — is the exam.</div>`
 },
 {
@@ -1575,6 +1922,11 @@ const QUESTIONS = [
   <h4>How it affects the Ansible environment</h4>
   <p>• Same download shape as Q15's user_list.yml, with one difference: that file was data to read, this one is ciphertext. <code>curl</code> moves it byte for byte; the encryption survives the trip untouched.<br>
   • Like Q14, this question has no playbook and no Navigator equivalent — <code>ansible-vault</code> is the only tool, working here on the controller.</p>
+  <h4>Command anatomy — what every part does, and what breaks without it</h4>
+  <p>• <code>cd ~/ansible</code> — on its own line this time (the checks accept && or separate lines): the download that follows writes relative to wherever you are standing, and every later Q16 step assumes sal.yml is in the project directory. Run the pair from your home directory and the vault lands in ~, where rekey — run from the project — will not find it.<br>
+  • <code>curl -o sal.yml http://10.1.10.121/sal.yml</code> — the familiar download shape with one difference in kind: the payload is ciphertext. curl neither knows nor cares; it moves the bytes intact, and the encryption survives the trip untouched — a vault can be copied by anyone and opened only by the password holder.<br>
+  • <code>-o sal.yml</code> — the name is preserved exactly, because Q16.1's rekey and Q16.3's view both address the file as sal.yml.<br>
+  • <b>Why the exam cares:</b> location discipline, one last time: the file's content cannot be wrong (you are not authoring it), so the only failure available in this step is placing it where the rest of the question is not looking — and that failure would present, misleadingly, as a vault problem in Q16.1.</p>
   <div class="tie"><b>How it ties in:</b> Q14 taught the vault as a lock you create. This is that lock's key changing — Q16.1 turns it.</div>`
 },
 {
@@ -1590,6 +1942,11 @@ const QUESTIONS = [
   <h4>How it affects the Ansible environment</h4>
   <p>• Only the key changed. The variables inside are untouched, so anything consuming sal.yml keeps working — it just needs the new password now.<br>
   • In production this is the move after a staff departure or a suspected leak. Treat it as housekeeping, not a cure: rotate the secrets <i>inside</i> the vault as well, and remember that old Git commits still hold the old ciphertext, readable by anyone who kept the old password.</p>
+  <h4>Command anatomy — what every part does, and what breaks without it</h4>
+  <p>• <code>ansible-vault rekey</code> — the subcommand is the entire answer, one word doing a three-part job: open with the old password (in memory), re-encrypt the identical contents under the new one, write back ciphertext. The interaction happens at its prompts — old password once, new password (secure1234) twice — not on the command line.<br>
+  • <code>sal.yml</code> — the target file, and only that file: rekey the wrong vault (locker.yml sits in the same directory, one tab-completion away) and you have rotated a healthy credential while the compromised one stays in force.<br>
+  • The flag that is absent: no <code>--vault-password-file</code> — on purpose. secret.txt holds redhat123, which opens locker.yml, not this vault; pointing rekey at it would fail to decrypt sal.yml at the first step. Different vaults, different keys, named explicitly each time — the same reason ansible.cfg carries no global vault password.<br>
+  • <b>Why the exam cares:</b> the forbidden alternative — decrypt, then encrypt as two steps — parks the vault's contents on disk as plaintext between the operations, and the checker fails it outright. rekey exists precisely so that at no instant does an unencrypted version of this file exist; using anything else is not a style miss, it is the one approach the question defines as wrong.</p>
   <div class="tie"><b>How it ties in:</b> this is also why ansible.cfg carries no <code>vault_password_file</code> — Q14's locker opens with redhat123, this vault with secure1234. One global key would be wrong for one of them, every time.</div>`
 },
 {
@@ -1601,6 +1958,11 @@ const QUESTIONS = [
   ]],
   explain:`<h2>✅ Q16.2 complete — what you just did</h2>
   <p>The first line reads <code>$ANSIBLE_VAULT;1.1;AES256</code> — the same header Q14.3 checked on locker.yml. The rekey rewrote the ciphertext beneath it, but the file's identity never changed: a vault before, a vault after, and no plaintext moment in between.</p>
+  <h4>Command anatomy — what every part does, and what breaks without it</h4>
+  <p>• <code>head -1 sal.yml</code> — the same one-line instrument as Q14.3, aimed at a new question: not "was this file born a vault" but "did the operation leave it a vault". <code>-1</code> takes the first line only, because the format puts its declaration there: $ANSIBLE_VAULT;1.1;AES256.<br>
+  • <code>sal.yml</code> — bare filename, current directory assumed: the hygiene steps share Q16's cd as their foundation.<br>
+  • What a failure would look like is the point of the check: after a decrypt-instead-of-rekey slip, this line would show YAML content — <code>some_variable: ...</code> — instead of the vault header, and no subsequent step would be needed to know the question was lost. Conversely, the header's presence proves the seal survived the key change.<br>
+  • <b>Why the exam cares:</b> rekey rewrites the whole file; this is the integrity check that the rewrite kept the format. It costs one line and no password, and it is done before Q16.3 spends the new credential — verify the container first, then trust it with the key.</p>
   <div class="tie"><b>How it ties in:</b> sealed from the outside. Q16.3 opens it with the new key — and the old key's failure is the other half of the proof.</div>`
 },
 {
@@ -1614,6 +1976,11 @@ const QUESTIONS = [
   <p><code>view</code> decrypted to your screen and wrote nothing — the read-only proof. The rotation is now verified from both directions: the new password opens the vault, and the old one is refused. That is exactly the finished state the task demanded: still encrypted, opens with <code>secure1234</code>, no longer opens with <code>insecure4sure</code>.</p>
   <h4>How it affects the Ansible environment</h4>
   <p>• Nothing on the managed hosts changed — this was controller-side key hygiene from start to finish.</p>
+  <h4>Command anatomy — what every part does, and what breaks without it</h4>
+  <p>• <code>ansible-vault view</code> — decrypt to the screen, write nothing: after this proof, sal.yml on disk must still be the sealed file. Reaching for <code>decrypt</code> to "check" would leave the vault as plaintext and undo the entire question at its final step.<br>
+  • <code>sal.yml</code> — the rekeyed file, named exactly as Q16 downloaded it and Q16.1 rotated it.<br>
+  • The absent flag is the test itself: no <code>--vault-password-file</code>, so view prompts you interactively — and you must type <code>secure1234</code> from memory. That is deliberate. A password file would only prove a file's contents; the prompt proves the new credential actually opens the vault, which is the fact the rotation was performed to create. (Typing redhat123 out of Q14 habit, or the old insecure4sure, earns a decryption failure — and that failure, for the old password, is the other half of the pass.)<br>
+  • <b>Why the exam cares:</b> a rotation is only finished when both directions are proven — new key opens, old key refused. This one bare command is where both halves are demonstrated, with the file left sealed throughout: the exact end state the task demanded.</p>
   <div class="tie"><b>The vault arc:</b> Q14 created a vault and proved the seal from both sides; Q15 spent its secrets; Q16 changed the key without ever breaking the seal. Create, use, rotate — the full life of a vault.</div>`
 }
 ];
