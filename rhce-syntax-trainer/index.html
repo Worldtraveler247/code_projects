@@ -80,6 +80,8 @@
   .audiobox audio{width:100%}
   #modebtn{cursor:pointer;color:var(--amber);border-color:var(--amber);font:inherit}
   #modebtn:hover{background:#1d1a12}
+  #resetbtn{cursor:pointer;color:#ff7b72;border-color:#ff7b72;font:inherit}
+  #resetbtn:hover{background:#221418}
   .stepper{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:0 0 6px}
   .stepper .slabel{color:var(--dim);font-size:12px;margin-right:4px}
   .schip{border:1px solid var(--line);background:#000;color:var(--dim);padding:3px 9px;font-size:12px;cursor:pointer}
@@ -146,6 +148,7 @@
   <div class="pill time">exam clock: <b id="clock">00:00</b> / 150:00</div>
   <div class="pill">passed: <b id="score">0 / 9</b></div>
   <button class="pill" id="modebtn" title="Guided: inside each question, a step unlocks when the step before it passes. Practice: everything open, jump anywhere.">mode: GUIDED</button>
+  <button class="pill" id="resetbtn" title="Reset the whole game: every passed step goes back to not-done, all green clears, and you start again from the top.">↺ reset</button>
 </header>
 <div id="ttybar">Guided mode walks each question in order — pass a step to unlock the next one inside that question. Questions themselves stay open: start any question from the list. Flip the mode toggle up top to Practice if you want to jump anywhere. Your passes are saved in this browser. &nbsp;[Ctrl+Enter or F2] check &nbsp;[Alt+↑/↓] switch file &nbsp;[Alt+→] next &nbsp;[Alt+←] previous &nbsp;::&nbsp; grading follows the real system — any valid syntax that produces the required result passes</div>
 <main>
@@ -3429,6 +3432,11 @@ if (modeBtn) modeBtn.addEventListener("click", () => {
 syncModeBtn();
 const rstLink = gel("resetprogress");
 if (rstLink) rstLink.addEventListener("click", (e) => { e.preventDefault(); state.done.clear(); state.finished = false; persistProgress(); renderNav(); renderStage(); });
+const rstBtn = gel("resetbtn");
+if (rstBtn) rstBtn.addEventListener("click", () => {
+  if (!confirm("Reset the whole game? Every passed step goes back to not-done and all green clears — you start again from the top.")) return;
+  state.done.clear(); state.finished = false; persistProgress(); renderNav(); renderStage();
+});
 
 renderNav();
 renderStage();
