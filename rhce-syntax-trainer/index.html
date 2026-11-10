@@ -3436,7 +3436,7 @@ const rstBtn = gel("resetbtn");
 let rstArmed = false, rstTimer = null;
 function rstDisarm(){ rstArmed = false; if (rstBtn){ rstBtn.textContent = "↺ reset"; rstBtn.style.background = ""; } if (rstTimer){ clearTimeout(rstTimer); rstTimer = null; } }
 if (rstBtn) rstBtn.addEventListener("click", () => {
-  if (!rstArmed){ rstArmed = true; rstBtn.textContent = "↺ tap again to confirm"; rstBtn.style.background = "#3a1d22"; rstTimer = setTimeout(rstDisarm, 4000); return; }
+  if (!rstArmed){ rstArmed = true; rstBtn.textContent = "↺ tap again to confirm"; rstBtn.style.background = "#3a1d22"; rstTimer = setTimeout(rstDisarm, 8000); return; }
   rstDisarm();
   state.done.clear(); state.finished = false; persistProgress(); renderNav(); renderStage();
 });
