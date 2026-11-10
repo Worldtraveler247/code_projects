@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="dark">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'self' https://static.cloudflareinsights.com; connect-src 'self' https://cloudflareinsights.com; img-src 'self' data:; form-action https://buttondown.com; base-uri 'none'; object-src 'none'">
+    <meta name="description" content="The Daily Brief for Wednesday, November 11, 2026: security incidents, senior security advice, engineering explainers, and tech news.">
+    <title>The Daily Brief · Nov 11, 2026</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="icon" href="../../../favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="../../../style.css">
+    <link rel="stylesheet" href="../../newsletter.css">
+</head>
+<body class="brief-page">
+    <a href="#main-content" class="skip-nav">Skip to main content</a>
+    <nav class="brief-nav">
+        <a href="../../../index.html">← App Hub</a>
+        <a href="../../">All issues</a>
+    </nav>
+    
+<header class="brief-masthead">
+    <p class="brief-eyebrow">THE DAILY BRIEF</p>
+    <h1>Wednesday, November 11, 2026</h1>
+    <ol class="brief-toc">
+        <li><a href="#current-events">Current Events</a></li><li><a href="#security-advice">Senior Security Advice</a></li><li><a href="#tech-news">Tech News</a></li>
+    </ol>
+</header>
+<main id="main-content" class="brief">
+    
+    <article class="brief-section" id="current-events">
+        <p class="brief-kicker">Current Events</p>
+        <h2>The tj-actions/changed-files Supply Chain Compromise</h2>
+        
+            
+            <p>A single compromised GitHub Action quietly rewrote what more than twenty-three thousand software repositories were running, and for a few hours in March of 2025, anyone who knew where to look could read live secrets straight out of public build logs. Here's the story of tj-actions changed-files, and how a trusted name in CI/CD -- that's continuous integration and continuous delivery, the pipelines that build and test code automatically -- became the way in.</p>
+<p>tj-actions slash changed-files is a hugely popular GitHub Action, a reusable job that tells a pipeline which files changed in a pull request. Teams reference it with a short version tag, like &quot;v45,&quot; instead of a long commit hash, because a tag is easier to read. On March 14th, 2025, the security firm StepSecurity's monitoring tool flagged something it had never seen before: this trusted action reaching out to an unfamiliar website and downloading a script.</p>
+<p>Here's the chain, step by step, according to CISA's advisory and the GitHub Security Advisory tracking this as CVE-2025-30066. An attacker first got into a separate, related open-source project months earlier -- reporting traces that access back to around November of 2024, through a maintainer connection shared with tj-actions. From that foothold, the attacker got write access into the tj-actions repository itself and rewrote its Git tags -- those same friendly version labels -- to point at a new, malicious commit. Any pipeline that referenced the tag rather than a fixed commit hash pulled that malicious code automatically, with zero changes on the user's end, the next time it ran. Once running, the malicious code dumped the memory of the build process, searched it for anything that looked like a secret -- API keys, cloud credentials, tokens -- and printed what it found straight into the pipeline's own log output, which on a public repository is visible to anyone.</p>
+<p>Root cause, in one sentence: trusting a mutable Git tag as if it were a fixed, verified piece of code let one compromised account rewrite what tens of thousands of pipelines were actually executing, with nothing checking that the code behind that tag was still the code anyone had reviewed.</p>
+<p>Here's what actually held. StepSecurity's outbound-traffic monitoring caught the anomaly the same day, because that destination had never shown up in any prior baseline -- that's the detection that triggered the public warning within hours, not weeks. GitHub pulled the compromised action from its Marketplace and restored a clean version. And organizations that had already pinned their workflows to a fixed commit hash, instead of a tag, were never exposed to the tag rewrite at all -- that one habit fully neutralized the attack for them.</p>
+<p>So what would a senior engineer change here? A senior engineer never references a third-party Action -- or any external dependency -- by a floating tag; they pin it to its exact commit hash, so the code that runs today is provably the code that was reviewed, no matter what happens to the tag later. On a lab, that's a concrete, checkable habit: scanning your own GitHub Actions workflows for every &quot;uses:&quot; line still pointing at a mutable tag instead of a full commit SHA, and fixing every one you find.</p>
+
+        
+            <h3>Timeline</h3>
+            <table>
+<thead>
+<tr>
+<th>Date</th>
+<th>Event</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>~November 2024</td>
+<td>Third-party analyses trace the attacker's initial foothold to a related open-source project sharing a maintainer connection with tj-actions; this is not confirmed in a maintainer-published postmortem.</td>
+</tr>
+<tr>
+<td>March 14, 2025, ~16:00 UTC</td>
+<td>StepSecurity's Harden-Runner tool flags anomalous outbound traffic from the tj-actions/changed-files action to an unfamiliar external host.</td>
+</tr>
+<tr>
+<td>March 14, 2025, by ~23:00 UTC</td>
+<td>StepSecurity confirms most versions of the action have been compromised via tag manipulation; GitHub removes the action from the Marketplace.</td>
+</tr>
+<tr>
+<td>March 15, 2025</td>
+<td>CVE-2025-30066 is assigned; GitHub Security Advisory GHSA-mrrh-fwg8-r2c3 is published with a CVSS score of 8.6 (High).</td>
+</tr>
+<tr>
+<td>March 18, 2025</td>
+<td>CISA publishes an alert on the compromise and adds CVE-2025-30066 to its Known Exploited Vulnerabilities catalog.</td>
+</tr>
+<tr>
+<td>v46.0.1</td>
+<td>tj-actions ships the patched release; GitHub's advisory lists this as the fixed version (affected range given as versions 1 through 45.0.7).</td>
+</tr>
+</tbody>
+</table>
+<p><em>Note: public sources disagree on scope and precise access method. Most reporting cites more than 23,000 repositories using the action, while at least one source instead cites 218 repositories with confirmed exposure — the gap likely reflects &quot;uses the action&quot; versus &quot;confirmed compromised,&quot; and this script has not resolved that discrepancy by picking one figure. Likewise, how the attacker first obtained write access to the related upstream project is described with real uncertainty across sources; no tj-actions maintainer postmortem has been published, so the November 2024 upstream-access detail and the exact initial-access method both come from third-party security-firm analysis rather than the project's own account.</em></p>
+
+        
+            <h3>Control Failures</h3>
+            <table>
+<thead>
+<tr>
+<th>#</th>
+<th>Failure</th>
+<th>NIST SP 800-53 Rev 5 Control Family</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>Consuming workflows referenced the action by a mutable version tag rather than an immutable commit hash, so repointing the tag silently swapped the code executing in thousands of pipelines with no integrity check.</td>
+<td><strong>SI-7</strong> — Software, Firmware, and Information Integrity</td>
+</tr>
+<tr>
+<td>2</td>
+<td>The attacker reached the tj-actions repository through write access tied to a related, previously compromised project/maintainer chain, with no additional verification gating that access.</td>
+<td><strong>IA-5</strong> — Authenticator Management</td>
+</tr>
+<tr>
+<td>3</td>
+<td>CI secrets — API keys, cloud credentials, tokens — were pulled from runner memory and printed into plaintext workflow logs that remained readable by anyone with access to the repository's Actions output.</td>
+<td><strong>AC-4</strong> — Information Flow Enforcement</td>
+</tr>
+<tr>
+<td>4</td>
+<td>Repointing a widely-depended-on action's release tag to new code is a security-relevant change that took effect for every downstream consumer with no independent review or approval gate.</td>
+<td><strong>CM-3</strong> — Configuration Change Control</td>
+</tr>
+<tr>
+<td>5</td>
+<td>Thousands of downstream organizations had no internal monitoring of their own CI/CD supply chain and learned of the compromise only because an outside third party's anomaly detection caught it.</td>
+<td><strong>AU-6</strong> — Audit Record Review, Analysis, and Reporting</td>
+</tr>
+</tbody>
+</table>
+
+        
+            <h3>What Held</h3>
+            <ul>
+<li><strong>Commit-SHA pinning fully neutralized the attack for anyone using it.</strong> Organizations that already referenced the action by a fixed commit hash instead of a floating tag were never affected by the tag rewrite at all — the single cleanest example in this incident of one control making an entire attack path irrelevant.</li>
+<li><strong>Independent, same-day egress detection.</strong> StepSecurity's Harden-Runner caught the anomalous outbound call within hours because the destination had never appeared in any prior traffic baseline, and that detection — not the project's own maintainers — is what surfaced the compromise publicly on March 14th.</li>
+<li><strong>A fast platform-level takedown.</strong> GitHub pulled the compromised action from the Marketplace and restored clean history once notified, cutting off new exposure without requiring every downstream repository to act first.</li>
+</ul>
+
+        
+            <h3>Sources</h3>
+            <ul>
+<li><a href="https://www.cisa.gov/news-events/alerts/2025/03/18/supply-chain-compromise-third-party-github-action-cve-2025-30066" target="_blank" rel="noopener noreferrer">Supply Chain Compromise of Third-Party GitHub Action (CVE-2025-30066) — CISA Alert (primary)</a></li>
+<li><a href="https://github.com/tj-actions/changed-files/security/advisories/GHSA-mrrh-fwg8-r2c3" target="_blank" rel="noopener noreferrer">GHSA-mrrh-fwg8-r2c3 — tj-actions/changed-files Security Advisory — GitHub (primary)</a></li>
+<li><a href="https://nvd.nist.gov/vuln/detail/CVE-2025-30066" target="_blank" rel="noopener noreferrer">CVE-2025-30066 — NVD record (primary)</a></li>
+<li><a href="https://www.stepsecurity.io/blog/harden-runner-detection-tj-actions-changed-files-action-is-compromised" target="_blank" rel="noopener noreferrer">Harden-Runner detection: tj-actions/changed-files action is compromised — StepSecurity (primary, discoverer's own writeup)</a></li>
+<li><a href="https://thehackernews.com/2025/03/github-action-compromise-puts-cicd.html" target="_blank" rel="noopener noreferrer">GitHub Action Compromise Puts CI/CD Secrets at Risk in 23,000 Repositories — The Hacker News</a></li>
+<li><a href="https://socket.dev/blog/github-actions-supply-chain-attack-puts-thousands-of-projects-at-risk" target="_blank" rel="noopener noreferrer">GitHub Actions Supply Chain Attack Puts Thousands of Projects at Risk — Socket</a></li>
+<li><a href="https://securityaffairs.com/175547/hacking/github-action-tj-actions-changed-files-was-compromised.html" target="_blank" rel="noopener noreferrer">GitHub Action tj-actions/changed-files was compromised in supply chain attack — Security Affairs</a></li>
+</ul>
+<p><strong>Tomorrow's Thread:</strong> Day 55 moves to the AI and agent security family — a documented AI/ML supply-chain or model-hub incident (for example, published research on malicious or unsafe model deserialization on a model hub) not yet covered in this folder, a different family from today's software supply-chain topic.</p>
+
+        
+    </article>
+    
+    <article class="brief-section" id="security-advice">
+        <p class="brief-kicker">Senior Security Advice</p>
+        <h2>Require Phishing-Resistant MFA for Privileged and High-Risk Accounts</h2>
+        
+            <h3>The Advice</h3>
+            <p>Require phishing-resistant multi-factor authentication — FIDO2/WebAuthn security keys, passkeys, or PKI-based smart cards like PIV/CAC — on every privileged, administrative, and high-risk account, instead of relying on push notifications, SMS codes, or app-based one-time codes.</p>
+
+        
+            <h3>Why It Matters</h3>
+            <p>Most organizations that say they have &quot;MFA everywhere&quot; are actually running push-notification or one-time-code MFA, and both are phishable. A fake login page can relay a stolen password straight to the real site and simply prompt the victim to approve a push or type in the six-digit code; the attacker captures the session the instant the user complies. This is the mechanic behind a well-documented incident class: adversary-in-the-middle phishing kits and MFA-fatigue attacks, where a user is bombarded with push prompts until they tap &quot;approve&quot; just to make the notifications stop. Once that one approval lands, the attacker has a live, authenticated session — the same outcome as if MFA had never been enabled at all. Phishing-resistant methods close this gap because the authentication is cryptographically bound to the real website's origin; a cloned phishing page simply cannot complete the exchange, no matter how convincing it looks.</p>
+
+        
+            <h3>How to Implement It</h3>
+            <ol>
+<li>Inventory every account with administrative, financial, or data-export privilege, and every account tied to identity, cloud, or code-signing infrastructure — these go first, not last.</li>
+<li>Issue FIDO2 security keys or enable platform passkeys for those accounts; in a DoD or federal environment, PKI-based PIV/CAC authentication serves the same phishing-resistant role and is often already mandated.</li>
+<li>Configure the identity provider's conditional access or authentication policy to reject weaker factors — SMS, voice call, and plain push approval — for any account in that privileged tier, not just to offer the strong factor as an option.</li>
+<li>Verify enforcement by testing from an account that should be blocked: confirm a login attempt using only a password-plus-push fails outright for a privileged account, and check the sign-in logs to confirm the authentication method actually used matches policy, not just that a factor was &quot;required.&quot;</li>
+<li>For accounts that cannot yet move to hardware-backed authentication, apply number-matching MFA as a CISA-recommended interim control and put a firm migration date on the exception.</li>
+</ol>
+
+        
+            <h3>The Pushback You&#39;ll Hear</h3>
+            <p>&quot;We already have MFA on everything, so we're covered.&quot; Having a second factor enabled and having a phishing-resistant second factor are different controls with very different failure modes. Push and OTP-based MFA still stop basic password-only attacks, but they were never designed to survive a real-time phishing relay, and that's precisely the technique attackers have shifted to because it works against exactly this kind of MFA. The fix isn't more MFA — it's the right kind of MFA on the accounts that matter most.</p>
+
+        
+            <h3>Sources</h3>
+            <ul>
+<li>CISA, &quot;Implementing Phishing-Resistant MFA&quot;: https://www.cisa.gov/sites/default/files/publications/fact-sheet-implementing-phishing-resistant-mfa-508c.pdf</li>
+<li>NIST SP 800-63B, Authenticator Assurance Level 3 (AAL3) requirements: https://pages.nist.gov/800-63-4/sp800-63b/aal</li>
+</ul>
+
+        
+    </article>
+    
+    <article class="brief-section" id="tech-news">
+        <p class="brief-kicker">Tech News</p>
+        
+        
+            
+            <p>A password bug that's been sitting inside OpenSSH for ten years just got weaponized — and if your Linux boxes run on Alpine or anything else built on musl, you need to hear this tonight. The Cybersecurity and Infrastructure Security Agency, or CISA, confirmed it's being actively exploited, with a federal patch deadline that's already ticking. Two stories today: that OpenSSH bypass, and a second flaw from the same government advisory that hands attackers full admin rights with nothing but a crafted message.</p>
+<p>Here's what happened. Researcher Özgün Kültekin at the security firm Wakefield found that OpenSSH's sshd — the piece of software that handles every incoming Secure Shell login — would let someone log into an account that has no password set at all, but only on Linux systems built on the musl C library instead of the more common glibc. Alpine Linux is the best-known example, and Alpine happens to be the default base image for a huge share of container builds. Reporting says this bug has been sitting in that code for roughly a decade; it just never got noticed until now. OpenSSH shipped a fix, version 10.6p2, on November 5th, and CISA added it to the Known Exploited Vulnerabilities catalog on November 9th, with a November 12th deadline for federal agencies — that's basically right now. Here's my read: this is exactly why you patch your dependencies, not just the services sitting on top of them. If you can't patch today, turn off password authentication in your SSH configuration and require keys instead — that one setting closes the hole completely.</p>
+<p>Next up — the second flaw in that same CISA advisory, and it's just as serious if you run file-transfer infrastructure.</p>
+<p>IBM disclosed CVE-2026-123218 in Aspera Faspex, software enterprises use to move large files securely. According to IBM's own security bulletin, a user who's already logged in with ordinary access can craft one specific message that slips past the application's authorization checks and hands them full administrative control. CISA added this one to the same November 9th catalog update, same November 12th deadline. My take: this is a textbook authorization failure, not an authentication failure — the system correctly identified who the user was, it just failed to check what that user was actually allowed to do next. Those two checks get treated as one control far too often, and attackers count on it.</p>
+<p>So here's the through-line tonight: knowing who someone is was never the hard part — proving what they're allowed to do with that identity is.</p>
+<p>If you're running Alpine or any musl-based Linux host, confirm you're on OpenSSH 10.6p2. If Aspera Faspex is anywhere in your file-transfer stack, get it patched before Thursday's deadline.</p>
+
+        
+            <h3>Sources</h3>
+            <ul>
+<li><a href="https://securityweek.com/openssh-rushes-patches-for-sshole-authentication-bypass" target="_blank" rel="noopener noreferrer">OpenSSH Rushes Patches for 'Sshole' Authentication Bypass — SecurityWeek</a></li>
+<li><a href="https://www.helpnetsecurity.com/?p=390599" target="_blank" rel="noopener noreferrer">OpenSSH flaw exploited in the wild just hours after disclosure (CVE-2026-123158) — Help Net Security</a></li>
+<li><a href="https://www.esecurityplanet.com/vulnerabilities/news-cisa-kev-gpustack-freeswitch-openssh-ibm-november-2026/" target="_blank" rel="noopener noreferrer">CISA KEV Adds 4 Exploited Flaws, Nov. 12 Deadline — eSecurity Planet</a></li>
+<li><a href="https://ibm.com/support/pages/node/7295921" target="_blank" rel="noopener noreferrer">IBM Aspera Faspex Security Bulletin — IBM Support (primary)</a></li>
+<li><a href="https://app.opencve.io/cve/CVE-2026-123218" target="_blank" rel="noopener noreferrer">CVE-2026-123218 — OpenCVE</a></li>
+<li><a href="https://www.getastra.com/blog/?p=50058" target="_blank" rel="noopener noreferrer">CVE-2026-123158 (*sshole) — Astra Security</a></li>
+</ul>
+
+        
+    </article>
+    
+    <section class="brief-subscribe" id="subscribe">
+    <h2>Get The Daily Brief by email</h2>
+    <p>One short email each morning. Unsubscribe anytime.</p>
+    <form action="https://buttondown.com/api/emails/embed-subscribe/cybercider" method="post">
+        <label for="bd-email">Email address</label>
+        <input type="email" name="email" id="bd-email" required autocomplete="email" placeholder="you@example.com">
+        <button type="submit">Subscribe</button>
+    </form>
+</section>
+</main>
+
+    <footer><p class="copyright">The Daily Brief · Eddie Camacho</p></footer>
+<!-- cf-web-analytics (managed by tools/inject_analytics.py) -->
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "f728a20b49cc4a0fbe02cde72f03301c"}'></script>
+</body>
+</html>
