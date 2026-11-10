@@ -2167,6 +2167,133 @@ function canonForm(t, dir, lang){
   return dir === "short" ? canonShort(s) : canonFqcn(s);
 }
 
+// --- Real-world command normalization (extra grading variant, cmd/bash only)
+// The terminal accepts a command written the way a real shell would run it,
+// so grading also tries ONE fully normalized form of every command line:
+//   - ansible-navigator run <play> [any navigator flags] is the same run as
+//     ansible-playbook <play>: navigator-only options (-m/--mode, --ee,
+//     --eei, --pae, --pull-policy, --container-engine, ...) are dropped, the
+//     playbook may sit anywhere among the flags, and the flags that
+//     ansible-playbook understands are kept in a fixed order after it.
+//   - ansible-playbook itself gets the same treatment: flag order and the
+//     "--flag=value" form are normalized.
+//   - ad hoc: ansible [pattern] [-b] [-m module] [-a 'args'] in any order —
+//     a missing pattern means "all" (the shorthand form), a missing -m with
+//     -a present means the command module (ansible's real default), module
+//     names are written as FQCN when the short name is a known module, and
+//     a typed -b is kept, normalized to right after the host pattern.
+// Only the FORM is rewritten: the pattern, module, arguments, playbook name
+// and kept flag values are carried over untouched, so a wrong target,
+// module, argument or file still fails on every variant.
+const NAV_DROP_VALUE = ["-m","--mode","--ee","--execution-environment","--eei","--execution-environment-image","--pae","--playbook-artifact-enable","--par","--playbook-artifact-replay","--pp","--pull-policy","--ce","--container-engine","--co","--container-options","--eev","--execution-environment-volume-mounts","--penv","--pass-environment-variable","--senv","--set-environment-variable","--rad","--run-args"];
+const PB_DROP_VALUE = ["--start-at-task","--forks","-f","--user","-u","--private-key","--connection","-c","--timeout","-T","--become-user","--ssh-common-args","--scp-extra-args","--sftp-extra-args"];
+const ADHOC_DROP_VALUE = ["-i","--inventory","-u","--user","--private-key","-c","--connection","-f","--forks","-e","--extra-vars","--vault-password-file","--vault-id","--become-user","-l","--limit","--tags","-t","-T","--timeout"];
+function shellTokens(s){ return s.match(/'[^']*'|"[^"]*"|\S+/g) || []; }
+function splitSegments(line){
+  // Split on && and ; sitting outside any quotes; separators are kept.
+  const parts = []; let cur = "", q = null;
+  for (let i = 0; i < line.length; i++){
+    const ch = line[i];
+    if (q){ cur += ch; if (ch === q) q = null; continue; }
+    if (ch === "'" || ch === '"'){ q = ch; cur += ch; continue; }
+    if (ch === "&" && line[i + 1] === "&"){ parts.push(cur, "&&"); cur = ""; i++; continue; }
+    if (ch === ";"){ parts.push(cur, ";"); cur = ""; continue; }
+    cur += ch;
+  }
+  parts.push(cur);
+  return parts;
+}
+function flagValue(tokens, i){
+  // tokens[i] is a flag: return [value|null, nextIndex]; handles --flag=value.
+  const tk = tokens[i], eq = tk.indexOf("=");
+  if (eq > 0) return [tk.slice(eq + 1), i + 1];
+  if (i + 1 < tokens.length) return [tokens[i + 1], i + 2];
+  return [null, i + 1];
+}
+function unquoteArg(tk){
+  if (tk && tk.length >= 2 && ((tk[0] === "'" && tk.endsWith("'")) || (tk[0] === '"' && tk.endsWith('"')))) return tk.slice(1, -1);
+  return tk;
+}
+function quoteArg(a){ return a.indexOf("'") >= 0 ? '"' + a + '"' : "'" + a + "'"; }
+function normPlaybookRun(tokens){
+  // tokens start AFTER "ansible-playbook" or "ansible-navigator run".
+  let play = null, vault = null, vaultId = null, syntax = false, inv = null, limit = null, tags = null, extra = null, check = false, diff = false;
+  for (let i = 0; i < tokens.length; i++){
+    const tk = tokens[i], base = tk.split("=")[0];
+    if (tk === "--syntax-check"){ syntax = true; continue; }
+    if (tk === "--check"){ check = true; continue; }
+    if (tk === "--diff"){ diff = true; continue; }
+    if (base === "--vault-password-file"){ const r = flagValue(tokens, i); vault = r[0]; i = r[1] - 1; continue; }
+    if (base === "--vault-id"){ const r = flagValue(tokens, i); vaultId = r[0]; i = r[1] - 1; continue; }
+    if (base === "-i" || base === "--inventory"){ const r = flagValue(tokens, i); inv = r[0]; i = r[1] - 1; continue; }
+    if (base === "--limit" || base === "-l"){ const r = flagValue(tokens, i); limit = r[0]; i = r[1] - 1; continue; }
+    if (base === "--tags" || base === "-t"){ const r = flagValue(tokens, i); tags = r[0]; i = r[1] - 1; continue; }
+    if (base === "--extra-vars" || base === "-e"){ const r = flagValue(tokens, i); extra = r[0] === null ? null : unquoteArg(r[0]); i = r[1] - 1; continue; }
+    if (NAV_DROP_VALUE.indexOf(base) >= 0 || PB_DROP_VALUE.indexOf(base) >= 0){ const r = flagValue(tokens, i); i = r[1] - 1; continue; }
+    if (tk.charAt(0) === "-") continue; // any other flag: dropped
+    if (play === null && /\.ya?ml$/.test(tk)) play = tk.split("/").pop();
+  }
+  if (play === null) return null;
+  let out = "ansible-playbook " + play;
+  if (vault !== null) out += " --vault-password-file " + vault;
+  if (vaultId !== null) out += " --vault-id " + vaultId;
+  if (syntax) out += " --syntax-check";
+  if (inv !== null) out += " -i " + inv;
+  if (limit !== null) out += " --limit " + limit;
+  if (tags !== null) out += " --tags " + tags;
+  if (extra !== null) out += " -e " + quoteArg(extra);
+  if (check) out += " --check";
+  if (diff) out += " --diff";
+  return out;
+}
+function normAdhoc(tokens){
+  // tokens start AFTER "ansible".
+  let pattern = null, mod = null, args = null, become = false;
+  for (let i = 0; i < tokens.length; i++){
+    const tk = tokens[i], base = tk.split("=")[0];
+    if (tk === "-b" || tk === "--become"){ become = true; continue; }
+    if (base === "-m" || base === "--module-name"){ const r = flagValue(tokens, i); mod = r[0]; i = r[1] - 1; continue; }
+    if (base === "-a" || base === "--args"){ const r = flagValue(tokens, i); args = r[0] === null ? null : unquoteArg(r[0]); i = r[1] - 1; continue; }
+    if (ADHOC_DROP_VALUE.indexOf(base) >= 0){ const r = flagValue(tokens, i); i = r[1] - 1; continue; }
+    if (tk.charAt(0) === "-") continue; // any other flag: dropped
+    if (pattern === null) pattern = tk;
+  }
+  if (mod === null && args === null) return null;
+  if (mod === null) mod = "command"; // ansible's real default module
+  let modForm = mod;
+  if (modForm.indexOf(".") < 0 && (BUILTIN_MODS.indexOf(modForm) >= 0 || MOD_FQCN[modForm])) modForm = fqcnOf(modForm);
+  let out = "ansible " + (pattern === null ? "all" : pattern);
+  if (become) out += " -b";
+  out += " -m " + modForm;
+  if (args !== null) out += " -a " + quoteArg(args);
+  return out;
+}
+function normSegment(seg){
+  const t = seg.trim();
+  if (!t) return seg;
+  const tokens = shellTokens(t);
+  if (tokens[0] === "ansible-navigator" && tokens[1] === "run"){ const r = normPlaybookRun(tokens.slice(2)); return r === null ? t : r; }
+  if (tokens[0] === "ansible-playbook"){ const r = normPlaybookRun(tokens.slice(1)); return r === null ? t : r; }
+  if (tokens[0] === "ansible"){ const r = normAdhoc(tokens.slice(1)); return r === null ? t : r; }
+  return t;
+}
+function canonRealForm(t, lang){
+  // Built on canonBase only, NOT on canonCmd/canonFqcn: hoistBecome would
+  // corrupt a pattern-less ad hoc line ("ansible -m ... -b") before the
+  // parser sees it, and the parser already handles -b position and module
+  // FQCN mapping itself.
+  const base = canonBase(t);
+  return base.split("\n").map(line => {
+    // canonBase's =-spacing rule also fires on single-letter shell flags
+    // ("grep -L = /path" becomes "grep -L=/path"); undo that here so the
+    // argument text matches what the real command would receive.
+    const fixed = line.replace(/(\s)-([A-Za-z])=(\S)/g, "$1-$2 = $3").replace(/(\s)-([A-Za-z])=$/, "$1-$2 =");
+    const parts = splitSegments(fixed);
+    for (let i = 0; i < parts.length; i += 2) parts[i] = normSegment(parts[i]);
+    return parts.map((p, i) => i % 2 === 1 ? " " + p + " " : p).join("");
+  }).join("\n");
+}
+
 function runChecks(q, texts){
   // YAML/Bash sanity: tabs are illegal in YAML and a classic silent killer.
   const results = [];
@@ -2177,6 +2304,11 @@ function runChecks(q, texts){
     }
     const variants = [t];
     if (f.lang !== "vim" && f.lang !== "jinja") variants.push(canonForm(t, "short", f.lang), canonForm(t, "fqcn", f.lang));
+    // Real-world command form (navigator-as-playbook, free ad hoc word
+    // order, shorthand pattern/module forms). Pure-negation checks keep
+    // using only [raw, fqcn] below, so this variant can never hide a
+    // forbidden token from them.
+    if (f.lang === "cmd" || f.lang === "bash") variants.push(canonRealForm(t, f.lang));
     (q.checks[fi] || []).forEach(c => {
       // Pure-negation checks (t => !/forbidden/...) never run on the short-name
       // canonical copy: stripping an FQCN prefix could hide the forbidden token.
