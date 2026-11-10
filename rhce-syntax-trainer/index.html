@@ -658,6 +658,13 @@ const QUESTIONS = [
   ]],
   explain:`<h2>✅ Q7 complete — what you just did</h2>
   <p>You moved into the project's <code>roles/</code> directory — the directory Q6 created and installed into. Where you are standing matters for the next step: the role scaffolding command creates the role <i>inside your current directory</i>.</p>
+  <h4>The Q7 chain — frame, walk, furnish</h4>
+  <p>This question exists because of how the next one works. <b>Role scaffolding</b> — Ansible Galaxy generating a role's standard empty directory structure, the skeleton — happens wherever you are standing when you run it: <code>role init</code> takes no destination flag in this flow, so this cd is what decides the role's birthplace. The chain from here:<br>
+  • <b>Q7 (this step)</b> — you cd into <code>roles/</code> first, because init builds the scaffold in your current directory.<br>
+  • <b>Q7.1</b> — <code>role init apache</code> raises the frame: the full standard tree of directories and stub files, generated in one command.<br>
+  • <b>Q7.2</b> — <code>ls roles/apache</code> is you walking the frame to confirm every room exists.<br>
+  • <b>Q7.3 / Q7.4</b> — now you furnish it: replace the stub <code>tasks/main.yml</code> with the real httpd/firewalld tasks, and drop <code>index.html.j2</code> into <code>templates/</code>.<br>
+  • And the contrast with Q6: <code>role install</code> downloads someone else's finished house; <code>role init</code> frames a new one for you to build yourself.</p>
   <h4>How it affects the Ansible environment</h4>
   <p>• A role only resolves if it sits in a directory on the <code>roles_path</code>. Creating it here — alongside <code>balancer</code> and <code>phpinfo</code> — puts your hand-written role in exactly the same place as the downloaded ones, so playbooks treat them identically.</p>
   <h4>Command anatomy — what every part does, and what breaks without it</h4>
@@ -676,6 +683,21 @@ const QUESTIONS = [
   ]],
   explain:`<h2>✅ Q7.1 complete — what you just did</h2>
   <p><code>role init</code> scaffolded the standard role layout for <code>apache</code>: <code>tasks/</code>, <code>templates/</code>, <code>handlers/</code>, <code>defaults/</code>, <code>vars/</code>, <code>files/</code>, <code>meta/</code>, and <code>tests/</code> — each with its expected starter file.</p>
+  <h4>Role scaffolding — the definition</h4>
+  <p><b>Definition:</b> role scaffolding is Ansible Galaxy automatically generating the standard empty directory structure of a role — the skeleton — so you start from the correct layout instead of creating every folder and file by hand. The command that does it is the one you just ran: <code>ansible-galaxy role init apache</code>. One command, and Galaxy builds this entire tree for you:</p>
+  <pre style="margin:6px 0;font-size:13px;line-height:1.5">roles/apache/
+├── tasks/main.yml        ← where the role's work goes
+├── handlers/main.yml     ← restart/reload triggers
+├── templates/            ← .j2 files (your index.html.j2 in Q7.4)
+├── files/                ← static files to copy
+├── defaults/main.yml     ← low-priority variables
+├── vars/main.yml         ← high-priority variables
+├── meta/main.yml         ← role metadata (author, dependencies)
+├── tests/                ← a test inventory + test playbook
+└── README.md</pre>
+  <p>Every <code>main.yml</code> in that tree starts as a <b>stub</b> — basically just <code>---</code> and a comment. The scaffold gives you structure, not content. It writes zero tasks. The engineering is still yours.</p>
+  <p>Metaphor: scaffolding is the frame of a house going up — studs, floor plan, room outlines all in the right places, but no plumbing, no wiring, no furniture. Or the construction sense of the word itself: it is the framework that lets the real work happen in the right shape.</p>
+  <p>Why Ansible cares about the shape: a role is not a file, it is a <b>convention</b>. When a playbook says "run role <code>apache</code>," Ansible looks for a folder named <code>apache</code> and automatically loads <code>tasks/main.yml</code> inside it, finds templates in <code>templates/</code>, defaults in <code>defaults/</code>, and so on — purely by name and location. If you hand-built the structure and typo'd one directory (<code>task/</code> instead of <code>tasks/</code>), Ansible would not error dramatically — it would just silently not find your tasks. The scaffold makes that whole class of mistake impossible.</p>
   <h4>How it affects the Ansible environment</h4>
   <p>• This is convention over configuration: Ansible finds a role's tasks at <code>tasks/main.yml</code> and its templates under <code>templates/</code> <i>because</i> the layout says so — no path configuration anywhere. The scaffold guarantees the layout is exactly the one the engine expects.<br>
   • For this exam you will only write in two places — <code>tasks/main.yml</code> (Q7.3) and <code>templates/index.html.j2</code> (Q7.4). The rest of the skeleton can stay as generated.</p>
