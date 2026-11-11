@@ -84,6 +84,7 @@
   .audiobox.show{display:block}
   .audiobox .atitle{color:var(--cyan);font-size:13px;margin-bottom:8px}
   .audiobox audio{width:100%}
+  .audiobox video{width:100%;border-radius:6px;background:#000}
   #modebtn{cursor:pointer;color:var(--amber);border-color:var(--amber);font:inherit}
   #modebtn:hover{background:#1d1a12}
   #resetbtn{cursor:pointer;color:#ff7b72;border-color:#ff7b72;font:inherit}
@@ -4042,6 +4043,17 @@ const DEEPDIVE_SECTIONS = {
   "Q15": { url: "https://github.com/Worldtraveler247/code_projects/releases/download/gn-audio/q15.m4a", mins: "about 21 minutes" },
   "Q16": { url: "https://github.com/Worldtraveler247/code_projects/releases/download/gn-audio/q16.m4a", mins: "about 20 minutes" }
 };
+// NotebookLM lesson videos (Video Overviews), streamed from a SEPARATE
+// GitHub Release, tag 'gn-video', one file per question named qN.mp4 —
+// kept apart from gn-audio so the big video files never mix with the audio
+// episodes. The section set is derived from DEEPDIVE_SECTIONS so videos
+// always cover exactly the same questions as the deep dives (Q2-Q16).
+// Upload flow is identical: edit the gn-video release, drop in qN.mp4,
+// and that question's button starts playing it — no site edit needed.
+const VIDEO_SECTIONS = {};
+for (const _k of Object.keys(DEEPDIVE_SECTIONS)) {
+  VIDEO_SECTIONS[_k] = { url: "https://github.com/Worldtraveler247/code_projects/releases/download/gn-video/" + _k.toLowerCase() + ".mp4" };
+}
 function wireHelp(q){
   const help = HELP[q.id]; if (!help) return;
   const lb = gel("listenbtn"), aud = gel("audiobox");
@@ -4092,6 +4104,27 @@ function wireHelp(q){
         }
         if (!open) { const a = dbox.querySelector("audio"); if (a) a.pause(); }
         db.textContent = open ? "🎙 Hide deep dive" : "🎙 Deep dive — " + sec + " (NotebookLM)";
+      });
+    }
+  }
+  const vb = gel("videobtn"), vbox = gel("videobox");
+  if (vb && vbox) {
+    const sec = (q.id.match(/^Q\d+/) || [null])[0];
+    const vd = sec ? VIDEO_SECTIONS[sec] : null;
+    if (!vd) { vb.style.display = "none"; }
+    else {
+      vb.textContent = "🎬 Lesson video — " + sec + " (NotebookLM)";
+      vb.addEventListener("click", () => {
+        const open = vbox.classList.toggle("show");
+        if (open && !vbox.dataset.loaded) {
+          vbox.dataset.loaded = "1";
+          const title = "<div class='atitle'>🎬 " + sec + " — NotebookLM lesson video. It streams, so it starts right away — and like the deep dive, it walks through the answers for this question.</div>";
+          vbox.innerHTML = title + "<video controls preload='metadata' playsinline src='" + vd.url + "'></video>";
+          const v = vbox.querySelector("video");
+          v.addEventListener("error", () => { vbox.innerHTML = title + "<div class='atitle'>the lesson video is not on the server yet — once it has been uploaded to the gn-video release as " + sec.toLowerCase() + ".mp4, this plays it</div>"; delete vbox.dataset.loaded; }, true);
+        }
+        if (!open) { const v = vbox.querySelector("video"); if (v) v.pause(); }
+        vb.textContent = open ? "🎬 Hide video" : "🎬 Lesson video — " + sec + " (NotebookLM)";
       });
     }
   }
@@ -4184,9 +4217,10 @@ function renderStage(){
       + "<div class='statusline'><span class='mode'>-- INSERT --</span><span>" + f.path + "</span><span class='pos' id='pos" + fi + "'>Ln 1, Col 1</span></div><div class='tablist' id='tablist" + fi + "'></div></div>";
   });
   h += "<div class='keys'><b>[Ctrl+Enter / F2]</b> check &nbsp;<b>[Alt+↑/↓]</b> switch file &nbsp;<b>[Alt+→]</b> next question &nbsp;<b>[Alt+←]</b> previous &nbsp;<b>[Tab]</b> complete path (shell-style) · in files: indent · <b>[Shift+Tab]</b> outdent · <b>[Ctrl+C]</b> clear the shell (^C) &nbsp;::&nbsp; attempts: <span class='n' id='att'>" + (state.attempts[state.cur] || 0) + "</span></div>";
-  h += "<div class='helprow'><button class='hbtn' id='checkbtn'>▶ Check</button><button class='hbtn' id='hintbtn'>💡 Hint</button><button class='hbtn' id='revealbtn'>👁 Reveal answer</button><button class='hbtn' id='listenbtn'>🔊 Listen</button><button class='hbtn' id='deepbtn'>🎙 Deep dive</button><button class='hbtn' id='nextbtn'>Next ▸</button></div>";
+  h += "<div class='helprow'><button class='hbtn' id='checkbtn'>▶ Check</button><button class='hbtn' id='hintbtn'>💡 Hint</button><button class='hbtn' id='revealbtn'>👁 Reveal answer</button><button class='hbtn' id='listenbtn'>🔊 Listen</button><button class='hbtn' id='deepbtn'>🎙 Deep dive</button><button class='hbtn' id='videobtn'>🎬 Lesson video</button><button class='hbtn' id='nextbtn'>Next ▸</button></div>";
   h += "<div class='audiobox' id='audiobox'></div>";
   h += "<div class='audiobox' id='deepbox'></div>";
+  h += "<div class='audiobox' id='videobox'></div>";
   h += "<div class='hintbox' id='hintbox'></div>";
   h += "<div class='answerbox' id='answerbox'></div>";
   h += "<div class='feedback' id='fb'></div>";
