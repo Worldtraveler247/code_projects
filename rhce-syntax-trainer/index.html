@@ -18,6 +18,11 @@
   header .title{font-weight:700;font-size:16px;letter-spacing:.02em}
   header .title span{color:var(--red)}
   .pill{border:1px solid var(--line);padding:3px 10px;font-size:12px;color:var(--dim);background:#000}
+  .pill.qtime b{font-variant-numeric:tabular-nums}
+  .pill.timeup{color:#ff7b72;border-color:#ff7b72}
+  .pill.qdone{color:#3fb950;border-color:#3fb950}
+  #pacebar{background:#0d1117;border-bottom:1px solid var(--line);color:var(--dim);padding:5px 14px;font-size:12.5px}
+  #pacebar b{color:var(--amber)}
   .pill b{color:var(--text)}
   .pill.time b{color:var(--amber)}
   #ttybar{background:#161616;border-bottom:1px solid var(--line);color:var(--amber);padding:5px 14px;font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -152,12 +157,14 @@
 <header>
   <div class="title">EX294 <span>SYNTAX TRAINER</span></div>
   <div class="pill">[student@controller ~/ansible]$</div>
-  <div class="pill time">exam clock: <b id="clock">00:00</b> / 150:00</div>
+  <div class="pill time">exam clock: <b id="clock">00:00</b> / 240:00</div>
+  <div class="pill qtime">⏱ <b id="qtimer">9:00</b> this question</div>
   <div class="pill">passed: <b id="score">0 / 9</b></div>
   <button class="pill" id="modebtn" title="Guided: inside each question, a step unlocks when the step before it passes. Practice: everything open, jump anywhere.">mode: GUIDED</button>
   <button class="pill" id="resetbtn" title="Reset the whole game: every passed step goes back to not-done, all green clears, and you start again from the top.">↺ reset</button>
 </header>
 <div id="ttybar">Guided mode walks each question in order — pass a step to unlock the next one inside that question. Questions themselves stay open: start any question from the list. Flip the mode toggle up top to Practice if you want to jump anywhere. Your passes are saved in this browser. &nbsp;[Ctrl+Enter or F2] check &nbsp;[Alt+↑/↓] switch file &nbsp;[Alt+→] next &nbsp;[Alt+←] previous &nbsp;::&nbsp; grading follows the real system — any valid syntax that produces the required result passes</div>
+<div id="pacebar"><b>Real EX294 pace (240 min): 240 ÷ 16 = 15 minutes per question exactly.</b> This trainer trains you faster: your Practice Exam 1 budget is 150 minutes (~9:22 per question), so the ⏱ timer in the header counts down from <b>9:00 per question</b> — it runs across every step of the question you are in, freezes when the question is fully passed, and resets to 9:00 when you move to the next question.</div>
 <main>
   <nav>
     <h3>EXAM QUESTIONS</h3>
@@ -2788,6 +2795,37 @@ setInterval(() => {
   if (c) c.textContent = String(Math.floor(s / 60)).padStart(2, "0") + ":" + String(s % 60).padStart(2, "0");
 }, 1000);
 
+// === Per-question pace timer ===
+// Practice pace: 9:00 per QUESTION (the Practice Exam 1 budget — 150 min
+// over 16 questions — rounded down to a hard 9). Bound to the question
+// series (Q1-Q16): keeps running across every step of the question you
+// are in, freezes the moment the whole question is passed, and resets to
+// 9:00 when you move to a different question. Q0 (editor setup) untimed.
+// Persisted in localStorage so a page reload doesn't hand back minutes.
+const Q_BUDGET_MS = 9 * 60 * 1000;
+let qt = { sec: null, endsAt: 0, frozen: false, left: Q_BUDGET_MS, wasDone: false };
+try { const _qs = JSON.parse(localStorage.getItem("rhce-qtimer") || "null"); if (_qs && typeof _qs === "object" && "sec" in _qs) qt = _qs; } catch (e) {}
+function qtSave(){ try { localStorage.setItem("rhce-qtimer", JSON.stringify(qt)); } catch (e) {} }
+function qtReset(){ qt = { sec: null, endsAt: 0, frozen: false, left: Q_BUDGET_MS, wasDone: false }; qtSave(); }
+function qtTick(){
+  try {
+    const el = gel("qtimer"); if (!el) return;
+    const pill = el.parentElement;
+    const sec = sectionOf(QUESTIONS[state.cur].id);
+    if (sec === "Q0") { el.textContent = "—"; pill.classList.remove("timeup", "qdone"); pill.title = "Q0 is editor setup — untimed. The 9:00 pace clock runs on Q1-Q16."; return; }
+    if (qt.sec !== sec) { qt = { sec, endsAt: Date.now() + Q_BUDGET_MS, frozen: false, left: Q_BUDGET_MS, wasDone: sectionSteps(sec).every(i => state.done.has(i)) }; qtSave(); }
+    if (!qt.frozen && !qt.wasDone && sectionSteps(sec).every(i => state.done.has(i))) { qt.frozen = true; qt.left = Math.max(0, qt.endsAt - Date.now()); qtSave(); }
+    const left = qt.frozen ? qt.left : Math.max(0, qt.endsAt - Date.now());
+    const s = Math.ceil(left / 1000);
+    el.textContent = Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0");
+    pill.classList.toggle("timeup", !qt.frozen && left <= 0);
+    pill.classList.toggle("qdone", qt.frozen);
+    pill.title = qt.frozen ? (sec + " complete — finished with " + el.textContent + " of the 9:00 practice budget to spare") : ("Practice pace for " + sec + ": 9:00 for the whole question, every step included. Real EX294 pace is 15:00 per question.");
+  } catch (e) {}
+}
+const _qti = setInterval(qtTick, 250);
+if (_qti && _qti.unref) _qti.unref();
+
 const LH = 21, PAD_T = 12, PAD_L = 14;
 let CHAR_W = 8.4;
 (function(){ try { const cv = document.createElement("canvas").getContext("2d"); cv.font = "14px ui-monospace, Menlo, Consolas, monospace"; CHAR_W = cv.measureText("MMMMMMMMMM").width / 10; } catch(e){} })();
@@ -4278,7 +4316,7 @@ function showFinish(){
   state.finished = true;
   const s = Math.floor((Date.now() - start) / 1000);
   const totalAtt = Object.values(state.attempts).reduce((a, b) => a + b, 0);
-  gel("finishstats").innerHTML = "All " + QUESTIONS.length + " questions typed correctly, keyboard only, in <b>" + Math.floor(s / 60) + "m " + (s % 60) + "s</b> (real exam budget: 150 minutes) with <b>" + totalAtt + "</b> total checks.<br>Per question: " + QUESTIONS.map((q, i) => q.id + " — " + (state.attempts[i] || 0)).join(" · ") + "<br><br>The syntax is in your fingers now. Run it again tomorrow and watch the attempt counts fall.";
+  gel("finishstats").innerHTML = "All " + QUESTIONS.length + " questions typed correctly, keyboard only, in <b>" + Math.floor(s / 60) + "m " + (s % 60) + "s</b> (real EX294 budget: 240 minutes — 15:00 per question; the practice target in this trainer is 9:00 per question) with <b>" + totalAtt + "</b> total checks.<br>Per question: " + QUESTIONS.map((q, i) => q.id + " — " + (state.attempts[i] || 0)).join(" · ") + "<br><br>The syntax is in your fingers now. Run it again tomorrow and watch the attempt counts fall.";
   const f = gel("finish");
   f.className = "finish show";
   f.scrollIntoView({ behavior: "smooth" });
@@ -4347,14 +4385,14 @@ if (modeBtn) modeBtn.addEventListener("click", () => {
 });
 syncModeBtn();
 const rstLink = gel("resetprogress");
-if (rstLink) rstLink.addEventListener("click", (e) => { e.preventDefault(); state.done.clear(); state.finished = false; persistProgress(); renderNav(); renderStage(); });
+if (rstLink) rstLink.addEventListener("click", (e) => { e.preventDefault(); state.done.clear(); state.finished = false; qtReset(); persistProgress(); renderNav(); renderStage(); });
 const rstBtn = gel("resetbtn");
 let rstArmed = false, rstTimer = null;
 function rstDisarm(){ rstArmed = false; if (rstBtn){ rstBtn.textContent = "↺ reset"; rstBtn.style.background = ""; } if (rstTimer){ clearTimeout(rstTimer); rstTimer = null; } }
 if (rstBtn) rstBtn.addEventListener("click", () => {
   if (!rstArmed){ rstArmed = true; rstBtn.textContent = "↺ tap again to confirm"; rstBtn.style.background = "#3a1d22"; rstTimer = setTimeout(rstDisarm, 8000); return; }
   rstDisarm();
-  state.done.clear(); state.finished = false; persistProgress(); renderNav(); renderStage();
+  state.done.clear(); state.finished = false; qtReset(); persistProgress(); renderNav(); renderStage();
 });
 
 renderNav();
