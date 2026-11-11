@@ -71,7 +71,7 @@ button.small{min-height:36px;padding:5px 10px;font-size:13px}
 .drow{margin:8px 0;padding:9px 11px;background:var(--panel2);border-radius:8px}
 .dfrom{color:#9ecbff;font-size:13.5px;line-height:1.5}
 .darrow{color:var(--dim);font-size:11px;margin:3px 0}
-.dto code{font-family:var(--mono);font-size:12.5px;color:#ffd75f;white-space:pre-wrap;word-break:break-word}
+.dto code{font-family:var(--mono);font-size:12.5px;white-space:pre-wrap;word-break:break-word}
 .dnote{font-size:13px;line-height:1.5;margin-top:4px}
 .qtimerbar{border:1px solid var(--cyan);background:#08181a;color:var(--cyan);border-radius:8px;padding:7px 11px;margin:0 0 10px;font-size:13.5px}
 .qtimerbar #qtimer{font-family:var(--mono);font-weight:700;font-variant-numeric:tabular-nums}
@@ -83,7 +83,7 @@ button.small{min-height:36px;padding:5px 10px;font-size:13px}
 .ln[data-line]{cursor:pointer}
 .explainbox{scroll-margin-top:96px}
 .gloss .gln{color:#484f58;font-family:var(--mono);font-size:11px;margin-right:6px}
-.gloss code{font-family:var(--mono);font-size:12.5px;color:#ffd75f;word-break:break-all}
+.gloss code{font-family:var(--mono);font-size:12.5px;word-break:break-all}
 .flowsteps{margin:6px 0 0;padding-left:20px;font-size:14px;line-height:1.6}
 .vimrc-line{font-family:var(--mono);font-size:12.5px;background:#0a0e14;border:1px solid var(--line);border-radius:8px;padding:9px 10px;overflow-x:auto;white-space:pre;color:#e5c07b;margin:8px 0}
 input.blank,textarea.blank{font-family:var(--mono);font-size:13.5px;background:#221d08;border:1px dashed var(--warn);color:#ffd75f;border-radius:5px;padding:1px 5px;outline:none;max-width:88vw}
@@ -95,7 +95,8 @@ input.blank.revealed,textarea.blank.revealed{border:1px solid #6e5494;background
 .bbtns{display:inline-flex;gap:2px;margin-left:3px;vertical-align:middle}
 .bbtns button{min-height:26px;min-width:30px;padding:1px 5px;font-size:12px;border-radius:6px;background:transparent}
 .blkbtns{display:flex;gap:6px;margin:2px 0 6px}
-.tok{color:#ffd75f;cursor:pointer;padding:0 1px}
+.tok{cursor:pointer;padding:0 1px;border-radius:3px}
+.tok:hover{background:rgba(255,215,95,.14)}
 .tok:active{background:#2a230a}
 .feedback{display:none;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin:0 0 14px}
 .feedback.show{display:block}
@@ -105,7 +106,7 @@ input.blank.revealed,textarea.blank.revealed{border:1px solid #6e5494;background
 .feedback .hintline b{color:var(--warn)}
 .explainbox{display:none;background:#101a2a;border:1px solid #1f3a5f;border-radius:12px;padding:12px 14px;margin:0 0 14px;font-size:14px;line-height:1.55}
 .explainbox.show{display:block}
-.explainbox .piece{font-family:var(--mono);color:#ffd75f;font-size:13px;word-break:break-all}
+.explainbox .piece{font-family:var(--mono);font-size:13px;word-break:break-all}
 .modcard{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:11px 12px;margin:0 0 10px}
 .modcard .mname{font-family:var(--mono);font-weight:700;color:#7ee787;font-size:13.5px;word-break:break-all}
 .modcard p{font-size:13px;margin:5px 0;line-height:1.5}
@@ -317,6 +318,17 @@ function hlLine(lang, line){
   return hlYamlLine(line);
 }
 function hlFragment(lang, s){ return hlLine(lang, s); }
+// Study pieces are colored by ROLE, exactly like a real YAML editor:
+// a bare key piece gets the key color; everything else goes through the
+// same line highlighter as given text — so a value is the same color
+// whether the game supplied it or the file did.
+function tokHTML(file, nodes, ni, n){
+  if (file.lang !== 'yaml') return hlFragment(file.lang, n.s);
+  var after = '';
+  for (var j = ni + 1; j < nodes.length; j++){ if (nodes[j].s){ after = nodes[j].s; break; } }
+  if (after.charAt(0) === ':' && n.s.indexOf(':') < 0 && n.s.indexOf(' ') < 0) return "<span class='tk-key'>" + esc(n.s) + "</span>";
+  return hlYamlLine(n.s);
+}
 function fileById(id){ for(var i=0;i<FILES.length;i++) if(FILES[i].id===id) return FILES[i]; return null; }
 function fprog(f){ if(!P[f.id]) P[f.id] = {levels:{}, mastered:false}; return P[f.id]; }
 function levelsDoneCount(){ var n=0; FILES.forEach(function(f){ var lp=fprog(f).levels; Object.keys(lp).forEach(function(k){ if(lp[k].done) n++; }); }); return n; }
@@ -389,9 +401,9 @@ function renderCode(file, level, mode){
   var html = '<div class="vimwrap"><div class="vimbar"><span class="vfile">📄 ' + esc(file.path) + '</span></div><div class="codebox">';
   built.lines.forEach(function(nodes, li){
     html += '<div class="ln" data-line="' + (li+1) + '"><span class="no">' + (li+1) + '</span><span class="lc">';
-    nodes.forEach(function(n){
+    nodes.forEach(function(n, ni){
       if(n.k === 't'){ html += hlFragment(file.lang, n.s); }
-      else if(n.k === 'tok'){ html += '<span class="tok" data-tok="' + n.i + '">' + hlFragment(file.lang, n.s) + '</span>'; }
+      else if(n.k === 'tok'){ html += '<span class="tok" data-tok="' + n.i + '">' + tokHTML(file, nodes, ni, n) + '</span>'; }
       else if(n.k === 'in'){
         var b = blanks[n.i];
         var size = Math.max(4, Math.min(48, b.b.length + 2));
@@ -760,7 +772,7 @@ function jumpToGloss(lineNo, keepBox){
   var g = curGlossMap[lineNo];
   var box = document.getElementById('explainbox');
   if(g && box && !keepBox){
-    box.innerHTML = '<span class="piece">' + esc(g.code) + '</span><br>' + esc(g.gloss) + '<br><span class="small">\u2193 I\u2019ve scrolled you to this line\u2019s definition in \u00a7 ' + esc(g.sec) + ' below \u2014 it\u2019s highlighted gold.</span>';
+    box.innerHTML = '<span class="piece">' + hlFragment(cur && cur.file ? cur.file.lang : 'yaml', g.code) + '</span><br>' + esc(g.gloss) + '<br><span class="small">\u2193 I\u2019ve scrolled you to this line\u2019s definition in \u00a7 ' + esc(g.sec) + ' below \u2014 it\u2019s highlighted gold.</span>';
   }
   var el = document.getElementById('gl-' + lineNo);
   if(el){
@@ -795,7 +807,7 @@ function renderStudyBreakdown(f){
     if(s.why) html += '<p class="secwhy">' + esc(s.why) + '</p>';
     if(s.code) html += '<div class="seccode"><pre>' + s.code.split('\n').map(function(l){ return hlLine(f.lang, l); }).join('\n') + '</pre></div>';
     s.rows.forEach(function(r){
-      html += '<div class="gloss" id="gl-' + r[2] + '" data-gline="' + r[2] + '"><code>' + esc(r[0]) + '</code><br>' + esc(r[1]) + '</div>';
+      html += '<div class="gloss" id="gl-' + r[2] + '" data-gline="' + r[2] + '"><code>' + hlFragment(f.lang, r[0]) + '</code><br>' + esc(r[1]) + '</div>';
     });
     html += '</div>';
   });
@@ -856,7 +868,7 @@ function renderExamLens(f){
   html += '<div class="card traps"><h3>🪤 How THIS question tries to trip you</h3><ul>' + L.traps.map(function(t){ return '<li>' + esc(t) + '</li>'; }).join('') + '</ul></div>';
   html += '<div class="card dissect"><h3>🔪 Dissection — phrase by phrase into the playbook</h3>';
   L.dissect.forEach(function(r){
-    html += '<div class="drow"><div class="dfrom">\u201c' + esc(r[0]) + '\u201d</div><div class="darrow">\u2b07 becomes</div><div class="dto"><code>' + esc(r[1]).replace(/\n/g, '<br>') + '</code></div><div class="dnote">' + esc(r[2]) + '</div></div>';
+    html += '<div class="drow"><div class="dfrom">\u201c' + esc(r[0]) + '\u201d</div><div class="darrow">\u2b07 becomes</div><div class="dto"><code>' + r[1].split('\n').map(function(x){ return hlFragment('yaml', x); }).join('<br>') + '</code></div><div class="dnote">' + esc(r[2]) + '</div></div>';
   });
   html += '<p class="small">On exam day, read in this order: skeleton (file \u2192 hosts \u2192 modules), traps, details last. That order is what makes 9 minutes per question enough.</p></div>';
   return html;
@@ -916,9 +928,9 @@ function renderPlayArea(){
   var f = cur.file, area = document.getElementById('playarea');
   var html = modebarHTML(f);
   if(cur.mode === 'study'){
-    html += '<p class="levelhead">📖 Study — the complete file. Tap <b>anything</b> in the playbook — a <span style="color:#ffd75f">highlighted piece</span> or any other line — and I\u2019ll show its explanation here and scroll you straight to its matching definition below.</p>';
+    html += '<p class="levelhead">📖 Study — the complete file. Tap <b>anything</b> in the playbook — any piece or line — and I\u2019ll show its explanation here and scroll you straight to its matching definition below.</p>';
     html += renderCode(f, 99, 'study');
-    html += '<div class="explainbox show" id="explainbox">Tap a highlighted piece above to see its explanation.</div>';
+    html += '<div class="explainbox show" id="explainbox">Tap any piece above to see its explanation.</div>';
     html += renderStudyBreakdown(f);
   } else if(cur.mode === 'exam'){
     html += renderExamLens(f);
@@ -1072,7 +1084,7 @@ document.body.addEventListener('click', function(ev){
     var ti = Number(tok.getAttribute('data-tok'));
     var b = fileBlanks(cur.file)[ti];
     var box = document.getElementById('explainbox');
-    if(box && b) box.innerHTML = '<span class="piece">' + esc(b.b).replace(/\n/g, '<br>') + '</span><br>' + esc(b.e) + '<br><span class="small">\u2193 Its full definition is highlighted in the breakdown below.</span>';
+    if(box && b) box.innerHTML = '<span class="piece">' + b.b.split('\n').map(function(x){ return hlFragment(cur && cur.file ? cur.file.lang : 'yaml', x); }).join('<br>') + '</span><br>' + esc(b.e) + '<br><span class="small">\u2193 Its full definition is highlighted in the breakdown below.</span>';
     jumpToGloss(curLines[ti], true);
     return;
   }
