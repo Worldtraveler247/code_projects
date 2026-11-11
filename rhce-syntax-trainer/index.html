@@ -1274,7 +1274,7 @@ const QUESTIONS = [
   files:[{ path:"/home/student/ansible/hosts.yml", lang:"yaml" }],
   spec:`<b>10.2. Create the playbook.</b><br>• Create /home/student/ansible/hosts.yml with <b>one</b> play that runs on <b>all</b> hosts, with privilege escalation.<br>• Its single task renders hosts.j2 to <code>/etc/myhosts</code> — but only on hosts in the dev group, controlled by a <code>when</code> on the task.<br>• No permissions are specified for the file.`,
   checks:[[
-    { fn:t => (t.match(/^- name:/gm) || []).length === 1, msg:"Exactly one play" },
+    { fn:t => (t.match(/^- /gm) || []).length === 1, msg:"Exactly one play" },
     { re:/hosts\s*:\s*all/, msg:"The play targets hosts: all (so every host gathers facts)" },
     { re:/become\s*:\s*(true|yes)/i, msg:"become: true on the play (writing in /etc needs root)" },
     { fn:t => !/hosts\s*:\s*dev/.test(t), msg:"No hosts: dev anywhere — the when does the narrowing, not the play target" },
@@ -1370,14 +1370,14 @@ const QUESTIONS = [
   files:[{ path:"/home/student/ansible/issues.yml", lang:"yaml" }],
   spec:`<b>11. Modify file content based on host group.</b><br>• Create /home/student/ansible/issues.yml: one play that runs on <b>all</b> hosts, with privilege escalation.<br>• It replaces <code>/etc/issue</code> per group: <code>Development</code> on dev, <code>Test</code> on test, <code>Production</code> on prod — one copy task per group, each gated by a <code>when</code> on group membership, in the order dev, test, prod.`,
   checks:[[
-    { fn:t => (t.match(/^- name:/gm) || []).length === 1, msg:"Exactly one play" },
+    { fn:t => (t.match(/^- /gm) || []).length === 1, msg:"Exactly one play" },
     { re:/hosts\s*:\s*all/, msg:"The play targets hosts: all (each task's when does the narrowing)" },
     { re:/become\s*:\s*(true|yes)/i, msg:"become: true on the play (writing /etc/issue needs root)" },
     { fn:t => (t.match(/ansible\.builtin\.copy\s*:/g) || []).length >= 3, msg:"Three ansible.builtin.copy tasks, one per group" },
     { fn:t => (t.match(/dest\s*:\s*\/etc\/issue[ \t]*$/gm) || []).length >= 3, msg:"Every task writes dest: /etc/issue (exactly — not issue.txt)" },
-    { fn:t => { const chunks = t.split(/\n\s*- name:/); return chunks.some(ch => /content\s*:\s*Development\b/.test(ch) && (/groups\[['"]dev['"]\]/.test(ch) || /['"]dev['"]\s+in\s+group_names/.test(ch))); }, msg:"The dev task writes content: Development" },
-    { fn:t => { const chunks = t.split(/\n\s*- name:/); return chunks.some(ch => /content\s*:\s*Test\b/.test(ch) && (/groups\[['"]test['"]\]/.test(ch) || /['"]test['"]\s+in\s+group_names/.test(ch))); }, msg:"The test task writes content: Test" },
-    { fn:t => { const chunks = t.split(/\n\s*- name:/); return chunks.some(ch => /content\s*:\s*Production\b/.test(ch) && (/groups\[['"]prod['"]\]/.test(ch) || /['"]prod['"]\s+in\s+group_names/.test(ch))); }, msg:"The prod task writes content: Production" },
+    { fn:t => { const chunks = t.split(/\n(?=\s*- (?:name:|[A-Za-z][\w.]*:))/); return chunks.some(ch => /content\s*:\s*Development\b/.test(ch) && (/groups\[['"]dev['"]\]/.test(ch) || /['"]dev['"]\s+in\s+group_names/.test(ch))); }, msg:"The dev task writes content: Development" },
+    { fn:t => { const chunks = t.split(/\n(?=\s*- (?:name:|[A-Za-z][\w.]*:))/); return chunks.some(ch => /content\s*:\s*Test\b/.test(ch) && (/groups\[['"]test['"]\]/.test(ch) || /['"]test['"]\s+in\s+group_names/.test(ch))); }, msg:"The test task writes content: Test" },
+    { fn:t => { const chunks = t.split(/\n(?=\s*- (?:name:|[A-Za-z][\w.]*:))/); return chunks.some(ch => /content\s*:\s*Production\b/.test(ch) && (/groups\[['"]prod['"]\]/.test(ch) || /['"]prod['"]\s+in\s+group_names/.test(ch))); }, msg:"The prod task writes content: Production" },
     { fn:t => /when\s*:\s*inventory_hostname\s+in\s+groups\[['"]dev['"]\]/.test(t) || /when\s*:.*['"]dev['"]\s+in\s+group_names/.test(t), msg:"when: inventory_hostname in groups['dev']" },
     { fn:t => /when\s*:\s*inventory_hostname\s+in\s+groups\[['"]test['"]\]/.test(t) || /when\s*:.*['"]test['"]\s+in\s+group_names/.test(t), msg:"when: inventory_hostname in groups['test']" },
     { fn:t => /when\s*:\s*inventory_hostname\s+in\s+groups\[['"]prod['"]\]/.test(t) || /when\s*:.*['"]prod['"]\s+in\s+group_names/.test(t), msg:"when: inventory_hostname in groups['prod']" },
@@ -1470,11 +1470,11 @@ const QUESTIONS = [
   files:[{ path:"/home/student/ansible/webcontent.yml", lang:"yaml" }],
   spec:`<b>12. Create the web content structure.</b><br>• Create /home/student/ansible/webcontent.yml: one play on the <b>dev</b> hosts, with privilege escalation. Do not create /webdev by hand — the playbook does the work.<br>• Four tasks, in this order: create the group <code>devops</code>; create the directory <code>/webdev</code> owned by that group with mode <code>2775</code>; create <code>/webdev/index.html</code> containing <code>Development</code>; symlink <code>/var/www/html/webdev</code> to <code>/webdev</code>, with force.`,
   checks:[[
-    { fn:t => (t.match(/^- name:/gm) || []).length === 1, msg:"Exactly one play" },
+    { fn:t => (t.match(/^- /gm) || []).length === 1, msg:"Exactly one play" },
     { re:/hosts\s*:\s*dev\b/, msg:"The play targets hosts: dev (servera only — the play does the targeting, so no task needs a when)" },
     { re:/become\s*:\s*(true|yes)/i, msg:"become: true on the play (groups and /var/www need root)" },
     { re:/ansible\.builtin\.group\s*:/, msg:"Task 1 manages the group with ansible.builtin.group" },
-    { fn:t => { const chunks = t.split(/\n\s*- name:/); return chunks.some(ch => /ansible\.builtin\.group\s*:/.test(ch) && /name\s*:\s*devops\b/.test(ch) && /state\s*:\s*present/.test(ch)); }, msg:"The group task: name: devops, state: present" },
+    { fn:t => { const chunks = t.split(/\n(?=\s*- (?:name:|[A-Za-z][\w.]*:))/); return chunks.some(ch => /ansible\.builtin\.group\s*:/.test(ch) && /name\s*:\s*devops\b/.test(ch) && /state\s*:\s*present/.test(ch)); }, msg:"The group task: name: devops, state: present" },
     { re:/ansible\.builtin\.file\s*:/, msg:"The file module manages the directory and the link" },
     { re:/state\s*:\s*directory/, msg:"Directory task: state: directory" },
     { re:/path\s*:\s*\/webdev[ \t]*$/m, msg:"Directory task: path: /webdev" },
@@ -1611,7 +1611,7 @@ const QUESTIONS = [
   files:[{ path:"/home/student/ansible/hwreport.yml", lang:"yaml" }],
   spec:`<b>13. Generate a hardware report.</b><br>• Create /home/student/ansible/hwreport.yml: one play on <b>all</b> hosts, with privilege escalation, producing <code>/root/hwreport.txt</code> on every managed node. Everything happens <i>inside</i> the playbook — never download anything by hand.<br>• Task 1 downloads <code>hwreport.empty</code> from the exam server onto each node as /root/hwreport.txt, forcing a fresh copy. Tasks 2–6 each replace one labelled line with a fact value: inventory host name, total memory in MB, BIOS version, and the sizes of disks <code>sda</code> and <code>sdb</code> (the labels in the lab's file — match the file, not the question's vda/vdb wording). A missing disk must read <code>NONE</code>.`,
   checks:[[
-    { fn:t => (t.match(/^- name:/gm) || []).length === 1, msg:"Exactly one play" },
+    { fn:t => (t.match(/^- /gm) || []).length === 1, msg:"Exactly one play" },
     { re:/hosts\s*:\s*all/, msg:"The play targets hosts: all (every node writes its own report)" },
     { re:/become\s*:\s*(true|yes)/i, msg:"become: true on the play (/root is root-only)" },
     { re:/ansible\.builtin\.get_url\s*:/, msg:"Task 1 downloads with ansible.builtin.get_url" },
@@ -1833,7 +1833,7 @@ const QUESTIONS = [
   files:[{ path:"/home/student/ansible/users.yml", lang:"yaml" }],
   spec:`<b>15.1. Create the users playbook.</b><br>• Create /home/student/ansible/users.yml: <b>one</b> play on <b>all</b> hosts, with privilege escalation, loading <code>user_list.yml</code> and <code>locker.yml</code> as vars_files (in that order).<br>• Task 1 creates both groups, <code>devops</code> and <code>opsmgr</code>, in a loop. Task 2 loops over <b>every</b> user and creates the developers — supplementary group devops, shell /bin/bash, fixed uid, SHA-512 hash of the vault's developer password — but only where the item is a developer <i>and</i> the host is in dev or test, spelled out as two <code>and</code> cases joined by <code>or</code>. Task 3 is the same shape for managers: opsmgr, the manager password, prod hosts only.`,
   checks:[[
-    { fn:t => (t.match(/^- name:/gm) || []).length === 1, msg:"Exactly one play" },
+    { fn:t => (t.match(/^- /gm) || []).length === 1, msg:"Exactly one play" },
     { re:/hosts\s*:\s*all/, msg:"The play targets hosts: all (the whens decide who gets whom)" },
     { re:/become\s*:\s*(true|yes)/i, msg:"become: true on the play (users and groups need root)" },
     { fn:t => { const a = t.search(/-\s*user_list\.yml/), b = t.search(/-\s*locker\.yml/); return /vars_files\s*:/.test(t) && a >= 0 && b > a; }, msg:"vars_files lists user_list.yml first, then locker.yml" },
@@ -1853,7 +1853,7 @@ const QUESTIONS = [
     { fn:t => (t.match(/loop\s*:\s*"\{\{\s*users\s*\}\}"/g) || []).length >= 2, msg:"Both user tasks loop: \"{{ users }}\" — every user, filtered by the when, not by selectattr" },
     { fn:t => /(item\.job\s*==\s*['"]developer['"]\s+and\s+inventory_hostname\s+in\s+groups\[['"]dev['"]\]\s*\)?\s*or\s+\(?\s*item\.job\s*==\s*['"]developer['"]\s+and\s+inventory_hostname\s+in\s+groups\[['"]test['"]\])/.test(t) || /item\.job\s*==\s*['"]developer['"]\s+and\s+\(\s*inventory_hostname\s+in\s+groups\[['"]dev['"]\]\s+or\s+inventory_hostname\s+in\s+groups\[['"]test['"]\]\s*\)/.test(t) || /item\.job\s*==\s*['"]developer['"]\s+and\s+\(\s*['"]dev['"]\s+in\s+group_names\s+or\s+['"]test['"]\s+in\s+group_names\s*\)/.test(t) || /(item\.job\s*==\s*['"]developer['"]\s+and\s+['"]dev['"]\s+in\s+group_names\s*\)?\s*or\s+\(?\s*item\.job\s*==\s*['"]developer['"]\s+and\s+['"]test['"]\s+in\s+group_names)/.test(t), msg:"Developer when: (developer and dev) or (developer and test), checked per item" },
     { fn:t => /item\.job\s*==\s*['"]manager['"]\s+and\s+inventory_hostname\s+in\s+groups\[['"]prod['"]\]/.test(t) || /item\.job\s*==\s*['"]manager['"]\s+and\s+['"]prod['"]\s+in\s+group_names/.test(t), msg:"Manager when: manager and inventory_hostname in groups['prod']" },
-    { fn:t => { const chunks = t.split(/\n\s*- name:/); return chunks.some(ch => /pw_developer/.test(ch) && /groups\s*:\s*devops\b/.test(ch) && /['"]developer['"]/.test(ch)) && chunks.some(ch => /pw_manager/.test(ch) && /groups\s*:\s*opsmgr\b/.test(ch) && /['"]manager['"]/.test(ch)); }, msg:"Pairing: developer task carries devops + pw_developer; manager task carries opsmgr + pw_manager" }
+    { fn:t => { const chunks = t.split(/\n(?=\s*- (?:name:|[A-Za-z][\w.]*:))/); return chunks.some(ch => /pw_developer/.test(ch) && /groups\s*:\s*devops\b/.test(ch) && /['"]developer['"]/.test(ch)) && chunks.some(ch => /pw_manager/.test(ch) && /groups\s*:\s*opsmgr\b/.test(ch) && /['"]manager['"]/.test(ch)); }, msg:"Pairing: developer task carries devops + pw_developer; manager task carries opsmgr + pw_manager" }
   ]],
   explain:`<h2>✅ Q15.1 complete — what you just did</h2>
   <p>One play, three tasks, and the filtering lives in the <code>when</code>, not the loop. Both user tasks visit <i>every</i> user on <i>every</i> host; the when is evaluated once per item, so a single task produces changed lines for the users it creates and skipping lines for the rest. Task 1's name says "devops" but its loop creates both groups, everywhere — including serverd, which gets groups and no users at all.</p>
