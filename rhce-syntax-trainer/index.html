@@ -66,6 +66,12 @@
   .statusline .mode{color:var(--amber);font-weight:700}
   .statusline .pos{color:var(--amber)}
   .cmdinput{position:static;width:100%;height:52px;background:#000;color:#e8e8e8;border:1px solid var(--line);border-top:none;padding:12px 14px;font-family:inherit;font-size:14px;line-height:21px;resize:none;outline:none;white-space:pre}
+  .term{background:#060a07;border:1px solid var(--line);border-top:none;max-height:240px;overflow-y:auto;padding:8px 12px;font-size:12.5px;line-height:1.6;color:#a9bfa5;white-space:pre-wrap;word-break:break-word}
+  .term:empty{display:none}
+  .tline{min-height:1.55em}
+  .term .tp{color:var(--green)}
+  .term .tc{color:#fff}
+  .term .terr{color:#e07a5f}
   .tablist{display:none;background:#050505;border:1px solid var(--line);border-top:none;color:var(--amber);padding:6px 14px;font-size:12.5px;white-space:pre-wrap;line-height:1.8}
   .tablist.show{display:block}
   .helprow{display:flex;flex-wrap:wrap;gap:10px;margin:2px 0 12px}
@@ -3113,13 +3119,877 @@ function tabComplete(ta, fi){
   showTabList(fi, ms.map(k => dirDisp + k[0] + (k[1] ? "/" : "")));
   return true;
 }
+// ===SHELLOUT-START===
+// --- Simulated shell output -------------------------------------------------
+// A living terminal for cmd steps: when the student runs a command, the
+// trainer answers the way the real lab would. Output is generated FROM the
+// command as typed (the playbook named, the host pattern matched, the module
+// args given) against the simulated lab state the curriculum builds — never
+// from a canned per-step string. Grading is untouched: runChecks alone
+// decides pass/fail; this engine only renders what the shell would print,
+// and a segment that is recognisably wrong (unknown command, missing file,
+// unmatched host pattern) prints the real failure text for it.
+const SO_HOSTS = ["servera.lab.example.com", "serverb.lab.example.com", "serverc.lab.example.com", "serverd.lab.example.com"];
+const SO_IP = { "servera.lab.example.com": "172.25.250.10", "serverb.lab.example.com": "172.25.250.11", "serverc.lab.example.com": "172.25.250.12", "serverd.lab.example.com": "172.25.250.13" };
+const SO_GROUPS = {
+  all: SO_HOSTS.slice(),
+  dev: ["servera.lab.example.com", "serverb.lab.example.com"],
+  test: ["serverb.lab.example.com"],
+  prod: ["serverb.lab.example.com", "serverc.lab.example.com"],
+  balancers: ["serverd.lab.example.com"],
+  webservers: ["serverb.lab.example.com", "serverc.lab.example.com"]
+};
+function soShort(h){ return String(h).split(".")[0]; }
+function soBase(p){ const parts = String(p).split("/").filter(x => x); return parts.length ? parts[parts.length - 1] : "/"; }
+function soHosts(pattern){
+  if (pattern === null || pattern === undefined || pattern === "") pattern = "all";
+  const found = new Set();
+  String(pattern).split(/[,:]/).forEach(part => {
+    part = part.trim(); if (!part) return;
+    if (part === "all" || part === "*") { SO_HOSTS.forEach(h => found.add(h)); return; }
+    if (SO_GROUPS[part]) { SO_GROUPS[part].forEach(h => found.add(h)); return; }
+    if (part === "localhost") return;
+    if (part.indexOf("*") >= 0) {
+      const re = new RegExp("^" + part.replace(/[.+^${}()|[\]\\]/g, "\\$&").replace(/\*/g, ".*") + "$");
+      SO_HOSTS.forEach(h => { if (re.test(h) || re.test(soShort(h))) found.add(h); });
+      return;
+    }
+    SO_HOSTS.forEach(h => { if (h === part || soShort(h) === part) found.add(h); });
+  });
+  return SO_HOSTS.filter(h => found.has(h));
+}
+function soInGroup(host, g){ return (SO_GROUPS[g] || []).indexOf(host) >= 0; }
+
+// --- per-step terminal state (session only, never persisted) ----------------
+const termStore = {};
+const labStore = {};
+function labStateFor(sec){
+  if (!labStore[sec]) labStore[sec] = { made: {}, loopAlt: 0, apacheInit: false, collectionsDone: false, rolesDone: false };
+  return labStore[sec];
+}
+function termStateFor(idx){
+  if (!termStore[idx]) {
+    const q = QUESTIONS[idx];
+    const lab = q ? labStateFor(sectionOf(q.id)) : labStateFor("Q" + idx);
+    // cwd and the transcript are per-step; the simulated filesystem and
+    // galaxy state are shared across the steps of a question, the way the
+    // real lab persists between Q4.2's install and Q4.3's list.
+    termStore[idx] = { cwd: "/home/student/ansible", entries: [], made: lab.made, lab: lab };
+  }
+  return termStore[idx];
+}
+function soResolve(st, p){
+  if (!p) return st.cwd;
+  let s = String(p);
+  if (s === "~") s = "/home/student";
+  else if (s.indexOf("~/") === 0) s = "/home/student" + s.slice(1);
+  else if (s.charAt(0) !== "/") s = st.cwd + "/" + s;
+  const parts = [];
+  s.split("/").forEach(seg => { if (!seg || seg === ".") return; if (seg === "..") parts.pop(); else parts.push(seg); });
+  return "/" + parts.join("/");
+}
+function soFsKids(st, abs){
+  const kids = {};
+  (FS_TREE[abs] || []).forEach(k => { kids[k[0]] = { dir: !!k[1] }; });
+  Object.keys(st.made).forEach(mp => {
+    const parent = mp.slice(0, mp.lastIndexOf("/")) || "/";
+    if (parent === abs) kids[soBase(mp)] = { dir: !!st.made[mp].dir, content: st.made[mp].content };
+  });
+  return kids;
+}
+function soFsExists(st, abs){
+  if (FS_TREE[abs]) return { dir: true };
+  if (st.made[abs]) return st.made[abs];
+  const parent = abs.slice(0, abs.lastIndexOf("/")) || "/";
+  const kids = FS_TREE[parent] || [];
+  for (const k of kids) if (parent + (parent === "/" ? "" : "/") + k[0] === abs) return { dir: !!k[1] };
+  return null;
+}
+function soMakeDir(st, abs){ st.made[abs] = { dir: true }; }
+function soMakeFile(st, abs, content){ st.made[abs] = { dir: false, content: content }; }
+
+// Controller-side file contents: every HELP answer is a file the curriculum
+// defines, keyed by its absolute path; a few downloaded/vault files are
+// curriculum-known too.
+const SO_LOCAL_EXTRA = {
+  "/home/student/ansible/user_list.yml": "---\nusers:\n  - username: alice\n    uid: 1201\n    job: developer\n  - username: vincent\n    uid: 1202\n    job: developer\n  - username: sandy\n    uid: 2201\n    job: manager\n  - username: patrick\n    uid: 2202\n    job: manager\n"
+};
+const SO_VAULT_BLOB = "$ANSIBLE_VAULT;1.1;AES256\n65386539623962333631383539636331373262326661633538626364646165336463623265396337\n3961303962633864613866636234633963623333640a393736653137383864613935313363386461\n37623932326338313065386537643035376361383032646662636464386535653137626630663162\n3832393135316636640a343939373239663733373366653161313231396263316132663638376564\n6139";
+function soLocalContent(st, abs){
+  if (st.made[abs] && typeof st.made[abs].content === "string") return st.made[abs].content;
+  if (abs === "/home/student/ansible/locker.yml" || abs === "/home/student/ansible/sal.yml") return SO_VAULT_BLOB;
+  if (SO_LOCAL_EXTRA[abs] !== undefined) return SO_LOCAL_EXTRA[abs];
+  for (const id of Object.keys(HELP)) {
+    const a = HELP[id].answer.find(x => x.path === abs);
+    if (a) return a.text;
+  }
+  return null;
+}
+
+// --- playbook model: play name, hosts, tasks parsed from the HELP answers ---
+function soWhenRuns(when, host){
+  if (!when) return true;
+  const atom = (expr) => {
+    expr = expr.trim().replace(/^\(+|\)+$/g, "");
+    let m = expr.match(/inventory_hostname\s+in\s+groups\['(\w+)'\]/);
+    if (m) return soInGroup(host, m[1]);
+    m = expr.match(/'(\w+)'\s+in\s+group_names/);
+    if (m) return soInGroup(host, m[1]);
+    m = expr.match(/inventory_hostname\s+not\s+in\s+groups\['(\w+)'\]/);
+    if (m) return !soInGroup(host, m[1]);
+    return true; // fact guards, item.* loop conditions: the task runs
+  };
+  return when.split(/\s+or\s+/).some(part => part.split(/\s+and\s+/).every(atom));
+}
+const SO_PLAY_TASKS = {
+  "lvm.yml": [
+    { name: "Fail if volume group yellowtail does not exist", res: "skipping" },
+    { name: "Create 1500 MiB logical volume", res: "rescued", fatal: "Could not create logical volume: volume group yellowtail has insufficient free space for a 1500 MiB volume" },
+    { name: "Display size error message", res: "ok", jsonMsg: "Could not create logical volume at that size" },
+    { name: "Create 800 MiB logical volume instead", res: "changed" },
+    { name: "Format logical volume with ext4 filesystem", res: "changed" }
+  ],
+  "roles.yml": [
+    { name: "balancer : Install haproxy", res: { only: "balancers", run: "changed" } },
+    { name: "balancer : Deploy haproxy.cfg from the template", res: { only: "balancers", run: "changed" } },
+    { name: "phpinfo : Install PHP packages", res: { only: "webservers", run: "changed" } },
+    { name: "phpinfo : Deploy hello.php from the template", res: { only: "webservers", run: "changed" } },
+    { name: "Open http on balancer", res: { only: "balancers", run: "changed" } }
+  ],
+  "role.yml": [
+    { name: "apache : Install httpd and firewalld", res: "changed" },
+    { name: "apache : Start and enable httpd and firewalld", res: "changed" },
+    { name: "apache : Permit http and https in the firewall", res: "changed" },
+    { name: "apache : Deploy the index page", res: "changed" }
+  ],
+  "timesync.yml": [
+    { name: "redhat.rhel_system_roles.timesync : Install chrony", res: "changed" },
+    { name: "redhat.rhel_system_roles.timesync : Configure /etc/chrony.conf", res: "changed" },
+    { name: "redhat.rhel_system_roles.timesync : Enable and start chronyd", res: "changed" }
+  ],
+  "users.yml": [
+    { name: "Ensure devops group exist", res: "changed" },
+    { name: "create users whose job is a developer on dev and test host group", res: { groups: ["dev", "test"], run: "changed" } },
+    { name: "create users whose job is manager on database host group", res: { groups: ["prod"], run: "changed" } }
+  ]
+};
+function soPlaybook(base){
+  let text = null;
+  for (const id of Object.keys(HELP)) {
+    const a = HELP[id].answer.find(x => x.path.split("/").pop() === base);
+    if (a) { text = a.text; break; }
+  }
+  if (text === null) return null;
+  const pb = { name: base, hosts: "all", tasks: [] };
+  let section = null, cur = null, inPlay = false;
+  text.split("\n").forEach(ln => {
+    let m;
+    if (!inPlay && (m = ln.match(/^-\s+name:\s*(.+)$/))) { pb.name = m[1].trim(); inPlay = true; return; }
+    if ((m = ln.match(/^\s{2}hosts:\s*(\S+)\s*$/)) && !section) { pb.hosts = m[1]; return; }
+    if ((m = ln.match(/^\s{2}(tasks|post_tasks|roles):\s*$/))) { section = m[1]; cur = null; return; }
+    if (/^\s{2}\S/.test(ln) && !/^\s{2}-/.test(ln)) { section = section; }
+    if (section === "tasks" || section === "post_tasks") {
+      if ((m = ln.match(/^\s{4}-\s+name:\s*(.+)$/))) { cur = { name: m[1].trim(), when: null, module: null }; pb.tasks.push(cur); return; }
+      if (cur && (m = ln.match(/^\s{6}when:\s*(.+)$/))) { cur.when = m[1].trim(); return; }
+      if (cur && !cur.module && (m = ln.match(/^\s{6}([\w.]+):\s*$/))) { cur.module = m[1]; return; }
+    }
+    if (section === "roles") {
+      if ((m = ln.match(/^\s{4}-\s+role:\s*(\S+)/))) { pb.tasks.push({ name: m[1] + " : Apply the " + m[1] + " role", when: null, roleWhen: true }); return; }
+      if ((m = ln.match(/^\s{4}-\s+([\w.]+)\s*$/))) { pb.tasks.push({ name: m[1], when: null, roleBare: true }); return; }
+      if ((m = ln.match(/^\s{6}when:\s*(.+)$/)) && pb.tasks.length) { pb.tasks[pb.tasks.length - 1].when = m[1].trim(); return; }
+    }
+  });
+  if (SO_PLAY_TASKS[base]) pb.tasks = SO_PLAY_TASKS[base];
+  return pb;
+}
+function soTaskResult(task, host, okAll){
+  let r;
+  if (typeof task.res === "string") r = task.res;
+  else if (task.res && typeof task.res === "object") {
+    const inside = task.res.only ? soInGroup(host, task.res.only) : (task.res.groups || []).some(g => soInGroup(host, g));
+    r = inside ? task.res.run : "skipping";
+  }
+  else if (task.when) r = soWhenRuns(task.when, host) ? ((task.module === "ansible.builtin.fail" || task.module === "ansible.builtin.debug") ? "ok" : "changed") : "skipping";
+  else r = "changed";
+  if (okAll && r === "changed") r = "ok";
+  return r;
+}
+function soStars(s){ return s + " " + "*".repeat(Math.max(3, 74 - s.length)); }
+function soRunPlaybook(base, opts){
+  opts = opts || {};
+  const pb = soPlaybook(base);
+  const lines = [];
+  if (!pb) {
+    const hosts = SO_HOSTS;
+    lines.push(soStars("PLAY [" + base + "]"));
+    lines.push(soStars("TASK [Gathering Facts]"));
+    hosts.forEach(h => lines.push("ok: [" + h + "]"));
+    lines.push("");
+    lines.push(soStars("PLAY RECAP"));
+    hosts.forEach(h => lines.push(h.padEnd(28) + ": ok=1    changed=0    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0"));
+    return lines;
+  }
+  const hosts = soHosts(pb.hosts);
+  if (!hosts.length) {
+    lines.push("[WARNING]: Could not match supplied host pattern, ignoring: " + pb.hosts);
+    lines.push("");
+    lines.push(soStars("PLAY [" + pb.name + "]"));
+    lines.push("skipping: no hosts matched");
+    return lines;
+  }
+  const counts = {};
+  hosts.forEach(h => { counts[h] = { ok: 1, changed: 0, skipped: 0, rescued: 0, failed: 0 }; });
+  lines.push(soStars("PLAY [" + pb.name + "]"));
+  lines.push(soStars("TASK [Gathering Facts]"));
+  hosts.forEach(h => lines.push("ok: [" + h + "]"));
+  pb.tasks.forEach(task => {
+    if (task.res === "rescued") {
+      lines.push(soStars("TASK [" + task.name + "]"));
+      hosts.forEach(h => {
+        lines.push("fatal: [" + h + "]: FAILED! => {\"changed\": false, \"msg\": \"" + task.fatal + "\"}");
+        counts[h].rescued = 1; counts[h].ok += 1;
+      });
+      return;
+    }
+    lines.push(soStars("TASK [" + task.name + "]"));
+    hosts.forEach(h => {
+      const r = soTaskResult(task, h, opts.okAll);
+      if (r === "changed") { lines.push("changed: [" + h + "]"); counts[h].ok += 1; counts[h].changed += 1; }
+      else if (r === "skipping") { lines.push("skipping: [" + h + "]"); counts[h].skipped += 1; }
+      else {
+        lines.push("ok: [" + h + "]"); counts[h].ok += 1;
+        if (task.jsonMsg) lines.push("=> {\n    \"msg\": \"" + task.jsonMsg + "\"\n}");
+      }
+    });
+  });
+  lines.push("");
+  lines.push(soStars("PLAY RECAP"));
+  hosts.forEach(h => {
+    const c = counts[h];
+    lines.push(h.padEnd(28) + ": ok=" + c.ok + "    changed=" + c.changed + "    unreachable=0    failed=" + c.failed + "    skipped=" + c.skipped + "    rescued=" + c.rescued + "    ignored=0");
+  });
+  return lines;
+}
+
+// --- simulated managed-host state -------------------------------------------
+const SO_USERS = {
+  alice:   { uid: 1201, grp: "devops", gid: 1203, hosts: ["servera.lab.example.com", "serverb.lab.example.com"] },
+  vincent: { uid: 1202, grp: "devops", gid: 1203, hosts: ["servera.lab.example.com", "serverb.lab.example.com"] },
+  sandy:   { uid: 2201, grp: "opsmgr", gid: 1204, hosts: ["serverb.lab.example.com", "serverc.lab.example.com"] },
+  patrick: { uid: 2202, grp: "opsmgr", gid: 1204, hosts: ["serverb.lab.example.com", "serverc.lab.example.com"] }
+};
+const SO_GROUP_DB = {
+  devops: { gid: 1203, members: { "servera.lab.example.com": "alice,vincent", "serverb.lab.example.com": "alice,vincent", "serverc.lab.example.com": "", "serverd.lab.example.com": "" } },
+  opsmgr: { gid: 1204, members: { "servera.lab.example.com": "", "serverb.lab.example.com": "sandy,patrick", "serverc.lab.example.com": "sandy,patrick", "serverd.lab.example.com": "" } }
+};
+function soRemoteFileLines(path, host){
+  const sh = soShort(host);
+  if (path === "/etc/chrony.conf") return ["# Use public servers from the pool.ntp.org project.", "pool 2.north-america.pool.ntp.org iburst", "driftfile /var/lib/chrony/drift", "makestep 1.0 3", "rtcsync", "logdir /var/log/chrony"];
+  if (path === "/etc/haproxy/haproxy.cfg") return ["global", "    log         127.0.0.1 local2", "    maxconn     4000", "    daemon", "", "defaults", "    mode                    http", "    timeout connect         10s", "    timeout client          1m", "    timeout server          1m", "", "frontend main", "    bind *:80", "    default_backend             app", "", "backend app", "    balance     roundrobin", "    server serverb 172.25.250.11:80 check", "    server serverc 172.25.250.12:80 check"];
+  if (path === "/etc/myhosts") {
+    const out = ["127.0.0.1 localhost localhost.localdomain localhost4 localhost4.localdomain4", "::1 localhost localhost.localdomain localhost6 localhost6.localdomain6"];
+    SO_HOSTS.forEach(h => out.push(SO_IP[h] + " " + h + " " + soShort(h)));
+    return out;
+  }
+  if (path === "/etc/issue") {
+    if (sh === "servera") return ["Development"];
+    if (sh === "serverb" || sh === "serverc") return ["Production"];
+    return ["\\S", "Kernel \\r on an \\m"];
+  }
+  if (path === "/root/hwreport.txt") return ["Inventory host name=" + host, "Total memory in MB=" + ({ servera: "4096", serverb: "8192", serverc: "8192", serverd: "2048" }[sh] || "4096"), "BIOS version=2.4.1", "Size of disk device sda=20G", "Size of disk device sdb=" + (sh === "serverd" ? "NONE" : "10G")];
+  if (path === "/webdev/index.html" || path === "/var/www/html/webdev/index.html") return ["Development"];
+  if (path === "/etc/passwd") return ["root:x:0:0:root:/root:/bin/bash", "student:x:1000:1000:Student User:/home/student:/bin/bash"];
+  return null;
+}
+const SO_REMOTE_META = {
+  "/etc/myhosts": "-rw-r--r--. 1 root root 324 Nov 11 09:41",
+  "/var/www/html": "drwxr-xr-x. 2 root root 4096 Nov 11 08:15",
+  "/webdev": "drwxrwsr-x. 2 root devops 4096 Nov 11 10:02",
+  "/var/www/html/webdev": "lrwxrwxrwx. 1 root root 7 Nov 11 10:02"
+};
+// Run one command line ON a managed host (the -a argument of command/shell).
+// Returns {out: [lines], failed: bool, stderr: string}.
+function soRemoteCmd(cmdStr, host, ctx){
+  const tokens = shellTokens(cmdStr.trim());
+  if (!tokens.length) return { out: [], failed: false };
+  const piped = cmdStr.indexOf("|") >= 0;
+  if (piped && !ctx.shell) {
+    return { out: [], failed: true, stderr: tokens[0] + ": extra operand “" + cmdStr.split("|")[1].trim().split(/\s+/)[0] + "”: the command module does not run a shell, so the pipe and everything after it were passed as literal arguments" };
+  }
+  if (piped && ctx.shell) {
+    const stages = cmdStr.split("|").map(s => s.trim());
+    let res = soRemoteCmd(stages[0], host, { become: ctx.become, shell: false });
+    if (res.failed) return res;
+    let lines = res.out.slice();
+    for (let i = 1; i < stages.length; i++) lines = soPipeFilter(lines, stages[i]);
+    return { out: lines, failed: false };
+  }
+  const cmd = tokens[0];
+  const rest = cmdStr.trim().slice(cmd.length).trim();
+  if (cmd === "dnf" || cmd === "yum") {
+    if (/group\s+list\s+--installed/.test(rest)) return { out: ["Last metadata expiration check: 0:42:17 ago on Tue 11 Nov 2026 09:14:02 AM JST.", "Installed Groups:", "   RPM Development Tools"], failed: false };
+    if (/group\s+list/.test(rest)) return { out: ["Available Groups:", "   RPM Development Tools", "Installed Groups:", "   RPM Development Tools"], failed: false };
+    return { out: [], failed: false };
+  }
+  if (cmd === "grep") {
+    const args = tokens.slice(1).filter(t => t !== "-q");
+    const listOnly = args.indexOf("-L") >= 0;
+    const clean = args.filter(t => t.charAt(0) !== "-");
+    const pattern = clean[0], file = clean[clean.length - 1];
+    const content = soRemoteFileLines(file, host);
+    if (content === null) return { out: [], failed: true, stderr: "grep: " + file + ": No such file or directory" };
+    const hits = content.filter(l => l.indexOf(pattern) >= 0);
+    if (listOnly) return { out: hits.length ? [] : [file], failed: false };
+    return { out: hits, failed: hits.length ? false : true, stderr: hits.length ? "" : "" };
+  }
+  if (cmd === "cat") {
+    const file = tokens[1];
+    const content = soRemoteFileLines(file, host);
+    if (content === null) return { out: [], failed: true, stderr: "cat: " + file + ": No such file or directory" };
+    return { out: content, failed: false };
+  }
+  if (cmd === "head" || cmd === "tail") {
+    const file = tokens[tokens.length - 1];
+    const content = soRemoteFileLines(file, host);
+    if (content === null) return { out: [], failed: true, stderr: cmd + ": " + file + ": No such file or directory" };
+    const nm = cmdStr.match(/-(\d+)/);
+    const n = nm ? parseInt(nm[1], 10) : 10;
+    return { out: cmd === "head" ? content.slice(0, n) : content.slice(-n), failed: false };
+  }
+  if (cmd === "ls") {
+    const paths = tokens.slice(1).filter(t => t.charAt(0) !== "-");
+    const longFmt = /-[a-z]*l/.test(cmdStr);
+    const out = [];
+    for (const p of paths.length ? paths : ["."]) {
+      const meta = SO_REMOTE_META[p];
+      if (longFmt && meta) { out.push(meta + " " + p + (p === "/var/www/html/webdev" ? " -> /webdev/" : "")); continue; }
+      if (meta || soRemoteFileLines(p, host)) { out.push(p); continue; }
+      return { out: [], failed: true, stderr: "ls: cannot access '" + p + "': No such file or directory" };
+    }
+    return { out: out, failed: false };
+  }
+  if (cmd === "chronyc" && /sources/.test(rest)) {
+    return { out: ["MS Name/IP address         Stratum Poll Reach LastRx Last sample", "===============================================================================", "^* 2.north-america.pool.ntp.org  2   6   377    42    +12us[  +30us] +/-   31ms", "^+ 38.229.62.1                   2   6   377    43    -84us[  -84us] +/-   42ms"], failed: false };
+  }
+  if (cmd === "lvs") {
+    return { out: ["  LV   VG         Attr       LSize   Pool Origin Data%  Meta%  Move Log Cpy%Sync Convert", "  data yellowtail -wi-a----- 800.00m"], failed: false };
+  }
+  if (cmd === "vgs") {
+    return { out: ["  VG         #PV #LV #SN Attr   VSize   VFree", "  yellowtail   1   1   0 wz--n-  <1.95g  <1.17g"], failed: false };
+  }
+  if (cmd === "blkid") {
+    const dev = tokens[1];
+    if (dev === "/dev/yellowtail/data") return { out: ["/dev/yellowtail/data: UUID=\"7c4a91be-2f6d-4c1a-9a03-51d2e6b84f10\" BLOCK_SIZE=\"512\" TYPE=\"ext4\""], failed: false };
+    return { out: [], failed: true, stderr: "blkid: " + dev + ": not a block device" };
+  }
+  if (cmd === "id") {
+    const user = tokens[1];
+    const u = SO_USERS[user];
+    if (u && u.hosts.indexOf(host) >= 0) return { out: ["uid=" + u.uid + "(" + user + ") gid=" + u.uid + "(" + user + ") groups=" + u.uid + "(" + user + ")," + u.gid + "(" + u.grp + ")"], failed: false };
+    if (user === "student") return { out: ["uid=1000(student) gid=1000(student) groups=1000(student)"], failed: false };
+    return { out: [], failed: true, stderr: "id: ‘" + user + "’: no such user" };
+  }
+  if (cmd === "getent") {
+    const db = tokens[1];
+    if (db === "group") {
+      const out = [];
+      tokens.slice(2).forEach(g => {
+        const gd = SO_GROUP_DB[g];
+        if (gd) out.push(g + ":x:" + gd.gid + ":" + gd.members[host]);
+      });
+      return { out: out, failed: out.length ? false : true, stderr: out.length ? "" : "getent: no such group" };
+    }
+    if (db === "shadow") {
+      if (!ctx.become) return { out: [], failed: true, stderr: "getent: /etc/shadow: Permission denied" };
+      const out = [];
+      tokens.slice(2).forEach(name => {
+        if (SO_USERS[name] && SO_USERS[name].hosts.indexOf(host) >= 0) out.push(name + ":$6$rounds=5000$labSalt42$Kx9Qp2vLmZ8sHdR4tYuN6bVcX3wJaE7fGhS1dPkM0oBnT5qAzUiOeWrGyCxVbNmAsDfGhJkLzXcVbN1234567:20400:0:99999:7:::");
+      });
+      return { out: out, failed: false };
+    }
+    if (db === "passwd") {
+      const out = [];
+      tokens.slice(2).forEach(name => { if (SO_USERS[name] && SO_USERS[name].hosts.indexOf(host) >= 0) out.push(name + ":x:" + SO_USERS[name].uid + ":" + SO_USERS[name].uid + "::/home/" + name + ":/bin/bash"); });
+      return { out: out, failed: out.length ? false : true, stderr: "" };
+    }
+    return { out: [], failed: false };
+  }
+  if (cmd === "haproxy") {
+    if (/-c\s/.test(cmdStr) || / -c/.test(cmdStr)) return { out: ["Configuration file is valid"], failed: false };
+    return { out: [], failed: false };
+  }
+  if (cmd === "stat") return { out: ["  File: " + (tokens[1] || "") + " -> /webdev/", "  Size: 7         	Blocks: 0          IO Block: 4096   symbolic link"], failed: false };
+  return { out: [], failed: false };
+}
+function soPipeFilter(lines, stage){
+  const t = shellTokens(stage);
+  if (!t.length) return lines;
+  if (t[0] === "head") { const n = parseInt((t[1] || "-10").replace("-", ""), 10) || 10; return lines.slice(0, n); }
+  if (t[0] === "tail") { const n = parseInt((t[1] || "-10").replace("-", ""), 10) || 10; return lines.slice(-n); }
+  if (t[0] === "grep") { const pat = unquoteArg(t[t.length - 1]); return lines.filter(l => l.indexOf(pat) >= 0); }
+  if (t[0] === "cut") {
+    const dm = stage.match(/-d\s*(\S)/), fm = stage.match(/-f\s*([\d,]+)/), cm = stage.match(/-c\s*(\d+)-(\d+)/);
+    if (cm) return lines.map(l => l.slice(parseInt(cm[1], 10) - 1, parseInt(cm[2], 10)));
+    if (dm && fm) {
+      const d = dm[1], fields = fm[1].split(",").map(x => parseInt(x, 10) - 1);
+      return lines.map(l => { const parts = l.split(d); return fields.map(i => parts[i] === undefined ? "" : parts[i]).join(d); });
+    }
+    return lines;
+  }
+  return lines;
+}
+// One ad-hoc invocation: 'ansible <pattern> [-b] -m <mod> -a <args>'.
+function soAdhoc(tokens){
+  let pattern = null, mod = null, args = null, become = false;
+  for (let i = 0; i < tokens.length; i++) {
+    const tk = tokens[i], base = tk.split("=")[0];
+    if (tk === "-b" || tk === "--become") { become = true; continue; }
+    if (base === "-m" || base === "--module-name") { const r = flagValue(tokens, i); mod = r[0]; i = r[1] - 1; continue; }
+    if (base === "-a" || base === "--args") { const r = flagValue(tokens, i); args = r[0] === null ? null : unquoteArg(r[0]); i = r[1] - 1; continue; }
+    if (ADHOC_DROP_VALUE.indexOf(base) >= 0) { const r = flagValue(tokens, i); i = r[1] - 1; continue; }
+    if (tk.charAt(0) === "-") continue;
+    if (pattern === null) pattern = tk;
+  }
+  if (mod === null && args === null) return { lines: ["ansible: error: no module or action given — try 'ansible " + (pattern || "all") + " -m ping'"], ok: false };
+  if (mod === null) mod = "command";
+  const short = mod.split(".").pop();
+  const hosts = soHosts(pattern === null ? "all" : pattern);
+  const lines = [];
+  if (!hosts.length) {
+    lines.push("[WARNING]: Could not match supplied host pattern, ignoring: " + pattern);
+    lines.push("");
+    lines.push("[WARNING]: No inventory was parsed, only implicit localhost is available");
+    lines.push("[WARNING]: provided hosts list is empty, only localhost is available");
+    return { lines: lines, ok: false };
+  }
+  let allOk = true;
+  hosts.forEach(h => {
+    if (short === "command" || short === "shell") {
+      const res = soRemoteCmd(args || "", h, { become: become, shell: short === "shell" });
+      if (res.failed) {
+        allOk = false;
+        lines.push(h + " | FAILED! => {");
+        lines.push("    \"changed\": false,");
+        lines.push("    \"msg\": \"non-zero return code\"," + (res.stderr ? "\n    \"stderr\": \"" + res.stderr.replace(/"/g, "'") + "\"" : ""));
+        lines.push("}");
+      } else {
+        lines.push(h + " | SUCCESS | rc=0 >>");
+        res.out.forEach(l => lines.push(l));
+      }
+      lines.push("");
+      return;
+    }
+    if (short === "setup") {
+      const filter = ((args || "").match(/filter=([\w*]+)/) || [])[1] || "*";
+      lines.push(h + " | SUCCESS => {");
+      if (filter === "ansible_default_ipv4") {
+        lines.push("    \"ansible_facts\": {", "        \"ansible_default_ipv4\": {", "            \"address\": \"" + SO_IP[h] + "\",", "            \"alias\": \"ens3\",", "            \"broadcast\": \"172.25.250.255\",", "            \"gateway\": \"172.25.250.254\",", "            \"interface\": \"ens3\",", "            \"macaddress\": \"52:54:00:12:34:0" + (SO_HOSTS.indexOf(h) + 1) + "\",", "            \"mtu\": 1500,", "            \"netmask\": \"255.255.255.0\",", "            \"network\": \"172.25.250.0\",", "            \"type\": \"ether\"", "        }", "    },", "    \"changed\": false", "}");
+      } else if (filter === "ansible_devices") {
+        lines.push("    \"ansible_facts\": {", "        \"ansible_devices\": {", "            \"sda\": {", "                \"model\": \"VIRTIO 20G\",", "                \"size\": \"20.00 GB\"", "            }," + (soShort(h) === "serverd" ? "" : "\n            \"sdb\": {\n                \"model\": \"VIRTIO 10G\",\n                \"size\": \"10.00 GB\"\n            },"), "            \"vda\": {", "                \"size\": \"20.00 GB\"", "            }", "        }", "    },", "    \"changed\": false", "}");
+      } else {
+        lines.push("    \"ansible_facts\": {", "        \"ansible_fqdn\": \"" + h + "\",", "        \"ansible_hostname\": \"" + soShort(h) + "\"", "    },", "    \"changed\": false", "}");
+      }
+      lines.push("");
+      return;
+    }
+    if (short === "stat") {
+      const pm = (args || "").match(/path=(\S+)/);
+      const p = pm ? pm[1] : "";
+      lines.push(h + " | SUCCESS => {");
+      if (p === "/var/www/html/webdev") lines.push("    \"changed\": false,", "    \"stat\": {", "        \"exists\": true,", "        \"islnk\": true,", "        \"lnk_source\": \"/webdev/\",", "        \"path\": \"/var/www/html/webdev\"", "    }", "}");
+      else lines.push("    \"changed\": false,", "    \"stat\": {", "        \"exists\": " + (SO_REMOTE_META[p] ? "true" : "false") + ",", "        \"path\": \"" + p + "\"", "    }", "}");
+      lines.push("");
+      return;
+    }
+    if (short === "ping") { lines.push(h + " | SUCCESS => {", "    \"changed\": false,", "    \"ping\": \"pong\"", "}"); lines.push(""); return; }
+    const changing = ["dnf", "yum", "service", "firewalld", "user", "group", "file", "copy", "template", "lvol", "filesystem", "yum_repository", "rpm_key"].indexOf(short) >= 0;
+    lines.push(h + " | SUCCESS => {");
+    lines.push("    \"changed\": " + (changing ? "true" : "false") + (args ? ",\n    \"msg\": \"\"" : ""));
+    lines.push("}");
+    lines.push("");
+  });
+  return { lines: lines, ok: allOk };
+}
+
+// --- controller-side segment execution ---------------------------------------
+function soLsLines(st, tokens, typed){
+  const flags = tokens.filter(t => t.charAt(0) === "-").join(" ");
+  const longFmt = /l/.test(flags.replace(/^-+/, ""));
+  const fullIso = typed.indexOf("--time-style=full-iso") >= 0;
+  const paths = tokens.filter(t => t.charAt(0) !== "-");
+  const out = [];
+  const metaFor = (abs, name) => {
+    const e = soFsExists(st, abs);
+    const isDir = e && e.dir;
+    const size = !isDir && typeof (e && e.content) === "string" ? e.content.length : (isDir ? 4096 : 512);
+    if (abs === "/home/student/ansible/roles/apache") return "drwxr-xr-x. 8 student student 4096 Nov 11 09:02 " + name;
+    return (isDir ? "drwxr-xr-x" : "-rw-r--r--") + ". 1 student student " + size + " " + (fullIso ? "2026-11-11 09:12:04.000000000 +0900" : "Nov 11 09:12") + " " + name;
+  };
+  const targets = paths.length ? paths : ["."];
+  let failed = false;
+  const blocks = [];
+  targets.forEach(p => {
+    const abs = soResolve(st, p);
+    const e = soFsExists(st, abs);
+    if (!e) { out.push("ls: cannot access '" + p + "': No such file or directory"); failed = true; return; }
+    if (!e.dir) { blocks.push({ head: null, lines: [longFmt ? metaFor(abs, p) : p] }); return; }
+    const kids = soFsKids(st, abs);
+    let names = Object.keys(kids).sort();
+    if (abs === "/home/student/ansible/roles/apache" && st.lab.apacheInit) names = ["README.md", "defaults", "files", "handlers", "meta", "tasks", "templates", "tests", "vars"];
+    if (abs === "/home/student/ansible/roles" && st.lab.rolesDone) names = ["apache", "balancer", "phpinfo", "requirements.yml"].filter(n => kids[n] || n !== "apache" || st.lab.apacheInit);
+    if (longFmt) {
+      const lines = ["total " + Math.max(4, names.length * 4)];
+      names.forEach(n => lines.push(metaFor(abs + "/" + n, n)));
+      blocks.push({ head: targets.length > 1 ? p.replace(/\/?$/, "/") + ":" : null, lines: lines });
+    } else {
+      blocks.push({ head: targets.length > 1 ? p.replace(/\/?$/, "/") + ":" : null, lines: [names.join("  ")] });
+    }
+  });
+  blocks.forEach((b, i) => {
+    if (i > 0) out.push("");
+    if (b.head) out.push(b.head);
+    b.lines.forEach(l => out.push(l));
+  });
+  return { lines: out, ok: !failed };
+}
+function soCurl(st, tokens, segText){
+  let outfile = null, url = null, silent = false;
+  for (let i = 1; i < tokens.length; i++) {
+    const tk = tokens[i];
+    if (tk === "-o") { outfile = tokens[i + 1]; i++; continue; }
+    if (tk === "-O") { outfile = null; continue; }
+    if (tk === "-s" || tk === "-sS") { silent = true; continue; }
+    if (/^https?:\/\//.test(tk)) url = tk;
+  }
+  if (!url) return { lines: ["curl: no URL specified!", "curl: try 'curl --help' or 'curl --manual' for more information"], ok: false };
+  const um = url.match(/^https?:\/\/([^\/:?]+)([^?]*)$/);
+  const host = um ? um[1] : url, pathPart = um ? (um[2] || "/") : "/";
+  const knownHost = host === "10.1.10.121" || SO_HOSTS.indexOf(host) >= 0 || ["servera", "serverb", "serverc", "serverd"].indexOf(host) >= 0;
+  if (!knownHost) return { lines: ["curl: (6) Could not resolve host: " + host], ok: false };
+  let body = null;
+  if (host === "10.1.10.121") {
+    const bn = pathPart.split("/").pop();
+    body = soLocalContent(st, "/home/student/ansible/" + bn) || "";
+    if (body === "" && bn === "haproxy.cfg.j2") body = (soRemoteFileLines("/etc/haproxy/haproxy.cfg", "serverd.lab.example.com") || []).join("\n");
+    if (body === "" && bn === "hello.php.j2") body = "Hello PHP World\n<?php phpinfo(); ?>";
+    if (body === "" && bn === "main.yml") body = "---\n- name: Deploy hello.php\n  ansible.builtin.template:\n    src: hello.php.j2\n    dest: /var/www/html/hello.php";
+  } else {
+    const fqdn = SO_HOSTS.indexOf(host) >= 0 ? host : host + ".lab.example.com";
+    if (pathPart === "/hello.php") body = "Hello PHP World\nPHP Version 8.0.30\n\nphpinfo() — PHP Credits and configuration for " + fqdn + "\nSystem: Linux " + fqdn + " 5.14.0 x86_64";
+    else if (fqdn === "serverd.lab.example.com" || host === "serverd") {
+      const backends = ["serverb.lab.example.com", "serverc.lab.example.com"];
+      const b = backends[st.lab.loopAlt % 2]; st.lab.loopAlt++;
+      body = "Welcome to " + b + " and the IP Address is " + SO_IP[b];
+    }
+    else body = "Welcome to " + fqdn + " and the IP Address is " + SO_IP[fqdn];
+  }
+  const lines = [];
+  if (outfile !== null || /-O\b/.test(segText)) {
+    const name = outfile !== null ? outfile : pathPart.split("/").pop();
+    soMakeFile(st, soResolve(st, name), body || "");
+    if (!silent) {
+      const size = (body || "").length + 120;
+      lines.push("  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current");
+      lines.push("                                 Dload  Upload   Total   Spent    Left  Speed");
+      lines.push("100  " + size + "  100  " + size + "    0     0   9854      0 --:--:-- --:--:-- --:--:--  9912");
+    }
+    return { lines: lines, ok: true };
+  }
+  if (body === null) return { lines: ["curl: (22) The requested URL returned error: 404"], ok: false };
+  return { lines: body === "" ? [] : body.split("\n"), ok: true };
+}
+function soGalaxy(st, tokens){
+  const sub = tokens[1];
+  if (sub === "collection") {
+    const action = tokens[2];
+    if (action === "install") {
+      const lines = ["Starting galaxy collection install process", "Process install dependency map", "Starting collection install process"];
+      const cols = [["community.general", "8.5.0"], ["ansible.posix", "1.5.4"], ["ansible.netcommon", "7.1.0"]];
+      cols.forEach(c => {
+        lines.push("Installing '" + c[0] + ":" + c[1] + "' to '/home/student/ansible/collections/ansible_collections/" + c[0].replace(".", "/") + "'");
+        lines.push(c[0] + " (" + c[1] + ") was installed successfully");
+      });
+      st.lab.collectionsDone = true;
+      return { lines: lines, ok: true };
+    }
+    if (action === "list") {
+      if (!st.lab.collectionsDone) return { lines: ["# /home/student/ansible/collections/ansible_collections", "Collection        Version", "----------------- -------"], ok: true };
+      return { lines: ["# /home/student/ansible/collections/ansible_collections", "Collection        Version", "----------------- -------", "ansible.netcommon 7.1.0  ", "ansible.posix     1.5.4  ", "community.general 8.5.0  "], ok: true };
+    }
+    return { lines: [], ok: true };
+  }
+  if (sub === "role") {
+    const action = tokens[2];
+    if (action === "install") {
+      const lines = ["Starting galaxy role install process"];
+      [["haproxy", "balancer"], ["php", "phpinfo"]].forEach(r => {
+        lines.push("- downloading role '" + r[0] + "', owned by geerlingguy");
+        lines.push("- extracting " + r[1] + " to /home/student/ansible/roles/" + r[1]);
+        lines.push("- " + r[1] + " (master) was installed successfully");
+        soMakeDir(st, "/home/student/ansible/roles/" + r[1]);
+      });
+      st.lab.rolesDone = true;
+      return { lines: lines, ok: true };
+    }
+    if (action === "list") {
+      const lines = ["# /home/student/ansible/roles"];
+      if (st.lab.rolesDone) { lines.push("- balancer, master"); lines.push("- phpinfo, master"); }
+      if (st.lab.apacheInit) lines.push("- apache, (unknown version)");
+      return { lines: lines, ok: true };
+    }
+    if (action === "init") {
+      const name = tokens[3];
+      const target = soResolve(st, name);
+      if (st.lab.apacheInit && name === "apache") return { lines: ["[WARNING]: - apache is already in " + st.cwd, "- apache already exists, skipping"], ok: false };
+      soMakeDir(st, target);
+      if (name === "apache") st.lab.apacheInit = true;
+      ["defaults", "files", "handlers", "meta", "tasks", "templates", "tests", "vars"].forEach(d => soMakeDir(st, target + "/" + d));
+      return { lines: ["- Role " + name + " was created successfully in " + target], ok: true };
+    }
+    return { lines: [], ok: true };
+  }
+  return { lines: [], ok: true };
+}
+function soVault(st, tokens, segText){
+  const action = tokens[1];
+  const fileTok = tokens.slice(2).find(t => /\.ya?ml$/.test(t));
+  const hasPwFile = segText.indexOf("--vault-password-file") >= 0;
+  const lines = [];
+  if (action === "create") {
+    if (!hasPwFile) { lines.push("New Vault password: "); lines.push("Confirm New Vault password: "); }
+    if (fileTok) soMakeFile(st, soResolve(st, fileTok), SO_VAULT_BLOB);
+    return { lines: lines, ok: true };
+  }
+  if (action === "view") {
+    if (!hasPwFile) lines.push("Vault password: ");
+    const bn = fileTok ? fileTok.split("/").pop() : "";
+    if (bn === "locker.yml") lines.push("pw_developer: Imadev", "pw_manager: Imamgr");
+    else if (bn === "sal.yml") lines.push("---", "# sal.yml — salary data (decrypted view)", "payroll_account: operating");
+    return { lines: lines, ok: true };
+  }
+  if (action === "rekey") {
+    if (!hasPwFile) { lines.push("Current Vault password: "); lines.push("New Vault password: "); lines.push("Confirm New Vault password: "); }
+    lines.push("Rekey successful");
+    return { lines: lines, ok: true };
+  }
+  if (action === "decrypt" || action === "encrypt") {
+    if (!hasPwFile) lines.push("Vault password: ");
+    return { lines: lines, ok: true };
+  }
+  return { lines: lines, ok: true };
+}
+function soExecSegment(st, segText, q){
+  let seg = segText.trim();
+  if (!seg) return { lines: [], ok: true };
+  // pipes: run the first stage, filter its output through the rest
+  const pipeParts = [];
+  { let cur = "", qq = null;
+    for (let i = 0; i < seg.length; i++) {
+      const ch = seg[i];
+      if (qq) { cur += ch; if (ch === qq) qq = null; continue; }
+      if (ch === "'" || ch === '"') { qq = ch; cur += ch; continue; }
+      if (ch === "|") { pipeParts.push(cur); cur = ""; continue; }
+      cur += ch;
+    }
+    pipeParts.push(cur);
+  }
+  if (pipeParts.length > 1) {
+    const first = soExecSegment(st, pipeParts[0], q);
+    if (!first.ok) return first;
+    let lines = first.lines.slice();
+    // a piped ls prints one name per line (it columnises only on a tty)
+    if (/^ls\b/.test(pipeParts[0].trim()) && !/-[a-z]*l/.test(pipeParts[0])) {
+      const split = [];
+      lines.forEach(l => { l.split(/\s{2,}/).forEach(x => { if (x) split.push(x); }); });
+      lines = split;
+    }
+    for (let i = 1; i < pipeParts.length; i++) lines = soPipeFilter(lines, pipeParts[i].trim());
+    return { lines: lines, ok: true };
+  }
+  const tokens = shellTokens(seg);
+  if (!tokens.length) return { lines: [], ok: true };
+  let cmd = tokens[0];
+  if (cmd === "sudo") { tokens.shift(); cmd = tokens[0]; seg = tokens.join(" "); if (!cmd) return { lines: [], ok: true }; }
+  if (cmd === "cd") {
+    const dest = tokens[1] || "~";
+    const abs = soResolve(st, dest);
+    if (soFsExists(st, abs) || abs === "/home/student") { st.cwd = abs; return { lines: [], ok: true }; }
+    return { lines: ["bash: cd: " + dest + ": No such file or directory"], ok: false };
+  }
+  if (cmd === "pwd") return { lines: [st.cwd], ok: true };
+  if (cmd === "mkdir") {
+    const dashP = tokens.indexOf("-p") >= 0;
+    const out = []; let ok = true;
+    tokens.slice(1).filter(t => t.charAt(0) !== "-").forEach(p => {
+      const abs = soResolve(st, p);
+      if (soFsExists(st, abs)) {
+        if (!dashP) { out.push("mkdir: cannot create directory ‘" + p + "’: File exists"); ok = false; }
+        return;
+      }
+      if (dashP) { let acc = ""; abs.split("/").forEach(segm => { if (segm) { acc += "/" + segm; soMakeDir(st, acc); } }); }
+      else soMakeDir(st, abs);
+    });
+    return { lines: out, ok: ok };
+  }
+  if (cmd === "vim" || cmd === "vi" || cmd === "nano") return { lines: [], ok: true };
+  if (cmd === "ls") return soLsLines(st, tokens.slice(1), seg);
+  if (cmd === "curl") return soCurl(st, tokens, seg);
+  if (cmd === "ansible-galaxy") return soGalaxy(st, tokens);
+  if (cmd === "ansible-vault") return soVault(st, tokens, seg);
+  if (cmd === "ansible-playbook" || cmd === "ansible-navigator") {
+    let rest = tokens.slice(1);
+    if (cmd === "ansible-navigator") {
+      if (rest[0] !== "run") return { lines: ["ansible-navigator: error: no such subcommand: " + (rest[0] || "")], ok: false };
+      rest = rest.slice(1);
+    }
+    const norm = normPlaybookRun(rest.slice());
+    const typedTok = rest.find(t => /\.ya?ml$/.test(t.split("=")[0])) || null;
+    if (norm === null) return { lines: ["ERROR! Unable to determine the name of the playbook — pass the playbook file as an argument"], ok: false };
+    const play = norm.split(/\s+/)[1];
+    const isSyntax = norm.indexOf("--syntax-check") >= 0;
+    const known = !!soPlaybook(play) || !!soFsExists(st, soResolve(st, play));
+    if (isSyntax) {
+      if (!known) return { lines: ["ERROR! the playbook: " + (typedTok || play) + " could not be found"], ok: false };
+      return { lines: ["playbook: " + (typedTok || play)], ok: true };
+    }
+    if (!known) return { lines: ["ERROR! the playbook: " + (typedTok || play) + " could not be found"], ok: false };
+    const okAll = !!(q && q.id === "Q11.3");
+    return { lines: soRunPlaybook(play, { okAll: okAll }), ok: true };
+  }
+  if (cmd === "ansible") return soAdhoc(tokens.slice(1));
+  if (cmd === "dnf" || cmd === "yum") {
+    if (tokens[1] === "install") {
+      const pkgs = tokens.slice(2).filter(t => t.charAt(0) !== "-");
+      const lines = ["Last metadata expiration check: 0:42:17 ago on Tue 11 Nov 2026 09:14:02 AM JST.", "Dependencies resolved.", "========================================================================================================", " Package                   Architecture        Version                      Repository            Size", "========================================================================================================", "Installing:"];
+      pkgs.forEach(p => lines.push(" " + p.padEnd(28) + "noarch              2.13.2-1.el9                 rhel-9-for-x86_64-appstream-rpms  412 k"));
+      lines.push("", "Transaction Summary", "========================================================================================================", "Install  " + pkgs.length + " Package" + (pkgs.length === 1 ? "" : "s"), "", "Total download size: 412 k", "Installed size: 1.9 M", "Downloading Packages:", "Running transaction check", "Transaction test succeeded.", "Running transaction");
+      pkgs.forEach((p, i) => lines.push("  Installing : " + p + "-2.13.2-1.el9.noarch                                  " + (i + 1) + "/" + pkgs.length));
+      lines.push("  Verifying  : " + (pkgs[0] || "") + "-2.13.2-1.el9.noarch                                  1/" + pkgs.length, "", "Installed:");
+      pkgs.forEach(p => lines.push("  " + p + "-2.13.2-1.el9.noarch"));
+      lines.push("", "Complete!");
+      return { lines: lines, ok: true };
+    }
+    return { lines: [], ok: true };
+  }
+  if (cmd === "echo") {
+    const redir = seg.match(/>\s*(\S+)\s*$/);
+    const bodyM = seg.match(/^echo\s+('([^']*)'|"([^"]*)"|(\S+))/);
+    const body = bodyM ? (bodyM[2] !== undefined ? bodyM[2] : (bodyM[3] !== undefined ? bodyM[3] : bodyM[4])) : "";
+    if (redir) { soMakeFile(st, soResolve(st, redir[1]), body + "\n"); return { lines: [], ok: true }; }
+    return { lines: [body], ok: true };
+  }
+  if (cmd === "chmod" || cmd === "chown") {
+    const target = tokens[tokens.length - 1];
+    if (target && !soFsExists(st, soResolve(st, target))) return { lines: [cmd + ": cannot access '" + target + "': No such file or directory"], ok: false };
+    return { lines: [], ok: true };
+  }
+  if (cmd === "cat" || cmd === "head" || cmd === "tail") {
+    const fileTok = tokens.slice(1).filter(t => t.charAt(0) !== "-" || /^-\d+$/.test(t)).pop();
+    if (!fileTok) return { lines: [], ok: true };
+    const abs = soResolve(st, fileTok);
+    const content = soLocalContent(st, abs);
+    if (content === null) {
+      if (soFsExists(st, abs)) return { lines: [], ok: true };
+      return { lines: [cmd + ": " + fileTok + ": No such file or directory"], ok: false };
+    }
+    let ls = content.replace(/\n$/, "").split("\n");
+    if (cmd === "head") { const nm = seg.match(/-(\d+)/); ls = ls.slice(0, nm ? parseInt(nm[1], 10) : 10); }
+    if (cmd === "tail") { const nm = seg.match(/-(\d+)/); ls = ls.slice(-(nm ? parseInt(nm[1], 10) : 10)); }
+    return { lines: ls, ok: true };
+  }
+  if (cmd === "grep") {
+    const args = tokens.slice(1).filter(t => t !== "-q");
+    const listOnly = args.indexOf("-L") >= 0;
+    const clean = args.filter(t => t.charAt(0) !== "-");
+    const pattern = clean[0], fileTok = clean[clean.length - 1];
+    const content = soLocalContent(st, soResolve(st, fileTok)) || (soRemoteFileLines(fileTok, "servera.lab.example.com") || []).join("\n");
+    if (!content && !soFsExists(st, soResolve(st, fileTok))) return { lines: ["grep: " + fileTok + ": No such file or directory"], ok: false };
+    const hits = content.split("\n").filter(l => l.indexOf(pattern) >= 0);
+    if (listOnly) return { lines: hits.length ? [] : [fileTok], ok: true };
+    return { lines: hits, ok: hits.length > 0 };
+  }
+  if (cmd === "touch" || cmd === "cp" || cmd === "mv" || cmd === "rm") {
+    if (cmd === "touch" && tokens[1]) soMakeFile(st, soResolve(st, tokens[1]), "");
+    return { lines: [], ok: true };
+  }
+  if (cmd === "lsblk") return { lines: ["NAME          MAJ:MIN RM  SIZE RO TYPE MOUNTPOINTS", "sda             8:0    0   20G  0 disk ", "sdb             8:16   0   10G  0 disk ", "└─yellowtail-data 253:0  0  800M  0 lvm  "], ok: true };
+  if (cmd === "systemctl") return { lines: [], ok: true };
+  if (SHELL_COMMANDS.indexOf(cmd) >= 0) return { lines: [], ok: true };
+  return { lines: ["bash: " + cmd + ": command not found"], ok: false };
+}
+// Execute the whole typed input the way bash would: lines, then && / ;
+// segments in order; && stops the chain on a failing segment.
+function simulateShell(q, text, st, stepPass){
+  const out = [];
+  const fm = text.match(/for\s+(\w+)\s+in\s+([^;]+?);\s*do\s+([\s\S]+?);\s*done/);
+  if (fm) {
+    const before = text.slice(0, fm.index), after = text.slice(fm.index + fm[0].length);
+    out.push.apply(out, simulateShell(q, before, st, stepPass));
+    const items = fm[2].trim().split(/\s+/);
+    items.forEach(it => {
+      const body = fm[3].split("$" + fm[1]).join(it).split("${" + fm[1] + "}").join(it);
+      splitSegments(body).forEach((piece, pi) => { if (pi % 2 === 0 && piece.trim()) { const r = soExecSegment(st, piece, q); out.push.apply(out, r.lines); } });
+    });
+    out.push.apply(out, simulateShell(q, after, st, stepPass));
+    return out;
+  }
+  text.split("\n").forEach(line => {
+    const parts = splitSegments(line);
+    let broken = false;
+    for (let i = 0; i < parts.length; i += 2) {
+      const sepBefore = i === 0 ? null : parts[i - 1];
+      if (broken && sepBefore === "&&") continue;
+      if (sepBefore !== "&&") broken = false;
+      const segText = parts[i];
+      if (!segText || !segText.trim()) continue;
+      const r = soExecSegment(st, segText, q);
+      let segLines = r.lines;
+      if (stepPass && !r.ok) segLines = segLines.filter(l => !/^(ERROR!|fatal:|bash: .*command not found|.*No such file or directory)/.test(l));
+      out.push.apply(out, segLines);
+      if (!r.ok && !stepPass) broken = true;
+    }
+  });
+  return out;
+}
+// --- transcript plumbing ------------------------------------------------------
+function soErrLine(t){ return /^(fatal:|ERROR!|\[WARNING\]|.*\| FAILED!|bash: .*command not found|.*No such file or directory|curl: \(|mkdir: |ls: |cat: |grep: )/.test(t); }
+function pushTranscript(idx, typed, q, pass){
+  const st = termStateFor(idx);
+  if (st.entries.length && st.entries[st.entries.length - 1].k === "prompt") st.entries.pop();
+  const cwdBefore = soBase(st.cwd);
+  const lines = simulateShell(q, typed, st, pass);
+  if (typed.trim()) st.entries.push({ k: "cmd", cwd: cwdBefore, text: typed });
+  lines.forEach(l => st.entries.push({ k: "out", text: l }));
+  st.entries.push({ k: "prompt", cwd: soBase(st.cwd) });
+}
+function renderTranscript(fi){
+  const el = gel("term" + fi); if (!el) return;
+  const st = termStateFor(state.cur);
+  el.innerHTML = st.entries.map(e => {
+    if (e.k === "cmd") return "<div class='tline'><span class='tp'>[student@controller " + esc(e.cwd) + "]$</span> <span class='tc'>" + esc(e.text) + "</span></div>";
+    if (e.k === "prompt") return "<div class='tline'><span class='tp'>[student@controller " + esc(e.cwd) + "]$</span></div>";
+    return "<div class='tline" + (soErrLine(e.text) ? " terr" : "") + "'>" + (e.text ? esc(e.text) : "&nbsp;") + "</div>";
+  }).join("");
+  el.scrollTop = el.scrollHeight;
+  const hp = gel("prompt" + fi);
+  if (hp) hp.textContent = "[student@controller " + soBase(st.cwd) + "]$";
+}
+// ===SHELLOUT-END===
+
 // Ctrl+C in the shell pane, like real bash: throw the current line away and start fresh (^C)
 function ctrlCancel(ta, fi){
+  const typed = ta.value;
   ta.value = "";
   try { ta.setSelectionRange(0, 0); } catch (err) {}
   saveTexts();
   const el = gel("tablist" + fi);
   if (el) { el.textContent = "^C"; el.className = "tablist show"; }
+  // the living terminal records the interrupt too: the line, ^C, fresh prompt
+  const st = termStateFor(state.cur);
+  if (st.entries.length && st.entries[st.entries.length - 1].k === "prompt") st.entries.pop();
+  st.entries.push({ k: "cmd", cwd: soBase(st.cwd), text: typed + "^C" });
+  st.entries.push({ k: "prompt", cwd: soBase(st.cwd) });
+  renderTranscript(fi);
 }
 function wireCmd(fi){
   const ta = gel("ta" + fi); if (!ta) return;
@@ -3302,7 +4172,8 @@ function renderStage(){
     const raw = saved[fi] !== undefined ? saved[fi] : (f.preset || "");
     const val = raw.replace(/&/g, "&amp;").replace(/</g, "&lt;");
     if (q.cmd) {
-      h += "<div class='fileblock'><div class='filehead'><span class='prompt'>[student@controller ansible]$</span> <span class='cmd'>type the command, then press Enter to run it</span><span class='lang'>shell</span></div>"
+      h += "<div class='fileblock'><div class='filehead'><span class='prompt' id='prompt" + fi + "'>[student@controller " + soBase(termStateFor(state.cur).cwd) + "]$</span> <span class='cmd'>type the command, then press Enter to run it</span><span class='lang'>shell</span></div>"
+        + "<div class='term' id='term" + fi + "'></div>"
         + "<textarea class='cmdinput' id='ta" + fi + "' spellcheck='false' autocomplete='off' autocapitalize='off' placeholder='" + placeholders(f).replace(/'/g, "&#39;") + "'>" + val + "</textarea><div class='tablist' id='tablist" + fi + "'></div></div>";
       return;
     }
@@ -3328,7 +4199,7 @@ function renderStage(){
       if (si !== state.cur) goQuestion(si);
     });
   });
-  if (q.cmd) { wireCmd(0); } else { q.files.forEach((f, fi) => { wireEditor(fi); gutterSync(fi); caretSync(fi); syntaxSync(fi); if (f.preset && saved[fi] === undefined) { const ta = gel("ta" + fi); if (ta) { const end = ta.value.length; try { ta.setSelectionRange(end, end); } catch(e){} caretSync(fi); } } }); }
+  if (q.cmd) { wireCmd(0); renderTranscript(0); } else { q.files.forEach((f, fi) => { wireEditor(fi); gutterSync(fi); caretSync(fi); syntaxSync(fi); if (f.preset && saved[fi] === undefined) { const ta = gel("ta" + fi); if (ta) { const end = ta.value.length; try { ta.setSelectionRange(end, end); } catch(e){} caretSync(fi); } } }); }
   updateNextline();
   if (state.done.has(state.cur)) gel("ex").className = "explain show";
   wireHelp(q);
@@ -3342,6 +4213,7 @@ function doCheck(){
   const texts = q.files.map((f, fi) => { const ta = gel("ta" + fi); return ta ? ta.value : ""; });
   const res = runChecks(q, texts);
   const bad = res.filter(r => !r.ok), good = res.filter(r => r.ok);
+  if (q.cmd) { pushTranscript(state.cur, texts[0] || "", q, bad.length === 0); renderTranscript(0); }
   const fb = gel("fb");
   if (bad.length === 0) {
     state.done.add(state.cur);
