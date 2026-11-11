@@ -77,6 +77,9 @@ button.small{min-height:36px;padding:5px 10px;font-size:13px}
 .qtimerbar #qtimer{font-family:var(--mono);font-weight:700;font-variant-numeric:tabular-nums}
 .qtimerbar.timeup{border-color:#ff7b72;color:#ff7b72;background:#1a0d0d}
 .qtimerbar.qdone{border-color:#3fb950;color:#3fb950;background:#0d1a10}
+.qread{border:1px solid var(--line);background:var(--panel);border-radius:10px;padding:10px 12px;margin:0 0 12px}
+.qread summary{cursor:pointer;font-weight:700;font-size:14px}
+.qread .qtext{margin-top:8px;color:var(--fg)}
 .ln[data-line]{cursor:pointer}
 .explainbox{scroll-margin-top:96px}
 .gloss .gln{color:#484f58;font-family:var(--mono);font-size:11px;margin-right:6px}
@@ -922,6 +925,8 @@ function renderPlayArea(){
   } else {
     var top = fileTop(f);
     var desc = cur.level === 1 ? 'Keys missing, values shown: type the key name that belongs before each colon. Every value is given — only the labels are yours to supply.' : cur.level === 2 ? 'Values missing, keys shown: type what belongs after each colon, and fill the missing content lines. The structure is given — the values are yours.' : 'From scratch: an empty shell — no text, no hints. Write the entire file from memory, exactly as it should be — indentation counts.';
+    var LQ = EXAM_LENS[f.q];
+    if(LQ) html += '<details class="qread" open><summary>📋 The original question — Practice Exam 1, Q' + f.q + ' (read it here while you build, like on the test)</summary><div class="qtext">' + esc(LQ.question).replace(/\n/g, '<br>') + '</div></details>';
     if(cur.level === 3 && f.q) html += '<div class="qtimerbar">⏱ <span id="qtimer">9:00</span> — practice pace for Q' + f.q + ': 9:00 for the whole question, every file included. It keeps running if you peek at Study, freezes when Q' + f.q + ' is complete, and resets on the next question. (Real EX294 pace: 15:00.)</div>';
     html += '<p class="levelhead">Level ' + cur.level + ' of ' + top + ' — <span class="lvtag">' + desc + '</span></p>';
     html += renderCode(f, cur.level, 'play');
