@@ -45,12 +45,35 @@ button.small{min-height:36px;padding:5px 10px;font-size:13px}
 .note{border-left:3px solid var(--warn);font-size:13px;color:var(--dim)}
 .modebar{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 12px}
 .modebar button.active{background:#1f6f43;border-color:#2ea043;color:#fff;font-weight:700}
-.codebox{background:#0a0e14;border:1px solid var(--line);border-radius:12px;padding:10px 0;overflow-x:auto;margin:0 0 12px}
-.ln{display:flex;align-items:flex-start;min-height:22px;padding:0 10px 0 0}
-.ln .no{flex:0 0 38px;text-align:right;padding-right:10px;color:#484f58;font-family:var(--mono);font-size:12.5px;line-height:22px;user-select:none}
-.ln .lc{flex:1;font-family:var(--mono);font-size:13.5px;line-height:22px;white-space:pre-wrap;word-break:break-word;color:#d6deeb}
+.codebox{background:#0a0e14;border-left:1px solid var(--line);border-right:1px solid var(--line);padding:6px 0;overflow-x:auto;margin:0}
+.ln{display:flex;align-items:flex-start;min-height:22px;padding:0 10px 0 0;width:max-content;min-width:100%}
+.ln:hover{background:rgba(88,166,255,.05)}
+.ln:focus-within,.ln.active{background:rgba(227,179,65,.09);box-shadow:inset 2px 0 0 var(--gold)}
+.ln .no{flex:0 0 38px;text-align:right;padding-right:10px;color:#484f58;font-family:var(--mono);font-size:12.5px;line-height:22px;user-select:none;border-right:1px solid #21262d;margin-right:10px}
+.ln:focus-within .no,.ln.active .no{color:var(--gold);font-weight:700}
+.ln .lc{flex:1;font-family:var(--mono);font-size:13.5px;line-height:22px;white-space:pre;color:#d6deeb;tab-size:2;background-image:repeating-linear-gradient(to right,rgba(255,255,255,.045) 0,rgba(255,255,255,.045) 1px,transparent 1px,transparent 2ch)}
+.vimwrap{border:1px solid var(--line);border-radius:12px;overflow:hidden;margin:0 0 12px;background:#0a0e14}
+.vimbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;background:#161b22;border-bottom:1px solid var(--line);padding:7px 10px;font-family:var(--mono);font-size:11.5px;color:var(--dim)}
+.vimbar .vfile{color:var(--txt);font-weight:700;word-break:break-all}
+.vimbar .vset{border:1px solid var(--line);border-radius:999px;padding:2px 8px;white-space:nowrap}
+.vimstatus{display:flex;gap:10px;flex-wrap:wrap;align-items:center;background:#1f6f43;color:#fff;font-family:var(--mono);font-size:11.5px;padding:6px 10px}
+.vimstatus .vmode{font-weight:800;letter-spacing:.05em}
+.vimstatus .vpos{margin-left:auto}
+.tk-key{color:#79c0ff}.tk-colon{color:#ff7b72;font-weight:700}.tk-str{color:#e5c07b}.tk-jinja{color:#c792ea}.tk-num{color:#d19a66}.tk-bool{color:#56b6c2}.tk-com{color:#6a737d;font-style:italic}.tk-dash{color:#ff7b72}.tk-doc{color:#ff7b72}.tk-cmd{color:#61afef}.tk-mod{color:#c792ea}.tk-flag{color:#d19a66}.tk-kw{color:#c792ea}.tk-opt{color:#56b6c2}
+.studyflow{border-left:3px solid var(--accent)}
+.seccard{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin:0 0 12px}
+.seccard h3{margin:0 0 4px;font-size:14.5px;color:var(--txt)}
+.seccard h3 .secno{color:var(--gold);font-family:var(--mono);font-size:12px;margin-right:6px}
+.seccard .secwhy{font-size:13.5px;line-height:1.55;color:var(--dim);margin:4px 0 10px}
+.seccode{background:#0a0e14;border:1px solid var(--line);border-radius:8px;padding:8px 10px;overflow-x:auto;margin:0 0 10px}
+.seccode pre{margin:0;font-family:var(--mono);font-size:12.5px;line-height:20px;white-space:pre;color:#d6deeb;tab-size:2}
+.gloss{margin:6px 0;padding:7px 9px;background:var(--panel2);border-radius:8px;font-size:13.5px;line-height:1.55}
+.gloss .gln{color:#484f58;font-family:var(--mono);font-size:11px;margin-right:6px}
+.gloss code{font-family:var(--mono);font-size:12.5px;color:#ffd75f;word-break:break-all}
+.flowsteps{margin:6px 0 0;padding-left:20px;font-size:14px;line-height:1.6}
+.vimrc-line{font-family:var(--mono);font-size:12.5px;background:#0a0e14;border:1px solid var(--line);border-radius:8px;padding:9px 10px;overflow-x:auto;white-space:pre;color:#e5c07b;margin:8px 0}
 input.blank,textarea.blank{font-family:var(--mono);font-size:13.5px;background:#221d08;border:1px dashed var(--warn);color:#ffd75f;border-radius:5px;padding:1px 5px;outline:none;max-width:88vw}
-textarea.blank{display:block;width:100%;margin:4px 0;line-height:1.5;padding:6px 8px;resize:vertical}
+textarea.blank{display:block;width:100%;margin:4px 0;line-height:22px;padding:6px 8px;resize:vertical;tab-size:2;background-image:repeating-linear-gradient(to right,rgba(255,255,255,.045) 0,rgba(255,255,255,.045) 1px,transparent 1px,transparent 2ch)}
 input.blank:focus,textarea.blank:focus{border-color:var(--accent2);background:#101a2a}
 input.blank.ok,textarea.blank.ok{border:1px solid var(--accent);background:#0f2416;color:#7ee787}
 input.blank.bad,textarea.blank.bad{border:1px solid var(--bad);background:#2a1215;color:#ffa198}
@@ -152,6 +175,85 @@ var cur = null;        // current play/study session
 var curLines = {};     // blank index -> line number for the current render
 
 function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function hlValue(str){
+  var out = '', i = 0;
+  while (i < str.length) {
+    if (str.startsWith('{{', i)) {
+      var j = str.indexOf('}}', i);
+      if (j < 0) { out += "<span class='tk-jinja'>" + esc(str.slice(i)) + "</span>"; i = str.length; }
+      else { out += "<span class='tk-jinja'>{{" + hlValue(str.slice(i + 2, j)) + "}}</span>"; i = j + 2; }
+    } else if (str[i] === '"' || str[i] === "'") {
+      var q = str[i]; var k = i + 1; while (k < str.length && str[k] !== q) k++;
+      var end = Math.min(k + 1, str.length);
+      var tok = str.slice(i, end);
+      var closed = (end - i >= 2) && str[end - 1] === q;
+      if (closed && tok.indexOf('{{') >= 0) {
+        out += "<span class='tk-str'>" + esc(tok[0]) + "</span>" + hlValue(tok.slice(1, -1)) + "<span class='tk-str'>" + esc(tok[tok.length - 1]) + "</span>";
+      } else { out += "<span class='tk-str'>" + esc(tok) + "</span>"; }
+      i = end;
+    } else {
+      var m2 = i;
+      while (m2 < str.length && !str.startsWith('{{', m2) && str[m2] !== '"' && str[m2] !== "'") m2++;
+      out += esc(str.slice(i, m2)).replace(/\b(true|false|yes|no|null)\b/gi, "<span class='tk-bool'>$1</span>").replace(/\b(\d+(?:\.\d+)?)\b/g, "<span class='tk-num'>$1</span>");
+      i = m2;
+    }
+  }
+  return out;
+}
+function splitComment(line){
+  var q = null;
+  for (var i = 0; i < line.length; i++) {
+    var c = line[i];
+    if (q) { if (c === q) q = null; }
+    else if (c === '"' || c === "'") q = c;
+    else if (c === '#' && (i === 0 || /\s/.test(line[i - 1]))) return [line.slice(0, i), line.slice(i)];
+  }
+  return [line, ''];
+}
+function hlYamlLine(line){
+  var parts = splitComment(line), code = parts[0], comment = parts[1];
+  var m = code.match(/^(\s*)(-\s+)?(.*)$/);
+  var out = esc(m[1]);
+  if (m[2]) out += "<span class='tk-dash'>-</span>" + esc(m[2].slice(1));
+  var rest = m[3];
+  if (rest === '---') out += "<span class='tk-doc'>---</span>";
+  else if (rest) {
+    var km = rest.match(/^([^:\s][^:]*?)(\s*)(:)(\s+|$)(.*)$/);
+    if (km && rest[0] !== '"' && rest[0] !== "'") out += "<span class='tk-key'>" + esc(km[1]) + "</span>" + esc(km[2]) + "<span class='tk-colon'>:</span>" + esc(km[4]) + hlValue(km[5] || '');
+    else out += hlValue(rest);
+  }
+  if (comment) out += "<span class='tk-com'>" + esc(comment) + "</span>";
+  return out;
+}
+function hlBashLine(line){
+  var parts = splitComment(line), code = parts[0], comment = parts[1];
+  var re = /('[^']*'|"[^"]*"|\s-[a-zA-Z]\b|\s--[a-z][\w-]*|\bansible\.builtin\.[\w.]+|\bansible-vault\b|\bansible\b|\bcd\b|\bbash\b|\bchmod\b|\bcurl\b)/g;
+  var out = '', last = 0, m;
+  while ((m = re.exec(code)) !== null) {
+    out += esc(code.slice(last, m.index));
+    var tok = m[0], cls = 'tk-cmd';
+    if (tok[0] === "'" || tok[0] === '"') cls = 'tk-str';
+    else if (/^\s-/.test(tok)) cls = 'tk-flag';
+    else if (tok.indexOf('ansible.builtin.') === 0) cls = 'tk-mod';
+    out += "<span class='" + cls + "'>" + esc(tok) + "</span>";
+    last = m.index + tok.length;
+  }
+  out += esc(code.slice(last));
+  if (comment) out += "<span class='tk-com'>" + esc(comment) + "</span>";
+  return out;
+}
+function hlJinja(text){
+  return text.split(/(\{\{[^}]*\}\}|\{%[^%]*%\})/g).map(function(part){
+    if ((part.startsWith('{{') && part.endsWith('}}')) || (part.startsWith('{%') && part.endsWith('%}'))) return "<span class='tk-jinja'>" + esc(part) + "</span>";
+    return esc(part);
+  }).join('');
+}
+function hlLine(lang, line){
+  if (lang === 'bash') return hlBashLine(line);
+  if (lang === 'jinja') return hlJinja(line);
+  return hlYamlLine(line);
+}
+function hlFragment(lang, s){ return hlLine(lang, s); }
 function fileById(id){ for(var i=0;i<FILES.length;i++) if(FILES[i].id===id) return FILES[i]; return null; }
 function fprog(f){ if(!P[f.id]) P[f.id] = {levels:{}, mastered:false}; return P[f.id]; }
 function levelsDoneCount(){ var n=0; FILES.forEach(function(f){ var lp=fprog(f).levels; Object.keys(lp).forEach(function(k){ if(lp[k].done) n++; }); }); return n; }
@@ -196,11 +298,15 @@ function buildLines(file, level, mode){
     });
   });
   if(lines.length > 1 && lines[lines.length-1].length === 0) lines.pop();
-  var blankLine = {};
+  var blankLine = {}, blankCol = {};
   lines.forEach(function(nodes, li){
-    nodes.forEach(function(n){ if(n.i != null && blankLine[n.i] == null) blankLine[n.i] = li + 1; });
+    var col = 0;
+    nodes.forEach(function(n){
+      if(n.i != null && blankLine[n.i] == null){ blankLine[n.i] = li + 1; blankCol[n.i] = col + 1; }
+      if(n.s) col += n.s.length;
+    });
   });
-  return {lines:lines, blankLine:blankLine};
+  return {lines:lines, blankLine:blankLine, blankCol:blankCol};
 }
 
 function blankStateClass(i){
@@ -210,16 +316,18 @@ function blankStateClass(i){
   if(cur.results[i] === false) return ' bad';
   return '';
 }
+var curCols = {};
 function renderCode(file, level, mode){
   var built = buildLines(file, level, mode);
-  curLines = built.blankLine;
+  curLines = built.blankLine; curCols = built.blankCol;
   var blanks = fileBlanks(file);
-  var html = '<div class="codebox">';
+  var langLabel = file.lang === 'bash' ? 'bash' : file.lang === 'jinja' ? 'jinja · yaml facts' : 'yaml';
+  var html = '<div class="vimwrap"><div class="vimbar"><span class="vfile">📄 ' + esc(file.path) + '</span><span class="vset">filetype=' + langLabel + '</span><span class="vset">ts=2 sts=2 sw=2</span><span class="vset">ai cuc cul nu expandtab</span></div><div class="codebox">';
   built.lines.forEach(function(nodes, li){
     html += '<div class="ln"><span class="no">' + (li+1) + '</span><span class="lc">';
     nodes.forEach(function(n){
-      if(n.k === 't'){ html += esc(n.s); }
-      else if(n.k === 'tok'){ html += '<span class="tok" data-tok="' + n.i + '">' + esc(n.s) + '</span>'; }
+      if(n.k === 't'){ html += hlFragment(file.lang, n.s); }
+      else if(n.k === 'tok'){ html += '<span class="tok" data-tok="' + n.i + '">' + hlFragment(file.lang, n.s) + '</span>'; }
       else if(n.k === 'in'){
         var b = blanks[n.i];
         var size = Math.max(4, Math.min(48, b.b.length + 2));
@@ -239,7 +347,291 @@ function renderCode(file, level, mode){
     });
     html += '</span></div>';
   });
-  html += '</div>';
+  html += '</div><div class="vimstatus"><span class="vmode">' + (mode === 'study' ? '-- STUDY --' : '-- INSERT --') + '</span><span>' + esc(file.name) + '</span><span>autocmd FileType yaml setlocal ts=2 sts=2 sw=2 ai cuc cul nu expandtab</span><span class="vpos" id="vimpos">Ln 1, Col 1</span></div></div>';
+  return html;
+}
+
+
+// ---------- study breakdown: every section, line by line ----------
+function fullTextOf(file){
+  return file.segs.map(function(s){ return typeof s === 'string' ? s : s.b; }).join('');
+}
+var KEY_GLOSS = {
+  'hosts': 'The target: which inventory hosts this play runs on. Everything below it happens on those hosts — and facts are gathered per host, so the same play produces different results on different machines.',
+  'become': 'Privilege escalation: tasks run as root (via sudo). Required whenever a task writes to protected paths like /root, /etc or /var, or manages packages, services and users.',
+  'tasks': 'The ordered task list. Tasks run top to bottom, in file order — when one task produces something a later task consumes, that order is the dependency.',
+  'vars': 'Play-level variables: data defined once here and available to every task and role in the play — the play\u2019s own pantry of values.',
+  'vars_files': 'External variable files loaded before the tasks run, in list order. Later files can rely on nothing from later loads — order is load order.',
+  'roles': 'The roles this play applies, in order. A role is a pre-packaged bundle of tasks/templates/vars — listing it here runs its whole tasks/main.yml.',
+  'post_tasks': 'Tasks that run AFTER the roles have finished — the play\u2019s closing jobs, done once the roles have built the main structure.',
+  'block': 'A grouped set of tasks watched by a rescue: if any task in the block fails, Ansible jumps to the rescue section instead of aborting the play.',
+  'rescue': 'The recovery tasks: they run only when a task in the block above them failed. This is a designed fallback, not an error path.',
+  'when': 'The gate: this task runs only when the condition is true for the current host, and is skipped (not failed) otherwise. This one line is what makes one playbook behave differently per host group.',
+  'loop': 'Run this same task once per list entry, with {{ item }} bound to the current entry. One task body, many executions — the alternative is copy-pasting the task.',
+  'state': 'The desired end state the module drives toward: present/absent for things that exist, started/stopped for services, directory/link for filesystem objects, latest for newest packages. Ansible compares reality to this and only changes what differs.',
+  'url': 'Where the file is fetched from. This exact address is what the managed host downloads — the host itself makes the request, not the controller.',
+  'dest': 'Where the fetched or written file lands on the managed host. Every later task that edits this content must point at this exact path.',
+  'force': 'Overwrite behaviour. true means do it again even if the destination already exists — a fresh copy every run, never a stale one.',
+  'path': 'The file (or filesystem object) this task acts on. It must match, character for character, the path an earlier task created or downloaded.',
+  'regexp': 'The search pattern lineinfile uses to find its line: it matches the existing line by this pattern and replaces that whole line. The ^ anchors the match to the start of the line, so it finds the label wherever the line sits in the file.',
+  'line': 'The replacement text: the complete new line that takes the matched line\u2019s place — label plus the rendered value. After the run, the file contains this line, not the old one.',
+  'src': 'The source: a template/file on the controller (or a Galaxy name in a requirements file). What src points at is what gets delivered or installed.',
+  'mode': 'The permission bits, as an octal string. It is quoted on purpose: unquoted, YAML reads a leading-zero number as a plain integer and the special bits are lost.',
+  'group': 'The owning Linux group for this object. The group must already exist before anything can be owned by it.',
+  'owner': 'The owning Linux user for this object.',
+  'content': 'Literal inline content written to dest — the file\u2019s body typed right here in the task instead of copied from a separate file.',
+  'setype': 'The SELinux type label applied to the delivered file. On an enforcing system this label is the gate: a web server may only serve files carrying the type its policy allows.',
+  'service': 'A firewalld service name — a predefined bundle of ports (http = 80/tcp, https = 443/tcp), opened together by one name.',
+  'immediate': 'Apply the rule to the LIVE firewall right now, not just to the saved configuration.',
+  'permanent': 'Write the rule into the saved firewall configuration so it survives a reboot or a firewall reload.',
+  'enabled': 'The on switch — for a service, start at boot as well as now; for a config block, activate it. Without it the rest of the block is inert.',
+  'enable': 'The on/off switch for this feature block.',
+  'size': 'How large the object should be. The unit suffix is part of the value (m = MiB here).',
+  'vg': 'The volume group — the storage pool the logical volume is carved out of. It must already exist; this module never creates the pool itself.',
+  'lv': 'The logical volume\u2019s name — the slice carved out of the volume group.',
+  'fstype': 'The filesystem type to write onto the device (ext4 here) — the format the raw device receives.',
+  'dev': 'The device path being acted on. For a logical volume this is /dev/<vg>/<lv> — the exact path the earlier task created.',
+  'msg': 'The exact message text printed when this runs. On an exam this string is graded word for word — it is a deliverable, not a comment.',
+  'collections': 'The top-level key of a collections requirements file: the list below it is what ansible-galaxy will install.',
+  'hostname': 'A host name entry — here, the NTP server this host will synchronise its clock against.',
+  'iburst': 'Fast initial clock sync at service start: a quick burst of queries so the clock converges in seconds instead of drifting in slowly.',
+  'address': 'The network address of this entry — where traffic for it is sent.',
+  'port': 'The TCP/UDP port number for this entry.',
+  'username': 'One user\u2019s login name in the data file. The playbook below consumes this field through {{ item.username }}.',
+  'uid': 'The user\u2019s numeric ID. Fixed UIDs keep identities consistent across every host the play touches.',
+  'job': 'The user\u2019s category in the data file. This field is the selector: the playbook\u2019s when conditions test it to decide who is created where.',
+  'users': 'The top-level list key of the data file: every entry under it is one user record the playbook iterates over.',
+  'password': 'The password HASH (never the plaintext) produced by the password_hash filter from the vault variable. The plaintext lives only inside the encrypted locker file.',
+  'shell': 'The login shell the new account gets.',
+  'append': 'Add the listed groups to the account\u2019s existing memberships instead of replacing them. Without it, a user task can silently strip a user\u2019s other groups.',
+  'groups': 'The group(s) this user is placed in. The group must exist before the user task runs — group creation is a separate, earlier task.',
+  'ansible-navigator': 'The single top-level key of the navigator config file. ansible-navigator reads only what lives under this key.',
+  'execution-environment': 'The block describing the container the playbook runs inside: engine, image and pull behaviour.',
+  'container-engine': 'Which container engine runs the execution environment — podman on RHEL.',
+  'image': 'The exact execution-environment image, pinned to a version tag so every run uses the identical environment.',
+  'pull': 'How the EE image is fetched: the policy and arguments in this block govern the download.',
+  'policy': 'When to download the image: missing = only when it is not already cached locally.',
+  'arguments': 'Extra arguments handed to the image pull command.',
+  'playbook-artifact': 'Controls the per-run JSON artifact navigator can save after each run.',
+  'mode': 'How run output is presented (in the navigator config), or — as a file task parameter — the permission bits. Context decides which; both are \u201chow it behaves\u201d settings.'
+};
+var FACT_GLOSS = [
+  [/inventory_hostname/, 'inventory_hostname is a MAGIC variable — the host\u2019s name exactly as the inventory knows it, available without gathering facts.'],
+  [/ansible_memtotal_mb/, 'ansible_memtotal_mb is a gathered FACT: the host\u2019s total RAM, already reported in MiB — which is why the label needs no conversion.'],
+  [/ansible_bios_version/, 'ansible_bios_version is a gathered FACT: the machine\u2019s firmware/BIOS version string, read from the host itself.'],
+  [/ansible_devices/, 'ansible_devices is a gathered FACT: a dictionary of the host\u2019s block devices, keyed by device name — each entry carries that disk\u2019s size.'],
+  [/default\('NONE'\)/, 'default(\u2019NONE\u2019) is the safety net: if the value on the left is undefined (this host has no such disk), the filter substitutes the text NONE instead of failing the whole run on an undefined variable.'],
+  [/ansible_facts\['fqdn'\]/, 'ansible_facts[\u2019fqdn\u2019] is the host\u2019s fully-qualified domain name, gathered as a fact.'],
+  [/ansible_facts\['default_ipv4'\]\['address'\]/, 'ansible_facts[\u2019default_ipv4\u2019][\u2019address\u2019] drills into the facts dictionary: the address of the host\u2019s default IPv4 interface.'],
+  [/ansible_facts\['hostname'\]/, 'ansible_facts[\u2019hostname\u2019] is the host\u2019s short hostname fact.'],
+  [/ansible_facts\['lvm'\]\['vgs'\]/, 'ansible_facts[\u2019lvm\u2019][\u2019vgs\u2019] lists the volume groups the setup module discovered on this host — the guard tests membership in exactly this list.'],
+  [/hostvars\[x\]/, 'hostvars[x] reaches into ANOTHER host\u2019s variables: x is the loop\u2019s current host, so this reads that host\u2019s facts while rendering on the current one.'],
+  [/groups\['(dev|test|prod|all)'\]/, 'groups[\u2026] is a magic variable: the inventory\u2019s member list for that group — testing membership in it is how a task targets one slice of the fleet.'],
+  [/group_names/, 'group_names is a magic variable listing every group the CURRENT host belongs to — the per-host mirror of groups[...].'],
+  [/password_hash/, 'password_hash(\u2019sha512\u2019) turns the vault plaintext into a salted SHA-512 hash at runtime — the only form a password may enter /etc/shadow in.'],
+  [/\{\{\s*item\s*\}\}/, '{{ item }} is the loop variable: on each pass it holds the current list entry, so one task body serves every entry.'],
+  [/item\.(username|uid|job)/, 'item.<field> reads one field of the current user record from the data file — the loop carries the whole record, the task picks the fields it needs.'],
+  [/\{\{[^}]*\}\}/, 'The {{ }} marks a Jinja2 expression: it is evaluated on the controller at render time and replaced by its value — the file the host receives contains the result, never the braces.']
+];
+function factNotes(text){
+  var notes = [];
+  FACT_GLOSS.forEach(function(pair){ if(pair[0].test(text)) notes.push(pair[1]); });
+  return notes;
+}
+function moduleGloss(key){
+  var short = key.split('.').pop();
+  var m = MODULES[short];
+  if(m) return 'Module call — ' + m.name + '. What it does: ' + m.what + ' Key parameters: ' + m.params;
+  return 'Module call — ' + key + ': the module named here performs this task\u2019s work; the indented lines under it are its parameters.';
+}
+function explainLine(raw, file){
+  var t = raw.replace(/\s+$/, '').trim();
+  if(!t) return '';
+  var indent = raw.length - raw.replace(/^\s+/, '').length;
+  if(t === '---') return 'Document start marker: everything below it is ONE YAML document. It is the first line of nearly every Ansible YAML file.';
+  if(file.lang === 'jinja'){
+    if(t.indexOf('{% for') === 0) return 'The loop opens: for each host x in groups[\u2019all\u2019] (every host in the inventory), the line below is printed once. The loop variable is exactly x — the body reads this same host\u2019s facts through hostvars[x], so a row can never mix one host\u2019s address with another\u2019s name.';
+    if(t.indexOf('{% endfor') === 0) return 'The loop closes. Everything between for and endfor was repeated once per host.';
+    if(t.indexOf('127.0.0.1') === 0 || t.indexOf('::1') === 0) return 'A preset localhost line, identical on every machine: the IP, then the canonical name localhost.localdomain, then the short aliases. These two lines are given — they are not generated by the loop.';
+    var jn = factNotes(t);
+    return 'One rendered output line: ' + (jn.length ? jn.join(' ') : 'the expressions in {{ }} are replaced by the current host\u2019s own fact values when the template renders.');
+  }
+  if(file.lang === 'bash'){
+    var bn = factNotes(t);
+    if(/^cd\s/.test(t)) return 'Change into the project directory first: every relative path after this line (sal.yml, the vault commands) is resolved from here.';
+    if(/^curl\s/.test(t)) return 'Download the file from the exam server and save it under the local name after -o. The file arrives ENCRYPTED — the next command operates on it in that form.';
+    if(/ansible-vault\s+rekey/.test(t)) return 'rekey rotates the vault file\u2019s password in ONE operation: you give the old password, then the new one, and the file stays encrypted throughout. Splitting this into decrypt-then-encrypt is the trap — it fails this task.' + (bn.length ? ' ' + bn.join(' ') : '');
+    if(/rpm_key/.test(t)) return 'An ad-hoc command (ansible all -m <module> -a "<args>" -b): rpm_key imports the repository signing key and trusts it, so packages from the repos defined next can pass GPG verification. -b runs it with become (root).';
+    if(/yum_repository/.test(t)) return 'An ad-hoc yum_repository call defining one repository file: name, description, baseurl (where the packages live), gpgcheck/gpgkey (verify signatures with the key imported above) and enabled. -b runs it as root.';
+    return 'One shell command in the sequence — the order matters: each line assumes the lines above it already ran.';
+  }
+  var mm = t.match(/^- name:\s*(.+)$/);
+  if(mm && indent >= 4) return 'A task\u2019s name — the human label printed in the run output. It does no work itself; the module line directly under it (aligned one level deeper) is the task\u2019s engine, and the lines under that are its parameters.';
+  if(mm && indent === 0 && /hosts:/.test(fullTextOf(file))) return 'The PLAY\u2019s name — the label for this whole unit of work. A play maps a set of hosts (next line) to the tasks and roles below.';
+  if(mm && indent === 0) return 'A task\u2019s name in this task list (this file IS a list of tasks — a role\u2019s tasks/main.yml). The module under it does the work.';
+  var kv = t.match(/^([^:\s][^:]*?):\s*(.*)$/);
+  if(kv){
+    var key = kv[1], val = kv[2];
+    if(/^(ansible|community|redhat)\./.test(key) && !val) return moduleGloss(key);
+    var g = KEY_GLOSS[key] || '';
+    if(!g){
+      if(/^- /.test(t) || key.indexOf('- ') === 0) g = 'One entry in the list above it.';
+      else g = 'The ' + key + ' setting for the block it sits in: its value on the right is what the enclosing task/module consumes.';
+    }
+    var notes = factNotes(val);
+    if(val && /^(true|false)$/i.test(val) && !/become|force|immediate|permanent|append|iburst/.test(key)) g += ' The value is the boolean ' + val + '.';
+    if(notes.length) g += ' ' + notes.join(' ');
+    return g;
+  }
+  if(/^- /.test(t)){
+    var itemNotes = factNotes(t);
+    var base = 'One list entry — one value the block above it will consume or iterate over.';
+    return itemNotes.length ? base + ' ' + itemNotes.join(' ') : base;
+  }
+  var fn = factNotes(t);
+  return fn.length ? fn.join(' ') : 'Part of the section it sits in — its indentation ties it to the key or task directly above it.';
+}
+function splitSections(file){
+  var lines = fullTextOf(file).split('\n');
+  while(lines.length && lines[lines.length-1].trim() === '') lines.pop();
+  if(file.lang === 'bash'){
+    return lines.filter(function(l){ return l.trim() !== ''; }).map(function(l, i){
+      return {title: 'Command ' + (i + 1) + ' — ' + l.trim().split(/\s+/).slice(0, 3).join(' ') + '\u2026', why: 'Each command here is its own step: it runs, finishes, and sets up the next one.', rows: [[l.trim(), explainLine(l, file)]]};
+    });
+  }
+  if(file.lang === 'jinja'){
+    var secs = [], cur = null;
+    lines.forEach(function(l){
+      var isFor = l.indexOf('{% for') >= 0;
+      if(isFor || !cur){ cur = {title: isFor ? 'The loop — one row per host' : 'The preset lines', why: isFor ? 'The template engine repeats the body once per inventory host, reading each host\u2019s facts through hostvars.' : 'Fixed lines that appear verbatim at the top of every rendered file.', rows: []}; secs.push(cur); }
+      if(l.trim()) cur.rows.push([l.trim(), explainLine(l, file)]);
+      if(l.indexOf('{% endfor') >= 0) cur = null;
+    });
+    return secs;
+  }
+  // yaml: item starts under a container key, else top-level groups
+  var starts = [], pending = null;
+  lines.forEach(function(l, i){
+    var indent = l.length - l.replace(/^\s+/, '').length;
+    var cm = l.match(/^\s*(tasks|roles|post_tasks|collections|users):\s*$/);
+    if(cm && (pending === null || indent < pending)) pending = indent + 2;
+    if(pending !== null && indent === pending && /^- /.test(l.slice(indent))) starts.push(i);
+  });
+  if(!starts.length){
+    lines.forEach(function(l, i){
+      var indent = l.length - l.replace(/^\s+/, '').length;
+      if(indent === 0 && l.trim() && l.trim() !== '---') starts.push(i);
+    });
+    if(starts.length === 1 && lines.length > 7){
+      starts = [];
+      lines.forEach(function(l, i){
+        var indent = l.length - l.replace(/^\s+/, '').length;
+        if(i > 0 && indent === 2 && l.trim()) starts.push(i);
+      });
+    }
+  }
+  if(!starts.length) starts = [0];
+  var sections = [];
+  var bounds = starts.slice();
+  if(bounds[0] > 0) bounds.unshift(0);
+  bounds.forEach(function(start, bi){
+    var end = (bi + 1 < bounds.length) ? bounds[bi + 1] : lines.length;
+    var slice = lines.slice(start, end);
+    var firstContent = slice.filter(function(l){ return l.trim() && l.trim() !== '---'; })[0] || '';
+    var title;
+    var nm = firstContent.match(/name:\s*(.+)$/);
+    var isHeader = (bi === 0 && starts[0] > 0);
+    if(isHeader) title = 'The header — the stage everything else stands on';
+    else if(nm) title = nm[1].replace(/^["']|["']$/g, '');
+    else title = firstContent.trim().slice(0, 60);
+    var modKey = null;
+    slice.forEach(function(l){ var k = l.trim().match(/^((?:ansible|community|redhat)\.[\w.]+):/); if(k && !modKey) modKey = k[1]; });
+    var why;
+    if(isHeader) why = 'Read this first: it decides WHERE the rest runs, as WHOM, and with what data loaded. Nothing below it makes sense without it.';
+    else if(modKey){ var sm = MODULES[modKey.split('.').pop()]; why = sm ? ('What this section does: ' + sm.what + ' What breaks without it: ' + sm.breaks) : 'One self-contained step of the file.'; }
+    else why = 'One self-contained block of the file: its lines belong together and are read together.';
+    var rows = [];
+    slice.forEach(function(l){ if(l.trim()) rows.push([l.trim(), explainLine(l, file)]); });
+    sections.push({title: title, why: why, rows: rows, code: slice.join('\n')});
+  });
+  return sections;
+}
+var STUDY_OVERRIDES = {
+  'q13-hwreport': {
+    overall: 'One download, then five find-and-replace passes over the file it downloaded. get_url lays a fresh labelled skeleton at /root/hwreport.txt on EVERY host; then the SAME module, lineinfile, runs five times — each time it finds one line by its label (regexp:) and replaces it with that label plus one of the host\u2019s own facts (line:). Because hosts: is all and facts differ per machine, one playbook produces a different, correct report on every host. The recall hook: download the form once, then five times \u201cfind the label, write the fact\u201d — and the two disk lines carry a safety net, default(\u2019NONE\u2019), for hardware a host does not have.',
+    sections: [
+      {title: 'Play header — one report, built on every host', why: 'The header decides where this runs and as whom — and both choices are load-bearing for everything below.', rows: [
+        ['---', 'Document start: everything below is one YAML document.'],
+        ['- name: Generate a Hardware Report', 'The play\u2019s name — the label for the whole job. A play maps hosts to tasks; this one maps every host to a report about itself.'],
+        ['hosts: all', 'The report is built on EVERY managed host, not on the controller. That is the whole design: facts are per-host, so each machine fills in its own form with its own values.'],
+        ['become: true', 'Run as root. The report lands in /root — an unprivileged user could not write there, so without become every task below fails on permissions.'],
+        ['tasks:', 'The ordered list begins. Order is the dependency chain here: the download must happen before any edit, and the edits then run in file order, 1 to 5.']
+      ]},
+      {title: 'Task 1 — Download the empty report form', why: 'get_url fetches the labelled skeleton. Every later task edits the file THIS task creates — dest: and the five path: lines below must agree exactly.', rows: [
+        ['- name: Download hwreport.empty', 'The task\u2019s label. Names do no work — the module under the name is the engine.'],
+        ['ansible.builtin.get_url:', 'The download module: it fetches a file from a URL and SAVES it on the managed host. The classic trap is uri — uri calls APIs and hands data back to the controller; it never saves a file. If the file must exist on disk, it is get_url.'],
+        ['url: http://10.1.10.121/hwreport.empty', 'The source: the skeleton form on the exam server — the same labelled lines with empty values, waiting to be filled. The managed host makes this request itself.'],
+        ['dest: /root/hwreport.txt', 'Where the skeleton lands. Memorise this path as the anchor of the whole play: all five lineinfile tasks edit THIS file, and only this file.'],
+        ['force: true', 'Always fetch a fresh skeleton, even if /root/hwreport.txt already exists. Without it, a re-run would edit last run\u2019s already-filled report; with it, every run starts from the clean form, so the values always reflect the host right now.']
+      ]},
+      {title: 'Task 2 — Fill in the inventory host name', why: 'The first of the five lineinfile passes, and the pattern-setter: learn this task\u2019s three parameters once and tasks 3–6 are the same shape with a different label and fact.', rows: [
+        ['- name: Update inventory hostname', 'The task label — it names the line being updated, not the mechanism.'],
+        ['ansible.builtin.lineinfile:', 'The line editor: it finds ONE line by pattern and replaces it, or appends it if absent. All five fill-in tasks use this one module — the repetition is the point: same tool, five labels.'],
+        ['path: /root/hwreport.txt', 'The file being edited — character for character the dest: of the download task. If these two ever disagree, the edits land in a file nobody downloaded.'],
+        ["regexp: '^Inventory host name'", 'The finder: match the existing line that STARTS with this label (^ = start of line). The value after the label does not matter — whatever the skeleton holds there, the whole line gets replaced.'],
+        ['line: "Inventory host name={{ inventory_hostname }}"', 'The replacement: the same label, an equals sign, and the rendered value. inventory_hostname is a MAGIC variable — this host\u2019s name as the inventory knows it; it needs no fact gathering. The label in line: must match the label in regexp:, or the finished report reads wrong.']
+      ]},
+      {title: 'Task 3 — Fill in the total memory', why: 'Same lineinfile pattern, second label. Only two things change from Task 2: the label in regexp:/line:, and the fact that fills it.', rows: [
+        ['- name: Update total memory', 'The task label — the memory line of the form.'],
+        ['ansible.builtin.lineinfile:', 'Same module, same job: find the labelled line, replace it.'],
+        ['path: /root/hwreport.txt', 'Same file — the downloaded skeleton, again. All five passes edit the one file.'],
+        ["regexp: '^Total memory in MB'", 'Find the line starting with this label. Note the label carries its unit (MB) — the fact chosen next is picked BECAUSE it already matches this unit.'],
+        ['line: "Total memory in MB={{ ansible_memtotal_mb }}"', 'ansible_memtotal_mb is a gathered FACT: the host\u2019s total RAM, and it is already in MiB — that is why no conversion appears here. Pick the fact whose unit matches the label.']
+      ]},
+      {title: 'Task 4 — Fill in the BIOS version', why: 'The third pass — by now the pattern should feel automatic: label, find, replace with the host\u2019s own fact.', rows: [
+        ['- name: Update BIOS version', 'The task label — the firmware line of the form.'],
+        ['ansible.builtin.lineinfile:', 'Same finder/replacer module.'],
+        ['path: /root/hwreport.txt', 'Same target file.'],
+        ["regexp: '^BIOS version'", 'Find the line starting with the BIOS version label.'],
+        ['line: "BIOS version={{ ansible_bios_version }}"', 'ansible_bios_version is a gathered FACT: the firmware version string read from this very machine — so each host\u2019s report shows its own BIOS, not a copied value.']
+      ]},
+      {title: 'Task 5 — Fill in the size of disk sda', why: 'The fourth pass adds the one new idea in this play: the value comes from a DICTIONARY (ansible_devices), and a filter guards the case where the disk does not exist.', rows: [
+        ['- name: Update vda size', 'The task\u2019s NAME says vda — but read the regexp: and line: below: the FILE\u2019s labels say sda, and the labels are what get graded. Do not \u201cfix\u201d the inside to match the name; the skeleton form\u2019s wording governs.'],
+        ['ansible.builtin.lineinfile:', 'Same module — find by label, replace the line.'],
+        ['path: /root/hwreport.txt', 'Same target file.'],
+        ["regexp: '^Size of disk device sda'", 'Find the sda size line by its exact label from the skeleton form.'],
+        ['line: "Size of disk device sda={{ ansible_devices[\u2019sda\u2019][\u2019size\u2019] | default(\u2019NONE\u2019) }}"', 'Two ideas in one expression. (1) ansible_devices is a fact DICTIONARY of this host\u2019s disks: [\u2019sda\u2019] picks that disk, [\u2019size\u2019] picks its size. (2) The | default(\u2019NONE\u2019) filter is the safety net: on a host with NO sda, the lookup is undefined — without the filter the whole play would crash on that host; with it, the line simply reads NONE, exactly as the task requires.']
+      ]},
+      {title: 'Task 6 — Fill in the size of disk sdb', why: 'The fifth and final pass: Task 5\u2019s exact shape repeated for the second disk. If you can write Task 5, you can write this by changing two letters.', rows: [
+        ['- name: Update vdb size', 'Again the name says vdb while the form\u2019s label says sdb — follow the label inside the task, as in Task 5.'],
+        ['ansible.builtin.lineinfile:', 'Same module, last pass.'],
+        ['path: /root/hwreport.txt', 'Same target file — after this task the form is complete.'],
+        ["regexp: '^Size of disk device sdb'", 'Find the sdb size line by its label.'],
+        ['line: "Size of disk device sdb={{ ansible_devices[\u2019sdb\u2019][\u2019size\u2019] | default(\u2019NONE\u2019) }}"', 'The sdb twin of Task 5: same dictionary, same size field, same default(\u2019NONE\u2019) guard for a host that has no second disk. Learn the pattern once, apply it per disk — that is the whole trick of this question.']
+      ]}
+    ]
+  }
+};
+function renderStudyBreakdown(f){
+  var ov = STUDY_OVERRIDES[f.id];
+  var secs, overall;
+  if(ov){ secs = ov.sections; overall = ov.overall; }
+  else {
+    secs = splitSections(f);
+    overall = f.blueprint + ' ' + f.summary;
+  }
+  var html = '<div class="card studyflow"><h3>How it all works together</h3><p>' + esc(overall) + '</p>';
+  html += '<ol class="flowsteps">' + secs.map(function(s){ return '<li>' + esc(s.title) + '</li>'; }).join('') + '</ol></div>';
+  html += '<p class="levelhead">Section by section — every line explained</p>';
+  secs.forEach(function(s, si){
+    html += '<div class="seccard"><h3><span class="secno">§' + (si + 1) + '</span>' + esc(s.title) + '</h3>';
+    if(s.why) html += '<p class="secwhy">' + esc(s.why) + '</p>';
+    if(s.code) html += '<div class="seccode"><pre>' + s.code.split('\n').map(function(l){ return hlLine(f.lang, l); }).join('\n') + '</pre></div>';
+    s.rows.forEach(function(r){
+      html += '<div class="gloss"><code>' + esc(r[0]) + '</code><br>' + esc(r[1]) + '</div>';
+    });
+    html += '</div>';
+  });
   return html;
 }
 
@@ -298,7 +690,7 @@ function renderFile(f){
   html += '<div class="card"><h2>Q' + f.q + ' — ' + esc(f.name) + '</h2><div class="fpath" style="font-family:var(--mono);font-size:12px;color:var(--dim)">' + esc(f.path) + '</div></div>';
   html += '<div class="card spec"><h3>The task</h3><p>' + esc(f.spec) + '</p></div>';
   html += '<div class="card blueprint"><h3>Blueprint — the shape of this file</h3><p>' + esc(f.blueprint) + '</p></div>';
-  html += '<div class="card note"><h3>Editor setup (from Q0)</h3><p>Your .vimrc makes YAML behave: 2-space indents (ts=2 sts=2 sw=2) with expandtab — spaces, never tab characters. The multi-line blanks here follow the same rule: Tab inserts 2 spaces, and indentation is structure.</p></div>';
+  html += '<div class="card note"><h3>Editor — exactly as Q0 set it up</h3><div class="vimrc-line">autocmd FileType yaml setlocal ts=2 sts=2 sw=2 ai cuc cul nu expandtab</div><p><b>ts=2 / sts=2 / sw=2</b> — tab stop, soft tab stop and shift width are all 2, so every indent level is exactly 2 spaces. <b>expandtab</b> — the Tab key inserts spaces, never a tab character (a real tab makes YAML unparsable). <b>ai</b> — autoindent: Enter carries the current indent onto the new line, and this editor does the same inside the multi-line blanks (+2 after a line ending in a colon). <b>nu</b> — line numbers in the gutter. <b>cul / cuc</b> — cursor line and column are lit: the line you are editing is highlighted gold here, and the status bar under the editor tracks your Ln/Col like vim. Keys are blue, colons red, strings gold, <span style="color:#c792ea">{{ }} Jinja</span> purple, numbers orange, booleans cyan — the same highlighting the Syntax Trainer uses. Indentation <i>is</i> structure: the faint vertical guides sit on every 2-space stop.</p></div>';
   html += '<div id="playarea"></div>';
   app.innerHTML = html;
   renderPlayArea();
@@ -312,6 +704,7 @@ function renderPlayArea(){
     html += '<p class="levelhead">📖 Study — the complete file. Tap any <span style="color:#ffd75f">highlighted piece</span> to learn what it is and why it sits there.</p>';
     html += renderCode(f, 99, 'study');
     html += '<div class="explainbox show" id="explainbox">Tap a highlighted piece above to see its explanation.</div>';
+    html += renderStudyBreakdown(f);
   } else {
     var top = fileTop(f);
     var desc = cur.level === 1 ? 'Only the values are missing — names, IPs, sizes, passwords, messages.' : cur.level === 2 ? 'Values plus structure: module names and key parameter names are missing too.' : 'Whole task bodies are missing. Only the play header, task names, and the spec remain — build it.';
@@ -467,16 +860,64 @@ document.body.addEventListener('input', function(ev){
 document.body.addEventListener('keydown', function(ev){
   if(ev.target.tagName === 'TEXTAREA' && ev.target.classList.contains('blank') && ev.key === 'Tab'){
     ev.preventDefault();
-    var ta = ev.target, st = ta.selectionStart, en = ta.selectionEnd;
-    ta.value = ta.value.slice(0, st) + '  ' + ta.value.slice(en);
-    ta.selectionStart = ta.selectionEnd = st + 2;
+    var ta = ev.target, st = ta.selectionStart, en = ta.selectionEnd, dir = ev.shiftKey ? -1 : 1;
+    var ls = ta.value.lastIndexOf('\n', st - 1) + 1;
+    var le = ta.value.indexOf('\n', en); if(le < 0) le = ta.value.length;
+    if(en > ls && ta.value[en - 1] === '\n') le = en - 1;
+    var segLines = ta.value.slice(ls, le).split('\n');
+    var dFirst = 0, dTotal = 0;
+    var out = segLines.map(function(ln2, ix){
+      if(dir > 0){ dTotal += 2; if(ix === 0) dFirst = 2; return '  ' + ln2; }
+      var mm = ln2.match(/^ {1,2}/); var rm = mm ? mm[0].length : 0;
+      dTotal -= rm; if(ix === 0) dFirst = -rm; return ln2.slice(rm);
+    }).join('\n');
+    ta.setRangeText(out, ls, le, 'end');
+    ta.selectionStart = Math.max(ls, st + dFirst);
+    ta.selectionEnd = Math.max(ta.selectionStart, en + dTotal);
+    if(st === en && dir > 0 && segLines.length === 1 && dFirst === 2 && ta.value.slice(ls, st + 2) === ta.value.slice(ls, ls) + '  ' + ta.value.slice(ls, st)){ /* single-caret Tab = one 2-space step, same result */ }
     if(cur) cur.values[ta.getAttribute('data-i')] = ta.value;
+    updateVimPos(ta);
+  }
+  if(ev.target.tagName === 'TEXTAREA' && ev.target.classList.contains('blank') && ev.key === 'Enter'){
+    ev.preventDefault();
+    var tb = ev.target, cs = tb.selectionStart, ce = tb.selectionEnd;
+    var lineStart = tb.value.lastIndexOf('\n', cs - 1) + 1;
+    var curLine = tb.value.slice(lineStart, cs);
+    var base = (curLine.match(/^ */) || [''])[0].length;
+    var n = base, trimmed = curLine.replace(/\s+$/, '');
+    var isItem = /^\s*-\s/.test(curLine), itemIsMap = /^\s*-\s+[^:\s]+:/.test(curLine);
+    if(isItem && itemIsMap) n = base + 2 + (trimmed.endsWith(':') ? 2 : 0);
+    else if(!isItem && trimmed.endsWith(':')) n = base + 2;
+    tb.setRangeText('\n' + ' '.repeat(n), cs, ce, 'end');
+    if(cur) cur.values[tb.getAttribute('data-i')] = tb.value;
+    updateVimPos(tb);
   }
   if(ev.target.tagName === 'INPUT' && ev.target.classList && ev.target.classList.contains('blank') && ev.key === 'Enter'){
     ev.preventDefault(); doCheck();
   }
   if(ev.target.id === 'bashinput' && ev.key === 'Enter'){ ev.preventDefault(); doCheckBash(); }
 });
+
+function updateVimPos(el){
+  if(!el || !el.classList || !el.classList.contains('blank')) return;
+  var i = el.getAttribute('data-i');
+  var rows = document.querySelectorAll('.ln.active');
+  rows.forEach(function(r){ r.classList.remove('active'); });
+  var row = el.closest ? el.closest('.ln') : null;
+  if(row) row.classList.add('active');
+  var pos = document.getElementById('vimpos'); if(!pos) return;
+  var lineNo = curLines[i] || 1, col = (curCols[i] || 1) + (el.selectionStart || 0);
+  if(el.tagName === 'TEXTAREA'){
+    var upto = el.value.slice(0, el.selectionStart || 0);
+    var nl = upto.split('\n').length - 1;
+    lineNo = (curLines[i] || 1) + nl;
+    col = (upto.length - (upto.lastIndexOf('\n') + 1)) + 1;
+  }
+  pos.textContent = 'Ln ' + lineNo + ', Col ' + col;
+}
+document.body.addEventListener('focusin', function(ev){ updateVimPos(ev.target); });
+document.body.addEventListener('keyup', function(ev){ updateVimPos(ev.target); });
+document.body.addEventListener('click', function(ev){ updateVimPos(ev.target); });
 
 renderHome();
 })();
