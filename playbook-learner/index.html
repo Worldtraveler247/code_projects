@@ -67,7 +67,10 @@ button.small{min-height:36px;padding:5px 10px;font-size:13px}
 .seccard .secwhy{font-size:13.5px;line-height:1.55;color:var(--dim);margin:4px 0 10px}
 .seccode{background:#0a0e14;border:1px solid var(--line);border-radius:8px;padding:8px 10px;overflow-x:auto;margin:0 0 10px}
 .seccode pre{margin:0;font-family:var(--mono);font-size:12.5px;line-height:20px;white-space:pre;color:#d6deeb;tab-size:2}
-.gloss{margin:6px 0;padding:7px 9px;background:var(--panel2);border-radius:8px;font-size:13.5px;line-height:1.55}
+.gloss{margin:6px 0;padding:7px 9px;background:var(--panel2);border-radius:8px;font-size:13.5px;line-height:1.55;scroll-margin-top:96px;transition:background .3s,box-shadow .3s}
+.gloss.flash{background:#2a230a;box-shadow:0 0 0 2px var(--gold)}
+.ln[data-line]{cursor:pointer}
+.explainbox{scroll-margin-top:96px}
 .gloss .gln{color:#484f58;font-family:var(--mono);font-size:11px;margin-right:6px}
 .gloss code{font-family:var(--mono);font-size:12.5px;color:#ffd75f;word-break:break-all}
 .flowsteps{margin:6px 0 0;padding-left:20px;font-size:14px;line-height:1.6}
@@ -324,7 +327,7 @@ function renderCode(file, level, mode){
   var langLabel = file.lang === 'bash' ? 'bash' : file.lang === 'jinja' ? 'jinja · yaml facts' : 'yaml';
   var html = '<div class="vimwrap"><div class="vimbar"><span class="vfile">📄 ' + esc(file.path) + '</span><span class="vset">filetype=' + langLabel + '</span><span class="vset">ts=2 sts=2 sw=2</span><span class="vset">ai cuc cul nu expandtab</span></div><div class="codebox">';
   built.lines.forEach(function(nodes, li){
-    html += '<div class="ln"><span class="no">' + (li+1) + '</span><span class="lc">';
+    html += '<div class="ln" data-line="' + (li+1) + '"><span class="no">' + (li+1) + '</span><span class="lc">';
     nodes.forEach(function(n){
       if(n.k === 't'){ html += hlFragment(file.lang, n.s); }
       else if(n.k === 'tok'){ html += '<span class="tok" data-tok="' + n.i + '">' + hlFragment(file.lang, n.s) + '</span>'; }
@@ -495,16 +498,19 @@ function splitSections(file){
   var lines = fullTextOf(file).split('\n');
   while(lines.length && lines[lines.length-1].trim() === '') lines.pop();
   if(file.lang === 'bash'){
-    return lines.filter(function(l){ return l.trim() !== ''; }).map(function(l, i){
-      return {title: 'Command ' + (i + 1) + ' — ' + l.trim().split(/\s+/).slice(0, 3).join(' ') + '\u2026', why: 'Each command here is its own step: it runs, finishes, and sets up the next one.', rows: [[l.trim(), explainLine(l, file)]]};
+    var bsecs = [];
+    lines.forEach(function(l, li){
+      if(l.trim() === '') return;
+      bsecs.push({title: 'Command ' + (bsecs.length + 1) + ' — ' + l.trim().split(/\s+/).slice(0, 3).join(' ') + '\u2026', why: 'Each command here is its own step: it runs, finishes, and sets up the next one.', rows: [[l.trim(), explainLine(l, file), li + 1]], code: l});
     });
+    return bsecs;
   }
   if(file.lang === 'jinja'){
     var secs = [], cur = null;
-    lines.forEach(function(l){
+    lines.forEach(function(l, li){
       var isFor = l.indexOf('{% for') >= 0;
       if(isFor || !cur){ cur = {title: isFor ? 'The loop — one row per host' : 'The preset lines', why: isFor ? 'The template engine repeats the body once per inventory host, reading each host\u2019s facts through hostvars.' : 'Fixed lines that appear verbatim at the top of every rendered file.', rows: []}; secs.push(cur); }
-      if(l.trim()) cur.rows.push([l.trim(), explainLine(l, file)]);
+      if(l.trim()) cur.rows.push([l.trim(), explainLine(l, file), li + 1]);
       if(l.indexOf('{% endfor') >= 0) cur = null;
     });
     return secs;
@@ -551,7 +557,7 @@ function splitSections(file){
     else if(modKey){ var sm = MODULES[modKey.split('.').pop()]; why = sm ? ('What this section does: ' + sm.what + ' What breaks without it: ' + sm.breaks) : 'One self-contained step of the file.'; }
     else why = 'One self-contained block of the file: its lines belong together and are read together.';
     var rows = [];
-    slice.forEach(function(l){ if(l.trim()) rows.push([l.trim(), explainLine(l, file)]); });
+    slice.forEach(function(l, sidx){ if(l.trim()) rows.push([l.trim(), explainLine(l, file), start + sidx + 1]); });
     sections.push({title: title, why: why, rows: rows, code: slice.join('\n')});
   });
   return sections;
@@ -591,14 +597,14 @@ var STUDY_OVERRIDES = {
       {title: 'Task 4 — Fill in the BIOS version', why: 'The third pass — by now the pattern should feel automatic: label, find, replace with the host\u2019s own fact.', rows: [
         ['- name: Update BIOS version', 'The task label — the firmware line of the form.'],
         ['ansible.builtin.lineinfile:', 'Same finder/replacer module.'],
-        ['path: /root/hwreport.txt', 'Same target file.'],
+        ['path: /root/hwreport.txt', 'Same target file \u2014 the downloaded skeleton in /root, edited by every pass.'],
         ["regexp: '^BIOS version'", 'Find the line starting with the BIOS version label.'],
         ['line: "BIOS version={{ ansible_bios_version }}"', 'ansible_bios_version is a gathered FACT: the firmware version string read from this very machine — so each host\u2019s report shows its own BIOS, not a copied value.']
       ]},
       {title: 'Task 5 — Fill in the size of disk sda', why: 'The fourth pass adds the one new idea in this play: the value comes from a DICTIONARY (ansible_devices), and a filter guards the case where the disk does not exist.', rows: [
         ['- name: Update vda size', 'The task\u2019s NAME says vda — but read the regexp: and line: below: the FILE\u2019s labels say sda, and the labels are what get graded. Do not \u201cfix\u201d the inside to match the name; the skeleton form\u2019s wording governs.'],
         ['ansible.builtin.lineinfile:', 'Same module — find by label, replace the line.'],
-        ['path: /root/hwreport.txt', 'Same target file.'],
+        ['path: /root/hwreport.txt', 'Same target file \u2014 the one skeleton all five passes fill in.'],
         ["regexp: '^Size of disk device sda'", 'Find the sda size line by its exact label from the skeleton form.'],
         ['line: "Size of disk device sda={{ ansible_devices[\u2019sda\u2019][\u2019size\u2019] | default(\u2019NONE\u2019) }}"', 'Two ideas in one expression. (1) ansible_devices is a fact DICTIONARY of this host\u2019s disks: [\u2019sda\u2019] picks that disk, [\u2019size\u2019] picks its size. (2) The | default(\u2019NONE\u2019) filter is the safety net: on a host with NO sda, the lookup is undefined — without the filter the whole play would crash on that host; with it, the line simply reads NONE, exactly as the task requires.']
       ]},
@@ -612,14 +618,38 @@ var STUDY_OVERRIDES = {
     ]
   }
 };
+var curGlossMap = {};
+function jumpToGloss(lineNo, keepBox){
+  var g = curGlossMap[lineNo];
+  var box = document.getElementById('explainbox');
+  if(g && box && !keepBox){
+    box.innerHTML = '<span class="piece">' + esc(g.code) + '</span><br>' + esc(g.gloss) + '<br><span class="small">\u2193 I\u2019ve scrolled you to this line\u2019s definition in \u00a7 ' + esc(g.sec) + ' below \u2014 it\u2019s highlighted gold.</span>';
+  }
+  var el = document.getElementById('gl-' + lineNo);
+  if(el){
+    el.scrollIntoView({behavior:'smooth', block:'center'});
+    el.classList.add('flash');
+    setTimeout(function(){ el.classList.remove('flash'); }, 2600);
+  }
+}
 function renderStudyBreakdown(f){
   var ov = STUDY_OVERRIDES[f.id];
   var secs, overall;
-  if(ov){ secs = ov.sections; overall = ov.overall; }
+  if(ov){
+    var lnCounter = 1;
+    secs = ov.sections.map(function(s){
+      return {title: s.title, why: s.why, code: null, rows: s.rows.map(function(r){ return [r[0], r[1], lnCounter++]; })};
+    });
+    overall = ov.overall;
+  }
   else {
     secs = splitSections(f);
     overall = f.blueprint + ' ' + f.summary;
   }
+  curGlossMap = {};
+  secs.forEach(function(s){
+    s.rows.forEach(function(r){ curGlossMap[r[2]] = {code: r[0], gloss: r[1], sec: s.title}; });
+  });
   var html = '<div class="card studyflow"><h3>How it all works together</h3><p>' + esc(overall) + '</p>';
   html += '<ol class="flowsteps">' + secs.map(function(s){ return '<li>' + esc(s.title) + '</li>'; }).join('') + '</ol></div>';
   html += '<p class="levelhead">Section by section — every line explained</p>';
@@ -628,7 +658,7 @@ function renderStudyBreakdown(f){
     if(s.why) html += '<p class="secwhy">' + esc(s.why) + '</p>';
     if(s.code) html += '<div class="seccode"><pre>' + s.code.split('\n').map(function(l){ return hlLine(f.lang, l); }).join('\n') + '</pre></div>';
     s.rows.forEach(function(r){
-      html += '<div class="gloss"><code>' + esc(r[0]) + '</code><br>' + esc(r[1]) + '</div>';
+      html += '<div class="gloss" id="gl-' + r[2] + '" data-gline="' + r[2] + '"><code>' + esc(r[0]) + '</code><br>' + esc(r[1]) + '</div>';
     });
     html += '</div>';
   });
@@ -701,7 +731,7 @@ function renderPlayArea(){
   var f = cur.file, area = document.getElementById('playarea');
   var html = modebarHTML(f);
   if(cur.mode === 'study'){
-    html += '<p class="levelhead">📖 Study — the complete file. Tap any <span style="color:#ffd75f">highlighted piece</span> to learn what it is and why it sits there.</p>';
+    html += '<p class="levelhead">📖 Study — the complete file. Tap <b>anything</b> in the playbook — a <span style="color:#ffd75f">highlighted piece</span> or any other line — and I\u2019ll show its explanation here and scroll you straight to its matching definition below.</p>';
     html += renderCode(f, 99, 'study');
     html += '<div class="explainbox show" id="explainbox">Tap a highlighted piece above to see its explanation.</div>';
     html += renderStudyBreakdown(f);
@@ -829,10 +859,17 @@ function doCheckBash(){
 document.body.addEventListener('click', function(ev){
   var tok = ev.target.closest ? ev.target.closest('[data-tok]') : null;
   if(tok && cur && cur.mode === 'study'){
-    var b = fileBlanks(cur.file)[Number(tok.getAttribute('data-tok'))];
+    var ti = Number(tok.getAttribute('data-tok'));
+    var b = fileBlanks(cur.file)[ti];
     var box = document.getElementById('explainbox');
-    if(box && b) box.innerHTML = '<span class="piece">' + esc(b.b).replace(/\n/g, '<br>') + '</span><br>' + esc(b.e);
+    if(box && b) box.innerHTML = '<span class="piece">' + esc(b.b).replace(/\n/g, '<br>') + '</span><br>' + esc(b.e) + '<br><span class="small">\u2193 Its full definition is highlighted in the breakdown below.</span>';
+    jumpToGloss(curLines[ti], true);
     return;
+  }
+  var rowEl = ev.target.closest ? ev.target.closest('[data-line]') : null;
+  if(rowEl && cur && cur.mode === 'study'){
+    var lnNo = Number(rowEl.getAttribute('data-line'));
+    if(curGlossMap[lnNo]){ jumpToGloss(lnNo, false); return; }
   }
   var el = ev.target.closest ? ev.target.closest('[data-act]') : null;
   if(!el) return;
