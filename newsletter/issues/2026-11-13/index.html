@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="dark">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'self' https://static.cloudflareinsights.com; connect-src 'self' https://cloudflareinsights.com; img-src 'self' data:; form-action https://buttondown.com; base-uri 'none'; object-src 'none'">
+    <meta name="description" content="The Daily Brief for Friday, November 13, 2026: security incidents, senior security advice, engineering explainers, and tech news.">
+    <title>The Daily Brief · Nov 13, 2026</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="icon" href="../../../favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="../../../style.css">
+    <link rel="stylesheet" href="../../newsletter.css">
+</head>
+<body class="brief-page">
+    <a href="#main-content" class="skip-nav">Skip to main content</a>
+    <nav class="brief-nav">
+        <a href="../../../index.html">← App Hub</a>
+        <a href="../../">All issues</a>
+    </nav>
+    
+<header class="brief-masthead">
+    <p class="brief-eyebrow">THE DAILY BRIEF</p>
+    <h1>Friday, November 13, 2026</h1>
+    <ol class="brief-toc">
+        <li><a href="#current-events">Current Events</a></li><li><a href="#security-advice">Senior Security Advice</a></li><li><a href="#tech-news">Tech News</a></li>
+    </ol>
+</header>
+<main id="main-content" class="brief">
+    
+    <article class="brief-section" id="current-events">
+        <p class="brief-kicker">Current Events</p>
+        <h2>The MOVEit Transfer Mass-Exploitation Campaign</h2>
+        
+            
+            <p>If you think one vendor patch closes a vulnerability for good, this one's for you. In the early summer of 2023, a ransomware crew called Cl0p skipped encryption entirely and went straight to extortion -- and they did it by hitting one piece of software almost every large organization had sitting on its network without a second thought. Here's how it actually happened.</p>
+<p>MOVEit Transfer is managed file-transfer software -- the kind of tool companies use to move large, sensitive files between partners, payroll providers, and government agencies. According to Progress Software's own security advisory and the joint CISA-FBI alert that followed, attackers found a SQL injection flaw in MOVEit Transfer's web application -- tracked as CVE-2023-34362 -- that let them talk directly to the underlying database without ever logging in. CISA and the FBI say the group behind it, which CISA also tracks under the name TA505, had been exploiting this flaw since on or before May 27th, days before Progress even knew about it. Once in, they dropped a custom web shell researchers named LEMURLOOT, disguised as a legitimate MOVEit file, and used it to pull data straight out of the database.</p>
+<p>Root cause, in one sentence: unvalidated input in a widely deployed, internet-facing web application let an unauthenticated attacker talk directly to a production database.</p>
+<p>Progress disclosed the flaw and shipped a patch on May 31st. CISA and the FBI followed less than a week later, on June 7th, with a joint advisory naming Cl0p and publishing indicators of compromise, including LEMURLOOT's file signatures. But closing the door wasn't that simple -- in the following weeks, Progress disclosed two more vulnerabilities in the same product, CVE-2023-35036 and CVE-2023-35708. Organizations that patched once in early June still had more fixing to do. That's the recurring lesson in this family of incident: a single CVE rarely means a single fix, and neither Progress nor CISA has ever published one aggregate count of how many downstream organizations were ultimately affected -- independent trackers have published wildly different totals, which is itself worth knowing before you repeat a number in an interview.</p>
+<p>So here's what a senior engineer takes from this. First, treat an internet-facing file-transfer appliance exactly like any other edge system: restrict inbound access to known, trusted source addresses by default, which is the exact mitigation CISA recommended here, instead of leaving the web interface open to the whole internet. Second, don't close the ticket on the vendor's first advisory mid-incident -- track the entire disclosure cycle, because Progress itself kept finding more flaws for weeks after the first one. On an AWS or RHEL lab, that's concrete: put any file-transfer or admin web interface behind a security group or firewalld rule scoped to specific source ranges, and prove to yourself an unlisted source actually gets dropped -- don't just trust that the rule exists.</p>
+
+        
+            <h3>Timeline</h3>
+            <table>
+<thead>
+<tr>
+<th>Date</th>
+<th>Event</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>On or before May 27, 2023</td>
+<td>CISA and the FBI assess that Cl0p (tracked as TA505) begins exploiting CVE-2023-34362 against internet-facing MOVEit Transfer servers, ahead of public disclosure.</td>
+</tr>
+<tr>
+<td>May 31, 2023</td>
+<td>Progress Software discloses CVE-2023-34362, a SQL injection vulnerability in MOVEit Transfer, and issues a patch.</td>
+</tr>
+<tr>
+<td>June 7, 2023</td>
+<td>CISA and the FBI publish joint advisory AA23-158A, &quot;#StopRansomware: CL0P Ransomware Gang Exploits CVE-2023-34362 MOVEit Vulnerability,&quot; naming the actor and listing indicators of compromise for the LEMURLOOT web shell.</td>
+</tr>
+<tr>
+<td>June 2023 (following weeks)</td>
+<td>Progress discloses two further MOVEit Transfer vulnerabilities, CVE-2023-35036 and CVE-2023-35708, requiring additional patching beyond the original fix.</td>
+</tr>
+</tbody>
+</table>
+<p><em>Note: Reporting is consistent on the vulnerability class (SQL injection), the web shell name (LEMURLOOT), and the attribution to Cl0p/TA505. Neither Progress nor CISA has published a single authoritative count of affected downstream organizations or individuals; secondary trackers and news outlets have reported sharply differing totals over time, so this script does not repeat a specific figure as fact.</em></p>
+
+        
+            <h3>Control Failures</h3>
+            <table>
+<thead>
+<tr>
+<th>#</th>
+<th>Failure</th>
+<th>NIST SP 800-53 Rev 5 Control Family</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>User-supplied input to the MOVEit Transfer web application was passed into a SQL query without proper sanitization, letting an unauthenticated attacker manipulate the database directly.</td>
+<td><strong>SI-10</strong> — Information Input Validation</td>
+</tr>
+<tr>
+<td>2</td>
+<td>The MOVEit Transfer web interface was broadly internet-facing rather than restricted to known, trusted source addresses, which is the exact gap CISA's own mitigation guidance called out after the fact.</td>
+<td><strong>SC-7</strong> — Boundary Protection</td>
+</tr>
+<tr>
+<td>3</td>
+<td>A web shell (LEMURLOOT) was written to and executed from the application directory without being detected until after data had already been exfiltrated.</td>
+<td><strong>SI-7</strong> — Software, Firmware, and Information Integrity</td>
+</tr>
+<tr>
+<td>4</td>
+<td>Organizations lacked sufficient logging or review of MOVEit Transfer web requests to catch the anomalous database access and file retrieval activity in near-real time.</td>
+<td><strong>AU-6</strong> — Audit Record Review, Analysis, and Reporting</td>
+</tr>
+<tr>
+<td>5</td>
+<td>The first patch addressed only the publicly disclosed flaw; two additional vulnerabilities in the same product surfaced only in subsequent weeks, showing gaps in the vendor's and customers' flaw-remediation cycle.</td>
+<td><strong>SI-2</strong> — Flaw Remediation</td>
+</tr>
+</tbody>
+</table>
+
+        
+            <h3>What Held</h3>
+            <ul>
+<li><strong>A fast public-private disclosure cycle.</strong> Progress Software disclosed and patched the original flaw within days of learning about it, and CISA/FBI followed with a joint advisory and concrete indicators of compromise inside two weeks — giving defenders a documented LEMURLOOT signature to hunt for rather than starting from zero.</li>
+<li><strong>Network-level mitigations were available and specific.</strong> CISA's guidance didn't stop at &quot;patch&quot; — it specified restricting MOVEit Transfer access to known, trusted IP ranges, giving organizations a boundary-protection control they could apply immediately, even before every downstream patch was ready.</li>
+<li><strong>The vulnerability class itself was well understood.</strong> SQL injection is a decades-old, well-documented defect category with mature detection tooling (web application firewalls, static analysis, parameterized-query enforcement), unlike some of the novel attack techniques covered elsewhere in this series — meaning organizations with basic secure-coding review practices already in place had a real chance to catch it before deployment.</li>
+</ul>
+
+        
+            <h3>Sources</h3>
+            <ul>
+<li><a href="https://www.cisa.gov/news-events/news/cisa-and-fbi-release-advisory-cl0p-ransomware-gang-exploiting-moveit-vulnerability" target="_blank" rel="noopener noreferrer">CISA and FBI Release Advisory on CL0P Ransomware Gang Exploiting MOVEit Vulnerability — CISA (primary)</a></li>
+<li><a href="https://www.cisa.gov/sites/default/files/2023-06/aa23-158a-stopransomware-cl0p-ransomware-gang-exploits-moveit-vulnerability_0.pdf" target="_blank" rel="noopener noreferrer">AA23-158A Joint Advisory PDF — CISA/FBI (primary)</a></li>
+<li><a href="https://nvd.nist.gov/vuln/detail/CVE-2023-34362" target="_blank" rel="noopener noreferrer">CVE-2023-34362 — National Vulnerability Database (primary)</a></li>
+<li><a href="https://industrialcyber.co/cisa/cisa-fbi-warn-organizations-that-cl0p-ransomware-group-exploits-moveit-transfer-vulnerability/" target="_blank" rel="noopener noreferrer">CISA, FBI warn organizations that CL0P ransomware group exploits MOVEit Transfer vulnerability — Industrial Cyber</a></li>
+<li><a href="https://www.aha.org/cybersecurity-government-intelligence-reports/2023-06-07-joint-cybersecurity-advisory-tlp-clear-stopransomware-cl0p-ransomware" target="_blank" rel="noopener noreferrer">2023-06-07 Joint Cybersecurity Advisory re-post — American Hospital Association</a></li>
+</ul>
+<p><strong>Tomorrow's Thread:</strong> Day 57 moves to the container and orchestration escape family — the 2024 Leaky Vessels disclosure (CVE-2024-21626), a runc/BuildKit container-breakout flaw not yet covered in this folder, a different family from today's edge exploitation topic.</p>
+
+        
+    </article>
+    
+    <article class="brief-section" id="security-advice">
+        <p class="brief-kicker">Senior Security Advice</p>
+        <h2>Keep an Offline Backup Copy and Actually Test the Restore</h2>
+        
+            <h3>The Advice</h3>
+            <p>Keep at least one backup copy offline or logically isolated from production, and prove on a regular schedule that you can actually restore from it.</p>
+
+        
+            <h3>Why It Matters</h3>
+            <p>A backup that is reachable from the network you are trying to protect is not a backup, it is just another target. Modern ransomware operators know this, and before they ever detonate the encryptor, many of them go hunting for backup servers, network shares, and cloud snapshots so they can delete or encrypt those too. The goal is simple: take away the one option that lets a victim recover without paying. Without an offline or immutable copy, an organization's entire disaster recovery plan collapses the moment an attacker gets admin-level access, because the same credentials that can reach production can usually reach the backups sitting right next to it. The incident class this prevents is the one where a company discovers, mid-breach, that its backups were encrypted along with everything else, and the only path forward left on the table is the ransom note.</p>
+
+        
+            <h3>How to Implement It</h3>
+            <ol>
+<li>Inventory what is backed up and confirm at least one copy of every critical system and dataset lives offline or is logically isolated: air-gapped media, a separate account with no trust relationship to production, or object storage with immutability (retention lock) enabled.</li>
+<li>Encrypt backups at rest and in transit, and turn on immutability or retention locks wherever the storage platform supports it, so a copy cannot be deleted or overwritten even by someone holding valid credentials.</li>
+<li>Separate the identity that can manage or delete backups from the identities used for day-to-day production administration, so one compromised account cannot reach both.</li>
+<li>Schedule real restore tests, not just backup-job status checks: periodically restore a sample system or dataset into an isolated environment and verify the data is complete and usable.</li>
+<li>Verify the control is actually working by tracking restore test results and measured recovery time against your recovery time objective, and alert if a scheduled backup silently fails for more than one cycle.</li>
+</ol>
+
+        
+            <h3>The Pushback You&#39;ll Hear</h3>
+            <p>&quot;Our backups finish successfully every night, so we're covered.&quot; A green checkmark on a backup job only confirms that data was written somewhere; it says nothing about whether that copy is out of an attacker's reach or whether it can actually be read back under pressure. Teams that have been through a real ransomware incident know the backups that mattered were the ones nobody could touch and someone had already restored from before. A backup you have never restored is a guess, not a recovery plan.</p>
+
+        
+            <h3>Sources</h3>
+            <ul>
+<li>CISA, &quot;#StopRansomware Guide&quot;: https://www.cisa.gov/stopransomware/ransomware-guide</li>
+<li>CISA/FBI/NSA/MS-ISAC, &quot;#StopRansomware Guide&quot; (PDF): https://www.cisa.gov/sites/default/files/2025-03/StopRansomware-Guide%20508.pdf</li>
+</ul>
+
+        
+    </article>
+    
+    <article class="brief-section" id="tech-news">
+        <p class="brief-kicker">Tech News</p>
+        
+        
+            
+            <p>Microsoft just shipped the biggest Patch Tuesday of the year — more than a thousand fixes in a single release — and one of them was already being used against real victims before most IT teams had even opened the update. If you manage Windows servers, Exchange mailboxes, or anything that touches Outlook, tonight's lead story is for you. Two items: that record patch batch, and a quick update on a VPN flaw I told you about earlier this week, whose federal deadline lands today.</p>
+<p>Start with Microsoft. According to security research teams at Tenable, Rapid7, and reporting from SecurityWeek, this month's Patch Tuesday fixed about eleven hundred vulnerabilities — one of the largest single releases Microsoft has ever shipped — with roughly sixty of them rated critical. Buried in that pile was one flaw already under active attack: CVE-2026-124194, a spoofing vulnerability in Outlook. Here's how it works. A specially crafted message tricks Outlook into reaching out to a server the attacker controls, without showing you the warning you'd normally get for untrusted content. That outbound connection can leak NTLM credentials — the authentication data Windows uses behind the scenes to prove who you are on a network — straight to the attacker, no click required beyond the message simply arriving. The Cybersecurity and Infrastructure Security Agency, or CISA, added it to its Known Exploited Vulnerabilities catalog within days of the patch shipping. My take: a release this size is exactly when triage discipline matters most. Nobody reviews a thousand patches in one sitting, so you don't try — you patch the one already being exploited first, and Microsoft and CISA just told you which one that is.</p>
+<p>Next up, a quick follow-up. Earlier this week I covered the Ivanti Connect Secure VPN chain, where attackers strung together three separate flaws to reach unauthenticated, root-level access on an appliance that was already fully patched for the first one. Today is the federal deadline for agencies to confirm the other two CVEs in that chain are closed. If your own environment is still &quot;in progress&quot; on that ticket, today's the day that stops being an acceptable answer.</p>
+<p>So here's tonight's through-line: when a patch batch is too big to review line by line, let the known-exploited list set your order, not your calendar.</p>
+
+        
+            <h3>Sources</h3>
+            <ul>
+<li><a href="https://cyberscoop.com/microsoft-patch-tuesday-november-2026/" target="_blank" rel="noopener noreferrer">Microsoft fixes over 1,000 vulnerabilities in November Patch Tuesday — CyberScoop</a></li>
+<li><a href="https://www.tenable.com/blog/microsoft-november-2026-patch-tuesday-addresses-1093-cves-cve-2026-124194" target="_blank" rel="noopener noreferrer">November 2026 Microsoft Patch Tuesday Addresses 1093 CVEs (CVE-2026-124194) — Tenable</a></li>
+<li><a href="https://www.securityweek.com/exploited-outlook-zero-day-among-1094-flaws-patched-by-microsoft/" target="_blank" rel="noopener noreferrer">Exploited Outlook Zero-Day Among 1,094 Flaws Patched by Microsoft — SecurityWeek</a></li>
+<li><a href="https://www.rapid7.com/blog/post/em-patch-tuesday-november-2026/" target="_blank" rel="noopener noreferrer">Patch Tuesday - November 2026 — Rapid7</a></li>
+<li><a href="https://www.splashtop.com/blog/patch-tuesday-november-2026" target="_blank" rel="noopener noreferrer">November 2026 Patch Tuesday: Outlook zero-day leads 1,094 CVEs — Splashtop</a></li>
+<li><a href="https://thehackernews.com/2026/10/attacker-chains-three-ivanti-connect.html" target="_blank" rel="noopener noreferrer">Attacker Chains Three Ivanti Connect Secure Zero-Days — The Hacker News</a></li>
+<li><a href="https://securityaffairs.com/?p=202175" target="_blank" rel="noopener noreferrer">U.S. CISA adds Ivanti Connect Secure flaws to its Known Exploited Vulnerabilities catalog — Security Affairs</a></li>
+</ul>
+
+        
+    </article>
+    
+    <section class="brief-subscribe" id="subscribe">
+    <h2>Get The Daily Brief by email</h2>
+    <p>One short email each morning. Unsubscribe anytime.</p>
+    <form action="https://buttondown.com/api/emails/embed-subscribe/cybercider" method="post">
+        <label for="bd-email">Email address</label>
+        <input type="email" name="email" id="bd-email" required autocomplete="email" placeholder="you@example.com">
+        <button type="submit">Subscribe</button>
+    </form>
+</section>
+</main>
+
+    <footer><p class="copyright">The Daily Brief · Eddie Camacho</p></footer>
+<!-- cf-web-analytics (managed by tools/inject_analytics.py) -->
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "f728a20b49cc4a0fbe02cde72f03301c"}'></script>
+</body>
+</html>
