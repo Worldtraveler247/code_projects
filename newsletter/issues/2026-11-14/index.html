@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="dark">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'self' https://static.cloudflareinsights.com; connect-src 'self' https://cloudflareinsights.com; img-src 'self' data:; form-action https://buttondown.com; base-uri 'none'; object-src 'none'">
+    <meta name="description" content="The Daily Brief for Saturday, November 14, 2026: security incidents, senior security advice, engineering explainers, and tech news.">
+    <title>The Daily Brief · Nov 14, 2026</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="icon" href="../../../favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="../../../style.css">
+    <link rel="stylesheet" href="../../newsletter.css">
+</head>
+<body class="brief-page">
+    <a href="#main-content" class="skip-nav">Skip to main content</a>
+    <nav class="brief-nav">
+        <a href="../../../index.html">← App Hub</a>
+        <a href="../../">All issues</a>
+    </nav>
+    
+<header class="brief-masthead">
+    <p class="brief-eyebrow">THE DAILY BRIEF</p>
+    <h1>Saturday, November 14, 2026</h1>
+    <ol class="brief-toc">
+        <li><a href="#current-events">Current Events</a></li><li><a href="#security-advice">Senior Security Advice</a></li><li><a href="#tech-news">Tech News</a></li>
+    </ol>
+</header>
+<main id="main-content" class="brief">
+    
+    <article class="brief-section" id="current-events">
+        <p class="brief-kicker">Current Events</p>
+        <h2>The Leaky Vessels runc Container Breakout</h2>
+        
+            
+            <p>If you've ever told a teammate &quot;it's in a container, so it's isolated,&quot; this one's for you. In January 2024, researchers at Snyk found four separate bugs in the software that actually starts and runs containers -- not a misconfigured app sitting inside one, the plumbing underneath every container on the host. They called the group &quot;Leaky Vessels.&quot; Here's how the worst of the four actually works.</p>
+<p>runc is the low-level tool that does the real work of creating a container -- Docker, Kubernetes, and most other container platforms all call down into it. According to Snyk's own advisory and Red Hat's security bulletin, CVE-2024-21626 is an order-of-operations bug: during container startup, runc briefly leaks an open file descriptor pointing at the host filesystem into the new container's working directory, before it's supposed to be sealed off. If an attacker controls the image being built or run -- a malicious Dockerfile, or a crafted WORKDIR instruction -- they can use that leaked file descriptor to break out of the container and get command execution on the host itself, as root.</p>
+<p>Root cause, in one sentence: a brief timing gap between when runc opens a reference to the host and when it actually isolates the container let a malicious image reach straight through the isolation boundary it was supposed to never touch.</p>
+<p>What makes this one worth knowing cold for an interview isn't just the CVE -- it's the blast radius. runc sits underneath Docker Engine, containerd, and Kubernetes alike, so this wasn't a Docker bug or a Kubernetes bug, it was a container-runtime bug that showed up everywhere at once. Snyk and the maintainers coordinated disclosure and shipped runc 1.1.12 the same day the advisory went public, and Red Hat, Docker, and the major cloud providers pushed their own patched builds alongside it.</p>
+<p>So here's what a senior engineer takes from this. First, patching &quot;Docker&quot; isn't the same as patching every layer underneath it -- Kubernetes nodes, CI runners, and build servers all embed their own copy of runc, and each one needs its own update. Second, don't build images from untrusted Dockerfiles on a host you actually trust; treat an image build step itself as code execution, because this bug proves it can be. On a Podman or Kubernetes lab, that's concrete: check your installed runc version against 1.1.12 before you assume a patched Docker Engine means a patched container runtime underneath it.</p>
+
+        
+            <h3>Timeline</h3>
+            <table>
+<thead>
+<tr>
+<th>Date</th>
+<th>Event</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>2024 (prior to disclosure)</td>
+<td>Snyk's security research team, led by Rory McNamara, discovers four related container-breakout flaws across runc and BuildKit during internal research, grouped under the name &quot;Leaky Vessels.&quot;</td>
+</tr>
+<tr>
+<td>January 31, 2024</td>
+<td>runc maintainers and Snyk coordinate public disclosure of CVE-2024-21626, alongside three related BuildKit flaws (CVE-2024-23651, CVE-2024-23652, CVE-2024-23653); runc 1.1.12 ships the same day with a fix.</td>
+</tr>
+<tr>
+<td>January 31, 2024</td>
+<td>Red Hat publishes RHSB-2024-001, rating the issue Important and detailing affected OpenShift and RHEL container tooling.</td>
+</tr>
+<tr>
+<td>February 2024</td>
+<td>Downstream container platforms, including Kubernetes distributions and major cloud providers, ship patched builds incorporating the fixed runc release.</td>
+</tr>
+</tbody>
+</table>
+<p><em>Note: Reporting is consistent on the vulnerability class (an order-of-operations / leaked file-descriptor bug in runc), the affected version range (runc ≤1.1.11), and the fix (runc 1.1.12). Severity scoring differs slightly by source — The Hacker News cites a CVSS of 8.6, while Red Hat's own rating is &quot;Important&quot; rather than a numeric score — so this script treats the underlying mechanism, not the exact score, as the fact to repeat in an interview.</em></p>
+
+        
+            <h3>Control Failures</h3>
+            <table>
+<thead>
+<tr>
+<th>#</th>
+<th>Failure</th>
+<th>NIST SP 800-53 Rev 5 Control Family</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>runc's container-startup sequence briefly left an open file descriptor to the host filesystem reachable from inside the new container before isolation was fully established.</td>
+<td><strong>CM-7</strong> — Least Functionality</td>
+</tr>
+<tr>
+<td>2</td>
+<td>The flaw let an attacker-controlled image (a malicious Dockerfile or WORKDIR instruction) execute with host-level consequences during what should have been a routine build or run step.</td>
+<td><strong>SI-10</strong> — Information Input Validation</td>
+</tr>
+<tr>
+<td>3</td>
+<td>Organizations that build container images from untrusted or third-party Dockerfiles had no boundary preventing a malicious image from reaching the underlying host.</td>
+<td><strong>SC-7</strong> — Boundary Protection</td>
+</tr>
+<tr>
+<td>4</td>
+<td>Because runc is embedded inside Docker Engine, containerd, and Kubernetes nodes separately, a single vulnerable version could persist in some layers of a stack even after other layers were patched.</td>
+<td><strong>CM-8</strong> — System Component Inventory</td>
+</tr>
+<tr>
+<td>5</td>
+<td>The flaw's four-year gap between first possible exploitation and its 2024 discovery reflects how little independent security review the container-runtime layer had received relative to the applications running on top of it.</td>
+<td><strong>CA-8</strong> — Penetration Testing</td>
+</tr>
+</tbody>
+</table>
+
+        
+            <h3>What Held</h3>
+            <ul>
+<li><strong>Coordinated, same-day disclosure and patch.</strong> Snyk worked with the runc maintainers before going public, so a fixed version (1.1.12) was available the moment the advisory and the CVE went live — defenders never faced a public zero-day window with no fix to apply.</li>
+<li><strong>The research was proactive, not incident-driven.</strong> Leaky Vessels was found through deliberate security research into container-runtime internals, not discovered because someone was already exploiting it in the wild — meaning organizations got to patch ahead of active abuse rather than in response to it.</li>
+<li><strong>Defense-in-depth at the orchestration layer.</strong> On systems running containers with reduced privileges, read-only root filesystems, or without build-time access to untrusted Dockerfiles, the practical exploitation path was narrower even before patching — a reminder that &quot;don't build untrusted images on a trusted host&quot; is a real control, not just advice.</li>
+</ul>
+
+        
+            <h3>Sources</h3>
+            <ul>
+<li><a href="https://snyk.io/blog/cve-2024-21626-runc-process-cwd-container-breakout" target="_blank" rel="noopener noreferrer">Vulnerability: runc process.cwd and leaked fds container breakout (CVE-2024-21626) — Snyk (primary)</a></li>
+<li><a href="https://access.redhat.com/security/vulnerabilities/RHSB-2024-001" target="_blank" rel="noopener noreferrer">RHSB-2024-001: Leaky Vessels — runc — (CVE-2024-21626) — Red Hat (primary)</a></li>
+<li><a href="https://nvd.nist.gov/vuln/detail/CVE-2024-21626" target="_blank" rel="noopener noreferrer">CVE-2024-21626 — National Vulnerability Database (primary)</a></li>
+<li><a href="https://thehackernews.com/2024/02/runc-flaws-enable-container-escapes.html" target="_blank" rel="noopener noreferrer">RunC Flaws Enable Container Escapes, Granting Attackers Host Access — The Hacker News</a></li>
+<li><a href="https://labs.snyk.io/resources/leaky-vessels-docker-runc-container-breakout-vulnerabilities/" target="_blank" rel="noopener noreferrer">Leaky Vessels: Docker and runc Container Breakout Vulnerabilities — Snyk Labs</a></li>
+</ul>
+<p><strong>Tomorrow's Thread:</strong> Day 58 moves to the operational and change-management failure family — the July 2024 CrowdStrike Falcon channel-file outage, a defective content update (not an adversary) that still took down millions of Windows systems worldwide, a different family from today's container escape topic and not yet covered in this folder.</p>
+
+        
+    </article>
+    
+    <article class="brief-section" id="security-advice">
+        <p class="brief-kicker">Senior Security Advice</p>
+        <h2>Stop Tailgating Through Badge-Access Doors</h2>
+        
+            <h3>The Advice</h3>
+            <p>Never let a single valid badge swipe open a secure door for more than one person: pair every high-sensitivity entry point with a physical control that enforces it, and train staff to challenge anyone who follows them in without badging themselves.</p>
+
+        
+            <h3>Why It Matters</h3>
+            <p>A badge reader only proves that one valid credential touched the door; it says nothing about how many people walked through behind it. Tailgating, letting someone in on your badge swipe out of politeness, habit, or pressure, turns every other physical control in the building into theater. Once an unauthorized person is inside, they can plug into an open network jack, walk out with a laptop, photograph a whiteboard, or plant a rogue device, all without ever touching an access log that shows their name. This is the incident class security assessors and real intruders both rely on: physical penetration testers have walked into data centers, server rooms, and even classified-adjacent facilities by simply following an employee through a propped or badge-held door, dressed to blend in and carrying something that makes holding the door look natural. No malware, no phishing email, just a held door.</p>
+
+        
+            <h3>How to Implement It</h3>
+            <ol>
+<li>Install access control vestibules, mantraps, or turnstiles at entry points protecting your most sensitive spaces (data centers, server rooms, SCIFs), so the door physically cannot admit a second person on one badge.</li>
+<li>Where vestibules aren't feasible, write and train a &quot;challenge culture&quot; policy: every employee is expected to stop and question anyone in a secure area who didn't badge in, with management backing them up even when it's awkward.</li>
+<li>Turn on anti-passback on your access control system so a badge that already opened a door can't be used again until it logs an exit, which surfaces shared or cloned credentials.</li>
+<li>Require visitors to be escorted and logged for the duration of their visit, not just signed in at the front desk.</li>
+<li>Verify the control is actually working, don't just trust that it's enforced: run unannounced physical social-engineering tests (internal team or a contracted red team) that specifically attempt tailgating, and track how many attempts succeed per quarter. Audit access logs for anti-passback violations and badge-in counts that don't match headcount.</li>
+</ol>
+
+        
+            <h3>The Pushback You&#39;ll Hear</h3>
+            <p>&quot;We're not a bank vault, we don't need mantraps, and challenging a coworker feels rude.&quot; The rebuttal: you don't need a vestibule on every door, only the ones protecting your crown jewels, and the cheapest fix here isn't hardware, it's culture. A senior engineer makes challenging a stranger the socially acceptable default, not the awkward exception, because the alternative is an unlogged person standing next to your core switch.</p>
+
+        
+            <h3>Sources</h3>
+            <ul>
+<li>CISA, &quot;Physical Security Considerations for Healthcare Facilities&quot; (PDF, July 2025): https://www.cisa.gov/sites/default/files/2025-07/Physical-Security-Considerations-for-Healthcare-Facilities_508_20250722.pdf</li>
+<li>CISA, &quot;Insider Threat&quot; (topic page, covering access control and visitor screening): https://www.cisa.gov/topics/insider-threat</li>
+<li>NIST SP 800-53 Rev. 5, PE-3(8) &quot;Access Control Vestibules&quot; (control catalog mirror): https://github-wiki-see.page/m/NIST-SP-800-53-R5/NIST-SP-800-53-R5.github.io/wiki/PE-3-PHYSICAL-ACCESS-CONTROL</li>
+</ul>
+
+        
+    </article>
+    
+    <article class="brief-section" id="tech-news">
+        <p class="brief-kicker">Tech News</p>
+        
+        
+            
+            <p>A security researcher dropped working exploit code for a zero-day on LinkedIn Thursday, and attackers had it weaponized within hours — against servers that were already patched. If you manage remote-monitoring tools for client networks, or you're running a firewall from one of the biggest names in the business, tonight's two stories are for you. First, the remote-management platform that got hit right after its own emergency fix. Second, a firewall flaw that turns a low-level account into root.</p>
+<p>Start with N-able N-central. It's remote monitoring and management software — the kind of tool managed service providers use to reach into hundreds of client networks from one console, which is exactly why a flaw in it matters so much. According to SecurityWeek and The Hacker News, independent researcher Sean Bales published proof-of-concept code on November 12th for an exploit chain he called &quot;4EverAble2Shell,&quot; showing how an unauthenticated attacker could run commands as root on an on-premises N-central server — and it still worked against servers running the hotfix N-able had shipped just two days earlier. Huntress and multiple outlets reported attackers using that code within hours to install cryptocurrency miners on dozens of affected systems, some of them already on the newest build. N-able's response was to disable the Legacy API mode the exploit depends on and pull back certain integrations. My take: &quot;patched&quot; isn't a status you check once and file away. When a vendor ships a hotfix under pressure, you verify the specific attack path is actually closed, not just that a new version number is installed.</p>
+<p>Next up — sticking with root access, but on hardware a lot of networks sit behind every day. Check Point disclosed CVE-2026-123039 this week, a flaw in Gaia OS, the operating system running its firewalls and security management servers. Here's the chain: attackers first used a separate flaw nicknamed &quot;PHP2Shell&quot; to reach the Mobile Access portal, then pivoted to this new bug — a root-level process called dynamic_server that listens on a socket without checking who's asking — to escalate straight to root. Check Point says it's seen active exploitation against roughly two dozen customers since late October. My read: a single CVE rarely tells the whole story. This was a two-step chain, and the lesson for a senior engineer is to always ask what a vulnerability connects to, not just what it does by itself.</p>
+<p>So here's tonight's through-line: a patch closes the vulnerability you know about — it's your job to confirm it closes the path attackers are actually using.</p>
+
+        
+            <h3>Sources</h3>
+            <ul>
+<li><a href="https://www.securityweek.com/hackers-exploit-new-n-central-zero-day-hours-after-poc-publication/" target="_blank" rel="noopener noreferrer">Hackers Exploit New N-central Zero-Day Hours After PoC Publication — SecurityWeek</a></li>
+<li><a href="https://thehackernews.com/2026/11/new-n-central-exploits-work-against.html" target="_blank" rel="noopener noreferrer">New N-central Exploits Work Against Patched Servers, Enable Root RCE and Windows SYSTEM Access — The Hacker News</a></li>
+<li><a href="https://www.huntress.com/blog/n-able-disables-cloud-services-following-disclosure-of-able2shell-exploit-chains" target="_blank" rel="noopener noreferrer">N-able Disables Cloud Services Following Disclosure of &quot;Able2Shell&quot; Exploit Chains — Huntress</a></li>
+<li><a href="https://decipher.sc/2026/11/12/another-n-able-vulnerability-emerges/" target="_blank" rel="noopener noreferrer">Another N-able Vulnerability Emerges — Decipher</a></li>
+<li><a href="https://www.bleepingcomputer.com/news/security/check-point-patches-zero-day-that-lets-hackers-get-root-access/" target="_blank" rel="noopener noreferrer">Check Point warns of zero-day flaw exploited for root access — BleepingComputer</a></li>
+<li><a href="https://cyberpress.org/check-point-php2shell-flaws/" target="_blank" rel="noopener noreferrer">Hackers Exploit Check Point PHP2Shell Flaws to Gain Root Access and Deploy Wiper Malware — Cyber Press</a></li>
+<li><a href="https://dev.to/rokkhe/cve-2026-123039-how-php2shell-became-root-on-check-point-gateways-and-how-to-close-it-1mef" target="_blank" rel="noopener noreferrer">CVE-2026-123039: How PHP2Shell Became Root on Check Point Gateways, and How to Close It — DEV Community</a></li>
+</ul>
+
+        
+    </article>
+    
+    <section class="brief-subscribe" id="subscribe">
+    <h2>Get The Daily Brief by email</h2>
+    <p>One short email each morning. Unsubscribe anytime.</p>
+    <form action="https://buttondown.com/api/emails/embed-subscribe/cybercider" method="post">
+        <label for="bd-email">Email address</label>
+        <input type="email" name="email" id="bd-email" required autocomplete="email" placeholder="you@example.com">
+        <button type="submit">Subscribe</button>
+    </form>
+</section>
+</main>
+
+    <footer><p class="copyright">The Daily Brief · Eddie Camacho</p></footer>
+<!-- cf-web-analytics (managed by tools/inject_analytics.py) -->
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "f728a20b49cc4a0fbe02cde72f03301c"}'></script>
+</body>
+</html>
