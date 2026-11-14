@@ -833,7 +833,7 @@ function renderHome(){
   cur = null;
   var html = '<p class="progressline">Progress: <b>' + masteredCount() + ' / ' + FILES.length + '</b> files mastered · <b>' + levelsDoneCount() + ' / ' + levelsTotal() + '</b> levels complete. Progress saves in this browser.</p>';
   html += '<div class="card pacecard"><h3>⏱ Pacing</h3><p>Real EX294 pace (240 min): 240 ÷ 16 = <b>15 minutes per question</b> exactly. Practice pace here is tighter — your Practice Exam 1 allows 150 minutes (~9:22 per question) — so in <b>Level 3 · from scratch</b>, a <b>9:00 countdown</b> runs per question: it follows you across every file of that question, freezes when the question is done, and resets to 9:00 when you move to the next question.</p></div>';
-  html += '<div class="bigbtnrow"><button class="primary" data-act="shuffle">🔀 Shuffle — random file, random level</button><button data-act="cards">📚 Module Cards</button><button class="ghost" data-act="reset">Reset progress</button></div>';
+  html += '<div class="bigbtnrow"><button class="primary" data-act="shuffle">🔀 Shuffle — random file, random level</button><button data-act="cards">📚 Module Cards</button><button class="ghost" data-act="reset">🔄 Reset all stats</button></div>';
   var lastQ = null;
   FILES.forEach(function(f){
     if(f.q !== lastQ){ lastQ = f.q; html += '<div class="qgroup">Question ' + f.q + '</div>'; }
@@ -937,7 +937,7 @@ function modebarHTML(f){
 }
 
 function renderFile(f){
-  var html = '<div class="bigbtnrow"><button data-act="home">← All files</button><button data-act="shuffle">🔀 Shuffle</button></div>';
+  var html = '<div class="bigbtnrow"><button data-act="home">← All files</button><button data-act="shuffle">🔀 Shuffle</button><button class="ghost" data-act="reset">🔄 Reset all stats</button></div>';
   html += '<div class="card"><h2>Q' + f.q + ' — ' + esc(f.name) + '</h2><div class="fpath" style="font-family:var(--mono);font-size:12px;color:var(--dim)">' + esc(f.path) + '</div></div>';
   html += '<div class="card spec"><h3>The task</h3><p>' + esc(f.spec) + '</p></div>';
   html += '<div class="card blueprint"><h3>Blueprint — the shape of this file</h3><p>' + esc(f.blueprint) + '</p></div>';
@@ -1123,7 +1123,7 @@ document.body.addEventListener('click', function(ev){
   var act = el.getAttribute('data-act');
   if(act === 'home') renderHome();
   else if(act === 'cards') renderCards();
-  else if(act === 'reset'){ if(confirm('Reset all Playbook Learner progress?')){ P = {}; saveP(); qt = { sec: null, endsAt: 0, frozen: false, left: QT_BUDGET, wasDone: false }; qtSave(); renderHome(); } }
+  else if(act === 'reset'){ if(confirm('Reset ALL Playbook Learner stats? This clears every mastered file, every completed level, and the pacing timer. This cannot be undone.')){ P = {}; try{ localStorage.removeItem(LSKEY); localStorage.removeItem('pl-qtimer'); }catch(e){} saveP(); qt = { sec: null, endsAt: 0, frozen: false, left: QT_BUDGET, wasDone: false }; qtSave(); renderHome(); } }
   else if(act === 'shuffle'){
     var f = FILES[Math.floor(Math.random() * FILES.length)];
     startSession(f, 'play', 1 + Math.floor(Math.random() * fileTop(f)));
