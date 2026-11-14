@@ -6,7 +6,7 @@ import {
 import {
     getDatabase, ref, set, onValue, serverTimestamp, connectDatabaseEmulator,
 } from 'https://www.gstatic.com/firebasejs/13.1.0/firebase-database.js';
-import { firebaseConfig } from './firebase-config.js?v=3';
+import { firebaseConfig } from './firebase-config.js?v=4';
 
 // ─── Game State ───────────────────────────────────────────────────────────────
 let game = new Chess();
@@ -453,7 +453,77 @@ function render2D(highlightFrom) {
     board2dEl.replaceChildren(frag);
 }
 
+// ─── 2D input: tap-tap AND drag-and-drop, mouse and touch via Pointer Events ──
+// Pointer is captured on the board container, not a square: render2D() rebuilds
+// every square on each highlight, so a captured square would vanish mid-drag.
+const DRAG_THRESHOLD_PX = 6;
+let drag = null;   // { from, pointerId, x0, y0, ghost, active }
+
+function squareAt(x, y) {
+    const el = document.elementFromPoint(x, y);
+    const cell = el && el.closest('#board-2d .sq');
+    return cell ? cell.dataset.square : null;
+}
+
+board2dEl.addEventListener('pointerdown', (e) => {
+    if (e.button !== 0 || drag) return;
+    const sq = squareAt(e.clientX, e.clientY);
+    if (!sq) return;
+    e.preventDefault();                       // no text selection / long-press callout
+
+    const piece   = game.get(sq);
+    const ownTurn = piece && piece.color === game.turn() && canMoveNow();
+    if (ownTurn && selectedSquare !== sq) handleSquareClick(sq);       // select + show moves
+    else if (!ownTurn)                    handleSquareClick(sq);       // tap-tap destination
+    if (!ownTurn || selectedSquare !== sq) return;
+
+    board2dEl.setPointerCapture(e.pointerId);
+    drag = { from: sq, pointerId: e.pointerId, x0: e.clientX, y0: e.clientY, ghost: null, active: false };
+});
+
+board2dEl.addEventListener('pointermove', (e) => {
+    if (!drag || e.pointerId !== drag.pointerId) return;
+    if (!drag.active) {
+        if (Math.hypot(e.clientX - drag.x0, e.clientY - drag.y0) < DRAG_THRESHOLD_PX) return;
+        drag.active = true;
+        const origin = board2dEl.querySelector(`[data-square="${drag.from}"] .pc`);
+        const ghost  = document.createElement('span');
+        ghost.className   = 'drag-ghost pc ' + game.get(drag.from).color;
+        ghost.textContent = origin ? origin.textContent : '';
+        ghost.style.fontSize = getComputedStyle(origin || board2dEl).fontSize;
+        document.body.appendChild(ghost);
+        drag.ghost = ghost;
+        board2dEl.classList.add('dragging');
+        board2dEl.querySelector(`[data-square="${drag.from}"]`)?.classList.add('drag-origin');
+    }
+    // Lift the piece above the finger so the player can see where it will land.
+    drag.ghost.style.transform = `translate(${e.clientX}px, ${e.clientY}px) translate(-50%, -85%)`;
+    board2dEl.querySelectorAll('.drop-hover').forEach(c => c.classList.remove('drop-hover'));
+    const over = squareAt(e.clientX, e.clientY);
+    if (over) board2dEl.querySelector(`[data-square="${over}"]`)?.classList.add('drop-hover');
+});
+
+function endDrag(e, cancelled) {
+    if (!drag || e.pointerId !== drag.pointerId) return;
+    const { from, active, ghost } = drag;
+    drag = null;
+    ghost?.remove();
+    board2dEl.classList.remove('dragging');
+    if (!active) return;                       // it was a tap: selection already shown
+    const target = cancelled ? null : squareAt(e.clientX, e.clientY);
+    if (target && target !== from) {
+        handleSquareClick(target);             // selectedSquare === from → attempts the move
+    } else {
+        render2D(selectedSquare);              // dropped off-board or on itself: snap back
+    }
+}
+board2dEl.addEventListener('pointerup',     (e) => endDrag(e, false));
+board2dEl.addEventListener('pointercancel', (e) => endDrag(e, true));
+
+// Keyboard: squares are <button>s, so Enter/Space fire a click with detail 0.
+// Pointer clicks are already handled above and must not be processed twice.
 board2dEl.addEventListener('click', (e) => {
+    if (e.detail !== 0) return;
     const cell = e.target.closest('.sq');
     if (cell) handleSquareClick(cell.dataset.square);
 });
@@ -469,7 +539,7 @@ function setView(mode) {
     btn.textContent = is2d ? '◈ \u00A03D View' : '▦ \u00A02D View';
     btn.setAttribute('aria-pressed', String(is2d));
     document.getElementById('controls-hint').textContent =
-        is2d ? 'Click a piece, then a square' : 'Drag to rotate · Scroll to zoom';
+        is2d ? 'Drag a piece, or tap it then tap a square' : 'Tap a piece, then a square · Drag to rotate';
 
     try { localStorage.setItem('chess_view', mode); } catch (_) { /* private mode: non-fatal */ }
     render2D(selectedSquare);
@@ -551,12 +621,27 @@ function flipCamera() {
     render2D(selectedSquare);
 }
 
-function togglePanel() {
+// Phone layout: the panel is a bottom sheet and "collapsed" hides only the
+// secondary section, so status and Join/Invite/Nudge are never out of reach.
+// Desktop: collapsed hides the whole floating panel.
+const mobileMQ = window.matchMedia('(max-width: 700px), (max-height: 500px)');
+
+function setPanelCollapsed(collapsed) {
     const panel = document.getElementById('ui-container');
     const btn   = document.getElementById('panel-toggle');
-    panel.classList.toggle('collapsed');
-    btn.textContent = panel.classList.contains('collapsed') ? '☰' : '✕';
-    btn.title       = panel.classList.contains('collapsed') ? 'Show controls' : 'Hide controls';
+    panel.classList.toggle('collapsed', collapsed);
+    btn.setAttribute('aria-expanded', String(!collapsed));
+    if (mobileMQ.matches) {
+        btn.textContent = collapsed ? 'More ▴' : 'Less ▾';
+        btn.title       = collapsed ? 'Show names, notes and board options' : 'Hide extra options';
+    } else {
+        btn.textContent = collapsed ? '☰' : '✕';
+        btn.title       = collapsed ? 'Show controls' : 'Hide controls';
+    }
+}
+
+function togglePanel() {
+    setPanelCollapsed(!document.getElementById('ui-container').classList.contains('collapsed'));
 }
 
 // ─── Storage helpers (localStorage can throw in private mode) ─────────────────
@@ -887,10 +972,15 @@ window.addEventListener('resize', () => {
     renderer.setSize(window.innerWidth, window.innerHeight);
 });
 
-if (window.innerWidth < 600) {
-    $('ui-container').classList.add('collapsed');
-    $('panel-toggle').textContent = '☰';
-}
+setPanelCollapsed(mobileMQ.matches);
+mobileMQ.addEventListener('change', () => setPanelCollapsed(mobileMQ.matches));
+
+// Publish the panel's footprint so CSS can size the board into the space left over.
+new ResizeObserver(([entry]) => {
+    const r = entry.target.getBoundingClientRect();
+    document.documentElement.style.setProperty('--panel-h', Math.ceil(r.height) + 'px');
+    document.documentElement.style.setProperty('--panel-w', Math.ceil(r.width) + 'px');
+}).observe($('ui-container'));
 
 createBoard();
 // 2D is the default; 3D only when the player has explicitly chosen it before.

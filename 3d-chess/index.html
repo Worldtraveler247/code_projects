@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css?v=3">
+    <link rel="stylesheet" href="style.css?v=4">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
 
@@ -17,42 +17,11 @@
 <a href="../index.html" style="position:fixed;top:12px;left:12px;z-index:9999;background:rgba(10,10,20,0.85);backdrop-filter:blur(6px);color:#4af7ff;border:1px solid #4af7ff;border-radius:20px;padding:6px 14px;font-family:sans-serif;font-size:13px;text-decoration:none;font-weight:600;">← App Hub</a>
 
     <div id="ui-container">
-        <button id="panel-toggle" title="Hide controls">✕</button>
+        <button id="panel-toggle" title="Hide controls" aria-expanded="true" aria-controls="panel-more">✕</button>
         <div id="panel-content">
             <h1>3D Chess</h1>
-            <div class="player-names">
-                <div class="player-row">
-                    <span class="piece-dot white-dot"></span>
-                    <input id="name-white" type="text" placeholder="White player" maxlength="24">
-                </div>
-                <div class="player-comment-wrap">
-                    <label class="comment-label">White's note to opponent:</label>
-                    <div
-                        id="comment-white"
-                        class="player-comment"
-                        contenteditable="true"
-                        data-player="white"
-                        data-placeholder="Leave a message…"
-                    ></div>
-                    <span class="comment-saved" id="saved-white">saved</span>
-                </div>
-                <div class="player-row">
-                    <span class="piece-dot black-dot"></span>
-                    <input id="name-black" type="text" placeholder="Black player" maxlength="24">
-                </div>
-                <div class="player-comment-wrap">
-                    <label class="comment-label">Black's note to opponent:</label>
-                    <div
-                        id="comment-black"
-                        class="player-comment"
-                        contenteditable="true"
-                        data-player="black"
-                        data-placeholder="Leave a message…"
-                    ></div>
-                    <span class="comment-saved" id="saved-black">saved</span>
-                </div>
-            </div>
             <p id="status">White's Turn</p>
+            <div id="move-log"></div>
             <div id="online-panel" hidden>
                 <p id="seat-info">Connecting…</p>
                 <button id="join-btn" class="primary" hidden>♚ &nbsp;Join as Black</button>
@@ -63,27 +32,51 @@
                 </div>
                 <button id="nudge-btn" class="primary" hidden>💬 &nbsp;Nudge on WhatsApp</button>
             </div>
-            <p id="notice" role="status" aria-live="polite"></p>
-            <div class="divider"></div>
-            <div class="game-controls">
-                <div id="offline-controls" class="game-controls">
-                    <button id="new-online-btn" class="primary">＋ &nbsp;Play a Friend Online</button>
-                    <button id="resume-btn" hidden>↩ &nbsp;Resume My Last Game</button>
-                    <button id="reset-btn">↺ &nbsp;Reset Local Board</button>
-                </div>
-                <button id="flip-btn">⟳ &nbsp;Flip Board</button>
-                <button id="view-toggle" aria-pressed="false">▦ &nbsp;2D View</button>
-                <button id="new-online-btn-2" class="online-only">＋ &nbsp;Start Another Game</button>
+            <div id="offline-controls" class="game-controls">
+                <button id="new-online-btn" class="primary">＋ &nbsp;Play a Friend Online</button>
+                <button id="resume-btn" hidden>↩ &nbsp;Resume My Last Game</button>
             </div>
-            <div id="move-log"></div>
-            <div class="controls-hint" id="controls-hint">Drag to rotate · Scroll to zoom</div>
+            <p id="notice" role="status" aria-live="polite"></p>
+
+            <div id="panel-more">
+                <div class="divider"></div>
+                <div class="player-names">
+                    <div class="player-row">
+                        <span class="piece-dot white-dot"></span>
+                        <input id="name-white" type="text" placeholder="White player" maxlength="24" autocomplete="off">
+                    </div>
+                    <div class="player-comment-wrap">
+                        <label class="comment-label">White's note to opponent:</label>
+                        <div id="comment-white" class="player-comment" contenteditable="true"
+                             data-player="white" data-placeholder="Leave a message…"></div>
+                        <span class="comment-saved" id="saved-white">saved</span>
+                    </div>
+                    <div class="player-row">
+                        <span class="piece-dot black-dot"></span>
+                        <input id="name-black" type="text" placeholder="Black player" maxlength="24" autocomplete="off">
+                    </div>
+                    <div class="player-comment-wrap">
+                        <label class="comment-label">Black's note to opponent:</label>
+                        <div id="comment-black" class="player-comment" contenteditable="true"
+                             data-player="black" data-placeholder="Leave a message…"></div>
+                        <span class="comment-saved" id="saved-black">saved</span>
+                    </div>
+                </div>
+                <div class="game-controls">
+                    <button id="view-toggle" aria-pressed="false">▦ &nbsp;2D View</button>
+                    <button id="flip-btn">⟳ &nbsp;Flip Board</button>
+                    <button id="reset-btn" class="offline-only">↺ &nbsp;Reset Local Board</button>
+                    <button id="new-online-btn-2" class="online-only">＋ &nbsp;Start Another Game</button>
+                </div>
+                <div class="controls-hint" id="controls-hint">Drag to rotate · Scroll to zoom</div>
+            </div>
         </div>
     </div>
 
     <div id="canvas-container"></div>
     <div id="board-2d" role="grid" aria-label="Chess board" hidden></div>
 
-    <script type="module" src="app.js?v=3"></script>
+    <script type="module" src="app.js?v=4"></script>
 <!-- cf-web-analytics (managed by tools/inject_analytics.py) -->
 <script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "f728a20b49cc4a0fbe02cde72f03301c"}'></script>
 </body>

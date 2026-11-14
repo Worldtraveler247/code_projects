@@ -168,9 +168,15 @@ function nudgeOpponent() {
     </div>
 
     <div class="hiw-file-block">
-      <h3><code>app.js</code> — 2D view and click-to-move</h3>
+      <h3><code>app.js</code> — 2D board, drag-and-drop, and click-to-move</h3>
       <p>
         The 2D board is a grid of 64 buttons generated from the same chess.js state as the 3D scene, and its clicks go through the same <code>handleSquareClick()</code>. The two views can't disagree because there is only one copy of the game. In 3D, a <code>Raycaster</code> turns a click into a ray, and the first board tile it hits gives the square name stored in <code>userData.square</code>. While 2D is active, the WebGL render loop and touch raycasting are paused.
+      </p>
+      <p>
+        On the 2D board, a piece can be moved two ways: drag it with a finger or mouse, or tap it and then tap a square. Both use Pointer Events, so one code path covers mouse, touch and pen. The pointer is captured on the board container rather than a square, because each highlight rebuilds the squares and a captured square would vanish mid-drag. The dragged piece is drawn slightly above the finger so the player can see the target square, and an illegal drop snaps back. The board sets <code>touch-action: none</code> so the browser never scrolls, zooms or delays a tap on it.
+      </p>
+      <p>
+        On phones (≤700px wide, or ≤500px tall in landscape) the control panel becomes a bottom sheet, or a side panel in landscape. The turn status and the Join, Invite and Nudge buttons are always visible, and names, notes and board options sit behind a <em>More</em> toggle. A <code>ResizeObserver</code> publishes the panel's size as CSS variables so the board grows into exactly the space left over. Buttons are at least 40px tall, and inputs use 16px text so iPhone Safari doesn't zoom the page when a field is focused.
       </p>
       <pre class="hiw-code">function pickSquare(clientX, clientY) {
     mouse.x =  (clientX / window.innerWidth)  * 2 - 1;   // screen → normalized device coords
