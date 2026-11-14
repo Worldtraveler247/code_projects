@@ -373,11 +373,94 @@ function highlightLegalMoves(from) {
         const tile = tileMeshes.find(t => t.userData.square === m.to);
         if (tile) tile.material.color.setHex(C.MOVE);
     });
+    render2D(from);
 }
 
 function clearHighlights() {
     tileMeshes.forEach(t => t.material.color.setHex(t.userData.baseColor));
     if (game.in_check()) highlightKing(game.turn());
+    render2D(null);
+}
+
+// ─── 2D View ──────────────────────────────────────────────────────────────────
+// DOM board that reads the same chess.js state as the 3D scene. It owns no game
+// logic: clicks route through handleSquareClick, so both views stay in lockstep.
+const board2dEl = document.getElementById('board-2d');
+let viewMode = '3d';
+
+// U+FE0E forces text presentation; without it iOS renders ♟ as a colour emoji.
+const GLYPH = { k: '♚', q: '♛', r: '♜', b: '♝', n: '♞', p: '♟' };
+const PIECE_NAME = { k: 'king', q: 'queen', r: 'rook', b: 'bishop', n: 'knight', p: 'pawn' };
+
+function render2D(highlightFrom) {
+    if (viewMode !== '2d') return;
+
+    const targets = new Set(
+        highlightFrom ? game.moves({ square: highlightFrom, verbose: true }).map(m => m.to) : []
+    );
+    const checkSq = game.in_check() ? squareOfKing(game.turn()) : null;
+
+    const ranks = isWhiteBottom ? [8, 7, 6, 5, 4, 3, 2, 1] : [1, 2, 3, 4, 5, 6, 7, 8];
+    const files = isWhiteBottom ? 'abcdefgh' : 'hgfedcba';
+
+    const frag = document.createDocumentFragment();
+    ranks.forEach((rank, row) => {
+        [...files].forEach((file, col) => {
+            const sq    = file + rank;
+            const piece = game.get(sq);
+            const cell  = document.createElement('button');
+            cell.type = 'button';
+            cell.dataset.square = sq;
+            cell.className = 'sq ' + (((file.charCodeAt(0) - 97) + rank) % 2 === 0 ? 'light' : 'dark');
+            if (sq === highlightFrom) cell.classList.add('sel');
+            if (targets.has(sq))      cell.classList.add(piece ? 'capture' : 'move');
+            if (sq === checkSq)       cell.classList.add('check');
+
+            if (piece) {
+                const span = document.createElement('span');
+                span.className   = 'pc ' + piece.color;
+                span.textContent = GLYPH[piece.type] + '︎';
+                cell.appendChild(span);
+            }
+            if (col === 0) cell.dataset.rank = rank;
+            if (row === 7) {
+                const lbl = document.createElement('span');
+                lbl.className   = 'coord-file';
+                lbl.textContent = file;
+                cell.appendChild(lbl);
+            }
+            cell.setAttribute('aria-label',
+                sq + (piece ? ' ' + (piece.color === 'w' ? 'white' : 'black') + ' ' + PIECE_NAME[piece.type] : ' empty'));
+            frag.appendChild(cell);
+        });
+    });
+    board2dEl.replaceChildren(frag);
+}
+
+board2dEl.addEventListener('click', (e) => {
+    const cell = e.target.closest('.sq');
+    if (cell) handleSquareClick(cell.dataset.square);
+});
+
+function setView(mode) {
+    viewMode = mode;
+    const is2d = mode === '2d';
+    document.getElementById('canvas-container').hidden = is2d;
+    board2dEl.hidden   = !is2d;
+    controls.enabled   = !is2d;
+
+    const btn = document.getElementById('view-toggle');
+    btn.textContent = is2d ? '◈ \u00A03D View' : '▦ \u00A02D View';
+    btn.setAttribute('aria-pressed', String(is2d));
+    document.getElementById('controls-hint').textContent =
+        is2d ? 'Click a piece, then a square' : 'Drag to rotate · Scroll to zoom';
+
+    try { localStorage.setItem('chess_view', mode); } catch (_) { /* private mode: non-fatal */ }
+    render2D(selectedSquare);
+}
+
+function toggleView() {
+    setView(viewMode === '2d' ? '3d' : '2d');
 }
 
 // ─── Input Handling ───────────────────────────────────────────────────────────
@@ -439,6 +522,7 @@ function flipCamera() {
     camera.position.set(0, 10, isWhiteBottom ? 11 : -11);
     controls.target.set(0, 0, 0);
     controls.update();
+    render2D(selectedSquare);
 }
 
 // ─── Panel Toggle ─────────────────────────────────────────────────────────────
@@ -600,6 +684,7 @@ function onCommentKeydown(event, player) {
 // ─── Animation ────────────────────────────────────────────────────────────────
 function animate() {
     requestAnimationFrame(animate);
+    if (viewMode === '2d') return; // canvas hidden — don't burn GPU on an invisible frame
     controls.update();
     renderer.render(scene, camera);
 }
@@ -631,6 +716,9 @@ window.addEventListener('touchend', (e) => {
     const dx = t.clientX - touchStart.x;
     const dy = t.clientY - touchStart.y;
     touchStart = null;
+    // In 2D the camera still exists behind the hidden canvas; raycasting here
+    // would select a square the user never tapped. The DOM board handles its own clicks.
+    if (viewMode === '2d') return;
     if (Math.sqrt(dx * dx + dy * dy) > 10) return; // drag = orbit, ignore
     lastTouchFired = Date.now();
     const sq = pickSquare(t.clientX, t.clientY);
@@ -652,6 +740,9 @@ if (window.innerWidth < 600) {
 
 loadNamesFromStorage();
 createBoard();
+let savedView = null;
+try { savedView = localStorage.getItem('chess_view'); } catch (_) { /* storage blocked */ }
+if (savedView === '2d') setView('2d');
 sync3DWithEngine();
 initFirebaseAuth();
 loadFromFirebase();

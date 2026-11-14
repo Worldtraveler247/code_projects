@@ -60,13 +60,15 @@
             <div class="game-controls">
                 <button onclick="resetGame()">↺ &nbsp;New Game</button>
                 <button onclick="flipCamera()">⟳ &nbsp;Flip Board</button>
+                <button id="view-toggle" onclick="toggleView()" aria-pressed="false">▦ &nbsp;2D View</button>
             </div>
             <div id="move-log"></div>
-            <div class="controls-hint">Drag to rotate · Scroll to zoom</div>
+            <div class="controls-hint" id="controls-hint">Drag to rotate · Scroll to zoom</div>
         </div>
     </div>
 
     <div id="canvas-container"></div>
+    <div id="board-2d" role="grid" aria-label="Chess board" hidden></div>
 
     <script>
         const firebaseConfig = {
