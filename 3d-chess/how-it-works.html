@@ -26,7 +26,7 @@
       Async 3D Chess is built for friends who can't sit through a ten-minute game. One player starts a game and sends a private invite link; the first person to open it claims the Black seat. From then on, each player moves whenever they have a minute — the board syncs in real time when both are online and waits patiently when they aren't. After moving, a player can nudge their opponent on WhatsApp with one tap, and the browser tab title shows <em>● Your move</em> whenever it's your turn.
     </p>
     <p>
-      The board renders as a Three.js scene with Staunton-style pieces, or as a flat 2D board for small screens and quick moves. chess.js validates moves in the browser; Firebase Realtime Database stores each game, and <strong>Firebase security rules enforce who may sit where and whose turn it is on Google's servers</strong>, so a modified client cannot move out of turn, steal a seat, or overwrite the opponent's name. Without a game link, the page is a local pass-and-play board that never touches the database.
+      The board opens as a flat 2D board, which is quick to read and easy on phones, and switches with one tap to a Three.js scene with Staunton-style pieces. The choice is remembered per browser. chess.js validates moves in the browser; Firebase Realtime Database stores each game, and <strong>Firebase security rules enforce who may sit where and whose turn it is on Google's servers</strong>, so a modified client cannot move out of turn, steal a seat, or overwrite the opponent's name. Without a game link, the page is a local pass-and-play board that never touches the database.
     </p>
   </section>
 

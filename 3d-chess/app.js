@@ -6,7 +6,7 @@ import {
 import {
     getDatabase, ref, set, onValue, serverTimestamp, connectDatabaseEmulator,
 } from 'https://www.gstatic.com/firebasejs/13.1.0/firebase-database.js';
-import { firebaseConfig } from './firebase-config.js?v=2';
+import { firebaseConfig } from './firebase-config.js?v=3';
 
 // ─── Game State ───────────────────────────────────────────────────────────────
 let game = new Chess();
@@ -893,7 +893,8 @@ if (window.innerWidth < 600) {
 }
 
 createBoard();
-if (load('chess_view') === '2d') setView('2d');
+// 2D is the default; 3D only when the player has explicitly chosen it before.
+if (load('chess_view') !== '3d') setView('2d');
 if (isOnline()) {
     document.body.classList.add('online');
 } else {
