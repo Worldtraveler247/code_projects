@@ -6,7 +6,7 @@ import {
 import {
     getDatabase, ref, set, onValue, serverTimestamp, connectDatabaseEmulator,
 } from 'https://www.gstatic.com/firebasejs/13.1.0/firebase-database.js';
-import { firebaseConfig } from './firebase-config.js';
+import { firebaseConfig } from './firebase-config.js?v=2';
 
 // ─── Game State ───────────────────────────────────────────────────────────────
 let game = new Chess();
