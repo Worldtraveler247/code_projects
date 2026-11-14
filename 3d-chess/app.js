@@ -6,7 +6,7 @@ import {
 import {
     getDatabase, ref, set, onValue, serverTimestamp, connectDatabaseEmulator,
 } from 'https://www.gstatic.com/firebasejs/13.1.0/firebase-database.js';
-import { firebaseConfig } from './firebase-config.js?v=4';
+import { firebaseConfig } from './firebase-config.js?v=5';
 
 // ─── Game State ───────────────────────────────────────────────────────────────
 let game = new Chess();
@@ -868,7 +868,7 @@ function onNameInput(color) {
     const value = $(color === 'w' ? 'name-white' : 'name-black').value;
     updateStatus();
     renderOnlinePanel();
-    if (!isOnline()) { store('chess_name_' + color, value); return; }
+    if (!isOnline()) return;   // local board: names are for this session only, never saved
     if (color !== mySeat) return;
     store('chess_my_name', value);
     clearTimeout(nameSaveTimer);
@@ -876,12 +876,6 @@ function onNameInput(color) {
         set(ref(db, `games/${gameId}/names/${color}`), value.trim().slice(0, 24))
             .catch(e => showNotice('Name not saved: ' + e.message));
     }, 800);
-}
-
-function loadLocalNames() {
-    const w = load('chess_name_w'), b = load('chess_name_b');
-    if (w) $('name-white').value = w;
-    if (b) $('name-black').value = b;
 }
 
 // ─── Comments ─────────────────────────────────────────────────────────────────
@@ -985,11 +979,9 @@ new ResizeObserver(([entry]) => {
 createBoard();
 // 2D is the default; 3D only when the player has explicitly chosen it before.
 if (load('chess_view') !== '3d') setView('2d');
-if (isOnline()) {
-    document.body.classList.add('online');
-} else {
-    loadLocalNames();
-}
+if (isOnline()) document.body.classList.add('online');
+// Older versions saved local-board names per browser; purge them so the default page starts blank.
+for (const key of ['chess_name_w', 'chess_name_b']) { try { localStorage.removeItem(key); } catch (_) { /* storage blocked */ } }
 sync3DWithEngine();
 renderOnlinePanel();
 
