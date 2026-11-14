@@ -12,15 +12,12 @@
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
 </head>
 <body>
 <a href="../index.html" style="position:fixed;top:12px;left:12px;z-index:9999;background:rgba(10,10,20,0.85);backdrop-filter:blur(6px);color:#4af7ff;border:1px solid #4af7ff;border-radius:20px;padding:6px 14px;font-family:sans-serif;font-size:13px;text-decoration:none;font-weight:600;">← App Hub</a>
 
     <div id="ui-container">
-        <button id="panel-toggle" onclick="togglePanel()" title="Hide controls">✕</button>
+        <button id="panel-toggle" title="Hide controls">✕</button>
         <div id="panel-content">
             <h1>3D Chess</h1>
             <div class="player-names">
@@ -56,11 +53,27 @@
                 </div>
             </div>
             <p id="status">White's Turn</p>
+            <div id="online-panel" hidden>
+                <p id="seat-info">Connecting…</p>
+                <button id="join-btn" class="primary" hidden>♚ &nbsp;Join as Black</button>
+                <div id="invite-row" hidden>
+                    <p class="panel-note">Send this link to one friend. The first person to open it takes the Black seat.</p>
+                    <button id="invite-wa-btn" class="primary">💬 &nbsp;Invite on WhatsApp</button>
+                    <button id="invite-copy-btn">⧉ &nbsp;Copy invite link</button>
+                </div>
+                <button id="nudge-btn" class="primary" hidden>💬 &nbsp;Nudge on WhatsApp</button>
+            </div>
+            <p id="notice" role="status" aria-live="polite"></p>
             <div class="divider"></div>
             <div class="game-controls">
-                <button onclick="resetGame()">↺ &nbsp;New Game</button>
-                <button onclick="flipCamera()">⟳ &nbsp;Flip Board</button>
-                <button id="view-toggle" onclick="toggleView()" aria-pressed="false">▦ &nbsp;2D View</button>
+                <div id="offline-controls" class="game-controls">
+                    <button id="new-online-btn" class="primary">＋ &nbsp;Play a Friend Online</button>
+                    <button id="resume-btn" hidden>↩ &nbsp;Resume My Last Game</button>
+                    <button id="reset-btn">↺ &nbsp;Reset Local Board</button>
+                </div>
+                <button id="flip-btn">⟳ &nbsp;Flip Board</button>
+                <button id="view-toggle" aria-pressed="false">▦ &nbsp;2D View</button>
+                <button id="new-online-btn-2" class="online-only">＋ &nbsp;Start Another Game</button>
             </div>
             <div id="move-log"></div>
             <div class="controls-hint" id="controls-hint">Drag to rotate · Scroll to zoom</div>
@@ -70,19 +83,7 @@
     <div id="canvas-container"></div>
     <div id="board-2d" role="grid" aria-label="Chess board" hidden></div>
 
-    <script>
-        const firebaseConfig = {
-            apiKey:            "AIzaSyB32tq3zgAGSmaBWk-7U6MELbuY6CHgRZg",
-            authDomain:        "d-chess-2144c.firebaseapp.com",
-            databaseURL:       "https://d-chess-2144c-default-rtdb.firebaseio.com",
-            projectId:         "d-chess-2144c",
-            storageBucket:     "d-chess-2144c.firebasestorage.app",
-            messagingSenderId: "1072084230845",
-            appId:             "1:1072084230845:web:25980b63f706f2fc9d4dd4"
-        };
-        firebase.initializeApp(firebaseConfig);
-    </script>
-    <script src="app.js"></script>
+    <script type="module" src="app.js"></script>
 <!-- cf-web-analytics (managed by tools/inject_analytics.py) -->
 <script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "f728a20b49cc4a0fbe02cde72f03301c"}'></script>
 </body>

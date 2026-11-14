@@ -326,3 +326,27 @@ button:hover {
 #board-2d .sq.dark  .coord-file { color: #f0ead6; }
 #board-2d .sq.light[data-rank]::before { color: #2e5b3e; }
 #board-2d .sq.dark[data-rank]::before  { color: #f0ead6; }
+
+/* ── Online play ── */
+.primary {
+    background: rgba(201, 162, 39, 0.16);
+    border-color: rgba(201, 162, 39, 0.5);
+    color: #e8d8a0;
+}
+#online-panel { display: flex; flex-direction: column; gap: 7px; margin-top: 10px; }
+#online-panel[hidden], #invite-row[hidden], #offline-controls[hidden],
+#online-panel button[hidden], #offline-controls button[hidden] { display: none; }
+#invite-row { display: flex; flex-direction: column; gap: 7px; }
+#seat-info { font-size: 0.68rem; color: #c9a227; letter-spacing: 0.6px; font-family: 'Cinzel', serif; }
+.panel-note { font-size: 0.62rem; color: #6a5830; line-height: 1.5; max-width: 220px; }
+#notice { font-size: 0.64rem; color: #d8a050; min-height: 1em; margin-top: 6px; max-width: 220px; line-height: 1.5; }
+#notice:empty { display: none; }
+#status.yours { color: #7aaa60; font-weight: 600; }
+
+.online-only { display: none; }
+body.online .online-only { display: block; }
+
+/* Messages to the opponent only make sense in an online game */
+body:not(.online) .player-comment-wrap { display: none; }
+input[type="text"]:disabled { opacity: 0.75; cursor: default; }
+.player-comment[contenteditable="false"] { cursor: default; }

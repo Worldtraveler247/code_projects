@@ -17,13 +17,16 @@
   <header class="hiw-header">
     <div class="hiw-icon">♟️</div>
     <h1>Async 3D Chess — How It's Built</h1>
-    <p class="hiw-tagline">Fully playable chess with a 3D board, Firebase real-time sync, and orbit camera controls.</p>
+    <p class="hiw-tagline">Correspondence chess for busy friends: private game links, server-enforced seats and turns, WhatsApp nudges, and a 3D or 2D board.</p>
   </header>
 
   <section class="hiw-section">
     <h2>Overview</h2>
     <p>
-      Async 3D Chess is a multiplayer chess game where two players can play asynchronously — they don't need to be online at the same time. The 3D board and Staunton-style pieces are rendered with Three.js entirely in the browser. chess.js handles move validation and game state so illegal moves are rejected client-side. Firebase Realtime Database stores the current board position as a FEN string; both browsers subscribe to the same database reference and update their 3D board whenever the other player moves. Players can orbit the camera, flip the board perspective, and enter their names persistently.
+      Async 3D Chess is built for friends who can't sit through a ten-minute game. One player starts a game and sends a private invite link; the first person to open it claims the Black seat. From then on, each player moves whenever they have a minute — the board syncs in real time when both are online and waits patiently when they aren't. After moving, a player can nudge their opponent on WhatsApp with one tap, and the browser tab title shows <em>● Your move</em> whenever it's your turn.
+    </p>
+    <p>
+      The board renders as a Three.js scene with Staunton-style pieces, or as a flat 2D board for small screens and quick moves. chess.js validates moves in the browser; Firebase Realtime Database stores each game, and <strong>Firebase security rules enforce who may sit where and whose turn it is on Google's servers</strong>, so a modified client cannot move out of turn, steal a seat, or overwrite the opponent's name. Without a game link, the page is a local pass-and-play board that never touches the database.
     </p>
   </section>
 
@@ -32,18 +35,24 @@
     <div class="hiw-badges">
       <span class="hiw-badge">HTML</span>
       <span class="hiw-badge">CSS</span>
-      <span class="hiw-badge">JavaScript</span>
+      <span class="hiw-badge">JavaScript (ES modules)</span>
       <span class="hiw-badge">Three.js</span>
       <span class="hiw-badge">chess.js</span>
       <span class="hiw-badge">Firebase Realtime Database</span>
+      <span class="hiw-badge">Firebase Anonymous Auth</span>
+      <span class="hiw-badge">Firebase Security Rules</span>
+      <span class="hiw-badge">Firebase Emulator Suite</span>
     </div>
     <ul class="hiw-caption-list">
-      <li><strong>HTML</strong> — the Three.js canvas container, UI side panel with player names and move log</li>
-      <li><strong>CSS</strong> — dark panel layout, mobile-responsive side panel collapse</li>
-      <li><strong>JavaScript</strong> — Three.js scene setup, raycasting for click-to-move, Firebase listener, game logic</li>
-      <li><strong>Three.js</strong> — 3D renderer, camera, lighting, Staunton piece geometry (LatheGeometry), OrbitControls</li>
-      <li><strong>chess.js</strong> — move validation, FEN parsing, check/checkmate detection; no rendering</li>
-      <li><strong>Firebase Realtime Database</strong> — stores board FEN string; the <code>onValue</code> listener pushes updates to both browsers in real time</li>
+      <li><strong>HTML</strong> — canvas container, 2D board grid, side panel (seat status, invite/nudge buttons, names, notes to opponent)</li>
+      <li><strong>CSS</strong> — dark panel layout, 2D board with legal-move dots and capture rings, mobile panel collapse</li>
+      <li><strong>JavaScript</strong> — one ES module: Three.js scene, 2D board renderer, raycast click-to-move, game/seat state machine, Firebase sync</li>
+      <li><strong>Three.js</strong> — renderer, lighting, Staunton pieces from <code>LatheGeometry</code>, OrbitControls</li>
+      <li><strong>chess.js</strong> — legal-move generation, FEN parsing, check/checkmate/draw detection; no rendering</li>
+      <li><strong>Firebase Realtime Database</strong> — one node per game under <code>games/{id}</code>; <code>onValue</code> pushes changes to both players</li>
+      <li><strong>Firebase Anonymous Auth</strong> — gives each browser a stable user ID with no sign-up; seats are bound to that ID</li>
+      <li><strong>Security Rules</strong> — server-side authorization: claim-once seats, turn enforcement, schema and size validation</li>
+      <li><strong>Emulator Suite</strong> — runs the rules locally so 32 adversarial tests can attack them before deploy</li>
     </ul>
   </section>
 
@@ -51,113 +60,131 @@
     <h2>How Each Part Works</h2>
 
     <div class="hiw-file-block">
-      <h3><code>app.js</code> — Three.js scene initialization</h3>
+      <h3>Data model — one node per game</h3>
       <p>
-        At startup, the script creates a Three.js scene, perspective camera, WebGL renderer, and three-point studio lighting. OrbitControls are attached to the renderer's DOM element so the user can orbit, zoom, and pan with mouse or touch. The renderer is appended to a <code>&lt;div id="canvas-container"&gt;</code> and resizes with the window.
+        Every game lives at <code>games/{id}</code>. The ID is 128 bits from the browser's cryptographic random generator, encoded as 22 base64url characters. That ID <em>is</em> the invite: knowing it lets you watch or claim an empty seat, and it can't be guessed. (Firebase push IDs were avoided because their first 8 characters are a timestamp.) The rules deny reads on <code>games/</code> itself, so nobody can list other people's games.
       </p>
-      <pre class="hiw-code">// Scene, camera, renderer — the three required Three.js objects
-const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x08080c);
-scene.fog = new THREE.FogExp2(0x08080c, 0.016); // subtle depth fog
+      <pre class="hiw-code">games/
+  Xk3…22 chars…/
+    players:   { w: "&lt;White's auth uid&gt;", b: "&lt;Black's auth uid&gt;" }   // claim-once
+    state:     { fen, turn: "w" | "b", lastMove: "e4", updatedAt }   // side to move only
+    names:     { w: "Alice", b: "Bob" }                              // own seat only
+    comments:  { w: "gl hf", b: "…" }                                // own seat only
+    createdAt: &lt;server time&gt;
 
-const camera = new THREE.PerspectiveCamera(
-    44,                                      // field of view (degrees)
-    window.innerWidth / window.innerHeight,  // aspect ratio
-    0.1,                                     // near clip plane
-    100                                      // far clip plane
-);
-camera.position.set(0, 10, 11); // above and behind the board
-
-const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-document.getElementById('canvas-container').appendChild(renderer.domElement);
-
-// OrbitControls: lets the user rotate/zoom the camera with mouse or touch
-const controls = new THREE.OrbitControls(camera, renderer.domElement);
-controls.enableDamping = true;  // smooth inertia
-controls.dampingFactor = 0.07;
-controls.maxDistance = 22;
-controls.maxPolarAngle = Math.PI / 2.05; // prevent going below the board</pre>
+// 128-bit unguessable ID — the invite link is the capability
+function newGameId() {
+    const bytes = crypto.getRandomValues(new Uint8Array(16));
+    return btoa(String.fromCharCode(...bytes))
+        .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}</pre>
     </div>
 
     <div class="hiw-file-block">
-      <h3><code>app.js</code> — Firebase real-time sync</h3>
+      <h3><code>database.rules.json</code> — the real security boundary</h3>
       <p>
-        After anonymous sign-in, <code>loadFromFirebase()</code> attaches a <code>firebase.database().ref('current_match').on('value', ...)</code> listener. This listener fires immediately with the current state and again whenever any client writes to that reference. When a player makes a move, <code>saveToFirebase()</code> writes the new FEN string, which triggers the other player's listener.
+        Anything in the browser can be edited by the person using it, so the client's "is it my turn?" check is a convenience, not a control. The rules run on Firebase's servers and decide every write. The key rule: a write to <code>state</code> is allowed only if the caller's user ID matches the seat whose turn it currently is. The write must also hand the turn to the other side, keep the FEN's side-to-move consistent with <code>turn</code>, and use the server's clock. Seats can be written once and never reassigned.
       </p>
-      <pre class="hiw-code">function loadFromFirebase() {
-    if (typeof firebase === 'undefined' || firebase.apps.length === 0) return;
+      <pre class="hiw-code">"state": {
+  // Only the player whose turn it is may write the next position
+  ".write": "auth != null &amp;&amp; data.exists() &amp;&amp;
+             root.child('games/' + $gameId + '/players/' + data.child('turn').val()).val() === auth.uid",
+  // ...and the turn must flip, FEN must agree with it, and time is server time
+  ".validate": "… newData.child('turn').val() !== data.child('turn').val() …",
+  "updatedAt": { ".validate": "newData.val() === now" },
+  "$other":    { ".validate": false }          // no surprise fields
+},
+"players": {
+  "b": {
+    // first come, first served — and White can't also take Black
+    ".write": "auth != null &amp;&amp; !data.exists() &amp;&amp; … players/w !== auth.uid"
+  }
+}</pre>
+      <p>
+        <strong>Known limit:</strong> the rules language can't run chess.js, so the server checks that a position is well-formed and that turns alternate — not that the move was legal. A player who edits their client could submit an illegal position on their own turn. For games between friends that's an accepted risk. The planned fix is a Cloud Function that replays each move with chess.js on the server.
+      </p>
+    </div>
 
-    firebase.auth().onAuthStateChanged(user => {
-        if (!user) return;
+    <div class="hiw-file-block">
+      <h3><code>rules-test/</code> — attacking the rules before shipping them</h3>
+      <p>
+        <code>@firebase/rules-unit-testing</code> runs the rules in the local Database Emulator and exercises them as different users: the creator, the friend, and an outsider ("mallory"). The 32 tests cover moving out of turn, moving twice, stealing or pre-assigning seats, hijacking a game mid-play by rewriting the whole node, forged timestamps, malformed FENs, oversized names, extra fields, enumerating games, and writes to the retired <code>current_match</code> node. The suite was mutation-tested: deliberately weakening a rule must turn at least one test red, which exposed and fixed a test that was passing by coincidence.
+      </p>
+      <pre class="hiw-code">test('cannot move out of turn', async () => {
+    await seatedGame();                                  // alice = White, bob = Black
+    await assertFails(set(g('bob', '/state'), move(AFTER_E4, 'b', 'e4')));
+});
 
-        // .on('value', ...) fires immediately AND on every future change
-        firebase.database().ref('current_match').on('value', snap => {
-            const data = snap.val();
-            if (!data) return;
+test('cannot hijack a game mid-play by rewriting the whole node', async () => {
+    await seatedGame();
+    await assertSucceeds(set(g('alice', '/state'), move(AFTER_E4, 'b', 'e4')));
+    await assertFails(set(g('mallory'), newGame('mallory')));
+});</pre>
+    </div>
 
-            if (data.fen && data.fen !== game.fen()) {
-                // Other player moved — load their position into chess.js
-                game.load(data.fen);
-                sync3DWithEngine();  // rebuild 3D piece meshes to match new FEN
-            } else {
-                updateStatus();      // same position — just refresh check/turn display
-            }
+    <div class="hiw-file-block">
+      <h3><code>app.js</code> — joining, syncing, and committing moves</h3>
+      <p>
+        On load the page signs in anonymously. If the URL has <code>?g=&lt;id&gt;</code>, it subscribes to that game with <code>onValue</code>, which fires once with the current state and again on every change. Each snapshot works out the viewer's seat (White, Black, or spectator), loads the FEN into chess.js if it changed, and redraws whichever board is showing. A move is applied locally first for instant feedback, then written to <code>state</code>. If the server rejects it, the board snaps back to the last confirmed position.
+      </p>
+      <pre class="hiw-code">function onGameSnapshot(snap) {
+    const data = snap.val();
+    remote = data;
+    mySeat = data.players.w === uid ? 'w' : data.players.b === uid ? 'b' : null;
+    if (data.state.fen !== game.fen()) {
+        game.load(data.state.fen);
+        sync3DWithEngine();           // rebuilds pieces, status, both boards
+    }
+    renderOnlinePanel();              // join / invite / nudge buttons
+}
+
+async function commitMove(move) {
+    const before = remote?.state?.fen;
+    try {
+        await set(ref(db, `games/${gameId}/state`), {
+            fen: game.fen(), turn: game.turn(), lastMove: move.san,
+            updatedAt: serverTimestamp(),           // server clock, enforced by rules
         });
-    });
-}
-
-function saveToFirebase() {
-    if (!firebaseReady()) return;
-    firebase.database().ref('current_match').set({
-        fen:       game.fen(),       // chess.js board state as FEN string
-        nameWhite: document.getElementById('name-white').value.trim(),
-        nameBlack: document.getElementById('name-black').value.trim(),
-        timestamp: Date.now(),
-    });
+    } catch (e) {
+        showNotice('Move rejected by the server — board restored.');
+        if (before) { game.load(before); sync3DWithEngine(); }
+    }
 }</pre>
     </div>
 
     <div class="hiw-file-block">
-      <h3><code>app.js</code> — click-to-move with raycasting</h3>
+      <h3><code>app.js</code> — WhatsApp nudges without collecting phone numbers</h3>
       <p>
-        Three.js uses a <code>Raycaster</code> to translate a mouse click (2D screen coordinates) into a 3D ray that intersects the board tiles. Each tile mesh has a <code>userData.square</code> string like <code>"e4"</code>. The first intersected tile with a square name is passed to <code>handleSquareClick()</code>, which delegates move validation to chess.js.
+        After you move, a <em>Nudge on WhatsApp</em> button appears. It opens a <code>wa.me</code> share link that has the message but <strong>no phone number</strong>, so WhatsApp shows its own contact picker and the friend gets the nudge from your number. This needs no server and no WhatsApp Business account, costs nothing per message, and keeps phone numbers out of the app entirely. Automated sending through the WhatsApp Business Platform was considered and rejected for a friends' game: it needs Meta business verification and pre-approved templates, charges per message, and would make the app responsible for storing phone numbers.
       </p>
-      <pre class="hiw-code">const raycaster = new THREE.Raycaster();
-const mouse     = new THREE.Vector2();
-
-function pickSquare(clientX, clientY) {
-    // Convert screen pixels to normalized device coordinates (-1 to +1)
-    mouse.x =  (clientX / window.innerWidth)  * 2 - 1;
-    mouse.y = -(clientY / window.innerHeight) * 2 + 1;
-
-    raycaster.setFromCamera(mouse, camera);
-
-    // Check which board tiles the ray intersects
-    const hits = raycaster.intersectObjects(boardGroup.children, false);
-    const hit  = hits.find(i => i.object.userData.square); // find first tile with a square name
-    return hit ? hit.object.userData.square : null;        // returns "e4" or null
+      <pre class="hiw-code">function whatsappShare(text) {
+    // No phone number in the URL → WhatsApp's own contact picker
+    window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank', 'noopener');
 }
 
-function handleSquareClick(square) {
-    if (!selectedSquare) {
-        const piece = game.get(square);
-        if (piece && piece.color === game.turn()) {
-            selectedSquare = square;
-            highlightLegalMoves(square); // gold highlight on selected, green on legal moves
-        }
-        return;
-    }
-    // Second click — try to make the move
-    const move = game.move({ from: selectedSquare, to: square, promotion: 'q' });
-    if (move) {
-        selectedSquare = null;
-        sync3DWithEngine();
-        saveToFirebase(); // broadcast to the other player
-    }
+function nudgeOpponent() {
+    whatsappShare(`♟ Your move in our chess game, ${playerName(opponentSeat())}. ${gameUrl(gameId)}`);
 }</pre>
+    </div>
+
+    <div class="hiw-file-block">
+      <h3><code>app.js</code> — 2D view and click-to-move</h3>
+      <p>
+        The 2D board is a grid of 64 buttons generated from the same chess.js state as the 3D scene, and its clicks go through the same <code>handleSquareClick()</code>. The two views can't disagree because there is only one copy of the game. In 3D, a <code>Raycaster</code> turns a click into a ray, and the first board tile it hits gives the square name stored in <code>userData.square</code>. While 2D is active, the WebGL render loop and touch raycasting are paused.
+      </p>
+      <pre class="hiw-code">function pickSquare(clientX, clientY) {
+    mouse.x =  (clientX / window.innerWidth)  * 2 - 1;   // screen → normalized device coords
+    mouse.y = -(clientY / window.innerHeight) * 2 + 1;
+    raycaster.setFromCamera(mouse, camera);
+    const hit = raycaster.intersectObjects(boardGroup.children, false)
+                         .find(i => i.object.userData.square);
+    return hit ? hit.object.userData.square : null;        // "e4" or null
+}
+
+board2dEl.addEventListener('click', (e) => {
+    const cell = e.target.closest('.sq');
+    if (cell) handleSquareClick(cell.dataset.square);      // same path as 3D
+});</pre>
     </div>
 
   </section>
@@ -165,10 +192,16 @@ function handleSquareClick(square) {
   <section class="hiw-section">
     <h2>File Map</h2>
     <pre class="hiw-file-map">3d-chess/
-├── index.html             ← canvas container, side panel (player names, move log, buttons)
-├── style.css              ← dark layout, side panel positioning, mobile collapse
-├── app.js                 ← Three.js scene, board/piece geometry, Firebase sync, raycasting
-└── database.rules.json    ← Firebase Realtime Database security rules (read/write for all)</pre>
+├── index.html             ← canvas + 2D board containers, side panel (seats, invite, nudge, names, notes)
+├── style.css              ← dark layout, 2D board, online panel, mobile collapse
+├── app.js                 ← ES module: Three.js scene, 2D board, raycasting, seats/turns, Firebase sync, nudges
+├── firebase-config.js     ← public Firebase web config (identifies the project; grants nothing)
+├── database.rules.json    ← server-side authorization: claim-once seats, turn enforcement, schema validation
+├── firebase.json          ← points the Firebase CLI and emulators at the rules
+├── .firebaserc            ← default Firebase project for deploys
+└── rules-test/
+    ├── package.json       ← pinned test deps; `npm test` runs the suite inside the emulator
+    └── rules.test.mjs     ← 32 adversarial rules tests</pre>
   </section>
 
   <section class="hiw-section">
@@ -176,36 +209,36 @@ function handleSquareClick(square) {
     <ol class="hiw-steps">
       <li>
         <span>
-          <strong>Create a Firebase project.</strong> Go to <a href="https://console.firebase.google.com/" target="_blank" rel="noopener">Firebase Console</a>, create a project, add a web app, and enable Realtime Database (start in test mode for development). Copy the SDK config object.
+          <strong>Create a Firebase project.</strong> In the <a href="https://console.firebase.google.com/" target="_blank" rel="noopener">Firebase Console</a>, add a web app, enable Realtime Database in <em>locked mode</em> (never test mode), and enable the Anonymous sign-in provider. Put the web config in <code>firebase-config.js</code>.
         </span>
       </li>
       <li>
         <span>
-          <strong>Load Three.js and chess.js via CDN.</strong> In your HTML, add script tags for <code>three.min.js</code>, <code>OrbitControls.js</code>, and <code>chess.min.js</code> before your app script.
-          Reference: <a href="https://threejs.org/docs/" target="_blank" rel="noopener">Three.js docs</a>, <a href="https://github.com/jhlywa/chess.js" target="_blank" rel="noopener">chess.js GitHub</a>.
+          <strong>Load Three.js and chess.js</strong> as classic scripts, then load your app as <code>&lt;script type="module"&gt;</code> and import the Firebase modular SDK from <code>gstatic.com/firebasejs/&lt;pinned version&gt;/</code>.
+          Reference: <a href="https://threejs.org/docs/" target="_blank" rel="noopener">Three.js docs</a>, <a href="https://github.com/jhlywa/chess.js" target="_blank" rel="noopener">chess.js</a>, <a href="https://firebase.google.com/docs/web/alt-setup" target="_blank" rel="noopener">Firebase via CDN</a>.
         </span>
       </li>
       <li>
         <span>
-          <strong>Build the board with BoxGeometry tiles.</strong> Create 64 <code>THREE.BoxGeometry(0.96, 0.18, 0.96)</code> meshes, position them in an 8×8 grid, and give each a <code>userData.square = "e4"</code> string for raycasting identification.
+          <strong>Build the board and pieces.</strong> 64 <code>BoxGeometry</code> tiles tagged with <code>userData.square</code>, and Staunton profiles passed to <code>LatheGeometry</code>.
+          Reference: <a href="https://threejs.org/docs/#api/en/geometries/LatheGeometry" target="_blank" rel="noopener">LatheGeometry</a>.
         </span>
       </li>
       <li>
         <span>
-          <strong>Use LatheGeometry for piece shapes.</strong> Define the profile of each Staunton piece as an array of <code>[radius, height]</code> control points. Pass them to <code>new THREE.LatheGeometry(points, 48)</code> to get a rotationally symmetric mesh.
-          Reference: <a href="https://threejs.org/docs/#api/en/geometries/LatheGeometry" target="_blank" rel="noopener">Three.js LatheGeometry</a>.
+          <strong>Write the rules first, then test them.</strong> Install a JDK and run <code>cd rules-test &amp;&amp; npm install &amp;&amp; npm test</code>. Every rule should have a test that fails when the rule is removed.
+          Reference: <a href="https://firebase.google.com/docs/rules/unit-tests" target="_blank" rel="noopener">Unit-test Security Rules</a>.
         </span>
       </li>
       <li>
         <span>
-          <strong>Wire Firebase sync.</strong> On move, call <code>firebase.database().ref('current_match').set({ fen: game.fen() })</code>. In <code>loadFromFirebase()</code>, attach <code>.on('value', snap =&gt; { game.load(snap.val().fen); rebuildPieces(); })</code>.
-          Reference: <a href="https://firebase.google.com/docs/database/web/read-and-write" target="_blank" rel="noopener">Firebase Realtime Database — Read and Write</a>.
+          <strong>Develop against the emulators.</strong> <code>firebase emulators:start --only auth,database</code>, serve the folder on <code>127.0.0.1</code>, and open the page with <code>?emu=1</code>. The flag only works on a loopback host, so a crafted link can't redirect real users.
         </span>
       </li>
       <li>
         <span>
-          <strong>Deploy to GitHub Pages</strong> (static files). The Firebase Spark (free) plan covers hobby use. Go to repo Settings &rarr; Pages &rarr; Source: <em>Deploy from branch</em> &rarr; <code>main / (root)</code>.
-          Reference: <a href="https://docs.github.com/en/pages/getting-started-with-github-pages" target="_blank" rel="noopener">GitHub Pages docs</a>.
+          <strong>Deploy rules, then the site.</strong> <code>firebase deploy --only database</code> from <code>3d-chess/</code>, then push to GitHub Pages. Rules go first so the new client never runs against old rules.
+          Reference: <a href="https://docs.github.com/en/pages/getting-started-with-github-pages" target="_blank" rel="noopener">GitHub Pages</a>.
         </span>
       </li>
     </ol>

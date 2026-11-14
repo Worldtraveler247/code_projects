@@ -1,3 +1,13 @@
+// ─── Firebase (modular SDK, pinned) ──────────────────────────────────────────
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/13.1.0/firebase-app.js';
+import {
+    getAuth, signInAnonymously, onAuthStateChanged, connectAuthEmulator,
+} from 'https://www.gstatic.com/firebasejs/13.1.0/firebase-auth.js';
+import {
+    getDatabase, ref, set, onValue, serverTimestamp, connectDatabaseEmulator,
+} from 'https://www.gstatic.com/firebasejs/13.1.0/firebase-database.js';
+import { firebaseConfig } from './firebase-config.js';
+
 // ─── Game State ───────────────────────────────────────────────────────────────
 let game = new Chess();
 let selectedSquare = null;
@@ -337,13 +347,19 @@ function updateStatus() {
     } else if (game.in_draw()) {
         statusEl.textContent = 'Draw';
         statusEl.className   = 'gameover';
+    } else if (isOnline() && mySeat === turn) {
+        statusEl.textContent = game.in_check() ? 'Your move — you are in check' : 'Your move';
+        statusEl.className   = game.in_check() ? 'check' : 'yours';
+    } else if (isOnline() && mySeat) {
+        statusEl.textContent = 'Waiting for ' + name;
     } else if (game.in_check()) {
         statusEl.textContent = name + ' is in check';
         statusEl.className   = 'check';
-        highlightKing(turn);
     } else {
         statusEl.textContent = name + "'s Turn";
     }
+    if (game.in_check()) highlightKing(turn);
+    updateTitle();
 }
 
 // ─── Highlights ───────────────────────────────────────────────────────────────
@@ -481,7 +497,18 @@ function onCanvasClick(event) {
     if (sq) handleSquareClick(sq);
 }
 
+// Client-side gate only — the database rules are the real enforcement.
+function canMoveNow() {
+    if (!isOnline()) return true;               // local pass-and-play
+    return remote !== null && mySeat === game.turn();
+}
+
 function handleSquareClick(square) {
+    if (!canMoveNow()) {
+        selectedSquare = null;
+        clearHighlights();
+        return;
+    }
     if (!selectedSquare) {
         const piece = game.get(square);
         if (piece && piece.color === game.turn()) {
@@ -495,7 +522,7 @@ function handleSquareClick(square) {
         selectedSquare = null;
         moveLogEl.textContent = 'Last move: ' + move.san;
         sync3DWithEngine();
-        saveToFirebase();
+        if (isOnline()) commitMove(move);
     } else {
         const piece = game.get(square);
         if (piece && piece.color === game.turn()) {
@@ -509,12 +536,11 @@ function handleSquareClick(square) {
 }
 
 // ─── Board Controls ───────────────────────────────────────────────────────────
-function resetGame() {
+function resetLocalBoard() {
     game = new Chess();
     selectedSquare = null;
     moveLogEl.textContent = '';
     sync3DWithEngine();
-    saveToFirebase();
 }
 
 function flipCamera() {
@@ -525,7 +551,6 @@ function flipCamera() {
     render2D(selectedSquare);
 }
 
-// ─── Panel Toggle ─────────────────────────────────────────────────────────────
 function togglePanel() {
     const panel = document.getElementById('ui-container');
     const btn   = document.getElementById('panel-toggle');
@@ -534,151 +559,263 @@ function togglePanel() {
     btn.title       = panel.classList.contains('collapsed') ? 'Show controls' : 'Hide controls';
 }
 
-// ─── Name Persistence ─────────────────────────────────────────────────────────
-function loadNamesFromStorage() {
-    const wEl = document.getElementById('name-white');
-    const bEl = document.getElementById('name-black');
-    const w = localStorage.getItem('chess_name_w');
-    const b = localStorage.getItem('chess_name_b');
-    if (w) wEl.value = w;
-    if (b) bEl.value = b;
+// ─── Storage helpers (localStorage can throw in private mode) ─────────────────
+function store(key, val) { try { localStorage.setItem(key, val); } catch (_) { /* non-fatal */ } }
+function load(key)       { try { return localStorage.getItem(key); } catch (_) { return null; } }
+
+// ─── Online Game: identity, seats, sync ───────────────────────────────────────
+// Data model (enforced by database.rules.json):
+//   games/{id}/players/{w|b}  = auth uid, claim-once
+//   games/{id}/state          = { fen, turn, lastMove, updatedAt } — writable only by the side to move
+//   games/{id}/names|comments/{w|b} — writable only by that seat's owner
+const GAME_ID_RE = /^[A-Za-z0-9_-]{22}$/;
+const START_FEN  = new Chess().fen();
+const SEAT_KEY   = { w: 'white', b: 'black' };
+const BASE_TITLE = document.title;
+
+const fbApp = initializeApp(firebaseConfig);
+const auth  = getAuth(fbApp);
+const db    = getDatabase(fbApp);
+
+// Local emulator only: requires BOTH a loopback host and ?emu=1, so a crafted
+// link can never redirect a production visitor's writes somewhere else.
+const params = new URLSearchParams(location.search);
+if (['127.0.0.1', 'localhost'].includes(location.hostname) && params.get('emu') === '1') {
+    connectAuthEmulator(auth, 'http://127.0.0.1:9099', { disableWarnings: true });
+    connectDatabaseEmulator(db, '127.0.0.1', 9000);
 }
 
+let gameId  = GAME_ID_RE.test(params.get('g') || '') ? params.get('g') : null;
+let uid     = null;
+let mySeat  = null;   // 'w' | 'b' | null (spectator or not yet joined)
+let remote  = null;   // last server snapshot of games/{gameId}
+let stopListening = null;
+
+function isOnline() { return gameId !== null; }
+function $(id)      { return document.getElementById(id); }
+
+function newGameId() {
+    // 128 bits from the CSPRNG → 22-char base64url. The ID is the invite
+    // capability, so it must be unguessable (push IDs are time-prefixed).
+    const bytes = crypto.getRandomValues(new Uint8Array(16));
+    return btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+function gameUrl(id) {
+    const u = new URL(location.href);
+    u.search = '';
+    u.searchParams.set('g', id);
+    if (params.get('emu') === '1') u.searchParams.set('emu', '1');
+    return u.toString();
+}
+
+let noticeTimer = null;
+function showNotice(msg) {
+    const el = $('notice');
+    el.textContent = msg;
+    clearTimeout(noticeTimer);
+    noticeTimer = setTimeout(() => { el.textContent = ''; }, 6000);
+}
+
+function myName() { return (load('chess_my_name') || '').trim().slice(0, 24); }
+
+async function createOnlineGame() {
+    if (!uid) return showNotice('Still connecting — try again in a moment.');
+    const id   = newGameId();
+    const data = {
+        players:   { w: uid },
+        state:     { fen: START_FEN, turn: 'w', updatedAt: serverTimestamp() },
+        createdAt: serverTimestamp(),
+    };
+    if (myName()) data.names = { w: myName() };
+    try {
+        await set(ref(db, `games/${id}`), data);
+    } catch (e) {
+        return showNotice('Could not create game: ' + e.message);
+    }
+    store('chess_last_game', id);
+    history.pushState(null, '', gameUrl(id));
+    openGame(id);
+}
+
+function openGame(id) {
+    if (stopListening) stopListening();
+    gameId = id;
+    remote = null;
+    mySeat = null;
+    selectedSquare = null;
+    document.body.classList.add('online');
+    stopListening = onValue(
+        ref(db, `games/${id}`),
+        onGameSnapshot,
+        (err) => showNotice('Cannot load game: ' + err.message),
+    );
+    renderOnlinePanel();
+}
+
+function onGameSnapshot(snap) {
+    const data = snap.val();
+    if (!data) { showNotice('Game not found — check the link.'); return; }
+    remote = data;
+    const players = data.players || {};
+    mySeat = players.w === uid ? 'w' : players.b === uid ? 'b' : null;
+    if (mySeat) store('chess_last_game', gameId);
+
+    // Default the camera to the player's own side the first time we learn it.
+    if (mySeat && (mySeat === 'w') !== isWhiteBottom && !onGameSnapshot.oriented) flipCamera();
+    if (mySeat) onGameSnapshot.oriented = true;
+
+    syncNamesAndComments(data);
+    if (data.state.fen !== game.fen()) {
+        game.load(data.state.fen);
+        selectedSquare = null;
+        moveLogEl.textContent = data.state.lastMove ? 'Last move: ' + data.state.lastMove : '';
+        sync3DWithEngine();
+    } else {
+        updateStatus();
+    }
+    renderOnlinePanel();
+}
+
+async function commitMove(move) {
+    const before = remote?.state?.fen;
+    try {
+        await set(ref(db, `games/${gameId}/state`), {
+            fen: game.fen(), turn: game.turn(), lastMove: move.san, updatedAt: serverTimestamp(),
+        });
+        renderOnlinePanel();
+    } catch (e) {
+        // RTDB already reverted its optimistic local event; resync the board to match.
+        showNotice('Move rejected by the server — board restored.');
+        if (before) { game.load(before); sync3DWithEngine(); }
+    }
+}
+
+async function joinAsBlack() {
+    try {
+        await set(ref(db, `games/${gameId}/players/b`), uid);
+        if (myName()) await set(ref(db, `games/${gameId}/names/b`), myName());
+    } catch (_) {
+        showNotice('That seat was just taken.');
+    }
+}
+
+function syncNamesAndComments(data) {
+    const names = data.names || {}, comments = data.comments || {}, players = data.players || {};
+    for (const seat of ['w', 'b']) {
+        const key   = SEAT_KEY[seat];
+        const mine  = seat === mySeat;
+        const input = $('name-' + key);
+        input.disabled    = !mine;
+        input.placeholder = players[seat] ? (seat === 'w' ? 'White player' : 'Black player') : 'Seat open';
+        if (document.activeElement !== input) input.value = names[seat] || '';
+
+        const box = $('comment-' + key);
+        box.contentEditable     = String(mine);
+        box.dataset.placeholder = mine ? 'Leave a message…' : 'No message yet';
+        if (document.activeElement !== box) {
+            const v = comments[seat] || '';
+            if (box.textContent !== v) box.textContent = v;
+        }
+    }
+}
+
+// ─── Online panel + nudges ────────────────────────────────────────────────────
+function opponentSeat() { return mySeat === 'w' ? 'b' : 'w'; }
+
+function renderOnlinePanel() {
+    const online   = isOnline();
+    const players  = remote?.players || {};
+    const gameOver = game.game_over();
+    $('offline-controls').hidden = online;
+    $('online-panel').hidden     = !online;
+
+    const last = load('chess_last_game');
+    $('resume-btn').hidden = online || !last || !GAME_ID_RE.test(last);
+    if (!online) return;
+
+    const seatInfo = $('seat-info');
+    if (!remote)            seatInfo.textContent = 'Connecting…';
+    else if (mySeat)        seatInfo.textContent = 'You are ' + (mySeat === 'w' ? 'White' : 'Black');
+    else if (!players.b)    seatInfo.textContent = 'Black seat is open';
+    else                    seatInfo.textContent = 'Spectating — both seats taken';
+
+    $('join-btn').hidden   = !remote || mySeat !== null || Boolean(players.b);
+    $('invite-row').hidden = mySeat !== 'w' || Boolean(players.b);
+
+    const oppSeated = Boolean(players[opponentSeat()]);
+    const nudge = $('nudge-btn');
+    nudge.hidden = !mySeat || !oppSeated || gameOver || game.turn() === mySeat;
+    nudge.textContent = '💬  Nudge ' + playerName(opponentSeat()) + ' on WhatsApp';
+}
+
+function whatsappShare(text) {
+    // No phone number in the URL: WhatsApp opens its own contact picker, so this
+    // app never sees, stores, or transmits anyone's number.
+    window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank', 'noopener');
+}
+
+function nudgeOpponent() {
+    whatsappShare(`♟ Your move in our chess game, ${playerName(opponentSeat())}. ${gameUrl(gameId)}`);
+}
+
+function inviteOnWhatsApp() {
+    whatsappShare(`♟ Join my chess game — you're Black. Play a move whenever you have a minute: ${gameUrl(gameId)}`);
+}
+
+async function copyInvite() {
+    try {
+        await navigator.clipboard.writeText(gameUrl(gameId));
+        showNotice('Invite link copied. Send it privately — the first person to open it gets the Black seat.');
+    } catch (_) {
+        showNotice('Copy failed — copy the address bar instead.');
+    }
+}
+
+function updateTitle() {
+    const myTurn = isOnline() && mySeat !== null && game.turn() === mySeat && !game.game_over();
+    document.title = myTurn ? '● Your move — ' + BASE_TITLE : BASE_TITLE;
+}
+
+// ─── Names ────────────────────────────────────────────────────────────────────
 let nameSaveTimer = null;
 function onNameInput(color) {
-    const key = color === 'w' ? 'name-white' : 'name-black';
-    localStorage.setItem('chess_name_' + color, document.getElementById(key).value);
+    const value = $(color === 'w' ? 'name-white' : 'name-black').value;
     updateStatus();
+    renderOnlinePanel();
+    if (!isOnline()) { store('chess_name_' + color, value); return; }
+    if (color !== mySeat) return;
+    store('chess_my_name', value);
     clearTimeout(nameSaveTimer);
-    nameSaveTimer = setTimeout(saveToFirebase, 800);
+    nameSaveTimer = setTimeout(() => {
+        set(ref(db, `games/${gameId}/names/${color}`), value.trim().slice(0, 24))
+            .catch(e => showNotice('Name not saved: ' + e.message));
+    }, 800);
 }
 
-// ─── Firebase ─────────────────────────────────────────────────────────────────
-function firebaseReady() {
-    return typeof firebase !== 'undefined'
-        && firebase.apps.length > 0
-        && typeof firebase.auth === 'function'
-        && firebase.auth().currentUser !== null;
-}
-function initFirebaseAuth() {
-    if (typeof firebase === 'undefined' || firebase.apps.length === 0) return;
-    if (typeof firebase.auth !== 'function') return;
-    firebase.auth().signInAnonymously().catch(e => console.warn('Firebase auth:', e.message));
-}
-function saveToFirebase() {
-    if (!firebaseReady()) return;
-    const wName = document.getElementById('name-white').value.trim();
-    const bName = document.getElementById('name-black').value.trim();
-    firebase.database().ref('current_match').update({
-        fen: game.fen(),
-        nameWhite: wName,
-        nameBlack: bName,
-        timestamp: Date.now(),
-    });
-}
-function loadFromFirebase() {
-    if (typeof firebase === 'undefined' || firebase.apps.length === 0) return;
-    if (typeof firebase.auth !== 'function') return;
-    firebase.auth().onAuthStateChanged(user => {
-        if (!user) return;
-        firebase.database().ref('current_match').on('value', snap => {
-            const data = snap.val();
-            if (!data) return;
-            // Populate name fields from remote if local is blank
-            const wEl = document.getElementById('name-white');
-            const bEl = document.getElementById('name-black');
-            if (!wEl.value.trim() && data.nameWhite) {
-                wEl.value = data.nameWhite;
-                localStorage.setItem('chess_name_w', data.nameWhite);
-            }
-            if (!bEl.value.trim() && data.nameBlack) {
-                bEl.value = data.nameBlack;
-                localStorage.setItem('chess_name_b', data.nameBlack);
-            }
-            if (data.fen && data.fen !== game.fen()) {
-                game.load(data.fen);
-                sync3DWithEngine();
-            } else {
-                updateStatus();
-            }
-            // Sync comments — only overwrite DOM if the element is not focused
-            // (avoids clobbering a visitor who is actively typing)
-            const cwEl = document.getElementById('comment-white');
-            const cbEl = document.getElementById('comment-black');
-            const comments = data.comments || {};
-            if (document.activeElement !== cwEl) {
-                const remote = comments.white || '';
-                if (cwEl.textContent !== remote) cwEl.textContent = remote;
-            }
-            if (document.activeElement !== cbEl) {
-                const remote = comments.black || '';
-                if (cbEl.textContent !== remote) cbEl.textContent = remote;
-            }
-        });
-    });
+function loadLocalNames() {
+    const w = load('chess_name_w'), b = load('chess_name_b');
+    if (w) $('name-white').value = w;
+    if (b) $('name-black').value = b;
 }
 
 // ─── Comments ─────────────────────────────────────────────────────────────────
-const _commentTimers = { white: null, black: null };
+const commentTimers = { w: null, b: null };
 
-/** Flash the saved indicator and gold border on the given comment box. */
-function showSaved(player) {
-    const el    = document.getElementById('comment-' + player);
-    const badge = document.getElementById('saved-' + player);
-
+function showSaved(seat) {
+    const el = $('comment-' + SEAT_KEY[seat]), badge = $('saved-' + SEAT_KEY[seat]);
     el.classList.add('flash-saved');
     badge.classList.add('visible');
-
-    setTimeout(() => {
-        el.classList.remove('flash-saved');
-    }, 600);
-    setTimeout(() => {
-        badge.classList.remove('visible');
-    }, 1800);
+    setTimeout(() => el.classList.remove('flash-saved'), 600);
+    setTimeout(() => badge.classList.remove('visible'), 1800);
 }
 
-/**
- * Write this player's comment to Firebase.
- * Uses `update` so other fields in current_match are untouched.
- * Gracefully no-ops if Firebase is not ready (auth still pending).
- */
-function saveComment(player) {
-    const el   = document.getElementById('comment-' + player);
-    const text = el.textContent.trim();
-
-    if (!firebaseReady()) {
-        // Queue one retry once auth settles — covers the first-load race
-        // where a visitor types before anonymous auth completes.
-        const retryKey = '_commentRetry_' + player;
-        clearTimeout(window[retryKey]);
-        window[retryKey] = setTimeout(() => saveComment(player), 1200);
-        return;
-    }
-
-    firebase.database()
-        .ref('current_match/comments/' + player)
-        .set(text)
-        .then(() => showSaved(player))
-        .catch(e => console.warn('Comment save failed:', e.message));
-}
-
-function onCommentInput(player) {
-    clearTimeout(_commentTimers[player]);
-    _commentTimers[player] = setTimeout(() => saveComment(player), 700);
-}
-
-function onCommentBlur(player) {
-    // Cancel debounce timer and save immediately on blur
-    clearTimeout(_commentTimers[player]);
-    saveComment(player);
-}
-
-function onCommentKeydown(event, player) {
-    // Enter without Shift → save and blur (no newline)
-    if (event.key === 'Enter' && !event.shiftKey) {
-        event.preventDefault();
-        document.getElementById('comment-' + player).blur();
-    }
+function saveComment(seat) {
+    if (!isOnline() || seat !== mySeat) return;
+    const text = $('comment-' + SEAT_KEY[seat]).textContent.trim().slice(0, 500);
+    set(ref(db, `games/${gameId}/comments/${seat}`), text)
+        .then(() => showSaved(seat))
+        .catch(e => showNotice('Message not saved: ' + e.message));
 }
 
 // ─── Animation ────────────────────────────────────────────────────────────────
@@ -690,21 +827,40 @@ function animate() {
 }
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
-document.getElementById('name-white').addEventListener('input', () => onNameInput('w'));
-document.getElementById('name-black').addEventListener('input', () => onNameInput('b'));
-
-// Comment boxes — inline editable, saved to Firebase
-['white', 'black'].forEach(player => {
-    const el = document.getElementById('comment-' + player);
-    el.addEventListener('input',   ()      => onCommentInput(player));
-    el.addEventListener('blur',    ()      => onCommentBlur(player));
-    el.addEventListener('keydown', (event) => onCommentKeydown(event, player));
+$('panel-toggle').addEventListener('click', togglePanel);
+$('reset-btn').addEventListener('click', resetLocalBoard);
+$('new-online-btn').addEventListener('click', createOnlineGame);
+$('new-online-btn-2').addEventListener('click', createOnlineGame);
+$('resume-btn').addEventListener('click', () => {
+    const id = load('chess_last_game');
+    if (id && GAME_ID_RE.test(id)) { history.pushState(null, '', gameUrl(id)); openGame(id); }
 });
+$('flip-btn').addEventListener('click', flipCamera);
+$('view-toggle').addEventListener('click', toggleView);
+$('join-btn').addEventListener('click', joinAsBlack);
+$('invite-wa-btn').addEventListener('click', inviteOnWhatsApp);
+$('invite-copy-btn').addEventListener('click', copyInvite);
+$('nudge-btn').addEventListener('click', nudgeOpponent);
+window.addEventListener('popstate', () => location.reload());
+
+$('name-white').addEventListener('input', () => onNameInput('w'));
+$('name-black').addEventListener('input', () => onNameInput('b'));
+
+for (const seat of ['w', 'b']) {
+    const el = $('comment-' + SEAT_KEY[seat]);
+    el.addEventListener('input', () => {
+        clearTimeout(commentTimers[seat]);
+        commentTimers[seat] = setTimeout(() => saveComment(seat), 700);
+    });
+    el.addEventListener('blur', () => { clearTimeout(commentTimers[seat]); saveComment(seat); });
+    el.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); el.blur(); }
+    });
+}
+
 window.addEventListener('click', onCanvasClick);
 
 // Touch tap detection — distinguish tap from orbit drag
-// No target check: raycaster returns null for off-board taps so it is safe
-// to call pickSquare for any single-finger lift anywhere on screen.
 let touchStart = null;
 window.addEventListener('touchstart', (e) => {
     if (e.touches.length !== 1) { touchStart = null; return; }
@@ -731,19 +887,26 @@ window.addEventListener('resize', () => {
     renderer.setSize(window.innerWidth, window.innerHeight);
 });
 
-// Collapse panel by default on narrow screens (mobile)
 if (window.innerWidth < 600) {
-    const panel = document.getElementById('ui-container');
-    panel.classList.add('collapsed');
-    document.getElementById('panel-toggle').textContent = '☰';
+    $('ui-container').classList.add('collapsed');
+    $('panel-toggle').textContent = '☰';
 }
 
-loadNamesFromStorage();
 createBoard();
-let savedView = null;
-try { savedView = localStorage.getItem('chess_view'); } catch (_) { /* storage blocked */ }
-if (savedView === '2d') setView('2d');
+if (load('chess_view') === '2d') setView('2d');
+if (isOnline()) {
+    document.body.classList.add('online');
+} else {
+    loadLocalNames();
+}
 sync3DWithEngine();
-initFirebaseAuth();
-loadFromFirebase();
+renderOnlinePanel();
+
+onAuthStateChanged(auth, (user) => {
+    if (!user || uid === user.uid) return;
+    uid = user.uid;
+    if (gameId) openGame(gameId);
+});
+signInAnonymously(auth).catch(e => showNotice('Sign-in failed: ' + e.message));
+
 animate();
