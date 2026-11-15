@@ -88,6 +88,21 @@ button.small{min-height:36px;padding:5px 10px;font-size:13px}
 .vimrc-line{font-family:var(--mono);font-size:12.5px;background:#0a0e14;border:1px solid var(--line);border-radius:8px;padding:9px 10px;overflow-x:auto;white-space:pre;color:#e5c07b;margin:8px 0}
 input.blank,textarea.blank{font-family:var(--mono);font-size:13.5px;background:#221d08;border:1px dashed var(--warn);color:#ffd75f;border-radius:5px;padding:1px 5px;outline:none;max-width:88vw}
 textarea.blank{display:block;width:100%;margin:4px 0;line-height:22px;padding:6px 8px;resize:vertical;tab-size:2;background-image:repeating-linear-gradient(to right,rgba(255,255,255,.045) 0,rgba(255,255,255,.045) 1px,transparent 1px,transparent 2ch)}
+.codebox.l3box{padding:0}
+.l3edit{display:flex;background:#000}
+.l3box.bad .l3edit{box-shadow:inset 0 0 0 1px var(--bad)}
+.l3gut{background:#070707;color:#565656;text-align:right;padding:8px 7px 8px 9px;font-family:var(--mono);font-size:13.5px;line-height:22px;overflow:hidden;border-right:1px solid #262626;flex:none;min-width:44px;user-select:none}
+.l3gut span{display:block;white-space:pre;will-change:transform}
+.l3main{position:relative;flex:1;overflow:hidden}
+.l3hl{position:absolute;left:0;right:0;top:8px;height:22px;background:rgba(255,255,255,.055);pointer-events:none}
+.l3col{position:absolute;top:0;bottom:0;left:10px;width:1ch;background:rgba(255,255,255,.045);pointer-events:none}
+.l3syn{position:absolute;top:0;left:0;width:max-content;min-width:100%;min-height:100%;margin:0;padding:8px 10px;font-family:var(--mono);font-size:13.5px;line-height:22px;white-space:pre;pointer-events:none;color:#d6deeb;tab-size:2;background-image:repeating-linear-gradient(to right,rgba(255,255,255,.05) 0,rgba(255,255,255,.05) 1px,transparent 1px,transparent 2ch);background-position:10px 0}
+textarea.blank.l3ta{position:relative;z-index:1;width:100%;height:100%;background:transparent;color:transparent;border:none;border-radius:0;margin:0;padding:8px 10px;resize:none;outline:none;white-space:pre;overflow:auto;caret-color:#fff;max-width:none}
+textarea.blank.l3ta:focus{background:transparent;border:none}
+textarea.blank.l3ta.bad{background:rgba(255,70,70,.07);color:transparent}
+.l3status{display:flex;justify-content:space-between;gap:12px;background:#1c1c1c;color:#cfcfcf;padding:3px 10px;font-family:var(--mono);font-size:12px}
+.l3status .l3vim{color:var(--gold)}
+.l3box.bad .l3status{background:#2a1215;color:#ffa198}
 input.blank:focus,textarea.blank:focus{border-color:var(--accent2);background:#101a2a}
 input.blank.ok,textarea.blank.ok{border:1px solid var(--accent);background:#0f2416;color:#7ee787}
 input.blank.bad,textarea.blank.bad{border:1px solid var(--bad);background:#2a1215;color:#ffa198}
@@ -463,7 +478,22 @@ function renderPlayCode(file, level){
     curPlayBlanks = []; curLines = {}; curCols = {};
     var rows = Math.max(3, playLineList(file).length);
     var v3 = (cur && cur.values[0] != null) ? cur.values[0] : '';
-    html += '<div class="codebox"><textarea class="blank scratch' + (cur && cur.l3bad ? ' bad' : '') + '" data-i="0" rows="' + rows + '" autocomplete="off" autocapitalize="off" spellcheck="false">' + esc(v3) + '</textarea></div></div>';
+    // The from-scratch box is a vim editor with the Q0 .vimrc applied: a transparent
+    // textarea over a live syntax overlay, line-number gutter, lit cursor line/column,
+    // indent guides and a status line. The textarea itself is unchanged for grading.
+    var v3lines = v3 ? v3.split('\n').length : 0;
+    var nlines = Math.max(rows, v3lines);
+    var eheight = Math.min(18, Math.max(3, nlines)) * 22 + 16;
+    var gut = ''; for(var gi = 1; gi <= nlines; gi++) gut += gi + (gi < nlines ? '\n' : '');
+    var syn = v3.split('\n').map(function(l){ return hlLine(file.lang, l); }).join('\n') + '\n';
+    html += '<div class="codebox l3box' + (cur && cur.l3bad ? ' bad' : '') + '"><div class="l3edit" style="height:' + eheight + 'px">'
+      + '<div class="l3gut"><span id="l3gutnums" data-n="' + nlines + '">' + gut + '</span></div>'
+      + '<div class="l3main"><div class="l3hl" id="l3hline"></div><div class="l3col" id="l3colhl"></div>'
+      + '<pre class="l3syn" id="l3syn">' + syn + '</pre>'
+      + '<textarea class="blank scratch l3ta' + (cur && cur.l3bad ? ' bad' : '') + '" id="l3ta" data-i="0" rows="' + rows + '" autocomplete="off" autocapitalize="off" spellcheck="false">' + esc(v3) + '</textarea>'
+      + '</div></div>'
+      + '<div class="l3status"><span class="l3vim">vimrc applied \u00b7 ai \u00b7 sw=2 \u00b7 sts=2 \u00b7 expandtab \u00b7 nu \u00b7 cuc \u00b7 cul \u00b7 syntax on</span><span id="l3pos"></span></div>'
+      + '</div></div>';
     return html;
   }
   var lines = playLineList(file);
@@ -961,7 +991,7 @@ function renderPlayArea(){
     html += renderDecode(f);
   } else {
     var top = fileTop(f);
-    var desc = cur.level === 1 ? 'Keys missing, values shown: type the key name that belongs before each colon. Every value is given — only the labels are yours to supply.' : cur.level === 2 ? 'Values missing, keys shown: type what belongs after each colon, and fill the missing content lines. The structure is given — the values are yours.' : 'From scratch: an empty shell — no text, no hints. Write the entire file from memory, exactly as it should be — indentation counts.';
+    var desc = cur.level === 1 ? 'Keys missing, values shown: type the key name that belongs before each colon. Every value is given — only the labels are yours to supply.' : cur.level === 2 ? 'Values missing, keys shown: type what belongs after each colon, and fill the missing content lines. The structure is given — the values are yours.' : 'From scratch: an empty shell — no text, no hints. Write the entire file from memory, exactly as it should be — indentation counts. The box is vim with your Q0 .vimrc applied: auto-indent, 2-space steps, line numbers, and live syntax colors, so a key lights up the moment you type its colon.';
     var LQ = EXAM_LENS[f.q];
     if(LQ) html += '<details class="qread" open><summary>📋 The original question — Practice Exam 1, Q' + f.q + ' (read it here while you build, like on the test)</summary><div class="qtext">' + esc(LQ.question).replace(/\n/g, '<br>') + '</div></details>';
     if(cur.level === 3 && f.q) html += '<div class="qtimerbar">⏱ <span id="qtimer">9:00</span> — practice pace for Q' + f.q + ': 9:00 for the whole question, every file included. It keeps running if you peek at Study, freezes when Q' + f.q + ' is complete, and resets on the next question. (Real EX294 pace: 15:00.)</div>';
@@ -1162,7 +1192,7 @@ document.body.addEventListener('keydown', function(ev){
     ta.selectionEnd = Math.max(ta.selectionStart, en + dTotal);
     if(st === en && dir > 0 && segLines.length === 1 && dFirst === 2 && ta.value.slice(ls, st + 2) === ta.value.slice(ls, ls) + '  ' + ta.value.slice(ls, st)){ /* single-caret Tab = one 2-space step, same result */ }
     if(cur) cur.values[ta.getAttribute('data-i')] = ta.value;
-    updateVimPos(ta);
+    updateVimPos(ta); l3Sync();
   }
   if(ev.target.tagName === 'TEXTAREA' && ev.target.classList.contains('blank') && ev.key === 'Enter'){
     ev.preventDefault();
@@ -1176,7 +1206,22 @@ document.body.addEventListener('keydown', function(ev){
     else if(!isItem && trimmed.endsWith(':')) n = base + 2;
     tb.setRangeText('\n' + ' '.repeat(n), cs, ce, 'end');
     if(cur) cur.values[tb.getAttribute('data-i')] = tb.value;
-    updateVimPos(tb);
+    updateVimPos(tb); l3Sync();
+  }
+  if(ev.target.tagName === 'TEXTAREA' && ev.target.classList.contains('scratch') && ev.key === 'Backspace'){
+    // sts=2, like the .vimrc says: backspace over pure indentation deletes one 2-space step
+    var tq = ev.target, pq = tq.selectionStart;
+    if(tq.selectionStart === tq.selectionEnd && pq > 0){
+      var lq = tq.value.lastIndexOf('\n', pq - 1) + 1;
+      var before = tq.value.slice(lq, pq);
+      if(before.length > 0 && /^ *$/.test(before)){
+        ev.preventDefault();
+        var nq = ((before.length - 1) % 2) + 1;
+        tq.setRangeText('', pq - nq, pq, 'end');
+        if(cur) cur.values[tq.getAttribute('data-i')] = tq.value;
+        updateVimPos(tq); l3Sync();
+      }
+    }
   }
   if(ev.target.tagName === 'INPUT' && ev.target.classList && ev.target.classList.contains('blank') && ev.key === 'Enter'){
     ev.preventDefault(); doCheck();
@@ -1201,6 +1246,37 @@ function updateVimPos(el){
   }
   pos.textContent = 'Ln ' + lineNo + ', Col ' + col;
 }
+// Level 3 editor sync: re-highlight the overlay (a key lights up the moment its
+// colon is typed), scroll the overlay and gutter with the textarea, keep the
+// cursor line/column lit and the status line's Ln/Col current.
+function l3Sync(){
+  var ta = document.getElementById('l3ta'); if(!ta || !ta.style) return;
+  var lang = (cur && cur.file && cur.file.lang) || 'yaml';
+  var syn = document.getElementById('l3syn');
+  if(syn && syn.style){
+    syn.innerHTML = ta.value.split('\n').map(function(l){ return hlLine(lang, l); }).join('\n') + '\n';
+    syn.style.transform = 'translate(' + (-ta.scrollLeft) + 'px,' + (-ta.scrollTop) + 'px)';
+  }
+  var gut = document.getElementById('l3gutnums');
+  if(gut && gut.style){
+    var n = ta.value.split('\n').length;
+    if(+gut.getAttribute('data-n') !== n){
+      var s = ''; for(var i = 1; i <= n; i++) s += i + (i < n ? '\n' : '');
+      gut.textContent = s; gut.setAttribute('data-n', n);
+    }
+    gut.style.transform = 'translateY(' + (-ta.scrollTop) + 'px)';
+  }
+  var upto = ta.value.slice(0, ta.selectionStart || 0);
+  var ln = upto.split('\n').length, col = upto.length - (upto.lastIndexOf('\n') + 1) + 1;
+  var hl = document.getElementById('l3hline'); if(hl && hl.style) hl.style.top = (8 + (ln - 1) * 22 - ta.scrollTop) + 'px';
+  var hc = document.getElementById('l3colhl'); if(hc && hc.style) hc.style.left = 'calc(10px + ' + (col - 1) + 'ch - ' + ta.scrollLeft + 'px)';
+  var pos = document.getElementById('l3pos'); if(pos) pos.textContent = 'Ln ' + ln + ', Col ' + col;
+}
+document.body.addEventListener('input', function(ev){ if(ev.target.id === 'l3ta') l3Sync(); });
+document.body.addEventListener('keyup', function(ev){ if(ev.target.id === 'l3ta') l3Sync(); });
+document.body.addEventListener('click', function(ev){ if(ev.target.id === 'l3ta') l3Sync(); });
+document.body.addEventListener('focusin', function(ev){ if(ev.target.id === 'l3ta') l3Sync(); });
+if(document.addEventListener) document.addEventListener('scroll', function(ev){ if(ev.target && ev.target.id === 'l3ta') l3Sync(); }, true);
 document.body.addEventListener('focusin', function(ev){ updateVimPos(ev.target); });
 document.body.addEventListener('keyup', function(ev){ updateVimPos(ev.target); });
 document.body.addEventListener('click', function(ev){ updateVimPos(ev.target); });
