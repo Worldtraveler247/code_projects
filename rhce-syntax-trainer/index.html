@@ -2959,7 +2959,7 @@ function hlValue(str){
     } else {
       let j = i;
       while (j < str.length && !str.startsWith("{{", j) && str[j] !== '"' && str[j] !== "'") j++;
-      out += esc(str.slice(i, j)).replace(/\b(true|false|yes|no|null)\b/gi, "<span class='tk-bool'>$1</span>").replace(/\b(\d+(?:\.\d+)?)\b/g, "<span class='tk-num'>$1</span>");
+      out += esc(str.slice(i, j)).replace(/\b(true|false|yes|no|null)\b/gi, "<span class='tk-bool'>$1</span>").replace(/\b(\d+(?:\.\d+)?)\b(?!\.[A-Za-z])/g, "<span class='tk-num'>$1</span>");
       i = j;
     }
   }
