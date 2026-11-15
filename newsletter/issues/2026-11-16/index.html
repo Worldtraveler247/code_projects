@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="dark">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'self' https://static.cloudflareinsights.com; connect-src 'self' https://cloudflareinsights.com; img-src 'self' data:; form-action https://buttondown.com; base-uri 'none'; object-src 'none'">
+    <meta name="description" content="The Daily Brief for Monday, November 16, 2026: security incidents, senior security advice, engineering explainers, and tech news.">
+    <title>The Daily Brief · Nov 16, 2026</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="icon" href="../../../favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="../../../style.css">
+    <link rel="stylesheet" href="../../newsletter.css">
+</head>
+<body class="brief-page">
+    <a href="#main-content" class="skip-nav">Skip to main content</a>
+    <nav class="brief-nav">
+        <a href="../../../index.html">← App Hub</a>
+        <a href="../../">All issues</a>
+    </nav>
+    
+<header class="brief-masthead">
+    <p class="brief-eyebrow">THE DAILY BRIEF</p>
+    <h1>Monday, November 16, 2026</h1>
+    <ol class="brief-toc">
+        <li><a href="#current-events">Current Events</a></li><li><a href="#security-advice">Senior Security Advice</a></li><li><a href="#talk-track">Senior Talk Tracks</a></li><li><a href="#tech-news">Tech News</a></li>
+    </ol>
+</header>
+<main id="main-content" class="brief">
+    
+    <article class="brief-section" id="current-events">
+        <p class="brief-kicker">Current Events</p>
+        <h2>The Change Healthcare Ransomware Attack</h2>
+        
+            
+            <p>Here's a number that should stop you: 192.7 million. That's how many Americans the federal government says had their health data exposed in one ransomware attack -- the largest healthcare data breach ever recorded in the United States. And the way the attackers got in wasn't some exotic zero-day. It was a login page with no second factor on it. Here's how it actually happened.</p>
+<p>In February 2024, attackers got their hands on a working username and password for a Citrix remote-access portal belonging to Change Healthcare, a company owned by UnitedHealth Group's Optum division that processes a huge share of the country's medical claims and prescriptions. According to testimony UnitedHealth Group's own CEO, Andrew Witty, gave Congress, that portal was supposed to have multi-factor authentication, because company policy already required it on every external-facing system. This one didn't. Nobody had caught the gap before the attackers did.</p>
+<p>On February 12th, the attackers logged straight in with those stolen credentials -- no second factor required. For the next nine days, according to Witty's testimony, they moved through the network and pulled out data, all without triggering a response that stopped them. On February 21st, they deployed ransomware. Change Healthcare took its systems offline nationwide to contain it, and pharmacies and hospitals across the country spent weeks unable to process prescriptions and insurance claims. The group behind it, tracked by CISA and the FBI as ALPHV, also known as BlackCat, later claimed responsibility. Witty testified that UnitedHealth Group paid a 22-million-dollar ransom -- his call, he said, and the hardest decision of his career.</p>
+<p>Root cause, in one sentence: a documented policy requiring multi-factor authentication on every external-facing system didn't actually get enforced on one of them, and nothing was checking.</p>
+<p>The breach count kept climbing for more than a year afterward. Change Healthcare's first report to the Department of Health and Human Services, filed in July 2024, used a placeholder of 500 people because the investigation wasn't finished. By October that estimate jumped to roughly 100 million. As of a July 2025 filing, the confirmed total stands at 192.7 million people.</p>
+<p>So what should a senior engineer actually take from this? Not &quot;turn on MFA&quot; -- everyone already knows that. The real lesson is that a policy sitting in a document doesn't protect anything by itself. What protects you is actually auditing your environment against that policy, continuously, and catching the one system that's the exception before an attacker finds it for you. A senior engineer dropped into an AWS or RHEL environment wouldn't just trust that multi-factor authentication is enforced everywhere -- they'd pull the actual account and access-control configuration and check it directly, the same week they start, not after an incident forces the question.</p>
+<p>That's Change Healthcare: one unenforced policy, one exposed portal, and the largest healthcare breach this country has on record.</p>
+
+        
+            <h3>Timeline</h3>
+            <table>
+<thead>
+<tr>
+<th>Date</th>
+<th>Event</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>February 12, 2024</td>
+<td>Attackers use compromised credentials to log into a Change Healthcare Citrix remote-access portal that lacks multi-factor authentication, per CEO Andrew Witty's congressional testimony.</td>
+</tr>
+<tr>
+<td>February 21, 2024</td>
+<td>ALPHV/BlackCat deploys ransomware roughly nine days after initial access; Change Healthcare disconnects its systems nationwide, disrupting pharmacy and claims processing for weeks.</td>
+</tr>
+<tr>
+<td>February 27, 2024</td>
+<td>CISA, the FBI, and HHS update their joint #StopRansomware advisory on ALPHV Blackcat (AA23-353A) with new indicators of compromise tied to the Change Healthcare attack.</td>
+</tr>
+<tr>
+<td>May 1, 2024</td>
+<td>Andrew Witty testifies before the House Energy and Commerce Oversight and Investigations Subcommittee that the breached portal lacked MFA despite company policy, and that UnitedHealth Group paid a $22 million ransom.</td>
+</tr>
+<tr>
+<td>July 19, 2024</td>
+<td>Change Healthcare files its first HHS Office for Civil Rights breach report using a placeholder estimate of 500 affected individuals while the investigation continues.</td>
+</tr>
+<tr>
+<td>July 31, 2025</td>
+<td>Change Healthcare informs the New Hampshire Attorney General the confirmed total has grown to 192.7 million affected individuals, the figure HHS OCR's breach portal now reflects.</td>
+</tr>
+</tbody>
+</table>
+<p><em>Note: Reporting is consistent on the entry vector (compromised credentials against an MFA-less Citrix portal), the nine-day dwell time before ransomware deployment, and the $22 million ransom figure, all from Witty's own testimony. The victim count changed repeatedly as the investigation progressed — 500, then roughly 100 million, then 192.7 million — so this script treats 192.7 million as the current HHS OCR figure, not a number that was known at the time of the attack.</em></p>
+
+        
+            <h3>Control Failures</h3>
+            <table>
+<thead>
+<tr>
+<th>#</th>
+<th>Failure</th>
+<th>NIST SP 800-53 Rev 5 Control Family</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>Company policy required multi-factor authentication on every external-facing system, but the Citrix remote-access portal was not actually configured to enforce it.</td>
+<td><strong>IA-2</strong> — Identification and Authentication (Organizational Users)</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Nothing in the organization's processes verified that the documented MFA policy was actually being enforced on every externally reachable system, letting the gap persist undetected.</td>
+<td><strong>CA-7</strong> — Continuous Monitoring</td>
+</tr>
+<tr>
+<td>3</td>
+<td>Attackers moved laterally and exfiltrated data for roughly nine days before ransomware deployment without triggering a detection or response that stopped them.</td>
+<td><strong>SI-4</strong> — System Monitoring</td>
+</tr>
+<tr>
+<td>4</td>
+<td>A single compromised remote-access portal had enough network reach to let attackers cascade into systems well beyond that portal's own function, disrupting claims and prescription processing nationwide.</td>
+<td><strong>SC-7</strong> — Boundary Protection</td>
+</tr>
+<tr>
+<td>5</td>
+<td>The scale and duration of the resulting outage required an emergency federal payment program for affected providers, indicating existing contingency planning had not anticipated a disruption of this length.</td>
+<td><strong>CP-2</strong> — Contingency Planning</td>
+</tr>
+</tbody>
+</table>
+
+        
+            <h3>What Held</h3>
+            <ul>
+<li><strong>Remediation, once identified, was enforced company-wide.</strong> Witty testified that every external-facing system across UnitedHealth Group now has multi-factor authentication enabled — the gap was closed everywhere, not just patched on the one portal that was breached.</li>
+<li><strong>The federal advisory update was fast.</strong> CISA, the FBI, and HHS updated their joint ALPHV/BlackCat advisory with new indicators of compromise on February 27th, just six days after the ransomware deployment, giving other hospitals and health systems concrete artifacts to hunt for in their own environments right away.</li>
+<li><strong>A financial backstop limited downstream collapse.</strong> CMS stood up the Change Healthcare/Optum Payment Disruption accelerated and advance payment program within about two and a half weeks of the attack, ultimately delivering more than $2.55 billion to over 4,200 Part A providers — a reminder that contingency and continuity planning for a vendor-dependency outage is itself a control worth having in place before you need it.</li>
+</ul>
+
+        
+            <h3>Sources</h3>
+            <ul>
+<li><a href="https://democrats-energycommerce.house.gov/sites/evo-subsites/democrats-energycommerce.house.gov/files/evo-media-document/Testimony_Witty_OI_2024.05.01.pdf" target="_blank" rel="noopener noreferrer">Testimony of Andrew Witty, CEO of UnitedHealth Group — House Energy and Commerce Committee, Oversight and Investigations Subcommittee, May 1, 2024 (primary)</a></li>
+<li><a href="https://www.cisa.gov/news-events/alerts/2024/02/27/cisa-fbi-and-hhs-release-update-stopransomware-advisory-alphv-blackcat" target="_blank" rel="noopener noreferrer">CISA, FBI, and HHS Release Update to #StopRansomware Advisory on ALPHV Blackcat (AA23-353A) — CISA (primary)</a></li>
+<li><a href="https://www.hhs.gov/hipaa/for-professionals/special-topics/change-healthcare-cybersecurity-incident-frequently-asked-questions/index.html" target="_blank" rel="noopener noreferrer">Change Healthcare Cybersecurity Incident Frequently Asked Questions — U.S. Department of Health and Human Services (primary)</a></li>
+<li><a href="https://www.cms.gov/newsroom/fact-sheets/change-healthcare-optum-payment-disruption-chopd-accelerated-payments-part-providers-advance" target="_blank" rel="noopener noreferrer">Change Healthcare/Optum Payment Disruption (CHOPD) Accelerated Payments and Advance Payments Fact Sheet — CMS.gov (primary)</a></li>
+<li><a href="https://www.techtarget.com/cybersecurity/news/366582824/Change-Healthcare-breached-via-Citrix-portal-with-no-MFA" target="_blank" rel="noopener noreferrer">Change Healthcare breached via Citrix portal with no MFA — TechTarget</a></li>
+<li><a href="https://www.cybersecuritydive.com/news/change-healthcare-attack-affects-190-million/738369/" target="_blank" rel="noopener noreferrer">Change Healthcare attack affects 190 million — Cybersecurity Dive</a></li>
+</ul>
+<p><strong>Tomorrow's Thread:</strong> Day 60 moves to the cloud misconfiguration and IAM family — the 2019 Capital One breach, where a misconfigured web application firewall was used to reach the AWS instance metadata service and pull over-permissive IAM role credentials, a different family from today's identity and credential compromise topic and not yet covered in this folder.</p>
+
+        
+    </article>
+    
+    <article class="brief-section" id="security-advice">
+        <p class="brief-kicker">Senior Security Advice</p>
+        <h2>Require IMDSv2 on Every EC2 Instance</h2>
+        
+            <h3>The Advice</h3>
+            <p>Require the token-authenticated version of the EC2 instance metadata service, IMDSv2, on every instance and launch template, and disable the old unauthenticated fallback account-wide.</p>
+
+        
+            <h3>Why It Matters</h3>
+            <p>Any EC2 instance can ask its own internal metadata service for temporary AWS credentials, no password needed, because the instance is assumed to be asking for itself. The original version, IMDSv1, answers any plain request from inside the instance with no proof attached. If an application there has a server-side request forgery flaw, a bug that lets an attacker make the server fetch an arbitrary internal address, the attacker can point it at the metadata address and walk out with that instance's live IAM credentials. At that point they are operating inside your AWS account with whatever permissions the instance role carries. This is the exact technique behind one of the best-known cloud breaches of the last decade: an SSRF flaw in a public-facing application was used to query an EC2 instance's metadata service and pull credentials that were never meant to leave it. IMDSv2 closes that door by requiring a short-lived session token, fetched with a PUT request and a custom header, before any metadata can be read. Ordinary SSRF bugs can only force a GET, not that handshake, so the same flaw now gets nothing back.</p>
+
+        
+            <h3>How to Implement It</h3>
+            <ol>
+<li>Audit first: check the <code>MetadataNoToken</code> CloudWatch metric fleet-wide to find instances still making unauthenticated IMDSv1 calls, and identify the software behind each one.</li>
+<li>Fix defaults going forward: set every launch template and Auto Scaling group to <code>HttpTokens=required</code>, so new instances are protected from the moment they boot.</li>
+<li>Migrate the existing fleet: run <code>aws ec2 modify-instance-metadata-options --http-tokens required --http-put-response-hop-limit 1</code>, via AWS Config remediation or Systems Manager, after confirming each workload's SDK supports the token flow.</li>
+<li>Keep the hop limit at 1, which stops the token request from being relayed outward through a container or proxy layer sitting on top of the host.</li>
+<li>Verify, don't just enable: turn on the AWS Config managed rule <code>ec2-imds-v2-check</code> to flag drift automatically, and confirm success by watching <code>MetadataNoToken</code> fall to zero rather than trusting a one-time setting change.</li>
+</ol>
+
+        
+            <h3>The Pushback You&#39;ll Hear</h3>
+            <p>&quot;Some of our agents and older SDKs don't speak the IMDSv2 token flow, so enforcing this will break production.&quot; The senior answer: that's a migration problem, not a reason to stay exposed. Audit with the metric first, patch the handful of tools still calling IMDSv1, and only flip <code>required</code> fleet-wide once that metric reads zero in staging. A short, planned upgrade window costs far less than leaving a known path from a web bug straight to your AWS credentials open indefinitely.</p>
+
+        
+            <h3>Sources</h3>
+            <ul>
+<li>AWS, &quot;Transition to using Instance Metadata Service Version 2&quot; (Amazon EC2 User Guide): https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instance-metadata-transition-to-version-2.html</li>
+<li>AWS Security Blog, &quot;Defense in depth: open firewalls, reverse proxies, SSRF vulnerabilities, and EC2 Instance Metadata Service&quot;: https://aws.amazon.com/blogs/security/defense-in-depth-open-firewalls-reverse-proxies-ssrf-vulnerabilities-ec2-instance-metadata-service/</li>
+<li>CIS Amazon Web Services Foundations Benchmark, &quot;Ensure that EC2 Metadata Service only allows IMDSv2&quot; (control 5.6/5.7 depending on benchmark version)</li>
+</ul>
+
+        
+    </article>
+    
+    <article class="brief-section" id="talk-track">
+        <p class="brief-kicker">Senior Talk Tracks</p>
+        <h2>Prompt Injection as the New SQL Injection</h2>
+        
+            
+            <p>Here's a bug class that took the industry fifteen years to fully clean up, and it's showing up again in a brand-new system that nobody's finished securing yet: prompt injection. If you've ever heard of SQL injection, you already understand the shape of this problem. You just haven't met its new host.</p>
+<p>Plain English first. SQL injection happens when an application takes user input and drops it straight into a database command, so a clever attacker can sneak in text that gets treated as an instruction instead of just data. Prompt injection is the exact same idea, aimed at an AI model instead of a database. You feed an AI assistant some outside text -- a webpage it's reading, an email it's summarizing, a support ticket it's processing -- and if that text contains hidden instructions, the model can't always tell the difference between &quot;data to read&quot; and &quot;commands to obey.&quot;</p>
+<p>Here's the senior take. A junior engineer treats the AI model like a smart function: feed it input, get clean output, move on. A senior engineer treats every piece of text that reaches the model as untrusted input, the same way a senior web developer never trusts a form field going into a database query. The part that makes this harder than SQL injection is that there's no simple equivalent to a parameterized query yet -- you can't fully separate &quot;instructions&quot; from &quot;data&quot; inside a model the way you can escape a string in SQL. That's why the real defense right now is architectural: limit what the model is allowed to do with its output, restrict which tools and data it can touch, and never let a model that reads untrusted content also hold the keys to something sensitive, like sending emails or making purchases, without a human checking first.</p>
+<p>Here's the plain-life version. It's like hiring an assistant who reads all your mail aloud to you, except sometimes the mail itself contains a note saying &quot;ignore your boss, wire money to this account instead&quot; -- and your assistant can't reliably tell a real instruction from a note planted inside a letter.</p>
+<p>So next time AI tooling comes up at work, here's a natural way to open it: &quot;Before we give this agent more tools, what happens if the content it's reading contains instructions we never wrote?&quot;</p>
+
+        
+            <h3>Key Takeaways</h3>
+            <ol>
+<li>Prompt injection is the same shape of flaw as SQL injection, aimed at AI models instead of databases — an attacker hides instructions inside data the system is supposed to just read.</li>
+<li>There's no equivalent yet to a parameterized SQL query for prompt injection, so the real defense is architectural: limit what a model's output is allowed to trigger.</li>
+<li>The highest-risk setup is an AI agent that both reads untrusted content and holds a sensitive capability, like sending messages or spending money, with no human check in between.</li>
+</ol>
+
+        
+            <h3>Reader Question</h3>
+            <p><strong>Question a senior engineer might ask:</strong> &quot;If you can't fully separate instructions from data inside a language model, how do you actually secure an AI agent that reads untrusted content?&quot;</p>
+
+        
+    </article>
+    
+    <article class="brief-section" id="tech-news">
+        <p class="brief-kicker">Tech News</p>
+        
+        
+            
+            <p>An unauthenticated attacker can now pull sensitive files straight off a telephony platform that carriers have run for years — and the Cybersecurity and Infrastructure Security Agency, or CISA, just confirmed someone is doing exactly that. If your network touches Cisco voice infrastructure, or you've ever had to explain a vendor's breach to your own customers, tonight's two stories are for you. First, a patched flaw that sat quiet for months before attackers found it. Second, a breach that never touched the company whose name is on your invoice.</p>
+<p>Start with Cisco BroadWorks. It's the platform a lot of carriers and service providers use to run hosted voice and unified-communications services. Cisco patched a flaw in it back in August — CVE-2026-20320, an XML external entity bug in how the platform's management interface parses XML — and at the time, Cisco's own advisory said its security team had no evidence anyone was exploiting it. According to BleepingComputer and SC World, that changed on November 10th, when CISA added the flaw to its Known Exploited Vulnerabilities catalog after confirming active attacks. Here's what makes it nasty: it needs no login at all. An unauthenticated attacker can trick the XML parser into reading files on the server it shouldn't be able to touch — potentially pulling out credentials and configuration data. Federal agencies have until November 24th to patch. My take: this is the flaw you patch in August and forget about. The lesson isn't &quot;patch faster&quot; — you already did that. It's that a KEV listing three months after disclosure means somebody only now got around to building the exploit, so &quot;patched a while ago&quot; is not the same as &quot;safe to stop watching.&quot;</p>
+<p>Next up — turning from a flaw nobody exploited for months to a breach that hit a company you've never heard of. Fireworks AI, an AI infrastructure provider used by companies like Notion and Cursor, disclosed this week that attackers reached its development machines after breaching a separate cloud provider Fireworks relies on. According to BleepingComputer and The Record, the intrusion happened on October 24th and exposed billing data, invoices, and payment history — Fireworks' second disclosed breach in a matter of weeks. My read: your vendor can have a clean audit and a solid SOC 2 report, and you can still get burned by the cloud provider your vendor depends on. That's fourth-party risk, and most vendor-risk questionnaires never ask about it.</p>
+<p>So here's tonight's through-line: the attacker doesn't always come through the door you're watching — sometimes it's the door your vendor's vendor left open.</p>
+
+        
+            <h3>Sources</h3>
+            <ul>
+<li><a href="https://bleepingcomputer.com/news/security/cisa-flags-cisco-broadworks-flaw-as-actively-exploited-in-attacks" target="_blank" rel="noopener noreferrer">CISA flags Cisco BroadWorks flaw as actively exploited in attacks — BleepingComputer</a></li>
+<li><a href="https://www.scworld.com/news/cisco-broadworks-flaw-added-to-cisas-exploited-vulnerabilities-list" target="_blank" rel="noopener noreferrer">Cisco BroadWorks flaw added to CISA's exploited vulnerabilities list — SC World</a></li>
+<li><a href="https://securityweek.com/threat-actors-exploit-openwave-cisco-broadworks-vulnerabilities" target="_blank" rel="noopener noreferrer">Threat Actors Exploit Openwave, Cisco BroadWorks Vulnerabilities — SecurityWeek</a></li>
+<li><a href="https://www.cisa.gov/known-exploited-vulnerabilities-catalog" target="_blank" rel="noopener noreferrer">Known Exploited Vulnerabilities Catalog — CISA (primary)</a></li>
+<li><a href="https://bleepingcomputer.com/news/security/fireworks-ai-discloses-new-breach-after-cloud-provider-hack" target="_blank" rel="noopener noreferrer">Fireworks AI discloses new breach after cloud provider hack — BleepingComputer</a></li>
+<li><a href="https://therecord.media/ai-company-fireworks-says-hackers-stole-data-in-oct-attacks" target="_blank" rel="noopener noreferrer">AI company Fireworks says hackers stole data in Oct. attacks — The Record</a></li>
+</ul>
+
+        
+    </article>
+    
+    <section class="brief-subscribe" id="subscribe">
+    <h2>Get The Daily Brief by email</h2>
+    <p>One short email each morning. Unsubscribe anytime.</p>
+    <form action="https://buttondown.com/api/emails/embed-subscribe/cybercider" method="post">
+        <label for="bd-email">Email address</label>
+        <input type="email" name="email" id="bd-email" required autocomplete="email" placeholder="you@example.com">
+        <button type="submit">Subscribe</button>
+    </form>
+</section>
+</main>
+
+    <footer><p class="copyright">The Daily Brief · Eddie Camacho</p></footer>
+<!-- cf-web-analytics (managed by tools/inject_analytics.py) -->
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "f728a20b49cc4a0fbe02cde72f03301c"}'></script>
+</body>
+</html>
