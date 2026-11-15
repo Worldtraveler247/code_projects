@@ -113,6 +113,9 @@
   .keys{color:var(--dim);font-size:12.5px;margin:10px 0;line-height:1.7}
   .keys b{color:var(--amber);font-weight:400}
   .keys .n{color:#fff}
+  .hbtn.qreset{color:#ff7b72;border-color:#5a2b31}
+  .hbtn.qreset:hover{background:#221418;color:#ff7b72;border-color:#ff7b72}
+  .hbtn.qreset.armed{background:#3a1d22;color:#fff;border-color:#ff7b72}
   .feedback{border:1px solid var(--line);padding:11px 14px;margin:12px 0;font-size:13.5px;line-height:1.65;display:none;background:#050505}
   .feedback.show{display:block}
   .feedback.bad{border-color:var(--bad);color:#f0c8c8}
@@ -4255,7 +4258,7 @@ function renderStage(){
       + "<div class='statusline'><span class='mode'>-- INSERT --</span><span>" + f.path + "</span><span class='pos' id='pos" + fi + "'>Ln 1, Col 1</span></div><div class='tablist' id='tablist" + fi + "'></div></div>";
   });
   h += "<div class='keys'><b>[Ctrl+Enter / F2]</b> check &nbsp;<b>[Alt+↑/↓]</b> switch file &nbsp;<b>[Alt+→]</b> next question &nbsp;<b>[Alt+←]</b> previous &nbsp;<b>[Tab]</b> complete path (shell-style) · in files: indent · <b>[Shift+Tab]</b> outdent · <b>[Ctrl+C]</b> clear the shell (^C) &nbsp;::&nbsp; attempts: <span class='n' id='att'>" + (state.attempts[state.cur] || 0) + "</span></div>";
-  h += "<div class='helprow'><button class='hbtn' id='checkbtn'>▶ Check</button><button class='hbtn' id='hintbtn'>💡 Hint</button><button class='hbtn' id='revealbtn'>👁 Reveal answer</button><button class='hbtn' id='listenbtn'>🔊 Listen</button><button class='hbtn' id='deepbtn'>🎙 Deep dive</button><button class='hbtn' id='videobtn'>🎬 Lesson video</button><button class='hbtn' id='nextbtn'>Next ▸</button></div>";
+  h += "<div class='helprow'><button class='hbtn' id='checkbtn'>▶ Check</button><button class='hbtn' id='hintbtn'>💡 Hint</button><button class='hbtn' id='revealbtn'>👁 Reveal answer</button><button class='hbtn' id='listenbtn'>🔊 Listen</button><button class='hbtn' id='deepbtn'>🎙 Deep dive</button><button class='hbtn' id='videobtn'>🎬 Lesson video</button><button class='hbtn' id='nextbtn'>Next ▸</button><button class='hbtn qreset' id='qresetbtn' title='Start this question over: clears its typed text, its attempts counter and its pass mark. Other questions are untouched.'>↺ Reset question</button></div>";
   h += "<div class='audiobox' id='audiobox'></div>";
   h += "<div class='audiobox' id='deepbox'></div>";
   h += "<div class='audiobox' id='videobox'></div>";
@@ -4273,6 +4276,7 @@ function renderStage(){
   });
   if (q.cmd) { wireCmd(0); renderTranscript(0); } else { q.files.forEach((f, fi) => { wireEditor(fi); gutterSync(fi); caretSync(fi); syntaxSync(fi); if (f.preset && saved[fi] === undefined) { const ta = gel("ta" + fi); if (ta) { const end = ta.value.length; try { ta.setSelectionRange(end, end); } catch(e){} caretSync(fi); } } }); }
   updateNextline();
+  wireQReset();
   if (state.done.has(state.cur)) gel("ex").className = "explain show";
   wireHelp(q);
 }
@@ -4400,6 +4404,39 @@ if (rstBtn) rstBtn.addEventListener("click", () => {
   rstDisarm();
   state.done.clear(); state.finished = false; qtReset(); persistProgress(); renderNav(); renderStage();
 });
+
+// Per-question reset: start the CURRENT step from new — attempts counter,
+// typed texts, pass mark and terminal session for this step only.
+function resetQuestion(){
+  const i = state.cur;
+  delete state.attempts[i];
+  delete state.texts[i];
+  state.done.delete(i);
+  state.finished = false;
+  delete termStore[i];
+  if (qt.sec === sectionOf(QUESTIONS[i].id)) qtReset(); // this section's pace clock starts over too
+  persistProgress();
+  renderNav();
+  renderStage();
+  focusEditor(0);
+}
+let qrArmed = false, qrTimer = null;
+function wireQReset(){
+  const b = gel("qresetbtn"); if (!b) return;
+  b.addEventListener("click", () => {
+    if (!qrArmed) {
+      qrArmed = true;
+      b.textContent = "↺ Tap again to confirm reset";
+      b.classList.add("armed");
+      if (qrTimer) clearTimeout(qrTimer);
+      qrTimer = setTimeout(() => { qrArmed = false; const b2 = gel("qresetbtn"); if (b2) { b2.textContent = "↺ Reset question"; b2.classList.remove("armed"); } }, 8000);
+      return;
+    }
+    if (qrTimer) { clearTimeout(qrTimer); qrTimer = null; }
+    qrArmed = false;
+    resetQuestion();
+  });
+}
 
 renderNav();
 renderStage();
