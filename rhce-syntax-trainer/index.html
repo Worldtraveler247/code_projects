@@ -381,7 +381,7 @@ const QUESTIONS = [
 {
   id:"Q3.1", title:"Run packages.yml", sub:"Syntax-check, then run it", cmd:true,
   files:[{ path:"shell", lang:"cmd" }],
-  spec:`<b>3.1. Run the playbook.</b><br>• On the controller, from <code>~/ansible</code>: first run a <b>syntax check</b> on <code>packages.yml</code>, and only if it passes, run the playbook itself.<br>• Chain both steps in <b>one command line</b>, so the run happens only when the check succeeds.<br>• Type the command at the prompt and press <b>Enter</b> to run it.`,
+  spec:`<b>3.1. Run the playbook.</b><br>• On the controller, from <code>~/ansible</code>: first run a <b>syntax check</b> on <code>packages.yml</code>, and only if it passes, run the playbook itself.<br>• Chain both steps in <b>one command line</b>, so the run happens only when the check succeeds.<br>• Type the command at the prompt and press <b>Enter</b> to run it.<br>• <b>Navigator works too:</b> <code>ansible-navigator run packages.yml -m stdout --syntax-check && ansible-navigator run packages.yml -m stdout</code> — navigator passes --syntax-check through to the same engine, and Q1's ansible-navigator.yml already sets stdout mode, the execution environment and artifacts off.`,
   checks:[[
     { re:/ansible-playbook\s+packages\.yml\s+--syntax-check/, msg:"First step: ansible-playbook packages.yml --syntax-check" },
     { re:/&&/, msg:"The two steps are chained with &&" },
@@ -681,7 +681,7 @@ const QUESTIONS = [
 {
   id:"Q5.8", title:"Run timesync.yml", sub:"ansible-playbook timesync.yml", cmd:true,
   files:[{ path:"shell", lang:"cmd" }],
-  spec:`<b>5.8. Run the playbook.</b><br>• From <code>~/ansible</code>, run <code>timesync.yml</code> with ansible-playbook.<br>• No sudo — you are student, and the play already becomes root on the managed hosts itself.<br>• Type the command at the prompt and press <b>Enter</b> to run it.`,
+  spec:`<b>5.8. Run the playbook.</b><br>• From <code>~/ansible</code>, run <code>timesync.yml</code> with ansible-playbook.<br>• No sudo — you are student, and the play already becomes root on the managed hosts itself.<br>• Type the command at the prompt and press <b>Enter</b> to run it.<br>• <b>Navigator works too:</b> <code>ansible-navigator run timesync.yml</code> runs the same playbook in the real environment — Q1's ansible-navigator.yml already sets stdout mode, the execution environment and artifacts off, so the plain form just works. Variations are accepted here as well: <code>-m stdout</code>, <code>--pae false</code>, <code>--ee false</code>, <code>--pull-policy missing</code>, <code>--eei creator-ee:v0.22.0 --pa --tls-verify=false</code>, flags before or after the file.`,
   checks:[[
     { re:/ansible-playbook\s+timesync\.yml/, msg:"The command is ansible-playbook timesync.yml" },
     { fn:t => /ansible-playbook\s+timesync\.yml/.test(t) && !/sudo/.test(t), msg:"No sudo — playbooks run as student; become inside the play does the privilege work" }
@@ -969,7 +969,7 @@ const QUESTIONS = [
 {
   id:"Q7.6", title:"Run role.yml", sub:"ansible-playbook role.yml", cmd:true,
   files:[{ path:"shell", lang:"cmd" }],
-  spec:`<b>7.6. Run the playbook.</b><br>• From <code>~/ansible</code>, run <code>role.yml</code> with ansible-playbook.<br>• No sudo — the play handles privilege itself.<br>• Type the command at the prompt and press <b>Enter</b> to run it.`,
+  spec:`<b>7.6. Run the playbook.</b><br>• From <code>~/ansible</code>, run <code>role.yml</code> with ansible-playbook.<br>• No sudo — the play handles privilege itself.<br>• Type the command at the prompt and press <b>Enter</b> to run it.<br>• <b>Navigator works too:</b> <code>ansible-navigator run role.yml</code> runs the same playbook in the real environment — Q1's ansible-navigator.yml already sets stdout mode, the execution environment and artifacts off, so the plain form just works. Variations are accepted here as well: <code>-m stdout</code>, <code>--pae false</code>, <code>--ee false</code>, <code>--pull-policy missing</code>, <code>--eei creator-ee:v0.22.0 --pa --tls-verify=false</code>, flags before or after the file.`,
   checks:[[
     { re:/ansible-playbook\s+role\.yml/, msg:"The command is ansible-playbook role.yml" },
     { fn:t => /ansible-playbook\s+role\.yml/.test(t) && !/sudo/.test(t), msg:"No sudo — playbooks run as student; become inside the play does the privilege work" }
@@ -1164,7 +1164,7 @@ const QUESTIONS = [
 {
   id:"Q8.7", title:"Run roles.yml", sub:"ansible-playbook roles.yml", cmd:true,
   files:[{ path:"shell", lang:"cmd" }],
-  spec:`<b>8.7. Run the playbook.</b><br>• From <code>~/ansible</code>, run <code>roles.yml</code> with ansible-playbook.<br>• No sudo — the play handles privilege itself.<br>• Type the command at the prompt and press <b>Enter</b> to run it.`,
+  spec:`<b>8.7. Run the playbook.</b><br>• From <code>~/ansible</code>, run <code>roles.yml</code> with ansible-playbook.<br>• No sudo — the play handles privilege itself.<br>• Type the command at the prompt and press <b>Enter</b> to run it.<br>• <b>Navigator works too:</b> <code>ansible-navigator run roles.yml</code> runs the same playbook in the real environment — Q1's ansible-navigator.yml already sets stdout mode, the execution environment and artifacts off, so the plain form just works. Variations are accepted here as well: <code>-m stdout</code>, <code>--pae false</code>, <code>--ee false</code>, <code>--pull-policy missing</code>, <code>--eei creator-ee:v0.22.0 --pa --tls-verify=false</code>, flags before or after the file.`,
   checks:[[
     { re:/ansible-playbook\s+roles\.yml/, msg:"The command is ansible-playbook roles.yml" },
     { fn:t => /ansible-playbook\s+roles\.yml/.test(t) && !/sudo/.test(t), msg:"No sudo — playbooks run as student; become inside the play does the privilege work" }
@@ -1266,7 +1266,7 @@ const QUESTIONS = [
 {
   id:"Q9.0", title:"Precheck for Q9 — a Reference Guide, Not a Script", sub:"Reference guide: 8 standalone check commands before lvm.yml",
   files:[{ path:"shell", lang:"bash" }],
-  spec:`<b>9.0. Precheck — a reference guide, run before Q9.</b><br>• <b>This is not a script.</b> There is no file to create, save, or run: in the exam you run each command on its own at the terminal, read what it tells you, and only then start Q9. Eight separate checks, not one program.<br>• Here, type the eight commands, one per line, to learn what each one checks, then press <b>Ctrl+Enter</b>.<br>• 1. Will the modules load?<br>• 2. Do the nodes have LVM tools?<br>• 3. What will the facts say?<br>• 4. Predict each host's path from vg_free.<br>• 5. Is there an old data LV?<br>• 6. Is the device already formatted or mounted?<br>• 7. Which disk is free? (practice setup only)<br>• 8. Syntax only.`,
+  spec:`<b>9.0. Precheck — a reference guide, run before Q9.</b><br>• <b>This is not a script.</b> There is no file to create, save, or run: in the exam you run each command on its own at the terminal, read what it tells you, and only then start Q9. Eight separate checks, not one program.<br>• Here, type the eight commands, one per line, to learn what each one checks, then press <b>Ctrl+Enter</b>.<br>• 1. Will the modules load?<br>• 2. Do the nodes have LVM tools?<br>• 3. What will the facts say?<br>• 4. Predict each host's path from vg_free.<br>• 5. Is there an old data LV?<br>• 6. Is the device already formatted or mounted?<br>• 7. Which disk is free? (practice setup only)<br>• 8. Syntax only.<br>• Line 8 can also be Navigator: <code>ansible-navigator run lvm.yml -m stdout --syntax-check</code> — navigator passes --syntax-check through to the same engine.`,
   checks:[[
     { re:/ansible-galaxy\s+collection\s+list\s+community\.general/, msg:"1. ansible-galaxy collection list community.general" },
     { re:/ansible\s+all\s+-b\s+-m\s+ansible\.builtin\.command\s+-a\s*['"]rpm\s+-q\s+lvm2['"]/, msg:"2. ansible all -b -m ansible.builtin.command -a 'rpm -q lvm2'" },
@@ -1335,7 +1335,7 @@ const QUESTIONS = [
 {
   id:"Q9.1", title:"Run lvm.yml", sub:"ansible-playbook lvm.yml", cmd:true,
   files:[{ path:"shell", lang:"cmd" }],
-  spec:`<b>9.1. Run the playbook.</b><br>• Run <code>lvm.yml</code> with ansible-playbook and read the recap host by host — each host tells you which path it took.<br>• Type the command and press <b>Enter</b>.`,
+  spec:`<b>9.1. Run the playbook.</b><br>• Run <code>lvm.yml</code> with ansible-playbook and read the recap host by host — each host tells you which path it took.<br>• Type the command and press <b>Enter</b>.<br>• <b>Navigator works too:</b> <code>ansible-navigator run lvm.yml</code> runs the same playbook in the real environment — Q1's ansible-navigator.yml already sets stdout mode, the execution environment and artifacts off, so the plain form just works. Variations are accepted here as well: <code>-m stdout</code>, <code>--pae false</code>, <code>--ee false</code>, <code>--pull-policy missing</code>, <code>--eei creator-ee:v0.22.0 --pa --tls-verify=false</code>, flags before or after the file.`,
   checks:[[
     { re:/ansible-playbook\s+lvm\.yml/, msg:"ansible-playbook lvm.yml" },
     { fn:t => !/sudo/.test(t), msg:"No sudo on the run command" }
@@ -1463,7 +1463,7 @@ const QUESTIONS = [
 {
   id:"Q10.3", title:"Run hosts.yml", sub:"ansible-playbook hosts.yml", cmd:true,
   files:[{ path:"shell", lang:"cmd" }],
-  spec:`<b>10.3. Run the playbook.</b><br>• Run <code>hosts.yml</code> with ansible-playbook: every host gathers facts, and the task writes only on dev, skipping the rest.<br>• Type the command and press <b>Enter</b>.`,
+  spec:`<b>10.3. Run the playbook.</b><br>• Run <code>hosts.yml</code> with ansible-playbook: every host gathers facts, and the task writes only on dev, skipping the rest.<br>• Type the command and press <b>Enter</b>.<br>• <b>Navigator works too:</b> <code>ansible-navigator run hosts.yml</code> runs the same playbook in the real environment — Q1's ansible-navigator.yml already sets stdout mode, the execution environment and artifacts off, so the plain form just works. Variations are accepted here as well: <code>-m stdout</code>, <code>--pae false</code>, <code>--ee false</code>, <code>--pull-policy missing</code>, <code>--eei creator-ee:v0.22.0 --pa --tls-verify=false</code>, flags before or after the file.`,
   checks:[[
     { re:/ansible-playbook\s+hosts\.yml/, msg:"ansible-playbook hosts.yml" },
     { fn:t => !/sudo/.test(t), msg:"No sudo on the run command" }
@@ -1562,7 +1562,7 @@ const QUESTIONS = [
 {
   id:"Q11.1", title:"Run issues.yml", sub:"ansible-playbook issues.yml", cmd:true,
   files:[{ path:"shell", lang:"cmd" }],
-  spec:`<b>11.1. Run the playbook.</b><br>• Run <code>issues.yml</code> with ansible-playbook and read the recap host by host — serverb's numbers are the interesting ones.<br>• Type the command and press <b>Enter</b>.`,
+  spec:`<b>11.1. Run the playbook.</b><br>• Run <code>issues.yml</code> with ansible-playbook and read the recap host by host — serverb's numbers are the interesting ones.<br>• Type the command and press <b>Enter</b>.<br>• <b>Navigator works too:</b> <code>ansible-navigator run issues.yml</code> runs the same playbook in the real environment — Q1's ansible-navigator.yml already sets stdout mode, the execution environment and artifacts off, so the plain form just works. Variations are accepted here as well: <code>-m stdout</code>, <code>--pae false</code>, <code>--ee false</code>, <code>--pull-policy missing</code>, <code>--eei creator-ee:v0.22.0 --pa --tls-verify=false</code>, flags before or after the file.`,
   checks:[[
     { re:/ansible-playbook\s+issues\.yml/, msg:"ansible-playbook issues.yml" },
     { fn:t => !/sudo/.test(t), msg:"No sudo on the run command" }
@@ -1598,7 +1598,7 @@ const QUESTIONS = [
 {
   id:"Q11.3", title:"Run again: idempotency trap", sub:"serverb changed=2, every time", cmd:true,
   files:[{ path:"shell", lang:"cmd" }],
-  spec:`<b>11.3. Run it a second time.</b><br>• Run <code>issues.yml</code> again and compare the recap with the first run, host by host.<br>• Type the command and press <b>Enter</b>.`,
+  spec:`<b>11.3. Run it a second time.</b><br>• Run <code>issues.yml</code> again and compare the recap with the first run, host by host.<br>• Type the command and press <b>Enter</b>.<br>• <b>Navigator works too:</b> <code>ansible-navigator run issues.yml</code> runs the same playbook in the real environment — Q1's ansible-navigator.yml already sets stdout mode, the execution environment and artifacts off, so the plain form just works. Variations are accepted here as well: <code>-m stdout</code>, <code>--pae false</code>, <code>--ee false</code>, <code>--pull-policy missing</code>, <code>--eei creator-ee:v0.22.0 --pa --tls-verify=false</code>, flags before or after the file.`,
   checks:[[
     { re:/ansible-playbook\s+issues\.yml/, msg:"ansible-playbook issues.yml" },
     { fn:t => !/sudo/.test(t), msg:"No sudo on the run command" }
@@ -1668,7 +1668,7 @@ const QUESTIONS = [
 {
   id:"Q12.1", title:"Run webcontent.yml", sub:"ansible-playbook webcontent.yml", cmd:true,
   files:[{ path:"shell", lang:"cmd" }],
-  spec:`<b>12.1. Run the playbook.</b><br>• Run <code>webcontent.yml</code> with ansible-playbook. Only servera is in dev, so only servera changes.<br>• Type the command and press <b>Enter</b>.`,
+  spec:`<b>12.1. Run the playbook.</b><br>• Run <code>webcontent.yml</code> with ansible-playbook. Only servera is in dev, so only servera changes.<br>• Type the command and press <b>Enter</b>.<br>• <b>Navigator works too:</b> <code>ansible-navigator run webcontent.yml</code> runs the same playbook in the real environment — Q1's ansible-navigator.yml already sets stdout mode, the execution environment and artifacts off, so the plain form just works. Variations are accepted here as well: <code>-m stdout</code>, <code>--pae false</code>, <code>--ee false</code>, <code>--pull-policy missing</code>, <code>--eei creator-ee:v0.22.0 --pa --tls-verify=false</code>, flags before or after the file.`,
   checks:[[
     { re:/ansible-playbook\s+webcontent\.yml/, msg:"ansible-playbook webcontent.yml" },
     { fn:t => !/sudo/.test(t), msg:"No sudo on the run command" }
@@ -1812,7 +1812,7 @@ const QUESTIONS = [
 {
   id:"Q13.1", title:"Run hwreport.yml", sub:"ansible-playbook hwreport.yml", cmd:true,
   files:[{ path:"shell", lang:"cmd" }],
-  spec:`<b>13.1. Run the playbook.</b><br>• Run <code>hwreport.yml</code> with ansible-playbook. All four hosts download their own template and fill in their own facts.<br>• Type the command and press <b>Enter</b>.`,
+  spec:`<b>13.1. Run the playbook.</b><br>• Run <code>hwreport.yml</code> with ansible-playbook. All four hosts download their own template and fill in their own facts.<br>• Type the command and press <b>Enter</b>.<br>• <b>Navigator works too:</b> <code>ansible-navigator run hwreport.yml</code> runs the same playbook in the real environment — Q1's ansible-navigator.yml already sets stdout mode, the execution environment and artifacts off, so the plain form just works. Variations are accepted here as well: <code>-m stdout</code>, <code>--pae false</code>, <code>--ee false</code>, <code>--pull-policy missing</code>, <code>--eei creator-ee:v0.22.0 --pa --tls-verify=false</code>, flags before or after the file.`,
   checks:[[
     { re:/ansible-playbook\s+hwreport\.yml/, msg:"ansible-playbook hwreport.yml" },
     { fn:t => !/sudo/.test(t), msg:"No sudo on the run command" }
@@ -2035,7 +2035,7 @@ const QUESTIONS = [
 {
   id:"Q15.2", title:"Run users.yml", sub:"With --vault-password-file", cmd:true,
   files:[{ path:"shell", lang:"cmd" }],
-  spec:`<b>15.2. Run the playbook.</b><br>• Run <code>users.yml</code> with ansible-playbook, passing the vault password file — ansible.cfg does not set one, and locker.yml cannot be decrypted without it.<br>• Type the command and press <b>Enter</b>.`,
+  spec:`<b>15.2. Run the playbook.</b><br>• Run <code>users.yml</code> with ansible-playbook, passing the vault password file — ansible.cfg does not set one, and locker.yml cannot be decrypted without it.<br>• Type the command and press <b>Enter</b>.<br>• <b>Navigator works too:</b> <code>ansible-navigator run users.yml --vault-password-file secret.txt</code> — navigator passes the vault flag through to the same engine; <code>-m stdout</code>, <code>--pae false</code> and <code>--ee false</code> are accepted as well.`,
   checks:[[
     { re:/ansible-playbook\s+users\.yml\s+--vault-password-file\s+secret\.txt/, msg:"ansible-playbook users.yml --vault-password-file secret.txt" },
     { fn:t => !/sudo/.test(t), msg:"No sudo on the run command" }
@@ -2278,7 +2278,7 @@ ansible all -m ansible.builtin.yum_repository -a "name='AppStream' description='
         state: latest
       when: inventory_hostname in groups['dev']
 ` }] },
-"Q3.1": { hint:`One line, two ansible-playbook calls to the same file: the first adds --syntax-check, then && joins it to the plain run.`,
+"Q3.1": { hint:`One line, two ansible-playbook calls to the same file: the first adds --syntax-check, then && joins it to the plain run. Navigator chain works too: ansible-navigator run packages.yml -m stdout --syntax-check && ansible-navigator run packages.yml -m stdout.`,
   answer:[{ path:"shell", text:"ansible-playbook packages.yml --syntax-check && ansible-playbook packages.yml" }] },
 "Q3.2": { hint:`ansible dev -m ansible.builtin.command -a '...' — inside the quotes goes a dnf command that lists groups, with the --installed flag (two hyphens).`,
   answer:[{ path:"shell", text:"ansible dev -m ansible.builtin.command -a 'dnf group list --installed'" }] },
@@ -2319,7 +2319,7 @@ collections:
   roles:
     - rhel-system-roles.timesync
 ` }] },
-"Q5.8": { hint:`A plain ansible-playbook run of timesync.yml — no sudo; the play becomes root on the hosts itself.`,
+"Q5.8": { hint:`A plain ansible-playbook run of timesync.yml — no sudo; the play becomes root on the hosts itself. Navigator works too: ansible-navigator run timesync.yml — plain, or with -m stdout, --pae false, --ee false, --pull-policy missing; Q1's config already sets stdout mode, the EE and artifacts off.`,
   answer:[{ path:"shell", text:"ansible-playbook timesync.yml" }] },
 "Q5.9": { hint:`ansible all, the command module, and an -a argument that greps for the word pool in /etc/chrony.conf — it matches inside the server line's hostname.`,
   answer:[{ path:"shell", text:"ansible all -m ansible.builtin.command -a 'grep pool /etc/chrony.conf'" }] },
@@ -2388,7 +2388,7 @@ collections:
       ansible.builtin.include_role:
         name: apache
 ` }] },
-"Q7.6": { hint:`A plain ansible-playbook run of role.yml — no sudo; the play becomes root itself.`,
+"Q7.6": { hint:`A plain ansible-playbook run of role.yml — no sudo; the play becomes root itself. Navigator works too: ansible-navigator run role.yml — plain, or with -m stdout, --pae false, --ee false, --pull-policy missing; Q1's config already sets stdout mode, the EE and artifacts off.`,
   answer:[{ path:"shell", text:"ansible-playbook role.yml" }] },
 "Q7.7": { hint:`Two curls on one line, separated by a semicolon: http://serverb and http://serverc.`,
   answer:[{ path:"shell", text:"curl http://serverb; curl http://serverc" }] },
@@ -2435,7 +2435,7 @@ collections:
         state: enabled
       when: "'balancers' in group_names"
 ` }] },
-"Q8.7": { hint:`A plain ansible-playbook run of roles.yml — no sudo.`,
+"Q8.7": { hint:`A plain ansible-playbook run of roles.yml — no sudo. Navigator works too: ansible-navigator run roles.yml — plain, or with -m stdout, --pae false, --ee false, --pull-policy missing; Q1's config already sets stdout mode, the EE and artifacts off.`,
   answer:[{ path:"shell", text:"ansible-playbook roles.yml" }] },
 "Q8.8": { hint:`ansible balancers, the command module, and an -a argument that greps for the word server in /etc/haproxy/haproxy.cfg.`,
   answer:[{ path:"shell", text:"ansible balancers -m ansible.builtin.command -a 'grep server /etc/haproxy/haproxy.cfg'" }] },
@@ -2445,7 +2445,7 @@ collections:
   answer:[{ path:"shell", text:"curl -s http://serverb/hello.php | head -5; curl -s http://serverc/hello.php | head -5" }] },
 "Q8.11": { hint:`One line: a for loop over 1 2 3 4, and inside it a quiet curl to http://serverd.lab.example.com — the balancer's own address, no page name.`,
   answer:[{ path:"shell", text:"for i in 1 2 3 4; do curl -s http://serverd.lab.example.com; done" }] },
-"Q9.0": { hint:`Reference guide, not a script: eight standalone check commands, run one by one before Q9. Every ad hoc command takes -b — your ansible.cfg has become off. Six use the command module; the facts one uses the setup module with filter=ansible_lvm; the free-disk one is lsblk with -o NAME,SIZE,TYPE,FSTYPE,MOUNTPOINTS. The last line is the playbook's own --syntax-check, and there is no --check anywhere.`,
+"Q9.0": { hint:`Reference guide, not a script: eight standalone check commands, run one by one before Q9. Every ad hoc command takes -b — your ansible.cfg has become off. Six use the command module; the facts one uses the setup module with filter=ansible_lvm; the free-disk one is lsblk with -o NAME,SIZE,TYPE,FSTYPE,MOUNTPOINTS. The last line is the playbook's own --syntax-check, and there is no --check anywhere. Line 8 may be Navigator too: ansible-navigator run lvm.yml -m stdout --syntax-check.`,
   answer:[{ path:"shell", text:`ansible-galaxy collection list community.general
 ansible all -b -m ansible.builtin.command -a 'rpm -q lvm2'
 ansible all -b -m ansible.builtin.setup -a 'filter=ansible_lvm'
@@ -2488,7 +2488,7 @@ ansible-playbook lvm.yml --syntax-check
         fstype: ext4
         dev: /dev/yellowtail/data
 ` }] },
-"Q9.1": { hint:`A plain ansible-playbook run of lvm.yml — no sudo.`,
+"Q9.1": { hint:`A plain ansible-playbook run of lvm.yml — no sudo. Navigator works too: ansible-navigator run lvm.yml — plain, or with -m stdout, --pae false, --ee false, --pull-policy missing; Q1's config already sets stdout mode, the EE and artifacts off.`,
   answer:[{ path:"shell", text:"ansible-playbook lvm.yml" }] },
 "Q9.2": { hint:`ansible all with -b, the command module, and an -a argument running lvs on the yellowtail VG.`,
   answer:[{ path:"shell", text:"ansible all -b -m ansible.builtin.command -a 'lvs yellowtail'" }] },
@@ -2515,7 +2515,7 @@ ansible-playbook lvm.yml --syntax-check
         dest: /etc/myhosts
       when: inventory_hostname in groups['dev']
 ` }] },
-"Q10.3": { hint:`A plain ansible-playbook run of hosts.yml — no sudo.`,
+"Q10.3": { hint:`A plain ansible-playbook run of hosts.yml — no sudo. Navigator works too: ansible-navigator run hosts.yml — plain, or with -m stdout, --pae false, --ee false, --pull-policy missing; Q1's config already sets stdout mode, the EE and artifacts off.`,
   answer:[{ path:"shell", text:"ansible-playbook hosts.yml" }] },
 "Q10.4": { hint:`ansible dev, the command module, and an -a argument catting /etc/myhosts.`,
   answer:[{ path:"shell", text:"ansible dev -m ansible.builtin.command -a 'cat /etc/myhosts'" }] },
@@ -2545,11 +2545,11 @@ ansible-playbook lvm.yml --syntax-check
         content: Production
       when: inventory_hostname in groups['prod']
 ` }] },
-"Q11.1": { hint:`A plain ansible-playbook run of issues.yml — no sudo.`,
+"Q11.1": { hint:`A plain ansible-playbook run of issues.yml — no sudo. Navigator works too: ansible-navigator run issues.yml — plain, or with -m stdout, --pae false, --ee false, --pull-policy missing; Q1's config already sets stdout mode, the EE and artifacts off.`,
   answer:[{ path:"shell", text:"ansible-playbook issues.yml" }] },
 "Q11.2": { hint:`ansible all, the command module, and an -a argument catting /etc/issue. No -b needed — the banner is world-readable.`,
   answer:[{ path:"shell", text:"ansible all -m ansible.builtin.command -a 'cat /etc/issue'" }] },
-"Q11.3": { hint:`The same ansible-playbook run of issues.yml a second time — then read serverb's recap: changed=2 again.`,
+"Q11.3": { hint:`The same ansible-playbook run of issues.yml a second time — then read serverb's recap: changed=2 again. Navigator works too: ansible-navigator run issues.yml — plain, or with -m stdout, --pae false, --ee false, --pull-policy missing; Q1's config already sets stdout mode, the EE and artifacts off.`,
   answer:[{ path:"shell", text:"ansible-playbook issues.yml" }] },
 "Q12.0": { hint:`ansible dev, the command module, and an -a argument running ls -ld on /var/www/html — the directory the link will live inside.`,
   answer:[{ path:"shell", text:"ansible dev -m ansible.builtin.command -a 'ls -ld /var/www/html'" }] },
@@ -2580,7 +2580,7 @@ ansible-playbook lvm.yml --syntax-check
         path: /var/www/html/webdev
         force: true
 ` }] },
-"Q12.1": { hint:`A plain ansible-playbook run of webcontent.yml — no sudo.`,
+"Q12.1": { hint:`A plain ansible-playbook run of webcontent.yml — no sudo. Navigator works too: ansible-navigator run webcontent.yml — plain, or with -m stdout, --pae false, --ee false, --pull-policy missing; Q1's config already sets stdout mode, the EE and artifacts off.`,
   answer:[{ path:"shell", text:"ansible-playbook webcontent.yml" }] },
 "Q12.2": { hint:`ansible dev, the command module, ls -ld on both paths in one -a argument: /webdev first, then /var/www/html/webdev — no trailing slash on the link.`,
   answer:[{ path:"shell", text:"ansible dev -m ansible.builtin.command -a 'ls -ld /webdev /var/www/html/webdev'" }] },
@@ -2629,7 +2629,7 @@ ansible-playbook lvm.yml --syntax-check
         regexp: '^Size of disk device sdb'
         line: "Size of disk device sdb={{ ansible_devices['sdb']['size'] | default('NONE') }}"
 ` }] },
-"Q13.1": { hint:`A plain ansible-playbook run of hwreport.yml — no sudo.`,
+"Q13.1": { hint:`A plain ansible-playbook run of hwreport.yml — no sudo. Navigator works too: ansible-navigator run hwreport.yml — plain, or with -m stdout, --pae false, --ee false, --pull-policy missing; Q1's config already sets stdout mode, the EE and artifacts off.`,
   answer:[{ path:"shell", text:"ansible-playbook hwreport.yml" }] },
 "Q13.2": { hint:`ansible all with -b, the command module, and an -a argument catting /root/hwreport.txt — the -b matters, /root is root-only.`,
   answer:[{ path:"shell", text:"ansible all -b -m ansible.builtin.command -a 'cat /root/hwreport.txt'" }] },
@@ -2690,7 +2690,7 @@ pw_manager: Imamgr
       loop: "{{ users }}"
       when: item.job == 'manager' and inventory_hostname in groups['prod']
 ` }] },
-"Q15.2": { hint:`ansible-playbook users.yml with --vault-password-file secret.txt — without the flag, the vault cannot be decrypted and the run stops before task 1.`,
+"Q15.2": { hint:`ansible-playbook users.yml with --vault-password-file secret.txt — without the flag, the vault cannot be decrypted and the run stops before task 1. Navigator works too: ansible-navigator run users.yml --vault-password-file secret.txt (the vault flag passes through).`,
   answer:[{ path:"shell", text:"ansible-playbook users.yml --vault-password-file secret.txt" }] },
 "Q15.3": { hint:`ansible all, the command module, and an -a argument running id alice. No -b — id is a normal read.`,
   answer:[{ path:"shell", text:"ansible all -m ansible.builtin.command -a 'id alice'" }] },
