@@ -267,6 +267,59 @@ const QUESTIONS = [
   <div class="tie"><b>How it ties in:</b> every playbook you write from Q3 onward can be launched through navigator and will pick up this file automatically, because it lives in the project root next to <code>ansible.cfg</code>. Configuration first, content second — that's the exam's shape too.</div>`
 },
 {
+  id:"Q1.1", title:"Set Up the Inventory — Who Ansible Talks To: dev, test, prod, balancers, and webservers as a Child Group", sub:"Inventory file",
+  files:[{ path:"/home/student/ansible/inventory", lang:"ini" }],
+  spec:`<b>Task.</b> In the project directory <code>/home/student/ansible</code>, create the <code>inventory</code> file that tells Ansible which hosts exist and how they are grouped:
+  <br>• Group <code>dev</code> contains <code>servera</code>.
+  <br>• Group <code>test</code> contains <code>serverb</code>.
+  <br>• Group <code>prod</code> contains <code>serverb</code> and <code>serverc</code>.
+  <br>• Group <code>balancers</code> contains <code>serverd</code>.
+  <br>• Group <code>webservers</code> is a <b>child group</b> containing the <code>prod</code> group.`,
+  checks:[[
+    { re:/\[dev\]\s*\n\s*servera\b/, msg:"[dev] group containing servera" },
+    { re:/\[test\]\s*\n\s*serverb\b/, msg:"[test] group containing serverb" },
+    { re:/\[prod\][^\[]*?\bserverb\b/, msg:"[prod] group containing serverb" },
+    { re:/\[prod\][^\[]*?\bserverc\b/, msg:"[prod] group containing serverc" },
+    { re:/\[balancers\]\s*\n\s*serverd\b/, msg:"[balancers] group containing serverd" },
+    { re:/\[webservers:children\]\s*\n\s*prod\b/, msg:"[webservers:children] group containing prod" }
+  ]],
+  explain:`<h2>✅ Q1.1 complete — what you just did</h2>
+  <p>You wrote the <b>inventory</b>: Ansible's phone book. Before any playbook runs, Ansible reads this file to learn which machines exist and which <b>groups</b> they belong to, and every play's <code>hosts:</code> line is just a group name taken from this file.</p>
+  <h4>How to read it</h4>
+  <p>• A <code>[name]</code> header opens a group, and each line under it is one host. The short names (<code>servera</code> to <code>serverd</code>) resolve through the lab's DNS, so no IP addresses are needed here.<br>
+  • A host can live in <b>several groups at once</b>: <code>serverb</code> sits in both <code>test</code> and <code>prod</code>, so a play aimed at either group lands on it. That overlap is deliberate in this exam, not a typo.<br>
+  • <code>[webservers:children]</code> is a <b>group of groups</b>: it holds no hosts of its own, it points at <code>prod</code>, so <code>webservers</code> means "every host in prod" (serverb and serverc) without listing them a second time.</p>
+  <h4>The tech underneath</h4>
+  <p>Groups are how the exam aims its work: Q8's plays target these very groups, and Q15 creates developer accounts on the dev and test hosts but manager accounts on prod. Get a group wrong here and later plays quietly land on the wrong machines.</p>
+  <div class="tie"><b>How it ties in:</b> an inventory on its own does nothing until something points at it. That is the next step: <code>ansible.cfg</code> names this exact file as the default inventory, so plain <code>ansible</code> and <code>ansible-playbook</code> commands in this project find these groups without a <code>-i</code> flag.</div>`
+},
+{
+  id:"Q1.2", title:"Set Up ansible.cfg — the Project's Settings: Inventory Path, remote_user, Collection and Role Paths, become Off by Default", sub:"ansible.cfg",
+  files:[{ path:"/home/student/ansible/ansible.cfg", lang:"ini" }],
+  spec:`<b>Task.</b> In the same project directory <code>/home/student/ansible</code>, create <code>ansible.cfg</code>:
+  <br>• A <code>[defaults]</code> section with <code>inventory</code> pointing at <code>/home/student/ansible/inventory</code>, <code>remote_user</code> set to <code>student</code>, <code>collections_path</code> set to <code>/home/student/ansible/collections</code>, and <code>roles_path</code> set to <code>/home/student/ansible/roles</code>.
+  <br>• A <code>[privilege_escalation]</code> section with <code>become</code> turned off.`,
+  checks:[[
+    { re:/\[defaults\]/, msg:"A [defaults] section" },
+    { re:/inventory\s*=\s*\/home\/student\/ansible\/inventory\b/, msg:"inventory = /home/student/ansible/inventory" },
+    { re:/remote_user\s*=\s*student\b/, msg:"remote_user = student" },
+    { re:/collections_path\s*=\s*\/home\/student\/ansible\/collections\b/, msg:"collections_path = /home/student/ansible/collections" },
+    { re:/roles_path\s*=\s*\/home\/student\/ansible\/roles\b/, msg:"roles_path = /home/student/ansible/roles" },
+    { re:/\[privilege_escalation\]/, msg:"A [privilege_escalation] section" },
+    { re:/become\s*=\s*(false|no)\b/i, msg:"become = false under [privilege_escalation]" }
+  ]],
+  explain:`<h2>✅ Q1.2 complete — what you just did</h2>
+  <p>You wrote <code>ansible.cfg</code>, the project's settings file. Ansible looks for it in the current directory first, so every command you run inside <code>/home/student/ansible</code> picks these settings up automatically.</p>
+  <h4>What each line does</h4>
+  <p>• <code>inventory = /home/student/ansible/inventory</code> points at the file from Q1.1. No <code>-i</code> flag is needed from here on.<br>
+  • <code>remote_user = student</code> is the SSH login Ansible uses on the managed nodes, the same student account you work as on the controller.<br>
+  • <code>collections_path</code> and <code>roles_path</code> point <b>inside the project</b>: collections and roles staged here are the ones Ansible finds. This is exactly why Q5 copies the timesync role into the project's <code>roles/</code> directory instead of leaving it over in /usr/share.<br>
+  • <code>become = false</code> under <code>[privilege_escalation]</code> means privilege escalation is <b>off by default</b>: plays run as student unless a play or task deliberately opts in.</p>
+  <h4>The tech underneath</h4>
+  <p>That default is why the opt-ins you will write later carry weight: Q2's ad hoc commands add <code>-b</code>, and Q5's timesync.yml declares <code>become: true</code> at play level. The config sets the default; each task decides when it truly needs root on a node.</p>
+  <div class="tie"><b>How it ties in:</b> Q1 told navigator how to run, Q1.1 said who to talk to, and this file wires the two together. From here on the project describes itself: cd into it and Ansible already knows the inventory, the login user, and where roles and collections live.</div>`
+},
+{
   id:"Q2", title:"Set Up Trusted Software Sources — Import the GPG Key and Configure BaseOS + AppStream Repos on All Hosts, Ad Hoc Only (GPG Check On)", sub:"Ad hoc commands — GPG key + YUM repositories",
   files:[{ path:"/home/student/ansible/repo_key.sh", lang:"bash" }],
   spec:`<b>2. Configure YUM Repositories Using Ad Hoc Commands</b><br>• Create a shell script called /home/student/ansible/repo_key.sh that uses Ansible ad hoc commands to import the GPG key below and configure the following YUM repositories on all managed hosts:<br>• GPG key to import: http://apt.sw.be/RPM-GPG-KEY.dag.txt<br>• Repository Name: BaseOS<br>• Description: BaseOS Repo<br>• Base URL: http://10.1.14.36/RHEL9/BaseOS<br>• GPG Check: Enabled<br>• GPG Key: http://apt.sw.be/RPM-GPG-KEY.dag.txt<br>• Enabled: Yes<br>• Repository Name: AppStream<br>• Description: AppStream Repo<br>• Base URL: http://10.1.14.36/RHEL9/AppStream<br>• GPG Check: Enabled<br>• GPG Key: http://apt.sw.be/RPM-GPG-KEY.dag.txt<br>• Enabled: Yes`,
@@ -2168,6 +2221,33 @@ ansible-navigator:
     enable: false
   mode: stdout
 ` }] },
+"Q1.1": { hint:`One [group] header per group, one hostname per line underneath it. serverb appears twice on purpose, in test and in prod. The last header is [webservers:children] and its only line is the group name prod.`,
+  answer:[{ path:"/home/student/ansible/inventory", text:`[dev]
+servera
+
+[test]
+serverb
+
+[prod]
+serverb
+serverc
+
+[balancers]
+serverd
+
+[webservers:children]
+prod
+` }] },
+"Q1.2": { hint:`Two INI sections. [defaults] carries inventory, remote_user, collections_path, and roles_path, all pointing inside /home/student/ansible. [privilege_escalation] carries become = false. The key names are singular, collections_path and roles_path: those are the exact keys ansible.cfg reads.`,
+  answer:[{ path:"/home/student/ansible/ansible.cfg", text:`[defaults]
+inventory = /home/student/ansible/inventory
+remote_user = student
+collections_path = /home/student/ansible/collections
+roles_path = /home/student/ansible/roles
+
+[privilege_escalation]
+become = false
+` }] },
 "Q2": { hint:`Three ad hoc commands, all aimed at "all" hosts with -b: rpm_key first (state=present), then two yum_repository calls. Every repo line carries name, description, baseurl, gpgcheck=true, the same gpgkey URL, and enabled=true.`,
   answer:[{ path:"/home/student/ansible/repo_key.sh", text:`ansible all -m ansible.builtin.rpm_key -a "key='http://apt.sw.be/RPM-GPG-KEY.dag.txt' state=present" -b
 ansible all -m ansible.builtin.yum_repository -a "name='BaseOS' description='BaseOS Repo' baseurl='http://10.1.14.36/RHEL9/BaseOS' gpgcheck=true gpgkey='http://apt.sw.be/RPM-GPG-KEY.dag.txt' enabled=true" -b
@@ -2871,6 +2951,23 @@ const state = { cur: 0, unlocked: 0, done: new Set(), attempts: {}, texts: {}, f
 // before it in that question has passed. Questions themselves are never
 // locked — any question can be started from the list. Practice: all steps
 // open. Passes and the chosen mode persist in localStorage.
+// Q1 inventory + ansible.cfg (2026-11-15): Q1 grew from 1 step to 3
+// (navigator config, then the inventory, then ansible.cfg). Remap saved
+// passes once: passes up to and including Q1 keep their index, every
+// pass after Q1 shifts by +2. This block runs BEFORE the Q5 remap below
+// so a stale pre-Q5 pass list composes correctly through both remaps.
+try {
+  if (!localStorage.getItem("rhce-q1inv1")) {
+    const i1 = QUESTIONS.findIndex(q => q.id === "Q1");
+    const oldDone1 = JSON.parse(localStorage.getItem("rhce-done") || "[]");
+    if (i1 >= 0 && Array.isArray(oldDone1) && oldDone1.length) {
+      const b1 = i1 + 1;
+      const remapped1 = oldDone1.filter(i => i < b1).concat(oldDone1.filter(i => i >= b1).map(i => i + 2));
+      localStorage.setItem("rhce-done", JSON.stringify(remapped1));
+    }
+    localStorage.setItem("rhce-q1inv1", "1");
+  }
+} catch (e) {}
 // Q5 sequence v2 (2026-11-15): Q5 grew from 6 steps to 11 (root shell ->
 // install -> back to student -> stage role + example -> edit -> run ->
 // verify x2). Remap saved passes once: passes before Q5 keep their index,
@@ -3156,11 +3253,18 @@ function hlVim(text){
     return "<span class='tk-kw'>" + m[1] + "</span>" + m[2] + "<span class='tk-kw'>" + m[3] + "</span>" + m[4] + "<span class='tk-str'>" + esc(m[5]) + "</span>" + m[6] + "<span class='tk-kw'>" + m[7] + "</span>" + m[8] + opts;
   }).join("\n");
 }
+function hlIniLine(line){
+  if (/^\s*\[/.test(line)) return "<span class='tk-key'>" + esc(line) + "</span>";
+  const m = line.match(/^(\s*)([A-Za-z_][\w-]*?)(\s*=)(.*)$/);
+  if (m) return m[1] + "<span class='tk-key'>" + esc(m[2]) + "</span>" + esc(m[3]) + hlValue(m[4]);
+  return esc(line);
+}
 function highlightCode(lang, text){
   if (lang === "yaml") return text.split("\n").map(hlYamlLine).join("\n");
   if (lang === "bash") return text.split("\n").map(hlBashLine).join("\n");
   if (lang === "jinja") return hlJinja(text);
   if (lang === "vim") return hlVim(text);
+  if (lang === "ini") return text.split("\n").map(hlIniLine).join("\n");
   return esc(text);
 }
 function newlineIndent(cur, lang){
