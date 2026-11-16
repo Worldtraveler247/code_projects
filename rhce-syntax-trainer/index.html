@@ -2963,6 +2963,27 @@ function normSegment(seg){
   return t;
 }
 function canonRealForm(t, lang){
+  if (lang === "cmd") {
+    // A trailing redirection or a pipe into a filter does not change
+    // what a command IS: 'ansible all -m setup > facts.txt' is the same
+    // answer as the bare command, so both the typed line and the answer
+    // key are graded without the suffix. Quote-aware (the pipes inside
+    // Q15.5's quoted shell argument are data), and echo is exempt - its
+    // '> file' is part of the requirement (Q14's secret.txt).
+    t = t.split("\n").map(line => {
+      const first = (line.trim().split(/\s+/)[0] || "");
+      if (first === "echo" || first === "printf") return line;
+      let quote = null;
+      for (let i = 0; i < line.length; i++) {
+        const c = line[i];
+        if (quote) { if (c === quote) quote = null; continue; }
+        if (c === "'" || c === '"') { quote = c; continue; }
+        if (c === "|" && line[i + 1] !== "|") return line.slice(0, i).replace(/\s+$/, "");
+        if (c === ">") return line.slice(0, i).replace(/\d+$/, "").replace(/\s+$/, "");
+      }
+      return line;
+    }).join("\n");
+  }
   // Built on canonBase only, NOT on canonCmd/canonFqcn: hoistBecome would
   // corrupt a pattern-less ad hoc line ("ansible -m ... -b") before the
   // parser sees it, and the parser already handles -b position and module
@@ -3546,16 +3567,34 @@ function tabComplete(ta, fi){
     if (cp.length > word.length) { ta.setRangeText(pre + cp, wordStart, pos, "end"); return true; }
     showTabList(fi, ms); return true;
   }
+  // In a shell step, paths resolve from the terminal's OWN current
+  // directory - cd into roles/ or collections/ and Tab completes from
+  // there, including files created during the session. File editors
+  // keep resolving from the project root, where playbook paths live.
+  const qNow = QUESTIONS[state.cur];
+  const stNow = (qNow && qNow.cmd) ? termStateFor(state.cur) : null;
+  const cwdAbs = stNow ? stNow.cwd : FS_CWD;
+  const homeAbs = stNow ? soHome(stNow) : FS_HOME;
   let lookup = word;
   if (word === "~") { ta.setRangeText(pre + "~/", wordStart, pos, "end"); showTabList(fi, null); return true; }
-  if (word.startsWith("~/")) lookup = FS_HOME + word.slice(1);
-  else if (!word.startsWith("/")) lookup = FS_CWD + "/" + word;
+  if (word.startsWith("~/")) lookup = homeAbs + word.slice(1);
+  else if (!word.startsWith("/")) lookup = cwdAbs + "/" + word;
   const slash = lookup.lastIndexOf("/");
   const dirAbs = lookup.slice(0, slash) || "/";
   const partial = lookup.slice(slash + 1);
   const dirDisp = word.slice(0, word.lastIndexOf("/") + 1);
-  const kids = FS_TREE[dirAbs];
-  if (!kids) return false;
+  const kids = (FS_TREE[dirAbs] || []).slice();
+  if (stNow) {
+    const prefix = dirAbs === "/" ? "/" : dirAbs + "/";
+    Object.keys(stNow.made).forEach(p => {
+      if (!p.startsWith(prefix)) return;
+      const rest = p.slice(prefix.length); if (!rest) return;
+      const segName = rest.split("/")[0];
+      if (kids.some(k => k[0] === segName)) return;
+      kids.push([segName, (rest.includes("/") || (stNow.made[p] && stNow.made[p].dir)) ? 1 : 0]);
+    });
+  }
+  if (!kids.length) return false;
   const ms = kids.filter(k => k[0].startsWith(partial));
   if (!ms.length) return false;
   if (ms.length === 1) {
@@ -4071,6 +4110,124 @@ function soPipeFilter(lines, stage){
   return lines;
 }
 // One ad-hoc invocation: 'ansible <pattern> [-b] -m <mod> -a <args>'.
+// --- Facts (the setup module) ------------------------------------------------
+// The fact set each managed host reports, built once and reused by the
+// unfiltered dump, by filter= lookups, and by anything else that needs a
+// host's facts. Values agree with the rest of the sim: IPs from SO_IP,
+// ens3 as the primary interface, RHEL 9.2, sdb missing only on serverd,
+// and the yellowtail VG present on servera (roomy) and serverb (tight,
+// which is why Q9's 1500m request falls back to 800m there) but absent
+// on serverc, where Q9's fail task fires.
+function soDevicesFor(h){
+  const d = { sda: { model: "VIRTIO 20G", size: "20.00 GB" } };
+  if (soShort(h) !== "serverd") d.sdb = { model: "VIRTIO 10G", size: "10.00 GB" };
+  d.vda = { size: "20.00 GB" };
+  return d;
+}
+function soLvmFor(h){
+  const s = soShort(h);
+  if (s === "servera") return {
+    lvs: { data: { size_g: "1.49", vg: "yellowtail" } },
+    pvs: { "/dev/sdb": { free_g: "8.49", size_g: "9.98", vg: "yellowtail" } },
+    vgs: { yellowtail: { free_g: "8.49", num_lvs: "1", num_pvs: "1", size_g: "9.98" } }
+  };
+  if (s === "serverb") return {
+    lvs: { data: { size_g: "8.81", vg: "yellowtail" } },
+    pvs: { "/dev/sdb": { free_g: "1.17", size_g: "9.98", vg: "yellowtail" } },
+    vgs: { yellowtail: { free_g: "1.17", num_lvs: "1", num_pvs: "1", size_g: "9.98" } }
+  };
+  if (s === "serverc") return {
+    lvs: {},
+    pvs: { "/dev/sdb": { free_g: "9.98", size_g: "9.98", vg: "" } },
+    vgs: {}
+  };
+  return { lvs: {}, pvs: {}, vgs: {} };
+}
+function soFactsFor(h, become){
+  const idx = SO_HOSTS.indexOf(h);
+  const mac = "52:54:00:12:34:0" + (idx + 1);
+  const ipv4 = { address: SO_IP[h], broadcast: "172.25.250.255", netmask: "255.255.255.0", network: "172.25.250.0" };
+  const f = {};
+  f.ansible_all_ipv4_addresses = [SO_IP[h]];
+  f.ansible_architecture = "x86_64";
+  f.ansible_date_time = { date: "2026-11-17", day: "17", epoch: "1763358551", hour: "03", minute: "49", month: "11", second: "11", time: "03:49:11", tz: "JST", tz_offset: "+0900", weekday: "Tuesday", year: "2026" };
+  f.ansible_default_ipv4 = { address: SO_IP[h], alias: "ens3", broadcast: "172.25.250.255", gateway: "172.25.250.254", interface: "ens3", macaddress: mac, mtu: 1500, netmask: "255.255.255.0", network: "172.25.250.0", type: "ether" };
+  f.ansible_default_ipv6 = {};
+  f.ansible_devices = soDevicesFor(h);
+  f.ansible_distribution = "RedHat";
+  f.ansible_distribution_file_parsed = true;
+  f.ansible_distribution_file_path = "/etc/redhat-release";
+  f.ansible_distribution_file_variety = "RedHat";
+  f.ansible_distribution_major_version = "9";
+  f.ansible_distribution_release = "Plow";
+  f.ansible_distribution_version = "9.2";
+  f.ansible_dns = { nameservers: ["172.25.250.254"], search: ["lab.example.com"] };
+  f.ansible_domain = "lab.example.com";
+  f.ansible_ens3 = { active: true, device: "ens3", ipv4: ipv4, macaddress: mac, mtu: 1500, promisc: false, type: "ether" };
+  f.ansible_fips = false;
+  f.ansible_form_factor = "Other";
+  f.ansible_fqdn = h;
+  f.ansible_hostname = soShort(h);
+  f.ansible_interfaces = ["lo", "ens3"];
+  f.ansible_kernel = "5.14.0-284.11.1.el9_2.x86_64";
+  f.ansible_kernel_version = "#1 SMP PREEMPT_DYNAMIC Thu Apr 13 17:51:25 EDT 2023";
+  f.ansible_lo = { active: true, device: "lo", ipv4: { address: "127.0.0.1", broadcast: "", netmask: "255.0.0.0", network: "127.0.0.0" }, mtu: 65536, type: "loopback" };
+  f.ansible_lsb = { codename: "Plow", description: "Red Hat Enterprise Linux release 9.2 (Plow)", id: "RedHatEnterprise", major_release: "9", release: "9.2" };
+  f.ansible_lvm = soLvmFor(h);
+  f.ansible_machine = "x86_64";
+  f.ansible_machine_id = "8f14e45fceea167a5a36dedd4bea254" + idx;
+  f.ansible_memfree_mb = 1100 + idx * 37;
+  f.ansible_memtotal_mb = 2048;
+  f.ansible_mounts = [{ device: "/dev/mapper/rhel-root", fstype: "xfs", mount: "/", options: "rw,seclabel,relatime,attr2,inode64,logbufs=8,logbsize=32k,noquota", size_available: 9012345856, size_total: 18253611008, uuid: "3f6d2c3c-0000-4000-8000-00000000000" + idx }];
+  f.ansible_nodename = h;
+  f.ansible_os_family = "RedHat";
+  f.ansible_pkg_mgr = "dnf";
+  f.ansible_processor = ["0", "GenuineIntel", "Intel(R) Xeon(R) Gold 6248 CPU @ 2.50GHz", "1", "GenuineIntel", "Intel(R) Xeon(R) Gold 6248 CPU @ 2.50GHz"];
+  f.ansible_processor_cores = 2;
+  f.ansible_processor_count = 1;
+  f.ansible_processor_threads_per_core = 1;
+  f.ansible_processor_vcpus = 2;
+  f.ansible_product_name = "KVM";
+  f.ansible_product_serial = "NA";
+  f.ansible_product_version = "pc-q35-rhel9.2.0";
+  f.ansible_python = { executable: "/usr/bin/python3", has_sslcontext: true, type: "cpython", version: { major: 3, micro: 16, minor: 9, releaselevel: "final", serial: 0 }, version_info: [3, 9, 16, "final", 0] };
+  f.ansible_python_version = "3.9.16";
+  f.ansible_selinux = { config_mode: "enforcing", mode: "enforcing", policyvers: 33, status: "enabled", type: "targeted" };
+  f.ansible_selinux_python_present = true;
+  f.ansible_service_mgr = "systemd";
+  f.ansible_swapfree_mb = 2047;
+  f.ansible_swaptotal_mb = 2047;
+  f.ansible_system = "Linux";
+  f.ansible_system_vendor = "QEMU";
+  f.ansible_uptime_seconds = 86400 + idx * 3600;
+  f.ansible_user_dir = become ? "/root" : "/home/student";
+  f.ansible_user_gecos = become ? "root" : "student";
+  f.ansible_user_gid = become ? 0 : 1000;
+  f.ansible_user_id = become ? "root" : "student";
+  f.ansible_user_shell = "/bin/bash";
+  f.ansible_user_uid = become ? 0 : 1000;
+  f.ansible_userspace_architecture = "x86_64";
+  f.ansible_userspace_bits = "64";
+  f.ansible_virtualization_role = "guest";
+  f.ansible_virtualization_type = "kvm";
+  return f;
+}
+function soSetupLines(h, become, args){
+  const filter = ((args || "").match(/filter=([\w*,]+)/) || [])[1] || "*";
+  const all = soFactsFor(h, become);
+  let facts;
+  if (filter === "*") facts = all;
+  else if (filter.indexOf("*") >= 0) {
+    const re = new RegExp("^" + filter.split("*").map(part => part.replace(/[.+^${}()|[\]\\]/g, "\\$&")).join(".*") + "$");
+    facts = {};
+    Object.keys(all).forEach(k => { if (re.test(k)) facts[k] = all[k]; });
+  } else if (Object.prototype.hasOwnProperty.call(all, filter)) { facts = {}; facts[filter] = all[filter]; }
+  else facts = {};
+  const js = JSON.stringify({ ansible_facts: facts, changed: false }, null, 4).split("\n");
+  js[0] = h + " | SUCCESS => {";
+  js.push("");
+  return js;
+}
 function soAdhoc(tokens){
   let pattern = null, mod = null, args = null, become = false;
   for (let i = 0; i < tokens.length; i++) {
@@ -4112,16 +4269,7 @@ function soAdhoc(tokens){
       return;
     }
     if (short === "setup") {
-      const filter = ((args || "").match(/filter=([\w*]+)/) || [])[1] || "*";
-      lines.push(h + " | SUCCESS => {");
-      if (filter === "ansible_default_ipv4") {
-        lines.push("    \"ansible_facts\": {", "        \"ansible_default_ipv4\": {", "            \"address\": \"" + SO_IP[h] + "\",", "            \"alias\": \"ens3\",", "            \"broadcast\": \"172.25.250.255\",", "            \"gateway\": \"172.25.250.254\",", "            \"interface\": \"ens3\",", "            \"macaddress\": \"52:54:00:12:34:0" + (SO_HOSTS.indexOf(h) + 1) + "\",", "            \"mtu\": 1500,", "            \"netmask\": \"255.255.255.0\",", "            \"network\": \"172.25.250.0\",", "            \"type\": \"ether\"", "        }", "    },", "    \"changed\": false", "}");
-      } else if (filter === "ansible_devices") {
-        lines.push("    \"ansible_facts\": {", "        \"ansible_devices\": {", "            \"sda\": {", "                \"model\": \"VIRTIO 20G\",", "                \"size\": \"20.00 GB\"", "            }," + (soShort(h) === "serverd" ? "" : "\n            \"sdb\": {\n                \"model\": \"VIRTIO 10G\",\n                \"size\": \"10.00 GB\"\n            },"), "            \"vda\": {", "                \"size\": \"20.00 GB\"", "            }", "        }", "    },", "    \"changed\": false", "}");
-      } else {
-        lines.push("    \"ansible_facts\": {", "        \"ansible_fqdn\": \"" + h + "\",", "        \"ansible_hostname\": \"" + soShort(h) + "\"", "    },", "    \"changed\": false", "}");
-      }
-      lines.push("");
+      soSetupLines(h, become, args).forEach(l => lines.push(l));
       return;
     }
     if (short === "stat") {
@@ -4334,6 +4482,94 @@ function soVault(st, tokens, segText){
   }
   return { lines: lines, ok: true };
 }
+// --- Module documentation (ansible-doc) ---------------------------------------
+// The modules this exam actually uses, with their real documentation
+// summaries and the EXAMPLES sections from the real docs - the pages an
+// engineer reads mid-task, searchable with /EXAMPLES in a real pager and
+// scrollable here. Shared by ansible-doc and ansible-navigator doc.
+const DOC_LOOKUPS = ["file                  Look up file contents and return them", "template              Retrieve contents of a file after templating", "vars                  Lookup templated value of a variable", "env                   Read the value of environment variables", "url                   Return contents from a URL", "csvfile               Read individual cells from a CSV file", "ini                   Read values from an ini file", "dict                  Returns key/value pair items from dictionaries", "list                  Simply returns what it is given", "items                 List of items in a sequence"];
+const DOC_DB = {
+"ansible.builtin.ping": { d: "A trivial test module, this module always returns 'pong' on successful contact. It is not ICMP ping, this is just a trivial test module that requires a Python interpreter on the remote node.", o: [["data", "Data to return for the 'ping' return value. If this parameter is set to 'crash', the module will cause an exception.", false, "default: pong"]], e: [["# Test we can log in to 'webservers' and execute a task that's not a command", "- name: Test connection", "  ansible.builtin.ping:"]] },
+"ansible.builtin.setup": { d: "This module is automatically called by playbooks to gather useful variables about remote hosts that can be used in playbooks. It can also be executed directly by /usr/bin/ansible to check what variables are available to a host. Ansible provides many facts about the system, automatically.", o: [["fact_path", "Path used for local ansible facts (*.fact) - files in this dir are run (if executable) and their results added to ansible_local facts; JSON values are merged, INI values are not.", false, "default: /etc/ansible/facts.d"], ["filter", "If supplied, only return facts that match this shell-style (fnmatch) pattern. The pattern '*' matches everything.", false, "default: *"], ["gather_subset", "Restrict the additional facts collected to a given subset: all, min, hardware, network, virtual, ohai, facter.", false, "default: all"], ["gather_timeout", "Set the maximum time in seconds waiting for facts to be gathered.", false, "default: 10"]], e: [["# Display only facts regarding memory found by ansible on all hosts", "ansible all -m ansible.builtin.setup -a \"filter=ansible_*mb*\""], ["# Display only the default IPv4 facts - the cross-check Q10.5 runs", "ansible all -m ansible.builtin.setup -a \"filter=ansible_default_ipv4\""], ["# Collect only facts returned by facter", "- name: Collect only facter facts", "  ansible.builtin.setup:", "    gather_subset:", "      - '!all'", "      - facter"]] },
+"ansible.builtin.command": { d: "The command module takes the command name followed by a list of space-delimited arguments. The given command will be executed on all selected nodes. The command module is much safer as it will not be affected by the user's environment; it also does not support pipes, wildcards or redirection - use the shell module for those.", o: [["cmd", "The command to run (free-form). Either cmd or argv is required.", false], ["argv", "The command as a list of arguments; avoids quoting issues.", false], ["chdir", "Change into this directory before running the command.", false], ["creates", "A filename or glob; when it already exists, the command will not be run.", false], ["removes", "A filename or glob; when it does not exist, the command will not be run.", false], ["stdin", "Set the stdin of the command directly to the specified value.", false]], e: [["- name: Return motd to registered var", "  ansible.builtin.command: cat /etc/motd", "  register: mymotd"], ["- name: Check if a file exists (creates guard)", "  ansible.builtin.command: /usr/bin/make_database.sh arg1 arg2", "  args:", "    creates: /path/to/database"]] },
+"ansible.builtin.shell": { d: "The shell module takes the command name followed by a list of space-delimited arguments. It is almost exactly like the command module but runs the command through a shell (/bin/sh) on the remote node, so pipes, wildcards, redirection and environment variables all work.", o: [["cmd", "The command to run through the shell (free-form).", false], ["chdir", "Change into this directory before running the command.", false], ["creates", "A filename or glob; when it already exists, the command will not be run.", false], ["removes", "A filename or glob; when it does not exist, the command will not be run.", false], ["executable", "Change the shell used to execute the command; needs an absolute path.", false, "default: /bin/sh"]], e: [["- name: Execute the command in remote shell; stdout goes to the specified file on the remote", "  ansible.builtin.shell: somescript.sh >> somelog.txt"], ["- name: Run a command that uses non-posix shell-isms (in this example, checking a per-user .bashrc)", "  ansible.builtin.shell: cat ~/.bashrc", "  args:", "    executable: /bin/bash"]] },
+"ansible.builtin.debug": { d: "This module prints statements during execution and is useful for debugging variables or expressions without necessarily halting the playbook. Useful for catching the specified callouts to variables and evaluating expressions conditionally.", o: [["msg", "The customized message that is printed. If omitted, prints a generic message.", false], ["var", "A variable name to debug. Mutually exclusive with the 'msg' option.", false], ["verbosity", "A number that controls when the debug is run, if you set to 3 it will only run when -vvv or above.", false, "default: 0"]], e: [["- name: Print the gateway for each host when defined", "  ansible.builtin.debug:", "    msg: System {{ inventory_hostname }} has gateway {{ ansible_default_ipv4.gateway }}", "  when: ansible_default_ipv4.gateway is defined"]] },
+"ansible.builtin.fail": { d: "This module fails the progress with a custom message. It can be useful for bailing out when a certain condition is met using only_if. When failed with a custom message, the play stops on that host; other hosts continue unless the play says otherwise.", o: [["msg", "The customized message used for failing execution. If omitted, fail outputs a generic message.", false, "default: Failed as requested from task"]], e: [["- name: Example using fail and when together", "  ansible.builtin.fail:", "    msg: The system may not be provisioned according to the CMDB status.", "  when: cmdb_status != \"to-be-staged\""]] },
+"ansible.builtin.stat": { d: "Retrieve file or file system status. For Windows targets, use the ansible.windows.win_stat module instead.", o: [["path", "The full path of the file/object to get the facts of.", true], ["follow", "Whether to follow symlinks.", false, "default: no"], ["get_checksum", "Whether to return a checksum of the file.", false, "default: yes"], ["checksum_algorithm", "Algorithm to determine checksum of file.", false, "default: sha1"]], e: [["- name: Get stats of a file", "  ansible.builtin.stat:", "    path: /etc/foo.conf", "  register: st"], ["- name: Fail if the file does not exist", "  ansible.builtin.fail:", "    msg: The file does not exist", "  when: not st.stat.exists"]] },
+"ansible.builtin.copy": { d: "The copy module copies a file or a directory structure from the local or remote machine to a location on the remote machine. Use the fetch module to copy files from remote locations to the local box. If you need variable interpolation in copied files, use the template module.", o: [["src", "Local path to a file to copy to the remote server; can be absolute or relative. If path is a directory, it is copied recursively.", false], ["dest", "Remote absolute path where the file should be copied to. If src is a directory, dest must be a directory too.", true], ["content", "When used instead of src, sets the contents of a file directly to the specified value.", false], ["mode", "The permissions of the destination file or directory, for example 0644 or 'u=rw,g=r,o=r'.", false], ["owner", "Name of the user that should own the destination file/directory.", false], ["group", "Name of the group that should own the destination file/directory.", false], ["backup", "Create a backup file including the timestamp information.", false, "default: no"], ["force", "Influence whether the remote file must always be replaced.", false, "default: yes"]], e: [["- name: Copy file with owner and permissions", "  ansible.builtin.copy:", "    src: /srv/myfiles/foo.conf", "    dest: /etc/foo.conf", "    owner: foo", "    group: foo", "    mode: '0644'"], ["- name: Copy a new 'ntp.conf' file into place, backing up the original if it differs", "  ansible.builtin.copy:", "    src: /mine/ntp.conf", "    dest: /etc/ntp.conf", "    owner: root", "    group: root", "    mode: '0644'", "    backup: true"]] },
+"ansible.builtin.template": { d: "Templates are processed by the Jinja2 templating language. Documentation on the template formatting can be found in the Template Designer Documentation. Additional variables listed below can be used in templates: ansible_managed, template_host, template_uid, template_path, template_fullpath, template_run_date.", o: [["src", "Path of a Jinja2 formatted template on the Ansible controller. This can be a relative or an absolute path.", true], ["dest", "Location to render the template to on the remote machine.", true], ["mode", "The permissions of the destination file, for example 0644.", false], ["owner", "Name of the user that should own the destination file.", false], ["group", "Name of the group that should own the destination file.", false], ["backup", "Create a backup file including the timestamp information.", false, "default: no"], ["force", "Influence whether the remote file must always be replaced.", false, "default: yes"]], e: [["- name: Template a file to /etc/file.conf", "  ansible.builtin.template:", "    src: /mytemplates/foo.j2", "    dest: /etc/file.conf", "    owner: bin", "    group: wheel", "    mode: '0644'"]] },
+"ansible.builtin.file": { d: "Set attributes of files, directories, symlinks and their targets. Alternatively, remove files, symlinks or directories. Many other modules support the same options as the file module - including copy, template and assemble.", o: [["path", "Path to the file being managed.", true], ["state", "file/directory: ensure the type exists. link/hard: create a link. absent: recursively delete. touch: create an empty file or update timestamps.", false, "default: file"], ["src", "Path of the file to link to (applies only to state=link and state=hard).", false], ["mode", "The permissions of the destination file or directory.", false], ["owner", "Name of the user that should own the file/directory.", false], ["group", "Name of the group that should own the file/directory.", false], ["recurse", "Recursively set the specified file attributes on directory contents.", false, "default: no"]], e: [["- name: Change file ownership, group and permissions", "  ansible.builtin.file:", "    path: /etc/foo.conf", "    owner: foo", "    group: foo", "    mode: '0644'"], ["- name: Create a symbolic link", "  ansible.builtin.file:", "    src: /file/to/link/to", "    dest: /path/to/symlink", "    owner: foo", "    group: foo", "    state: link"]] },
+"ansible.builtin.lineinfile": { d: "This module ensures a particular line is in a file, or replaces an existing line using a back-referenced regular expression. This is primarily useful when you want to change a single line in a file only. For other cases, see the copy or template modules.", o: [["path", "The file to modify. Before Ansible 2.3 this option was only usable as dest, destfile and name.", true], ["line", "The line to insert/replace into the file. Required for state=present; ignored when backrefs is set.", false], ["regexp", "The regular expression to look for in every line of the file. The line that matches is replaced (or the line inserted if none matches).", false], ["state", "Whether the line should be there or not.", false, "default: present"], ["insertafter", "Insert the line after the last match of this regular expression (or EOF).", false], ["insertbefore", "Insert the line before the last match of this regular expression (or BOF).", false], ["create", "Create the file if it does not exist.", false, "default: no"], ["backrefs", "If set, line can contain backreferences (both positional and named) that expand from the regexp capture groups.", false, "default: no"], ["validate", "A command to run before copying the updated file into place, for example 'visudo -cf %s'.", false]], e: [["- name: Ensure SELinux is set to enforcing mode", "  ansible.builtin.lineinfile:", "    path: /etc/selinux/config", "    regexp: '^SELINUX='", "    line: SELINUX=enforcing"], ["- name: Add a line to a file if the file does not exist, without passing regexp", "  ansible.builtin.lineinfile:", "    path: /tmp/testfile", "    line: '192.168.1.99 foo.lab.example.com foo'", "    state: present", "    create: true"]] },
+"ansible.builtin.get_url": { d: "Downloads files from HTTP, HTTPS, or FTP to the remote server. The remote server must have direct access to the remote resource. By default, if an environment variable <protocol>_proxy is set on the target host, requests will be sent through that proxy.", o: [["url", "HTTP, HTTPS, or FTP URL in the form (http|https|ftp)://[user[:pass]]@host.domain[:port]/path.", true], ["dest", "Absolute path of where to download the file to. If dest is a directory, the basename of the file on the remote server will be used.", true], ["mode", "Permissions to set on the destination file.", false], ["checksum", "A checksum in the form '<algorithm>:<checksum>' to verify the destination file.", false], ["force", "Download the file every time and replace it if the contents change.", false, "default: no"], ["timeout", "Timeout in seconds for URL request.", false, "default: 10"]], e: [["- name: Download foo.conf", "  ansible.builtin.get_url:", "    url: https://example.com/path/file.conf", "    dest: /etc/foo.conf", "    mode: '0440'"], ["- name: Download file with checksum url (sha256)", "  ansible.builtin.get_url:", "    url: https://example.com/path/file.conf", "    dest: /etc/foo.conf", "    checksum: sha256:http://example.com/path/sha256sum.txt"]] },
+"ansible.builtin.uri": { d: "Interacts with HTTP and HTTPS web services and supports Digest, Basic and WSSE HTTP authentication mechanisms. For Windows targets, use the ansible.windows.win_uri module instead.", o: [["url", "HTTP or HTTPS URL in the form (http|https)://host.domain[:port]/path.", true], ["method", "The HTTP method of the request or response.", false, "default: GET"], ["return_content", "Whether or not to return the body of the response as a 'content' key in the dictionary result.", false, "default: no"], ["status_code", "A list of valid, numeric, HTTP status codes that signifies success of the request.", false, "default: 200"], ["body", "The body of the http request/response to the web service.", false], ["dest", "A path of where to download the file to (if desired).", false]], e: [["- name: Check that you can connect (GET) to a page and it returns a status 200", "  ansible.builtin.uri:", "    url: http://www.example.com"], ["- name: Login to a form based webpage, then use the returned cookie to access the app in later tasks", "  ansible.builtin.uri:", "    url: https://your.form.based.auth.example.com/index.php", "    method: POST", "    body_format: form-urlencoded", "    body:", "      name: your_username", "      password: your_password", "      enter: Sign in", "    status_code: 302", "  register: login"]] },
+"ansible.builtin.dnf": { d: "Installs, upgrade, downgrades, removes, and lists packages and groups with the dnf package manager. This module only works on Python 3; if the target is a Python 2 host you will need the yum module instead.", o: [["name", "A package name or package specifier with version, or a list of them; or '@group' for a package group.", true], ["state", "Whether to install (present or installed), upgrade (latest), or remove (absent) a package.", false, "default: present"], ["enablerepo", "Repoid of repositories to enable for the install/update operation.", false], ["disablerepo", "Repoid of repositories to disable for the install/update operation.", false], ["update_cache", "Force dnf to check if the cache is out of date and re-download if needed (equivalent to yum makecache).", false, "default: no"], ["download_only", "Only download the packages, do not install them.", false, "default: no"]], e: [["- name: Install the latest version of Apache", "  ansible.builtin.dnf:", "    name: httpd", "    state: latest"], ["- name: Install a list of packages", "  ansible.builtin.dnf:", "    name:", "      - nginx", "      - postgresql", "      - postgresql-server", "    state: present"], ["- name: Remove the Apache package", "  ansible.builtin.dnf:", "    name: httpd", "    state: absent"]], snip: ["- name: Install the latest version of Apache", "  ansible.builtin.dnf:", "    name: httpd", "    state: present"] },
+"ansible.builtin.yum": { d: "Manages packages with the yum package manager. On RHEL 9 yum is dnf: this name is kept for compatibility and behaves like the dnf module. The options and examples below mirror dnf's.", o: [["name", "A package name or package specifier with version, or a list of them.", true], ["state", "Whether to install (present), upgrade (latest), or remove (absent) a package.", false, "default: present"], ["enablerepo", "Repoid of repositories to enable for the install/update operation.", false], ["disablerepo", "Repoid of repositories to disable for the install/update operation.", false], ["update_cache", "Force yum to check if the cache is out of date and re-download if needed.", false, "default: no"]], e: [["- name: Install the latest version of Apache", "  ansible.builtin.yum:", "    name: httpd", "    state: latest"]] },
+"ansible.builtin.yum_repository": { d: "Add or remove YUM repositories in RPM-based distributions. If you wish to update an existing repository definition, use ini_file instead, because the name is taken as the section name in the .repo file and renaming would write a new file rather than updating the old one.", o: [["name", "Repoid - the unique repository ID, used as the section name in the .repo file.", true], ["baseurl", "URL to the directory where the repository's repodata directory lives; can be a list.", false], ["description", "A human readable name or description of the repository.", false], ["enabled", "Whether the repository is enabled or not.", false, "default: yes"], ["gpgcheck", "Whether to perform GPG signature checking on packages in the repository.", false, "default: no"], ["gpgkey", "URL to a GPG key file to check package signatures; can be a list.", false], ["state", "If set to absent, the repository file is deleted.", false, "default: present"], ["file", "File name without the .repo extension to save the definition in; defaults to the repoid.", false]], e: [["- name: Add repository", "  ansible.builtin.yum_repository:", "    name: dag", "    description: Dag YUM Repository", "    baseurl: http://apt.sw.be/$releasever/$basearch/dag", "    gpgkey: http://apt.sw.be/RPM-GPG-KEY.dag.txt", "    gpgcheck: true"], ["- name: Add multiple repositories into the same file (epel)", "  ansible.builtin.yum_repository:", "    name: epel", "    description: EPEL YUM repo", "    file: external_repos", "    baseurl: https://download.fedoraproject.org/pub/epel/$releasever/$basearch/", "    gpgcheck: false"]] },
+"ansible.builtin.rpm_key": { d: "Adds or removes a gpg key from the rpm db. Additionally, you can use the rpm_key module in combination with a GPG key server to import a key into the rpm db, or from a file or url.", o: [["key", "Key that will be modified. Can be a url, a file on the managed target, or the ID of a key already in the rpm db.", true], ["state", "If present, the key is imported; if absent, it is removed from the rpm db.", false, "default: present"], ["validate_certs", "Verify TLS certificates when the key is fetched over https.", false, "default: yes"]], e: [["- name: Import a key from a url", "  ansible.builtin.rpm_key:", "    state: present", "    key: http://apt.sw.be/RPM-GPG-KEY.dag.txt"], ["- name: Import a key from a file", "  ansible.builtin.rpm_key:", "    state: present", "    key: /tmp/RPM-GPG-KEY.dag.txt"]] },
+"ansible.builtin.service": { d: "Controls services on remote hosts. Supported init systems include BSD init, OpenRC, SysV, Solaris SMF, systemd, upstart. This module is a proxy for a number of more specific service manager modules, like ansible.builtin.systemd and ansible.builtin.sysvinit.", o: [["name", "Name of the service.", true], ["state", "started/stopped are idempotent actions that run if necessary; restarted always bounces the service; reloaded reloads its configuration.", false], ["enabled", "Whether the service should start on boot. At least one of state and enabled is required.", false], ["use", "Which service manager module to use: auto, systemd, sysvinit, openrc...", false, "default: auto"], ["pattern", "A substring to look for in the process table to check the service is running (for badly written init scripts).", false]], e: [["- name: Start service httpd, if not started", "  ansible.builtin.service:", "    name: httpd", "    state: started"], ["- name: Stop service httpd, if started", "  ansible.builtin.service:", "    name: httpd", "    state: stopped"], ["- name: Restart service httpd, in all cases", "  ansible.builtin.service:", "    name: httpd", "    state: restarted"], ["- name: Enable service httpd, and not touch the state", "  ansible.builtin.service:", "    name: httpd", "    enabled: true"]] },
+"ansible.builtin.user": { d: "Manage user accounts and user attributes. For Windows targets, use the ansible.windows.win_user module instead.", o: [["name", "Name of the user to create, remove or modify.", true], ["uid", "Optionally sets the UID of the user.", false], ["group", "Optionally sets the user's primary group (takes a group name).", false], ["groups", "A list of supplementary groups the user will be added to; with append, adds to existing groups.", false], ["append", "If true, adds the user to the groups in 'groups' instead of replacing the membership.", false, "default: no"], ["shell", "Optionally set the user's shell.", false], ["home", "Optionally set the user's home directory.", false], ["password", "Set the user's password to the crypted value; use the password_hash filter to build it.", false], ["state", "Whether the account should exist or not.", false, "default: present"], ["create_home", "Create the user's home directory when the account is created.", false, "default: yes"], ["system", "Create a system account (uid below the system range).", false, "default: no"]], e: [["- name: Add the user 'johnd' with a specific uid and a primary group of 'admin'", "  ansible.builtin.user:", "    name: johnd", "    comment: John Doe", "    uid: 1040", "    group: admin"], ["- name: Add the user 'james' with a bash shell, appending the group 'admins' and 'developers' to the user's groups", "  ansible.builtin.user:", "    name: james", "    shell: /bin/bash", "    groups: admins,developers", "    append: true"], ["- name: Remove the user 'johnd'", "  ansible.builtin.user:", "    name: johnd", "    state: absent", "    remove: true"]] },
+"ansible.builtin.group": { d: "This module allows you to add or remove groups and change their attributes. For Windows targets, use the ansible.windows.win_group module instead.", o: [["name", "Name of the group to manage.", true], ["gid", "Optional GID to set for the group.", false], ["state", "Whether the group should be present or not on the remote host.", false, "default: present"], ["system", "Create a system group (gid below the system range).", false, "default: no"], ["local", "Forces the use of local command alternatives on platforms that implement it (lgroupadd).", false, "default: no"]], e: [["- name: Ensure group \"somegroup\" exists", "  ansible.builtin.group:", "    name: somegroup", "    state: present"], ["- name: Ensure group \"docker\" exists with gid 1024", "  ansible.builtin.group:", "    name: docker", "    gid: 1024", "    state: present"]] },
+"ansible.builtin.include_role": { d: "Dynamically include a role into a playbook. Including a role with include_role loads it at the point of the task, unlike the static roles: section of a play, and it can be looped or made conditional like any other task.", o: [["name", "The name of the role to include.", true], ["tasks_from", "File to load from a role's tasks/ directory.", false, "default: main"], ["vars_from", "File to load from a role's vars/ directory.", false, "default: main"], ["defaults_from", "File to load from a role's defaults/ directory.", false, "default: main"], ["handlers_from", "File to load from a role's handlers/ directory.", false, "default: main"], ["allow_duplicates", "Allow a role to be applied more than once.", false, "default: yes"]], e: [["- name: Include the some_role role", "  ansible.builtin.include_role:", "    name: some_role"], ["- name: Include tasks from the some_role role", "  ansible.builtin.include_role:", "    name: some_role", "    tasks_from: other"]] },
+"ansible.builtin.authorized_key": { d: "Adds or removes an SSH authorized key for a user account. This module uses the user and key options to manage which public keys belong in a user's authorized_keys file.", o: [["user", "The username on the remote host whose authorized_keys file will be modified.", true], ["key", "The SSH public key(s), as a string or (since 1.9) a url.", true], ["state", "Whether the given key (with the given key_options) should or should not be in the authorized_keys file.", false, "default: present"], ["path", "Alternate path to the authorized_keys file.", false], ["manage_dir", "Whether the module should check that the .ssh directory exists and set its permissions.", false, "default: yes"], ["exclusive", "Remove all other non-specified keys from the authorized_keys file.", false, "default: no"]], e: [["- name: Set authorized key taken from file", "  ansible.builtin.authorized_key:", "    user: charlie", "    state: present", "    key: \"{{ lookup('file', '/home/charlie/.ssh/id_rsa.pub') }}\""], ["- name: Set authorized keys taken from url", "  ansible.builtin.authorized_key:", "    user: charlie", "    state: present", "    key: https://github.com/charlie.keys"]] },
+"ansible.posix.firewalld": { d: "This module allows for addition or deletion of services and ports (either TCP or UDP) in either running or permanent firewalld rules. It works with firewalld versions >= 0.2.11 and requires the python firewalld bindings on the target.", o: [["service", "Name of a service (as listed by 'firewall-cmd --get-services') to add/remove.", false], ["port", "Name of a port or port range (port/protocol) to add/remove, for example 8080/tcp or 5000-5050/udp.", false], ["state", "Whether the service/port should be enabled or disabled in the zone.", true], ["permanent", "Apply the change to the permanent configuration as well as (or instead of) runtime.", false, "default: no"], ["immediate", "Apply the change to the runtime configuration as well.", false, "default: no"], ["zone", "The firewalld zone to add/remove the service/port to or from; defaults to the default zone.", false]], e: [["- name: Permit traffic in default zone for https service", "  ansible.posix.firewalld:", "    service: https", "    permanent: true", "    state: enabled"], ["- name: Permit traffic in public zone on port 8081/tcp", "  ansible.posix.firewalld:", "    port: 8081/tcp", "    zone: public", "    permanent: true", "    immediate: true", "    state: enabled"]] },
+"ansible.posix.selinux": { d: "Configures the SELinux mode and policy. A reboot may be required after usage. Ansible will not issue a reboot, but will let you know when it is required with the reboot_required return value.", o: [["policy", "The SELinux policy to use: targeted, minimum, mls.", false], ["state", "The SELinux mode: enforcing, permissive, or disabled.", false], ["conf", "The path to the SELinux configuration file.", false, "default: /etc/selinux/config"], ["update_kernel_param", "Use kernel boot parameter to set SELinux mode when state is disabled.", false, "default: no"]], e: [["- name: Enable SELinux", "  ansible.posix.selinux:", "    policy: targeted", "    state: enforcing"], ["- name: Put SELinux in permissive mode, logging actions that would be blocked", "  ansible.posix.selinux:", "    policy: targeted", "    state: permissive"]] },
+"ansible.posix.sysctl": { d: "This module manipulates sysctl entries and optionally performs a /sbin/sysctl -p after it. It also checks the values in the file do not change after the module has run, which catches hand edits being overwritten.", o: [["name", "The dot-separated path (also known as key) specifying the sysctl variable.", true], ["value", "Desired value of the sysctl key; numbers must be given as strings or they are compared as strings.", false], ["state", "Whether the entry should be present or absent in the sysctl file.", false, "default: present"], ["reload", "If true, performs a /sbin/sysctl -p if the sysctl_file is updated; also reloads when value is changed even if the file is not.", false, "default: yes"], ["sysctl_file", "The file to write to or read from.", false, "default: /etc/sysctl.conf"]], e: [["- name: Set ip forwarding on in /proc and in the sysctl file", "  ansible.posix.sysctl:", "    name: net.ipv4.ip_forward", "    value: '1'", "    state: present"], ["- name: Set kernel.shmax, forcing the file to be reloaded", "  ansible.posix.sysctl:", "    name: kernel.shmax", "    value: '4294967295'", "    state: present", "    reload: true"]] },
+"community.general.lvg": { d: "This module creates, removes or resizes volume groups. It manages the LVM volume group on top of the given physical volumes.", o: [["vg", "The name of the volume group.", true], ["pvs", "List of comma-separated devices to use as physical devices in this volume group; required when creating the VG.", false], ["state", "Whether the volume group should be present or absent.", false, "default: present"], ["pesize", "The size of the physical extent, in multiples of 1024 bytes (a plain number is KiB; suffixes like 32M are accepted).", false, "default: 4M"], ["force", "Force the creation or removal of the volume group.", false, "default: no"]], e: [["- name: Create a volume group on top of /dev/sda1 with physical extent size = 32MB", "  community.general.lvg:", "    vg: vg.services", "    pvs: /dev/sda1", "    pesize: 32"], ["- name: Remove the volume group", "  community.general.lvg:", "    vg: vg.services", "    state: absent"]] },
+"community.general.lvol": { d: "This module creates, removes or resizes logical volumes. Requires the lvm2 tools on the target. Note that the module will fail when shrinking a volume that holds a filesystem unless the filesystem itself supports it or force is used with care.", o: [["vg", "The volume group the logical volume lives in.", true], ["lv", "The name of the logical volume.", true], ["size", "The size of the logical volume, e.g. 512, 10g, 1500m, or a percentage like 100%FREE. Optional when state=absent.", false], ["state", "Whether the logical volume should be present or absent.", false, "default: present"], ["shrink", "Allow shrinking when the current size is bigger than the requested size.", false, "default: no"], ["force", "Force the creation or removal, used mainly with state=absent and when shrinking.", false, "default: no"], ["opts", "Free-form options to be passed to the lvcreate command.", false]], e: [["- name: Create a logical volume of 512m in volume group vg.services", "  community.general.lvol:", "    vg: vg.services", "    lv: test", "    size: 512"], ["- name: Create a logical volume the size of all remaining space in the volume group", "  community.general.lvol:", "    vg: vg.services", "    lv: test", "    size: 100%FREE"], ["- name: Remove the logical volume", "  community.general.lvol:", "    vg: vg.services", "    lv: test", "    state: absent"]] },
+"community.general.filesystem": { d: "This module allows to create a filesystem on a block device (or image file). It also allows to resize an existing filesystem, as long as the underlying device has already been resized (for example with parted).", o: [["dev", "Target block device or image file.", true], ["fstype", "Filesystem type to create, e.g. ext4, xfs, vfat, swap.", false], ["force", "If true, allows creation when the target already contains a filesystem; dangerous - data loss.", false, "default: no"], ["resizefs", "If true, attempts to grow the filesystem to fill the device when the size differs.", false, "default: no"], ["opts", "List of options to pass to mkfs at creation time.", false]], e: [["- name: Create a ext2 filesystem on /dev/sdb1", "  community.general.filesystem:", "    fstype: ext2", "    dev: /dev/sdb1"], ["- name: Create a xfs filesystem on /dev/sdb1", "  community.general.filesystem:", "    fstype: xfs", "    dev: /dev/sdb1"], ["- name: Grow an XFS filesystem on top of /dev/sda1", "  community.general.filesystem:", "    fstype: xfs", "    dev: /dev/sda1", "    resizefs: true"]] },
+"community.general.parted": { d: "This module allows configuring block device partitions using Parted. It reads the device's partition table and creates, modifies or deletes partitions to match the requested state. Unit defaults to KiB; use MiB/GiB/TiB or percent values for clarity.", o: [["device", "The device to work on.", true], ["number", "The partition number (required for most operations).", false], ["state", "Whether the partition should be present or absent.", false, "default: present"], ["part_start", "Where the partition starts, for example 0% or 1MiB.", false, "default: 0%"], ["part_end", "Where the partition ends, for example 100% or 1GiB.", false, "default: 100%"], ["label", "The partition table type: msdos, gpt, and others supported by parted.", false, "default: msdos"], ["unit", "Unit in which sizes are given: B, KiB, MiB, GiB, % and friends.", false, "default: KiB"], ["flags", "A list of flags to set on the partition, for example lvm or boot.", false]], e: [["- name: Create a new primary partition with a size of 1GiB", "  community.general.parted:", "    device: /dev/sdb", "    number: 1", "    state: present", "    part_end: 1GiB"], ["- name: Create a new primary partition for LVM", "  community.general.parted:", "    device: /dev/sdb", "    number: 2", "    state: present", "    flags: [lvm]", "    part_start: 1GiB", "    part_end: 2GiB"]] }
+};
+function soDocRender(fqcn, entry, snippet){
+  const short = fqcn.split(".").pop();
+  if (snippet) return (entry.snip || entry.e[0]).slice();
+  const collPath = fqcn.indexOf("ansible.builtin.") === 0
+    ? "/usr/lib/python3.9/site-packages/ansible/modules/" + short + ".py"
+    : "/home/student/ansible/collections/ansible_collections/" + fqcn.split(".").slice(0, 2).join("/") + "/plugins/modules/" + short + ".py";
+  const lines = ["> " + fqcn.toUpperCase() + "    (" + collPath + ")", ""];
+  entry.d.split("\n").forEach(l => lines.push("  " + l));
+  lines.push("", "OPTIONS (= is required):", "");
+  entry.o.forEach(o => {
+    lines.push((o[2] ? "= " : "- ") + o[0]);
+    lines.push("        " + o[1]);
+    if (o[3]) lines.push("        " + o[3]);
+    lines.push("");
+  });
+  lines.push("EXAMPLES:", "");
+  entry.e.forEach((ex, i) => { if (i) lines.push(""); ex.forEach(l => lines.push(l)); });
+  return lines;
+}
+function soDocResolve(name){
+  if (!name) return null;
+  if (DOC_DB[name]) return name;
+  const short = name.split(".").pop();
+  const hits = Object.keys(DOC_DB).filter(k => k.split(".").pop() === short);
+  return hits.length === 1 ? hits[0] : null;
+}
+function soDocListLines(){
+  return Object.keys(DOC_DB).sort().map(k => k + " ".repeat(Math.max(2, 40 - k.length)) + DOC_DB[k].d.split("\n")[0]);
+}
+function soAnsibleDoc(tokens){
+  const args = tokens.slice(1);
+  const has = f => args.indexOf(f) >= 0;
+  const typeIdx = Math.max(args.indexOf("-t"), args.indexOf("--type"));
+  const type = typeIdx >= 0 ? args[typeIdx + 1] : "module";
+  if (has("--version")) return { lines: ["ansible-doc [core 2.14.0]"], ok: true };
+  if (has("-l") || has("--list")) {
+    if (type === "lookup") return { lines: DOC_LOOKUPS.slice(), ok: true };
+    return { lines: soDocListLines(), ok: true };
+  }
+  let mod = null;
+  for (let i = 0; i < args.length; i++) {
+    const t = args[i];
+    if (t === "-t" || t === "--type") { i++; continue; }
+    if (t.charAt(0) === "-") continue;
+    mod = t; break;
+  }
+  if (!mod) return { lines: ["ansible-doc: error: a module name is required - try 'ansible-doc -l' to list the modules"], ok: false };
+  const fqcn = soDocResolve(mod);
+  if (!fqcn) return { lines: ["[WARNING]: module " + mod + " not found in: /home/student/ansible/collections:/usr/share/ansible/collections:/usr/lib/python3.9/site-packages/ansible/modules", "", "ERROR! Ansible module " + mod + " not found"], ok: false };
+  return { lines: soDocRender(fqcn, DOC_DB[fqcn], has("-s") || has("--snippet")), ok: true };
+}
 function soNavigatorMisc(st, sub, args){
   // The ansible-navigator subcommands beyond run/exec, in -m stdout form:
   // the reference commands an EX294 candidate is expected to know.
@@ -4346,17 +4582,14 @@ function soNavigatorMisc(st, sub, args){
     const typeIdx = Math.max(args.indexOf("-t"), args.indexOf("--type"));
     const type = typeIdx >= 0 ? args[typeIdx + 1] : "module";
     if (has("-l") || has("--list")) {
-      if (type === "lookup") return { lines: ["file                  Look up file contents and return them", "template              Retrieve contents of a file after templating", "vars                  Lookup templated value of a variable", "env                   Read the value of environment variables", "url                   Return contents from a URL", "csvfile               Read individual cells from a CSV file", "ini                   Read values from an ini file", "dict                  Returns key/value pair items from dictionaries", "list                  Simply returns what it is given", "items                 List of items in a sequence"], ok: true };
-      return { lines: ["ansible.builtin.copy                  Copy files to remote locations", "ansible.builtin.dnf                   Manage packages with the dnf package manager", "ansible.builtin.file                  Manage files and file properties", "ansible.builtin.get_url               Downloads files from HTTP, HTTPS, or FTP to node", "ansible.builtin.lineinfile            Manage lines in text files", "ansible.builtin.lvol                  Configure LVM logical volumes", "ansible.builtin.parted                Configure block device partitions", "ansible.builtin.rpm_key               Adds or removes a gpg key from the rpm db", "ansible.builtin.service               Manage services", "ansible.builtin.template              Template a file out to a target host", "ansible.builtin.user                  Manage user accounts", "ansible.builtin.yum_repository        Add or remove YUM repositories"], ok: true };
+      if (type === "lookup") return { lines: DOC_LOOKUPS.slice(), ok: true };
+      return { lines: soDocListLines(), ok: true };
     }
     const mod = positional[0] || "";
     if (!mod) return { lines: ["ansible-navigator: error: a module name is required"], ok: false };
-    if (has("-s") || has("--snippet")) {
-      return { lines: ["- name: Install the latest version of Apache", "  " + mod + ":", "    name: httpd", "    state: present"], ok: true };
-    }
-    const short = mod.split(".").pop();
-    const desc = short === "dnf" ? "Installs, upgrades, removes, and lists packages and groups with the dnf package manager." : "Documentation for the " + mod + " module.";
-    return { lines: ["> " + mod.toUpperCase() + "    (/usr/lib/python3.9/site-packages/ansible/modules/" + short + ".py)", "", "  " + desc, "", "OPTIONS (red indicates it is required):", "", "- name        Name or list of package names to be installed, upgraded or removed.", "              Separate multiple package names with commas.", "", "- state       Whether to install (present), upgrade (latest), or remove (absent) a package.", "              Default: present"], ok: true };
+    const fqcn = soDocResolve(mod);
+    if (!fqcn) return { lines: ["[WARNING]: module " + mod + " not found in the module paths for this project", "", "ERROR! Ansible module " + mod + " not found"], ok: false };
+    return { lines: soDocRender(fqcn, DOC_DB[fqcn], has("-s") || has("--snippet")), ok: true };
   }
   if (sub === "inventory") {
     if (has("--graph")) return { lines: ["@all:", "  |--@balancers:", "  |  |--serverd", "  |--@dev:", "  |  |--servera", "  |--@prod:", "  |  |--serverb", "  |  |--serverc", "  |--@test:", "  |  |--serverb", "  |--@ungrouped:", "  |--@webservers:", "  |  |--@prod:", "  |  |  |--serverb", "  |  |  |--serverc"], ok: true };
@@ -4500,6 +4733,7 @@ function soExecSegment(st, segText, q){
   if (cmd === "curl") return soCurl(st, tokens, seg);
   if (cmd === "ansible-galaxy") return soGalaxy(st, tokens);
   if (cmd === "ansible-vault") return soVault(st, tokens, seg);
+  if (cmd === "ansible-doc") return soAnsibleDoc(tokens);
   if (cmd === "ansible-playbook" || cmd === "ansible-navigator") {
     let rest = tokens.slice(1);
     if (cmd === "ansible-navigator") {
@@ -4761,6 +4995,63 @@ function soExecSegment(st, segText, q){
 }
 // Execute the whole typed input the way bash would: lines, then && / ;
 // segments in order; && stops the chain on a failing segment.
+// --- Pipes and redirection ----------------------------------------------------
+// Quote-aware: a | or > inside a quoted argument (the Q15.5 shell call
+// is full of them) is data, not shell syntax. echo/printf are exempt
+// from redirect peeling - they consume their own '>' inside
+// soExecSegment, exactly like Q14's secret.txt line requires.
+function soSplitPipeline(seg){
+  const stages = [""];
+  let redirect = null, quote = null;
+  const firstTok = (seg.trim().split(/\s+/)[0] || "");
+  const exempt = (firstTok === "echo" || firstTok === "printf");
+  for (let i = 0; i < seg.length; i++) {
+    const c = seg[i];
+    if (quote) { stages[stages.length - 1] += c; if (c === quote) quote = null; continue; }
+    if (c === "'" || c === '"') { quote = c; stages[stages.length - 1] += c; continue; }
+    if (c === "|" && seg[i + 1] !== "|") { stages.push(""); continue; }
+    if (c === ">" && !exempt) {
+      const m = seg.slice(i).match(/^>(>?)\s*(\S+)\s*$/);
+      if (m) { redirect = { append: !!m[1], file: m[2] }; break; }
+    }
+    stages[stages.length - 1] += c;
+  }
+  return { stages: stages.map(s => s.trim()), redirect: redirect };
+}
+function soPipeStage(st, stage, lines){
+  const toks = shellTokens(stage).map(t => unquoteArg(t));
+  const cmd = toks[0];
+  if (cmd === "grep") {
+    let inv = false, ci = false, pat = null;
+    toks.slice(1).forEach(t => {
+      if (t === "-v") inv = true;
+      else if (t === "-i") ci = true;
+      else if (t === "-iv" || t === "-vi") { inv = true; ci = true; }
+      else if (t.charAt(0) !== "-") pat = t;
+    });
+    if (pat === null) return { lines: lines, ok: true };
+    const needle = ci ? pat.toLowerCase() : pat;
+    return { lines: lines.filter(l => { const hit = (ci ? l.toLowerCase() : l).indexOf(needle) >= 0; return inv ? !hit : hit; }), ok: true };
+  }
+  if (cmd === "head" || cmd === "tail") {
+    let n = 10;
+    const ni = toks.indexOf("-n");
+    if (ni >= 0 && toks[ni + 1]) n = parseInt(toks[ni + 1], 10) || 10;
+    else { const m2 = toks.join(" ").match(/-(\d+)/); if (m2) n = parseInt(m2[1], 10); }
+    return { lines: cmd === "head" ? lines.slice(0, n) : lines.slice(-n), ok: true };
+  }
+  if (cmd === "wc") return { lines: [String(lines.length)], ok: true };
+  if (cmd === "tee" && toks[1]) {
+    const abs = soResolve(st, toks[1]);
+    const parent = abs.slice(0, abs.lastIndexOf("/")) || "/";
+    if (!soFsExists(st, parent)) return { lines: ["tee: " + toks[1] + ": No such file or directory"], ok: false };
+    soMakeFile(st, abs, lines.join("\n") + (lines.length ? "\n" : ""));
+    return { lines: lines, ok: true };
+  }
+  if (cmd === "sort") return { lines: lines.slice().sort(), ok: true };
+  if (cmd === "uniq") { const seen = new Set(); return { lines: lines.filter(l => !seen.has(l) && seen.add(l)), ok: true }; }
+  return { lines: ["bash: " + (cmd || "") + ": command not found"], ok: false };
+}
 function simulateShell(q, text, st, stepPass){
   const out = [];
   const fm = text.match(/for\s+(\w+)\s+in\s+([^;]+?);\s*do\s+([\s\S]+?);\s*done/);
@@ -4784,11 +5075,34 @@ function simulateShell(q, text, st, stepPass){
       if (sepBefore !== "&&") broken = false;
       const segText = parts[i];
       if (!segText || !segText.trim()) continue;
-      const r = soExecSegment(st, segText, q);
-      let segLines = r.lines;
-      if (stepPass && !r.ok) segLines = segLines.filter(l => !/^(ERROR!|fatal:|bash: .*command not found|.*No such file or directory)/.test(l));
+      const pipe = soSplitPipeline(segText);
+      const r = soExecSegment(st, pipe.stages[0], q);
+      let segLines = r.lines, segOk = r.ok;
+      if (pipe.stages.length > 1 && /^ls\b/.test(pipe.stages[0]) && !/-[a-z]*l/.test(pipe.stages[0])) {
+        const split = [];
+        segLines.forEach(l => { l.split(/\s{2,}/).forEach(x => { if (x) split.push(x); }); });
+        segLines = split;
+      }
+      for (let pi = 1; pi < pipe.stages.length; pi++) {
+        const pr = soPipeStage(st, pipe.stages[pi], segLines);
+        segLines = pr.lines; if (!pr.ok) segOk = false;
+      }
+      if (pipe.redirect) {
+        if (pipe.redirect.file === "/dev/null") segLines = [];
+        else {
+          const abs = soResolve(st, pipe.redirect.file);
+          const parent = abs.slice(0, abs.lastIndexOf("/")) || "/";
+          if (!soFsExists(st, parent)) { segLines = ["bash: " + pipe.redirect.file + ": No such file or directory"]; segOk = false; }
+          else {
+            const prev = pipe.redirect.append ? (soLocalContent(st, abs) || "") : "";
+            soMakeFile(st, abs, prev + segLines.join("\n") + (segLines.length ? "\n" : ""));
+            segLines = [];
+          }
+        }
+      }
+      if (stepPass && !segOk) segLines = segLines.filter(l => !/^(ERROR!|fatal:|bash: .*command not found|.*No such file or directory)/.test(l));
       out.push.apply(out, segLines);
-      if (!r.ok && !stepPass) broken = true;
+      if (!segOk && !stepPass) broken = true;
     }
   });
   return out;
