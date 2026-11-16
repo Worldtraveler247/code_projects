@@ -4602,7 +4602,11 @@ function soSetupLines(h, become, args){
   js.push("");
   return js;
 }
-function soAdhoc(tokens){
+function soAdhoc(st, tokens){
+  // Ad hoc commands live off the project's ansible.cfg and inventory:
+  // outside /home/student/ansible there is nothing to run against, so
+  // not even a ping succeeds (Ed's directory discipline, 2026-11-17).
+  if (st && st.cwd !== "/home/student/ansible") return soWrongDir(st, "/home/student/ansible", "Ad hoc commands read this project's ansible.cfg and inventory - from anywhere else Ansible has no inventory, so the command cannot reach servera through serverd. Refer to the step's directions and run the task from the location it specifies.");
   let pattern = null, mod = null, args = null, become = false;
   for (let i = 0; i < tokens.length; i++) {
     const tk = tokens[i], base = tk.split("=")[0];
@@ -5114,7 +5118,7 @@ function soExecSegment(st, segText, q){
       if (rest[0] === "exec") {
         let inner = rest.slice(1);
         if (inner[0] === "--") inner = inner.slice(1);
-        if (inner[0] === "ansible") return soAdhoc(inner.slice(1));
+        if (inner[0] === "ansible") return soAdhoc(st, inner.slice(1));
         return { lines: [], ok: true };
       }
       if (rest[0] !== "run") return soNavigatorMisc(st, rest[0], rest.slice(1));
@@ -5152,13 +5156,13 @@ function soExecSegment(st, segText, q){
         ["all", "-m", "ansible.builtin.yum_repository", "-a", "name='AppStream' description='AppStream Repo' baseurl='http://10.1.14.36/RHEL9/AppStream' gpgcheck=true gpgkey='http://apt.sw.be/RPM-GPG-KEY.dag.txt' enabled=true", "-b"]
       ];
       const out = [];
-      scriptLines.forEach(tk => { const r = soAdhoc(tk); r.lines.forEach(l => out.push(l)); });
+      scriptLines.forEach(tk => { const r = soAdhoc(st, tk); r.lines.forEach(l => out.push(l)); });
       return { lines: out, ok: true };
     }
     if (target && !soFsExists(st, soResolve(st, target))) return { lines: ["bash: " + target + ": No such file or directory"], ok: false };
     return { lines: [], ok: true };
   }
-  if (cmd === "ansible") return soAdhoc(tokens.slice(1));
+  if (cmd === "ansible") return soAdhoc(st, tokens.slice(1));
   if (cmd === "dnf" || cmd === "yum") {
     if (tokens[1] === "install") {
       if (!hadSudo && soUser(st) !== "root") return { lines: ["Error: This command has to be run with superuser privileges (under the root user on most systems)."], ok: false };
