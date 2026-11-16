@@ -4178,6 +4178,52 @@ function soVault(st, tokens, segText){
   }
   return { lines: lines, ok: true };
 }
+function soNavigatorMisc(st, sub, args){
+  // The ansible-navigator subcommands beyond run/exec, in -m stdout form:
+  // the reference commands an EX294 candidate is expected to know.
+  const has = f => args.indexOf(f) >= 0;
+  const positional = args.filter(t => t.charAt(0) !== "-" && !/^(stdout|interactive)$/.test(t) && args[args.indexOf(t) - 1] !== "-m" && args[args.indexOf(t) - 1] !== "--mode" && args[args.indexOf(t) - 1] !== "-t" && args[args.indexOf(t) - 1] !== "--type" && args[args.indexOf(t) - 1] !== "-i" && args[args.indexOf(t) - 1] !== "--inventory" && args[args.indexOf(t) - 1] !== "--host");
+  if (sub === "--version" || sub === "version") {
+    return { lines: ["ansible-navigator 3.4.0", "ansible [core 2.14.0]", "ansible-builder 3.0.0", "ansible-runner 2.3.1"], ok: true };
+  }
+  if (sub === "doc") {
+    const typeIdx = Math.max(args.indexOf("-t"), args.indexOf("--type"));
+    const type = typeIdx >= 0 ? args[typeIdx + 1] : "module";
+    if (has("-l") || has("--list")) {
+      if (type === "lookup") return { lines: ["file                  Look up file contents and return them", "template              Retrieve contents of a file after templating", "vars                  Lookup templated value of a variable", "env                   Read the value of environment variables", "url                   Return contents from a URL", "csvfile               Read individual cells from a CSV file", "ini                   Read values from an ini file", "dict                  Returns key/value pair items from dictionaries", "list                  Simply returns what it is given", "items                 List of items in a sequence"], ok: true };
+      return { lines: ["ansible.builtin.copy                  Copy files to remote locations", "ansible.builtin.dnf                   Manage packages with the dnf package manager", "ansible.builtin.file                  Manage files and file properties", "ansible.builtin.get_url               Downloads files from HTTP, HTTPS, or FTP to node", "ansible.builtin.lineinfile            Manage lines in text files", "ansible.builtin.lvol                  Configure LVM logical volumes", "ansible.builtin.parted                Configure block device partitions", "ansible.builtin.rpm_key               Adds or removes a gpg key from the rpm db", "ansible.builtin.service               Manage services", "ansible.builtin.template              Template a file out to a target host", "ansible.builtin.user                  Manage user accounts", "ansible.builtin.yum_repository        Add or remove YUM repositories"], ok: true };
+    }
+    const mod = positional[0] || "";
+    if (!mod) return { lines: ["ansible-navigator: error: a module name is required"], ok: false };
+    if (has("-s") || has("--snippet")) {
+      return { lines: ["- name: Install the latest version of Apache", "  " + mod + ":", "    name: httpd", "    state: present"], ok: true };
+    }
+    const short = mod.split(".").pop();
+    const desc = short === "dnf" ? "Installs, upgrades, removes, and lists packages and groups with the dnf package manager." : "Documentation for the " + mod + " module.";
+    return { lines: ["> " + mod.toUpperCase() + "    (/usr/lib/python3.9/site-packages/ansible/modules/" + short + ".py)", "", "  " + desc, "", "OPTIONS (red indicates it is required):", "", "- name        Name or list of package names to be installed, upgraded or removed.", "              Separate multiple package names with commas.", "", "- state       Whether to install (present), upgrade (latest), or remove (absent) a package.", "              Default: present"], ok: true };
+  }
+  if (sub === "inventory") {
+    if (has("--graph")) return { lines: ["@all:", "  |--@balancers:", "  |  |--serverd", "  |--@dev:", "  |  |--servera", "  |--@prod:", "  |  |--serverb", "  |  |--serverc", "  |--@test:", "  |  |--serverb", "  |--@ungrouped:", "  |--@webservers:", "  |  |--@prod:", "  |  |  |--serverb", "  |  |  |--serverc"], ok: true };
+    const hostIdx = args.indexOf("--host");
+    if (hostIdx >= 0) return { lines: ["{}"], ok: true };
+    return { lines: ["{", "    \"_meta\": {", "        \"hostvars\": {", "            \"servera\": {},", "            \"serverb\": {},", "            \"serverc\": {},", "            \"serverd\": {}", "        }", "    },", "    \"all\": {", "        \"children\": [\"ungrouped\", \"balancers\", \"dev\", \"prod\", \"test\", \"webservers\"]", "    },", "    \"balancers\": { \"hosts\": [\"serverd\"] },", "    \"dev\": { \"hosts\": [\"servera\"] },", "    \"prod\": { \"hosts\": [\"serverb\", \"serverc\"] },", "    \"test\": { \"hosts\": [\"serverb\"] },", "    \"webservers\": { \"children\": [\"prod\"] }", "}"], ok: true };
+  }
+  if (sub === "config") {
+    return { lines: ["COLLECTIONS_PATHS(/home/student/ansible/ansible.cfg) = ['/home/student/ansible/collections', '/usr/share/ansible/collections']", "DEFAULT_HOST_LIST(/home/student/ansible/ansible.cfg) = ['/home/student/ansible/inventory']", "DEFAULT_REMOTE_USER(/home/student/ansible/ansible.cfg) = student", "DEFAULT_ROLES_PATH(/home/student/ansible/ansible.cfg) = ['/home/student/ansible/roles', '/usr/share/ansible/roles']"], ok: true };
+  }
+  if (sub === "collections") {
+    const lines = ["# /home/student/ansible/collections/ansible_collections", "Collection                 Version", "-------------------------- -------"];
+    if (st.lab.collectionsDone) { lines.push("ansible.netcommon          7.1.0"); lines.push("ansible.posix              1.5.4"); lines.push("community.general          8.5.0"); lines.push("redhat.rhel_system_roles   1.21.0"); }
+    return { lines: lines, ok: true };
+  }
+  if (sub === "images") {
+    return { lines: ["IMAGE           TAG       EXECUTION ENVIRONMENT   CREATED                 SIZE", "creator-ee      v0.22.0   x                       2026-09-14 10:22:31     724 MB"], ok: true };
+  }
+  if (sub === "settings") {
+    return { lines: ["ansible-navigator:", "  ansible:", "    inventory:", "      entries:", "      - /home/student/ansible/inventory", "  execution-environment:", "    image: creator-ee:v0.22.0", "    pull:", "      policy: missing", "  logging:", "    level: debug", "    file: /tmp/navigator.log", "  mode: stdout", "  playbook-artifact:", "    enable: false"], ok: true };
+  }
+  return { lines: ["ansible-navigator: error: no such subcommand: " + (sub || "")], ok: false };
+}
 function soExecSegment(st, segText, q){
   let seg = segText.trim();
   if (!seg) return { lines: [], ok: true };
@@ -4286,7 +4332,7 @@ function soExecSegment(st, segText, q){
         if (inner[0] === "ansible") return soAdhoc(inner.slice(1));
         return { lines: [], ok: true };
       }
-      if (rest[0] !== "run") return { lines: ["ansible-navigator: error: no such subcommand: " + (rest[0] || "")], ok: false };
+      if (rest[0] !== "run") return soNavigatorMisc(st, rest[0], rest.slice(1));
       rest = rest.slice(1);
     }
     const norm = normPlaybookRun(rest.slice());
