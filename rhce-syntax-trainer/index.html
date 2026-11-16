@@ -398,21 +398,43 @@ const QUESTIONS = [
   <div class="tie"><b>How it ties in:</b> Q3's <code>dnf</code> installs — and even the definition of the "RPM Development Tools" package group — come from the metadata of the repos you just created. No Q2, no Q3.</div>`
 },
 {
-  id:"Q2.1", title:"Run repo_key.sh — Push the GPG Key and Both Repos onto Every Node", sub:"bash repo_key.sh", cmd:true,
+  id:"Q2.1", title:"Make repo_key.sh Executable — chmod +x", sub:"chmod +x — grant the execute bit", cmd:true,
   files:[{ path:"shell", lang:"cmd" }],
-  spec:`<b>2.1. Execute the script.</b><br>• You are <code>student</code>, in <code>/home/student/ansible</code>, and the <code>repo_key.sh</code> you wrote in Q2 is sitting in the project. Run it as a shell script.<br>• Watch the shape of the run: the script's three ad hoc commands execute <b>in order</b>, and each one fans out to <b>all four managed hosts at once</b>. First the GPG key is imported into every node's RPM keyring (<code>rpm_key</code>), then the BaseOS repo file is written on every node, then the AppStream repo file (<code>yum_repository</code> twice).<br>• Pass looks like <code>SUCCESS</code> with <code>changed</code> on every host for all three commands: one key imported per node, two repo files written per node.<br>• Type the command at the prompt and press <b>Enter</b> to run it.`,
+  spec:`<b>2.1. Make the script executable.</b><br>• The <code>repo_key.sh</code> you wrote in Q2 came out of vim with mode <code>644</code> — <code>-rw-r--r--</code> — readable by everyone, executable by no one, so the kernel would refuse to run it directly.<br>• Grant the execute bit with <code>chmod</code>: one short command against the file, in the project directory where you stand.<br>• Pass looks like silence — chmod prints nothing on success — and <code>ls -l repo_key.sh</code> afterwards shows the <code>x</code>: <code>-rwxr-xr-x</code>.<br>• Type the command at the prompt and press <b>Enter</b> to run it.`,
+  checks:[[
+    { fn:t => /(^|\s)chmod\s/.test(t), msg:"Set the mode with chmod" },
+    { fn:t => { const m = t.match(/chmod\s+(?:-\S+\s+)*(\S+)\s+\S+\s*$/); if (!m) return false; return /^[ugoa]*\+x$/.test(m[1]) || /^0?[1357][0-7][0-7]$/.test(m[1]); }, msg:"Grant execute: chmod +x repo_key.sh (a numeric mode needs an odd owner digit, like 755)" },
+    { fn:t => /(^|\s)(\S+\/)?repo_key\.sh\s*$/.test(t), msg:"The file is repo_key.sh" },
+    { fn:t => !/(bash|sh)\s+\S*repo_key/.test(t), msg:"This step only changes the mode — running the script is Q2.2" }
+  ]],
+  explain:`<h2>✅ Q2.1 complete — what you just did</h2>
+  <p><code>repo_key.sh</code> now carries the execute bit: its mode went from <code>644</code> (<code>-rw-r--r--</code>) to <code>755</code> (<code>-rwxr-xr-x</code>). The contents did not change at all — only who may run the file, and how.</p>
+  <h4>How it affects the Ansible environment</h4>
+  <p>• A file fresh out of vim is never executable. Until this step, the only way to run the script was to hand it to an interpreter (<code>bash repo_key.sh</code>); now the kernel itself will execute it, so <code>./repo_key.sh</code> works too. Q2.2 uses the bash form, and both are correct from here on.<br>
+  • The bit lives in the file's metadata on the controller; it changes nothing on the managed nodes. What changes is what the next command is allowed to do.</p>
+  <h4>Command anatomy — what every part does, and what breaks without it</h4>
+  <p>• <code>chmod</code> — change mode: rewrite the file's permission bits. It prints nothing on success; silence is the pass signal.<br>
+  • <code>+x</code> — add execute for owner, group, and other. The symbolic form edits the bits you name and leaves the rest alone; the numeric form <code>755</code> sets all nine bits at once and lands in the same place here.<br>
+  • <code>repo_key.sh</code> — the target, named from the project directory you are standing in. No path needed, no sudo: the file is yours.<br>
+  • <b>Why the exam cares:</b> a script that configures the fleet has to be runnable. Anyone who types <code>./repo_key.sh</code> and gets "Permission denied" is stopped cold — this one command is the difference.</p>
+  <div class="tie"><b>How it ties in:</b> Q2 wrote the script, this step armed it, and Q2.2 fires it: the three ad hoc lines run in order and every node's keyring and repo files land.</div>`
+},
+{
+  id:"Q2.2", title:"Run repo_key.sh — Push the GPG Key and Both Repos onto Every Node", sub:"bash repo_key.sh", cmd:true,
+  files:[{ path:"shell", lang:"cmd" }],
+  spec:`<b>2.2. Execute the script.</b><br>• You are <code>student</code>, in <code>/home/student/ansible</code>, and the <code>repo_key.sh</code> you wrote in Q2 is sitting in the project. Run it as a shell script.<br>• Watch the shape of the run: the script's three ad hoc commands execute <b>in order</b>, and each one fans out to <b>all four managed hosts at once</b>. First the GPG key is imported into every node's RPM keyring (<code>rpm_key</code>), then the BaseOS repo file is written on every node, then the AppStream repo file (<code>yum_repository</code> twice).<br>• Pass looks like <code>SUCCESS</code> with <code>changed</code> on every host for all three commands: one key imported per node, two repo files written per node.<br>• Type the command at the prompt and press <b>Enter</b> to run it.`,
   checks:[[
     { fn:t => /(^|\s)(bash|sh)\s+(\S+\/)?repo_key\.sh\b/.test(t) || /(^|\s)\.\/repo_key\.sh\b/.test(t), msg:"Execute the script itself: bash repo_key.sh (sh repo_key.sh, or ./repo_key.sh, also run it)" },
     { fn:t => !/ansible\s+all\s/.test(t), msg:"Run the script — do not retype the three ad hoc lines from Q2" }
   ]],
-  explain:`<h2>✅ Q2.1 complete — what you just did</h2>
+  explain:`<h2>✅ Q2.2 complete — what you just did</h2>
   <p>You executed <code>repo_key.sh</code>, and the three commands from Q2 stopped being text in a file and became state on the fleet. On <b>every</b> managed node, in order: the DAG GPG key entered the RPM keyring, then <code>/etc/yum.repos.d/BaseOS.repo</code> was written, then <code>/etc/yum.repos.d/AppStream.repo</code>. Twelve successes — three commands times four hosts — and each node's package foundation now exists.</p>
   <h4>How it affects the Ansible environment</h4>
   <p>• Before this run, the nodes had no usable package source for this lab; after it, <code>dnf</code> on any node can resolve packages from BaseOS and AppStream, and can verify their signatures because the key arrived <i>first</i> — the order inside the script is what makes <code>gpgcheck=true</code> pass instead of fail.<br>
   • The run is safe to repeat: every line asks for a state (<code>state=present</code>, a repo definition), so a second run reports the hosts already correct instead of erroring. That is the ad hoc version of idempotence, and it is why the script can be re-run to repair one drifted node without side effects on the rest.</p>
   <h4>Command anatomy — what every part does, and what breaks without it</h4>
   <p>• <code>bash repo_key.sh</code> — hand the file to bash as a script. The shell reads it top to bottom and runs each line as if you had typed it, in this session, as student; the <code>-b</code> inside each line is what carries root onto the nodes.<br>
-  • Why not <code>./repo_key.sh</code>? That form asks the kernel to execute the file directly, which needs the execute bit — and a file fresh out of vim is <code>644</code>, not executable, so it would stop at "Permission denied" until a <code>chmod +x</code>. Naming <code>bash</code> first sidesteps the bit entirely: bash only has to <i>read</i> the file. Both forms are correct on the exam once the bit is set; the bash form works as the file stands.<br>
+  • Why not <code>./repo_key.sh</code>? That form asks the kernel to execute the file directly, which needs the execute bit — Q2.1 just set it with <code>chmod +x</code>, so <code>./repo_key.sh</code> runs too. Naming <code>bash</code> first works either way: bash only has to <i>read</i> the file, bit or no bit. Both forms are correct on the exam now that the bit is set.<br>
   • Nothing about the run is new syntax — and that is the point. A script is typed commands, saved. Q2 proved you can write the three lines; this step proves they land.<br>
   • <b>Why the exam cares:</b> a repo_key.sh that is never run configures nothing. Graders check the <i>nodes</i> — the keyring and the two .repo files on each host — not the script sitting on the controller.</p>
   <div class="tie"><b>How it ties in:</b> the loop-closing proofs from Q2's study doc belong to this moment: <code>dnf repolist</code> on the nodes shows both repos, and <code>rpm -q gpg-pubkey</code> shows the imported key. Q3 now spends the foundation — its very first task installs from these repos, and its "RPM Development Tools" group exists only in their metadata.</div>`
@@ -2294,7 +2316,9 @@ become = false
 ansible all -m ansible.builtin.yum_repository -a "name='BaseOS' description='BaseOS Repo' baseurl='http://10.1.14.36/RHEL9/BaseOS' gpgcheck=true gpgkey='http://apt.sw.be/RPM-GPG-KEY.dag.txt' enabled=true" -b
 ansible all -m ansible.builtin.yum_repository -a "name='AppStream' description='AppStream Repo' baseurl='http://10.1.14.36/RHEL9/AppStream' gpgcheck=true gpgkey='http://apt.sw.be/RPM-GPG-KEY.dag.txt' enabled=true" -b
 ` }] },
-"Q2.1": { hint:`Run the file you just wrote as a shell script from the project directory: bash repo_key.sh. (./repo_key.sh works too once the file is executable; bash needs no execute bit.) The three ad hoc lines then run in order against every host: key first, then BaseOS, then AppStream.`,
+"Q2.1": { hint:`The script came out of vim as 644, readable but not executable. One command fixes it: chmod +x repo_key.sh. (The numeric form, chmod 755 repo_key.sh, lands in the same place.)`,
+  answer:[{ path:"shell", text:"chmod +x repo_key.sh" }] },
+"Q2.2": { hint:`Run the file you wrote as a shell script from the project directory: bash repo_key.sh. (Q2.1 set the execute bit, so ./repo_key.sh runs it too; bash needs no bit either way.) The three ad hoc lines then run in order against every host: key first, then BaseOS, then AppStream.`,
   answer:[{ path:"shell", text:"bash repo_key.sh" }] },
 "Q3": { hint:`One play (hosts: all, become: true) with three dnf tasks. php + mariadb are guarded by an "or" across the dev, test, and prod groups; the "@" group task and the "*" latest task are both dev-only.`,
   answer:[{ path:"/home/student/ansible/packages.yml", text:`---
@@ -3062,6 +3086,20 @@ try {
 // passes once: a pass on the old Q5.3 is dropped, every later pass
 // shifts by -1. (In the current list, new Q5.3 sits at the old index.)
 try {
+  // Q2.1/Q2.2 split (2026-11-17): a chmod step was inserted at Q2.1 and
+  // the run step moved to Q2.2. Passes at or after the inserted step
+  // shift by one; the old run pass lands on Q2.2, where it belongs.
+  try {
+    if (!localStorage.getItem("rhce-q22exec1")) {
+      const iIns = QUESTIONS.findIndex(q => q.id === "Q2.1");
+      const oldDoneX = JSON.parse(localStorage.getItem("rhce-done") || "[]");
+      if (iIns >= 0 && Array.isArray(oldDoneX) && oldDoneX.length) {
+        const remappedX = oldDoneX.filter(i => i < iIns).concat(oldDoneX.filter(i => i >= iIns).map(i => i + 1));
+        localStorage.setItem("rhce-done", JSON.stringify(remappedX));
+      }
+      localStorage.setItem("rhce-q22exec1", "1");
+    }
+  } catch (e) {}
   if (!localStorage.getItem("rhce-q5nocd1")) {
     const i53 = QUESTIONS.findIndex(q => q.id === "Q5.3");
     const oldDoneN = JSON.parse(localStorage.getItem("rhce-done") || "[]");
@@ -4021,6 +4059,7 @@ function soLsLines(st, tokens, typed){
     const isDir = e && e.dir;
     const size = !isDir && typeof (e && e.content) === "string" ? e.content.length : (isDir ? 4096 : 512);
     if (abs === "/home/student/ansible/roles/apache") return "drwxr-xr-x. 8 student student 4096 Nov 11 09:02 " + name;
+    if (!isDir && st.lab.execFiles && st.lab.execFiles[abs]) return "-rwxr-xr-x. 1 student student " + size + " " + (fullIso ? "2026-11-11 09:12:04.000000000 +0900" : "Nov 11 09:12") + " " + name;
     return (isDir ? "drwxr-xr-x" : "-rw-r--r--") + ". 1 student student " + size + " " + (fullIso ? "2026-11-11 09:12:04.000000000 +0900" : "Nov 11 09:12") + " " + name;
   };
   const targets = paths.length ? paths : ["."];
@@ -4392,6 +4431,7 @@ function soExecSegment(st, segText, q){
   if (cmd === "chmod" || cmd === "chown") {
     const target = tokens[tokens.length - 1];
     if (target && !soFsExists(st, soResolve(st, target))) return { lines: [cmd + ": cannot access '" + target + "': No such file or directory"], ok: false };
+    if (cmd === "chmod" && tokens.some(t => /^[ugoa]*\+x$/.test(t) || /^0?[1357][0-7][0-7]$/.test(t))) { st.lab.execFiles = st.lab.execFiles || {}; st.lab.execFiles[soResolve(st, target)] = true; }
     return { lines: [], ok: true };
   }
   if (cmd === "cat" || cmd === "head" || cmd === "tail") {
