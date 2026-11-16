@@ -3452,15 +3452,45 @@ const FS_TREE = {
   "/home/student/ansible/collections": [["requirements.yml",0],["ansible_collections",1]],
   "/home/student/ansible/collections/ansible_collections": [["ansible",1],["community",1]],
   "/home/student/ansible/collections/ansible_collections/ansible": [["netcommon",1],["posix",1]],
-  "/home/student/ansible/collections/ansible_collections/ansible/netcommon": [["plugins",1]],
-  "/home/student/ansible/collections/ansible_collections/ansible/posix": [["plugins",1]],
+  "/home/student/ansible/collections/ansible_collections/ansible/netcommon": [["galaxy.yml",0],["README.md",0],["plugins",1]],
+  "/home/student/ansible/collections/ansible_collections/ansible/netcommon/plugins": [["modules",1]],
+  "/home/student/ansible/collections/ansible_collections/ansible/netcommon/plugins/modules": [["cli_config.py",0],["net_get.py",0],["net_put.py",0]],
+  "/home/student/ansible/collections/ansible_collections/ansible/posix": [["galaxy.yml",0],["README.md",0],["plugins",1]],
+  "/home/student/ansible/collections/ansible_collections/ansible/posix/plugins": [["modules",1]],
+  "/home/student/ansible/collections/ansible_collections/ansible/posix/plugins/modules": [["authorized_key.py",0],["firewalld.py",0],["mount.py",0],["selinux.py",0],["sysctl.py",0]],
   "/home/student/ansible/collections/ansible_collections/community": [["general",1]],
-  "/home/student/ansible/collections/ansible_collections/community/general": [["plugins",1]],
+  "/home/student/ansible/collections/ansible_collections/community/general": [["galaxy.yml",0],["README.md",0],["plugins",1]],
+  "/home/student/ansible/collections/ansible_collections/community/general/plugins": [["modules",1]],
+  "/home/student/ansible/collections/ansible_collections/community/general/plugins/modules": [["filesystem.py",0],["lvg.py",0],["lvol.py",0],["parted.py",0]],
   "/home/student/ansible/roles": [["requirements.yml",0],["apache",1],["balancer",1],["phpinfo",1],["rhel-system-roles.timesync",1]],
-  "/home/student/ansible/roles/balancer": [["defaults",1],["handlers",1],["meta",1],["tasks",1],["templates",1],["vars",1]],
-  "/home/student/ansible/roles/phpinfo": [["defaults",1],["handlers",1],["meta",1],["tasks",1],["templates",1],["vars",1]],
-  "/home/student/ansible/roles/rhel-system-roles.timesync": [["defaults",1],["handlers",1],["meta",1],["tasks",1],["templates",1],["vars",1]],
-  "/home/student/ansible/roles/apache": [["tasks",1],["templates",1],["handlers",1]],
+  "/home/student/ansible/roles/balancer": [["defaults",1],["handlers",1],["meta",1],["tasks",1],["templates",1],["vars",1],["README.md",0]],
+  "/home/student/ansible/roles/balancer/defaults": [["main.yml",0]],
+  "/home/student/ansible/roles/balancer/handlers": [["main.yml",0]],
+  "/home/student/ansible/roles/balancer/meta": [["main.yml",0]],
+  "/home/student/ansible/roles/balancer/tasks": [["main.yml",0]],
+  "/home/student/ansible/roles/balancer/templates": [["haproxy.cfg.j2",0]],
+  "/home/student/ansible/roles/balancer/vars": [["main.yml",0]],
+  "/home/student/ansible/roles/phpinfo": [["defaults",1],["handlers",1],["meta",1],["tasks",1],["templates",1],["vars",1],["README.md",0]],
+  "/home/student/ansible/roles/phpinfo/defaults": [["main.yml",0]],
+  "/home/student/ansible/roles/phpinfo/handlers": [["main.yml",0]],
+  "/home/student/ansible/roles/phpinfo/meta": [["main.yml",0]],
+  "/home/student/ansible/roles/phpinfo/tasks": [["main.yml",0]],
+  "/home/student/ansible/roles/phpinfo/templates": [["hello.php.j2",0]],
+  "/home/student/ansible/roles/phpinfo/vars": [["main.yml",0]],
+  "/home/student/ansible/roles/rhel-system-roles.timesync": [["defaults",1],["handlers",1],["meta",1],["tasks",1],["templates",1],["vars",1],["README.md",0]],
+  "/home/student/ansible/roles/rhel-system-roles.timesync/defaults": [["main.yml",0]],
+  "/home/student/ansible/roles/rhel-system-roles.timesync/handlers": [["main.yml",0]],
+  "/home/student/ansible/roles/rhel-system-roles.timesync/meta": [["main.yml",0]],
+  "/home/student/ansible/roles/rhel-system-roles.timesync/tasks": [["main.yml",0]],
+  "/home/student/ansible/roles/rhel-system-roles.timesync/templates": [["chrony.conf.j2",0]],
+  "/home/student/ansible/roles/rhel-system-roles.timesync/vars": [["main.yml",0]],
+  "/home/student/ansible/roles/apache": [["defaults",1],["files",1],["handlers",1],["meta",1],["tasks",1],["templates",1],["tests",1],["vars",1],["README.md",0]],
+  "/home/student/ansible/roles/apache/defaults": [["main.yml",0]],
+  "/home/student/ansible/roles/apache/files": [],
+  "/home/student/ansible/roles/apache/handlers": [["main.yml",0]],
+  "/home/student/ansible/roles/apache/meta": [["main.yml",0]],
+  "/home/student/ansible/roles/apache/tests": [["inventory",0],["test.yml",0]],
+  "/home/student/ansible/roles/apache/vars": [["main.yml",0]],
   "/home/student/ansible/roles/apache/tasks": [["main.yml",0]],
   "/home/student/ansible/roles/apache/templates": [["index.html.j2",0]],
   "/home/student/ansible/templates": [["hosts.j2",0]],
@@ -3479,7 +3509,7 @@ const FS_TREE = {
   "/dev": [["yellowtail",1],["sda",0],["sdb",0]],
   "/dev/yellowtail": [["data",0]]
 };
-const SHELL_COMMANDS = ["ansible","ansible-config","ansible-doc","ansible-galaxy","ansible-navigator","ansible-playbook","ansible-vault","cat","cd","chmod","chown","chronyc","cp","curl","date","df","dnf","echo","exit","free","getent","grep","hostname","hostnamectl","id","ip","journalctl","ll","logout","ls","lsblk","mkdir","mount","mv","ping","podman","pwd","rm","rpm","scp","ss","ssh","su","sudo","systemctl","tar","timedatectl","touch","uname","uptime","vim","which","whoami","yum"];
+const SHELL_COMMANDS = ["ansible","ansible-config","ansible-doc","ansible-galaxy","ansible-navigator","ansible-playbook","ansible-vault","cat","cd","chmod","chown","chronyc","cp","curl","date","df","dnf","echo","exit","find","free","getent","grep","hostname","hostnamectl","id","ip","journalctl","ll","logout","ls","lsblk","mkdir","mount","mv","ping","podman","pwd","rm","rpm","scp","ss","ssh","su","sudo","systemctl","tar","timedatectl","touch","uname","uptime","vim","which","whoami","yum"];
 function commonPrefix(arr){
   let p = arr[0] || "";
   for (const s of arr.slice(1)) { let i = 0; while (i < p.length && p[i] === s[i]) i++; p = p.slice(0, i); if (!p) break; }
@@ -3646,6 +3676,52 @@ const SO_LOCAL_EXTRA = {
   "/etc/chrony.conf": "pool 2.rhel.pool.ntp.org iburst\ndriftfile /var/lib/chrony/drift\nmakestep 1.0 3\nrtcsync\n",
   "/etc/os-release": "NAME=\"Red Hat Enterprise Linux\"\nVERSION=\"9.2 (Plow)\"\nID=\"rhel\"\nID_LIKE=\"fedora\"\nVERSION_ID=\"9.2\"\nPLATFORM_ID=\"platform:el9\"\nPRETTY_NAME=\"Red Hat Enterprise Linux 9.2 (Plow)\"\n",
   "/etc/redhat-release": "Red Hat Enterprise Linux release 9.2 (Plow)\n",
+  "/home/student/ansible/roles/apache/defaults/main.yml": "---\n# defaults file for apache\n",
+  "/home/student/ansible/roles/apache/handlers/main.yml": "---\n# handlers file for apache\n",
+  "/home/student/ansible/roles/apache/vars/main.yml": "---\n# vars file for apache\n",
+  "/home/student/ansible/roles/apache/meta/main.yml": "galaxy_info:\n  author: student\n  description: Apache web server role\n  license: MIT\n  min_ansible_version: '2.14'\n  galaxy_tags: []\ndependencies: []\n",
+  "/home/student/ansible/roles/apache/tests/inventory": "localhost\n",
+  "/home/student/ansible/roles/apache/tests/test.yml": "---\n- hosts: localhost\n  remote_user: root\n  roles:\n    - apache\n",
+  "/home/student/ansible/roles/apache/README.md": "# apache\n\nApache web server role built for the EX294 lab (Q7).\n",
+  "/home/student/ansible/roles/balancer/tasks/main.yml": "---\n- name: Install HAProxy\n  ansible.builtin.dnf:\n    name: haproxy\n    state: present\n- name: Copy HAProxy template\n  ansible.builtin.template:\n    src: haproxy.cfg.j2\n    dest: /etc/haproxy/haproxy.cfg\n  notify: Restart haproxy\n- name: Ensure HAProxy is started and enabled\n  ansible.builtin.service:\n    name: haproxy\n    state: started\n    enabled: true\n",
+  "/home/student/ansible/roles/balancer/handlers/main.yml": "---\n- name: Restart haproxy\n  ansible.builtin.service:\n    name: haproxy\n    state: restarted\n",
+  "/home/student/ansible/roles/balancer/defaults/main.yml": "---\nhaproxy_backend_servers:\n  - name: serverb.lab.example.com\n    address: 172.25.250.11\n    port: 80\n  - name: serverc.lab.example.com\n    address: 172.25.250.12\n    port: 80\n",
+  "/home/student/ansible/roles/balancer/vars/main.yml": "---\n# vars file for balancer\n",
+  "/home/student/ansible/roles/balancer/meta/main.yml": "galaxy_info:\n  author: geerlingguy\n  description: HAProxy load balancer role\n  license: MIT\n  min_ansible_version: '2.14'\n  galaxy_tags: []\ndependencies: []\n",
+  "/home/student/ansible/roles/balancer/templates/haproxy.cfg.j2": "global\n    log /dev/log local0\n    maxconn 4000\n    daemon\n\ndefaults\n    mode http\n    timeout connect 10s\n    timeout client 30s\n    timeout server 30s\n\nfrontend http_front\n    bind *:80\n    default_backend http_back\n\nbackend http_back\n    balance roundrobin\n{% for server in haproxy_backend_servers %}\n    server {{ server.name }} {{ server.address }}:{{ server.port }} check\n{% endfor %}\n",
+  "/home/student/ansible/roles/balancer/README.md": "# balancer\n\nHAProxy load balancer role, installed from Galaxy for Q8.\n",
+  "/home/student/ansible/roles/phpinfo/tasks/main.yml": "---\n- name: Deploy hello.php\n  ansible.builtin.template:\n    src: hello.php.j2\n    dest: /var/www/html/hello.php\n",
+  "/home/student/ansible/roles/phpinfo/templates/hello.php.j2": "Hello PHP World\n<?php phpinfo(); ?>\n",
+  "/home/student/ansible/roles/phpinfo/handlers/main.yml": "---\n# handlers file for phpinfo\n",
+  "/home/student/ansible/roles/phpinfo/defaults/main.yml": "---\n# defaults file for phpinfo\n",
+  "/home/student/ansible/roles/phpinfo/vars/main.yml": "---\n# vars file for phpinfo\n",
+  "/home/student/ansible/roles/phpinfo/meta/main.yml": "galaxy_info:\n  author: geerlingguy\n  description: PHP info test page role\n  license: MIT\n  min_ansible_version: '2.14'\n  galaxy_tags: []\ndependencies: []\n",
+  "/home/student/ansible/roles/phpinfo/README.md": "# phpinfo\n\nDeploys a phpinfo test page, installed from Galaxy for Q8.\n",
+  "/home/student/ansible/roles/rhel-system-roles.timesync/tasks/main.yml": "---\n- name: Configure timesync\n  ansible.builtin.template:\n    src: chrony.conf.j2\n    dest: /etc/chrony.conf\n  notify: Restart chronyd\n- name: Ensure chronyd is running and enabled\n  ansible.builtin.service:\n    name: chronyd\n    state: started\n    enabled: true\n",
+  "/home/student/ansible/roles/rhel-system-roles.timesync/defaults/main.yml": "---\ntimesync_ntp_servers: []\ntimesync_ntp_provider: chrony\ntimesync_step_threshold: 1.0\ntimesync_min_distance: 0.0001\n",
+  "/home/student/ansible/roles/rhel-system-roles.timesync/handlers/main.yml": "---\n- name: Restart chronyd\n  ansible.builtin.service:\n    name: chronyd\n    state: restarted\n",
+  "/home/student/ansible/roles/rhel-system-roles.timesync/templates/chrony.conf.j2": "{% for server in timesync_ntp_servers %}\npool {{ server.hostname }} {{ server.options }}\n{% endfor %}\ndriftfile /var/lib/chrony/drift\nmakestep {{ timesync_step_threshold }} 3\nrtcsync\n",
+  "/home/student/ansible/roles/rhel-system-roles.timesync/vars/main.yml": "---\n# vars file for rhel-system-roles.timesync\n",
+  "/home/student/ansible/roles/rhel-system-roles.timesync/meta/main.yml": "galaxy_info:\n  author: Red Hat\n  description: Configures time synchronization (NTP) via chrony\n  license: MIT\n  min_ansible_version: '2.14'\n  galaxy_tags: []\ndependencies: []\n",
+  "/home/student/ansible/roles/rhel-system-roles.timesync/README.md": "# rhel-system-roles.timesync\n\nConfigures time synchronization (NTP) via chrony. Copied in from /usr/share/ansible/roles during Q5.\n",
+  "/home/student/ansible/collections/ansible_collections/community/general/galaxy.yml": "namespace: community\nname: general\nversion: 8.5.0\nreadme: README.md\nauthors:\n  - Ansible Community\ndescription: The community.general collection\nlicense:\n  - GPL-3.0-or-later\n",
+  "/home/student/ansible/collections/ansible_collections/community/general/README.md": "# community.general\n\nGeneral-purpose modules and plugins from the Ansible community.\n",
+  "/home/student/ansible/collections/ansible_collections/community/general/plugins/modules/filesystem.py": "#!/usr/bin/python\n# -*- coding: utf-8 -*-\n# Copyright: (c) 2026, Ansible Project\n# GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)\n\"\"\"filesystem - module from the community.general collection (installed by ansible-galaxy).\"\"\"\n",
+  "/home/student/ansible/collections/ansible_collections/community/general/plugins/modules/lvg.py": "#!/usr/bin/python\n# -*- coding: utf-8 -*-\n# Copyright: (c) 2026, Ansible Project\n# GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)\n\"\"\"lvg - module from the community.general collection (installed by ansible-galaxy).\"\"\"\n",
+  "/home/student/ansible/collections/ansible_collections/community/general/plugins/modules/lvol.py": "#!/usr/bin/python\n# -*- coding: utf-8 -*-\n# Copyright: (c) 2026, Ansible Project\n# GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)\n\"\"\"lvol - module from the community.general collection (installed by ansible-galaxy).\"\"\"\n",
+  "/home/student/ansible/collections/ansible_collections/community/general/plugins/modules/parted.py": "#!/usr/bin/python\n# -*- coding: utf-8 -*-\n# Copyright: (c) 2026, Ansible Project\n# GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)\n\"\"\"parted - module from the community.general collection (installed by ansible-galaxy).\"\"\"\n",
+  "/home/student/ansible/collections/ansible_collections/ansible/posix/galaxy.yml": "namespace: ansible\nname: posix\nversion: 1.5.4\nreadme: README.md\nauthors:\n  - Ansible Project\ndescription: The ansible.posix collection\nlicense:\n  - GPL-3.0-or-later\n",
+  "/home/student/ansible/collections/ansible_collections/ansible/posix/README.md": "# ansible.posix\n\nPOSIX and Linux system modules: mount, firewalld, authorized_key, and more.\n",
+  "/home/student/ansible/collections/ansible_collections/ansible/posix/plugins/modules/authorized_key.py": "#!/usr/bin/python\n# -*- coding: utf-8 -*-\n# Copyright: (c) 2026, Ansible Project\n# GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)\n\"\"\"authorized_key - module from the ansible.posix collection (installed by ansible-galaxy).\"\"\"\n",
+  "/home/student/ansible/collections/ansible_collections/ansible/posix/plugins/modules/firewalld.py": "#!/usr/bin/python\n# -*- coding: utf-8 -*-\n# Copyright: (c) 2026, Ansible Project\n# GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)\n\"\"\"firewalld - module from the ansible.posix collection (installed by ansible-galaxy).\"\"\"\n",
+  "/home/student/ansible/collections/ansible_collections/ansible/posix/plugins/modules/mount.py": "#!/usr/bin/python\n# -*- coding: utf-8 -*-\n# Copyright: (c) 2026, Ansible Project\n# GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)\n\"\"\"mount - module from the ansible.posix collection (installed by ansible-galaxy).\"\"\"\n",
+  "/home/student/ansible/collections/ansible_collections/ansible/posix/plugins/modules/selinux.py": "#!/usr/bin/python\n# -*- coding: utf-8 -*-\n# Copyright: (c) 2026, Ansible Project\n# GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)\n\"\"\"selinux - module from the ansible.posix collection (installed by ansible-galaxy).\"\"\"\n",
+  "/home/student/ansible/collections/ansible_collections/ansible/posix/plugins/modules/sysctl.py": "#!/usr/bin/python\n# -*- coding: utf-8 -*-\n# Copyright: (c) 2026, Ansible Project\n# GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)\n\"\"\"sysctl - module from the ansible.posix collection (installed by ansible-galaxy).\"\"\"\n",
+  "/home/student/ansible/collections/ansible_collections/ansible/netcommon/galaxy.yml": "namespace: ansible\nname: netcommon\nversion: 7.1.0\nreadme: README.md\nauthors:\n  - Ansible Project\ndescription: The ansible.netcommon collection\nlicense:\n  - GPL-3.0-or-later\n",
+  "/home/student/ansible/collections/ansible_collections/ansible/netcommon/README.md": "# ansible.netcommon\n\nNetwork common plugins and modules.\n",
+  "/home/student/ansible/collections/ansible_collections/ansible/netcommon/plugins/modules/cli_config.py": "#!/usr/bin/python\n# -*- coding: utf-8 -*-\n# Copyright: (c) 2026, Ansible Project\n# GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)\n\"\"\"cli_config - module from the ansible.netcommon collection (installed by ansible-galaxy).\"\"\"\n",
+  "/home/student/ansible/collections/ansible_collections/ansible/netcommon/plugins/modules/net_get.py": "#!/usr/bin/python\n# -*- coding: utf-8 -*-\n# Copyright: (c) 2026, Ansible Project\n# GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)\n\"\"\"net_get - module from the ansible.netcommon collection (installed by ansible-galaxy).\"\"\"\n",
+  "/home/student/ansible/collections/ansible_collections/ansible/netcommon/plugins/modules/net_put.py": "#!/usr/bin/python\n# -*- coding: utf-8 -*-\n# Copyright: (c) 2026, Ansible Project\n# GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)\n\"\"\"net_put - module from the ansible.netcommon collection (installed by ansible-galaxy).\"\"\"\n",
   "/root/anaconda-ks.cfg": "# Kickstart file automatically generated by anaconda.\n",
   "/var/log/messages": "Nov 11 09:12:04 controller systemd[1]: Started Daily apt activities.\nNov 11 09:12:31 controller chronyd[812]: Selected source 2.rhel.pool.ntp.org\n",
   "/usr/share/doc/rhel-system-roles/timesync/example-single-pool-playbook.yml": "- hosts: \"{{ targets }}\"\n  vars:\n    timesync_ntp_servers:\n      - hostname: 2.pool.ntp.org\n        pool: yes\n        iburst: yes\n  roles:\n    - rhel-system-roles.timesync\n",
@@ -4380,6 +4456,27 @@ function soExecSegment(st, segText, q){
     return { lines: frame, ok: true };
   }
   if (cmd === "ls") return soLsLines(st, tokens.slice(1), seg);
+  if (cmd === "find") {
+    const args = tokens.slice(1);
+    const typeIdx = args.indexOf("-type");
+    const typeFilter = typeIdx >= 0 ? args[typeIdx + 1] : null;
+    const rootArg = args.find(t => t.charAt(0) !== "-" && t !== typeFilter) || ".";
+    const rootAbs = soResolve(st, rootArg);
+    if (!soFsExists(st, rootAbs)) return { lines: ["find: '" + rootArg + "': No such file or directory"], ok: false };
+    const all = {};
+    Object.keys(FS_TREE).forEach(k => { if (!(k in all)) all[k] = false; (FS_TREE[k] || []).forEach(c => { all[k + "/" + c[0]] = !c[1]; }); });
+    Object.keys(st.made).forEach(p => { all[p] = !st.made[p].dir; let par = p; while (par.indexOf("/") > 0) { par = par.slice(0, par.lastIndexOf("/")); if (!(par in all)) all[par] = false; } });
+    const disp = rootArg === "/" ? "" : rootArg.replace(/\/$/, "");
+    const hits = Object.keys(all).filter(p => p === rootAbs || p.indexOf(rootAbs + "/") === 0).sort();
+    const lines = [];
+    hits.forEach(p => {
+      const isFile = all[p];
+      if (typeFilter === "f" && !isFile) return;
+      if (typeFilter === "d" && isFile) return;
+      lines.push((disp === "" ? p : disp + p.slice(rootAbs.length)) || ".");
+    });
+    return { lines: lines, ok: true };
+  }
   if (cmd === "curl") return soCurl(st, tokens, seg);
   if (cmd === "ansible-galaxy") return soGalaxy(st, tokens);
   if (cmd === "ansible-vault") return soVault(st, tokens, seg);
