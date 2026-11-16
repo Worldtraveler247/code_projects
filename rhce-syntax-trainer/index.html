@@ -320,6 +320,50 @@ const QUESTIONS = [
   <div class="tie"><b>How it ties in:</b> Q1 told navigator how to run, Q1.1 said who to talk to, and this file wires the two together. From here on the project describes itself: cd into it and Ansible already knows the inventory, the login user, and where roles and collections live.</div>`
 },
 {
+  id:"Q1.3", title:"Prove the Fleet Answers — Ping Every Host with One Ad Hoc Command", sub:"ansible all -m ping", cmd:true,
+  files:[{ path:"shell", lang:"cmd" }],
+  spec:`<b>1.3. Ping all the hosts.</b><br>• You are <code>student</code>, in the project directory <code>/home/student/ansible</code>. The inventory (Q1.1) and ansible.cfg (Q1.2) are written — now prove the whole chain works before any playbook depends on it.<br>• Run one <b>ad hoc command</b> that uses the <code>ping</code> module on <b>all</b> hosts.<br>• This is Ansible's own connectivity check, not the network ping: it connects the way Ansible really connects (SSH, as the remote_user from your config) and answers from the host's Python. Pass looks like every host replying <code>SUCCESS</code> with <code>"ping": "pong"</code>.<br>• Type the command at the prompt and press <b>Enter</b> to run it.`,
+  checks:[[
+    { fn:t => /^\s*ansible\s+all\s/.test(t) && !/ansible-navigator/.test(t), msg:"Plain ansible ad hoc, aimed at all hosts — the navigator form is the next step, not this one" },
+    { re:/-m\s+(ansible\.builtin\.)?ping\b/, msg:"The module is ping: -m ping (ansible.builtin.ping says the same thing)" },
+    { fn:t => !/\s-a\s/.test(t), msg:"No -a argument: ping takes no arguments" },
+    { fn:t => !/\s-b(\s|$)/.test(t) && !/--become/.test(t), msg:"No -b: ping changes nothing on the hosts, so it needs no root" }
+  ]],
+  explain:`<h2>✅ Q1.3 complete — what you just did</h2>
+  <p>You ran your first <b>ad hoc command</b>: a one-off module call with no playbook. Ansible read the inventory and the config you just wrote, connected to all four hosts as <code>student</code>, and every host answered <code>"ping": "pong"</code>.</p>
+  <h4>How it affects the Ansible environment</h4>
+  <p>• Nothing changed on any host — ping is a pure check. It proves three things at once: the inventory parses and the pattern <code>all</code> resolves to servera–serverd, SSH works with the <code>remote_user</code> from Q1.2's ansible.cfg, and each host has a Python Ansible can run modules with.<br>
+  • That makes this the cheapest end-to-end test of Q1.1 + Q1.2 there is. If the inventory path or the remote user were wrong, this is where it would surface — before a real playbook is standing on them.</p>
+  <h4>Command anatomy — what every part does, and what breaks without it</h4>
+  <p>• <code>ansible</code> — the ad hoc runner (not ansible-playbook: no file, no plays, one module call).<br>
+  • <code>all</code> — the host pattern: every host in the inventory. Aim it at one group, say <code>dev</code>, and only servera answers.<br>
+  • <code>-m ping</code> — the module. Despite the name it is not an ICMP network ping: it makes a full Ansible connection and has the host answer "pong". A host can refuse ICMP and still pong here — and a host that pings fine at the network level can still fail this if SSH or Python is broken, which is exactly why this is the check that matters.<br>
+  • No <code>-b</code> and no <code>-a</code> — ping changes nothing, so it needs no root, and it takes no arguments. Compare Q2, where the same shape grows both: real modules, real arguments, and <code>-b</code> because repos are root's territory.<br>
+  • <b>Why the exam cares:</b> this is the 10-second smoke test before any graded run. "UNREACHABLE" here, read early, is a config fix; discovered at Q8 it is a fire.</p>
+  <div class="tie"><b>How it ties in:</b> Q1 configured the runner, Q1.1 named the hosts, Q1.2 wired the defaults — this step is the first time all three are exercised together. Next, the same ping through the execution environment (Q1.4), to prove the navigator path from Q1 works too.</div>`
+},
+{
+  id:"Q1.4", title:"The Same Ping Through the Execution Environment — ansible-navigator exec", sub:"ansible-navigator exec -- ansible all -m ping", cmd:true,
+  files:[{ path:"shell", lang:"cmd" }],
+  spec:`<b>1.4. Ping all the hosts again — this time through navigator.</b><br>• Same ad hoc ping as Q1.3, but launched so it runs <b>inside the execution environment</b> that Q1 configured, instead of with the controller's own Ansible.<br>• Navigator has no ad hoc mode of its own. Its <code>exec</code> subcommand runs a command inside the EE: everything after <code>exec --</code> is the command the container runs.<br>• Type the command at the prompt and press <b>Enter</b> to run it. Pass is the same four <code>"ping": "pong"</code> replies.`,
+  checks:[[
+    { re:/ansible-navigator\s+exec\b/, msg:"ansible-navigator exec — the subcommand that runs a command inside the execution environment" },
+    { fn:t => /\bansible\s+all\s/.test(t), msg:"The command carried inside is the same ad hoc line: ansible all ..." },
+    { re:/-m\s+(ansible\.builtin\.)?ping\b/, msg:"... with the ping module: -m ping (ansible.builtin.ping says the same thing)" }
+  ]],
+  explain:`<h2>✅ Q1.4 complete — what you just did</h2>
+  <p>Same ping, different engine room. This time <code>ansible-navigator</code> started the <b>execution environment</b> from Q1 — the <code>creator-ee:v0.22.0</code> podman container — and ran your ad hoc command <i>inside</i> it. The four pongs are identical, because the inventory, the config, and the hosts are the same; only the Ansible doing the talking changed.</p>
+  <h4>How it affects the Ansible environment</h4>
+  <p>• Navigator maps each classic tool to its own subcommand: <code>ansible-playbook</code> becomes <code>ansible-navigator run</code>, and the ad hoc <code>ansible</code> becomes <code>ansible-navigator exec</code>. There is no "navigator ping" command — exec is the general door for any command that is not a playbook run.<br>
+  • Because the EE carries its own ansible-core and collections, this run proves the container path end to end: image present (or pulled, per Q1's pull policy), config read, hosts reached. The local install from Q1.3 is no longer the only engine you have verified.</p>
+  <h4>Command anatomy — what every part does, and what breaks without it</h4>
+  <p>• <code>ansible-navigator exec</code> — run a command within an execution environment.<br>
+  • <code>--</code> — the separator: everything before it is navigator's, everything after it is the command to carry into the container, untouched. Without it, navigator can try to read the inner command's flags as its own.<br>
+  • <code>ansible all -m ping</code> — the exact Q1.3 line, unchanged. That is the point of exec: the inner command does not learn new syntax just because it runs in a container.<br>
+  • <b>Why the exam cares:</b> Q1's navigator config is only worth something if navigator runs actually work in this environment. A pong through exec proves the EE path the same way Q1.3 proved the local path — cheaply, before a graded playbook depends on it.</p>
+  <div class="tie"><b>How it ties in:</b> Q1 is now proven both ways: local Ansible (Q1.3) and the execution environment (Q1.4) both reach the fleet. That closes the setup — Q2 starts spending it, configuring the repos every later install depends on.</div>`
+},
+{
   id:"Q2", title:"Set Up Trusted Software Sources — Import the GPG Key and Configure BaseOS + AppStream Repos on All Hosts, Ad Hoc Only (GPG Check On)", sub:"Ad hoc commands — GPG key + YUM repositories",
   files:[{ path:"/home/student/ansible/repo_key.sh", lang:"bash" }],
   spec:`<b>2. Configure YUM Repositories Using Ad Hoc Commands</b><br>• Create a shell script called /home/student/ansible/repo_key.sh that uses Ansible ad hoc commands to import the GPG key below and configure the following YUM repositories on all managed hosts:<br>• GPG key to import: http://apt.sw.be/RPM-GPG-KEY.dag.txt<br>• Repository Name: BaseOS<br>• Description: BaseOS Repo<br>• Base URL: http://10.1.14.36/RHEL9/BaseOS<br>• GPG Check: Enabled<br>• GPG Key: http://apt.sw.be/RPM-GPG-KEY.dag.txt<br>• Enabled: Yes<br>• Repository Name: AppStream<br>• Description: AppStream Repo<br>• Base URL: http://10.1.14.36/RHEL9/AppStream<br>• GPG Check: Enabled<br>• GPG Key: http://apt.sw.be/RPM-GPG-KEY.dag.txt<br>• Enabled: Yes`,
@@ -2249,6 +2293,10 @@ roles_path = /home/student/ansible/roles
 [privilege_escalation]
 become = false
 ` }] },
+"Q1.3": { hint:`One ad hoc line, as student, from the project directory: ansible all -m ping. No -b (ping changes nothing) and no -a (ping takes no arguments). Pass is all four hosts answering SUCCESS with "ping": "pong".`,
+  answer:[{ path:"shell", text:"ansible all -m ping" }] },
+"Q1.4": { hint:`Navigator's door for ad hoc commands is exec: ansible-navigator exec -- ansible all -m ping. The -- separates navigator's options from the command it carries into the execution environment; the inner line is Q1.3's, unchanged.`,
+  answer:[{ path:"shell", text:"ansible-navigator exec -- ansible all -m ping" }] },
 "Q2": { hint:`Three ad hoc commands, all aimed at "all" hosts with -b: rpm_key first (state=present), then two yum_repository calls. Every repo line carries name, description, baseurl, gpgcheck=true, the same gpgkey URL, and enabled=true.`,
   answer:[{ path:"/home/student/ansible/repo_key.sh", text:`ansible all -m ansible.builtin.rpm_key -a "key='http://apt.sw.be/RPM-GPG-KEY.dag.txt' state=present" -b
 ansible all -m ansible.builtin.yum_repository -a "name='BaseOS' description='BaseOS Repo' baseurl='http://10.1.14.36/RHEL9/BaseOS' gpgcheck=true gpgkey='http://apt.sw.be/RPM-GPG-KEY.dag.txt' enabled=true" -b
@@ -2983,6 +3031,22 @@ try {
       localStorage.setItem("rhce-done", JSON.stringify(remapped));
     }
     localStorage.setItem("rhce-q5seq2", "1");
+  }
+} catch (e) {}
+// Q1 ping steps (2026-11-17): Q1 grew from 3 steps to 5 — Q1.3 (ad hoc
+// ping) and Q1.4 (the same ping through ansible-navigator exec) were
+// inserted after Q1.2. Remap saved passes once: passes up to and
+// including Q1.2 keep their index, every pass after Q1.2 shifts by +2.
+try {
+  if (!localStorage.getItem("rhce-q1ping1")) {
+    const i12 = QUESTIONS.findIndex(q => q.id === "Q1.2");
+    const oldDoneP = JSON.parse(localStorage.getItem("rhce-done") || "[]");
+    if (i12 >= 0 && Array.isArray(oldDoneP) && oldDoneP.length) {
+      const bP = i12 + 1;
+      const remappedP = oldDoneP.filter(i => i < bP).concat(oldDoneP.filter(i => i >= bP).map(i => i + 2));
+      localStorage.setItem("rhce-done", JSON.stringify(remappedP));
+    }
+    localStorage.setItem("rhce-q1ping1", "1");
   }
 } catch (e) {}
 try {
@@ -4139,6 +4203,12 @@ function soExecSegment(st, segText, q){
   if (cmd === "ansible-playbook" || cmd === "ansible-navigator") {
     let rest = tokens.slice(1);
     if (cmd === "ansible-navigator") {
+      if (rest[0] === "exec") {
+        let inner = rest.slice(1);
+        if (inner[0] === "--") inner = inner.slice(1);
+        if (inner[0] === "ansible") return soAdhoc(inner.slice(1));
+        return { lines: [], ok: true };
+      }
       if (rest[0] !== "run") return { lines: ["ansible-navigator: error: no such subcommand: " + (rest[0] || "")], ok: false };
       rest = rest.slice(1);
     }
