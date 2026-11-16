@@ -601,14 +601,14 @@ const QUESTIONS = [
     { fn:t => /^\s*su\s+-\s*(root\s*)?$/.test(t), msg:"su - — switch to root with a login shell (the dash matters: root's environment and home directory)" }
   ]],
   explain:`<h2>✅ Q5 complete — what you just did</h2>
-  <p>You left the student shell and became <b>root</b>. This question lives in two privilege worlds: the <i>project work</i> (playbooks, files under /home/student/ansible) belongs to student, but <i>installing system software</i> on the controller belongs to root. Q5 walks the boundary deliberately: root for the install (Q5–Q5.1), then straight back to student for everything else (Q5.2 onward).</p>
+  <p>You left the student shell and became <b>root</b>. This question lives in two privilege worlds: the <i>project work</i> (playbooks, files under /home/student/ansible) belongs to student, but <i>installing system software</i> on the controller belongs to root. Q5 walks the boundary deliberately: root for the install and the staging (Q5–Q5.5), then straight back to student for everything else (Q5.6 onward).</p>
   <h4>How it affects the Ansible environment</h4>
   <p>• Nothing is installed yet — you have only changed <i>who you are</i> in this shell. Every command you type until you exit runs with root's authority: it can write anywhere, including places a mistake would hurt.<br>
   • The prompt is the receipt: <code>[root@controller ~]#</code>. The <code>~</code> says your working directory is now root's home (/root), and the <code>#</code> is the classic root marker. On the exam, reading the prompt before typing is how you know which world's rules the next command plays by.</p>
   <h4>Command anatomy — what every part does, and what breaks without it</h4>
   <p>• <code>su</code> — substitute user: start a shell as another user. With no name it means root, and it asks for root's password.<br>
   • <code>-</code> — make it a <b>login shell</b>: root's environment, root's PATH, and a starting directory of /root. Without the dash you keep student's environment and current directory wearing root's authority — a half-state that causes subtle path and permission surprises.<br>
-  • <b>Why the exam cares:</b> the rest of this exam is graded as student, in student's project directory. Doing project work as root leaves root-owned files in /home/student/ansible that later steps trip over. Root is a tool for one job here — the install — and Q5.2 puts it back.</p>
+  • <b>Why the exam cares:</b> the rest of this exam is graded as student, in student's project directory. Doing project work as root leaves root-owned files in /home/student/ansible that later steps trip over. Root is a tool for the privileged jobs here — the install and the staging — and Q5.6 puts it back.</p>
   <div class="tie"><b>How it ties in:</b> contrast Q3 and Q7: there, privilege on the <i>managed hosts</i> comes from <code>become:</code> inside the play. Here the privilege is needed on the <i>controller itself</i>, before any playbook exists — so it comes from a root shell instead.</div>`
 },
 {
@@ -624,100 +624,128 @@ const QUESTIONS = [
   <p>You installed the <b>RHEL System Roles</b> package on the controller: <code>rhel-system-roles 1.16.2-1.el9_0</code> from the AppStream repository, about 1.8 MB. It bundles Red Hat's official roles — timesync, selinux, firewall, storage, and more — so the role this question calls actually exists on this machine.</p>
   <h4>How it affects the Ansible environment</h4>
   <p>• The RPM lays the roles down in <b>two places at once</b>: as standalone roles under <code>/usr/share/ansible/roles/</code> (each named <code>rhel-system-roles.&lt;name&gt;</code> — the form this question uses) and as the <code>redhat.rhel_system_roles</code> collection under <code>/usr/share/ansible/collections/</code>. Same content, two doors.<br>
-  • It also installs the documentation tree under <code>/usr/share/doc/rhel-system-roles/</code> — including, per role, <b>example playbooks</b>. Q5.5 puts one of those to work.<br>
+  • It also installs the documentation tree under <code>/usr/share/doc/rhel-system-roles/</code> — including, per role, <b>example playbooks</b>. Q5.4 puts one of those to work.<br>
   • All of it is system-wide: every user and every project on the controller can see these paths. That is the difference from Q4, where collections were installed into one project.</p>
   <h4>Command anatomy — what every part does, and what breaks without it</h4>
   <p>• <code>dnf install</code> — resolve the package, pull its dependencies, write it into the RPM database and onto disk. Installing writes to root-owned territory, which is why Q5 had to happen first: run this as student and dnf refuses with "This command has to be run with superuser privileges".<br>
   • <code>-y</code> = --assumeyes — answer "yes" to the transaction prompt in advance. Without it, dnf prints the plan and waits at "Is this ok [y/N]:" — on an exam, a command waiting for input is a command burning your clock.<br>
   • <code>rhel-system-roles</code> — the exact package name. Package names match literally: a near-miss like rhel-system-role returns "No match for argument" and nothing is installed.<br>
   • <b>Why the exam cares:</b> everything after this step is built on these files. If the install quietly failed — or is still sitting at a y/N prompt — the chain collapses several steps later, at the role copy or the playbook run, far from the cause.</p>
-  <div class="tie"><b>How it ties in:</b> Q4 installed collections for one project; this installs roles for the whole controller. Next you put root away and stage the one role this question needs inside the project (Q5.3).</div>`
+  <div class="tie"><b>How it ties in:</b> Q4 installed collections for one project; this installs roles for the whole controller. Next, still as root, you stage the one role this question needs inside the project (Q5.2) — and hand it to student before root goes away.</div>`
 },
 {
-  id:"Q5.2", title:"Log out of the root shell", sub:"exit — back to student", cmd:true,
+  id:"Q5.2", title:"Copy the timesync role into the project — as root", sub:"cp -r /usr/share/ansible/roles/rhel-system-roles.timesync/ /home/student/ansible/roles", cmd:true,
   files:[{ path:"shell", lang:"cmd" }],
-  spec:`<b>5.2. Go back to student.</b><br>• The install is done and root's job is over. Log out of the root shell to return to your student shell.<br>• Check the prompt when you land: <code>[student@controller ...]$</code> again.<br>• Type the command at the prompt and press <b>Enter</b> to run it.`,
-  checks:[[
-    { fn:t => /^\s*(exit|logout)\s*$/.test(t), msg:"exit (or logout) — close the root shell and return to student" }
-  ]],
-  explain:`<h2>✅ Q5.2 complete — what you just did</h2>
-  <p>You closed the root shell — the shell prints <code>logout</code> — and you are <b>student</b> again. The root shell was a nested shell inside your student session: <code>su -</code> stacked it on top, and <code>exit</code> peels it off, returning you to exactly the student shell you left.</p>
-  <h4>How it affects the Ansible environment</h4>
-  <p>• From here to the end of the exam, every file you create is owned by student, in student's home — which is what the grader expects when it inspects /home/student/ansible as student.<br>
-  • Anything you had done as root inside the project would now fight you: root-owned playbooks and role directories that student cannot edit or overwrite without another trip through su. Leaving root promptly is not tidiness; it is preventing a future failure.</p>
-  <h4>Command anatomy — what every part does, and what breaks without it</h4>
-  <p>• <code>exit</code> — end the current shell. In a login shell it runs the logout sequence and prints <code>logout</code>; <code>logout</code> typed directly does the same job here.<br>
-  • Notice what did <i>not</i> happen: you did not log out of the machine or lose your session. Only the root layer closed. The student shell underneath kept its history, its variables, and its place in the filesystem story.<br>
-  • <b>Why the exam cares:</b> privilege discipline is graded indirectly everywhere: files with the wrong owner, in the wrong home, are wrong answers even when their contents are right. Root for the install, student for the work — that is the whole rhythm of Q5.</p>
-  <div class="tie"><b>How it ties in:</b> back in student's world: exit dropped you into the student shell you started from, standing in the project directory, and the next move is staging the role (Q5.3) — the role copy and the playbook are both addressed relative to that directory.</div>`
-},
-{
-  id:"Q5.3", title:"Copy the timesync role into the project", sub:"cp -r /usr/share/ansible/roles/rhel-system-roles.timesync/ roles/", cmd:true,
-  files:[{ path:"shell", lang:"cmd" }],
-  spec:`<b>5.3. Stage the role inside the project.</b><br>• The install put the standalone timesync role at <code>/usr/share/ansible/roles/rhel-system-roles.timesync/</code>. Copy that whole directory, recursively, into the project's <code>roles/</code> directory.<br>• <b>Tab works like the real shell here</b> — complete the long path piece by piece instead of typing it blind.<br>• Type the command at the prompt and press <b>Enter</b> to run it.`,
+  spec:`<b>5.2. Stage the role inside the project.</b><br>• You are still root, standing in /root — so both paths are absolute. The install put the standalone timesync role at <code>/usr/share/ansible/roles/rhel-system-roles.timesync/</code>. Copy that whole directory, recursively, into the project's roles directory, <code>/home/student/ansible/roles</code>.<br>• <b>Tab is how you explore the source</b> — type <code>/usr/share/ansible/roles/rhel-system-roles.</code> and press Tab: the listing offers the whole installed family — timesync, selinux, firewall, storage, sshd, network, and the rest of the 36 roles the package ships. Complete it to <code>timesync</code>.<br>• Because this copy runs as root, what lands in the project is root-owned. That is expected, and temporary — the next step hands it over.<br>• Type the command at the prompt and press <b>Enter</b> to run it.`,
   checks:[[
     { re:/\bcp\s+/, msg:"The copy command is cp" },
     { re:/\s-\w*r/, msg:"The -r flag is there — a directory only copies recursively" },
     { re:/\/usr\/share\/ansible\/roles\/rhel-system-roles\.timesync\/?/, msg:"The source is the installed role: /usr/share/ansible/roles/rhel-system-roles.timesync/" },
-    { fn:t => /(^|\s)roles\/?\s*$/.test(t), msg:"The destination is the project's roles/ directory" }
+    { fn:t => /(^|\s)\/home\/student\/ansible\/roles\/?\s*$/.test(t), msg:"The destination is the project's roles directory, by absolute path: /home/student/ansible/roles" }
   ]],
-  explain:`<h2>✅ Q5.3 complete — what you just did</h2>
-  <p>You copied the complete timesync role — tasks, defaults, templates, handlers, the whole directory tree — from the system-wide install into <b>your project's</b> <code>roles/</code> folder, where it now sits as <code>roles/rhel-system-roles.timesync</code>, owned by student.</p>
+  explain:`<h2>✅ Q5.2 complete — what you just did</h2>
+  <p>You copied the complete timesync role — tasks, defaults, templates, handlers, the whole directory tree — from the system-wide install into <b>the project's</b> <code>roles/</code> folder, where it now sits as <code>roles/rhel-system-roles.timesync</code>. You did it as root, with absolute paths, because your shell is standing in /root.</p>
   <h4>How it affects the Ansible environment</h4>
-  <p>• A role's name <i>is</i> its directory name. When the playbook in Q5.6 says <code>rhel-system-roles.timesync</code>, ansible searches the roles paths — and the project's <code>roles/</code> directory, wired up by Q1's ansible.cfg, is searched first. This copy is what makes that name resolve.<br>
+  <p>• A role's name <i>is</i> its directory name. When the playbook in Q5.7 says <code>rhel-system-roles.timesync</code>, ansible searches the roles paths — and the project's <code>roles/</code> directory, wired up by Q1's ansible.cfg, is searched first. This copy is what makes that name resolve.<br>
   • The project is now self-contained: the role travels with the playbooks that use it instead of depending on whatever happens to be installed system-wide. That is the same reason Q4 and Q6 keep their content inside the project too.<br>
-  • The copy belongs to student, like everything else in the project — copying as student (not root) is what keeps the ownership story clean.</p>
+  • One deliberate loose end: the copy is <b>owned by root</b>, because root made it. An <code>ll roles/</code> right now would show root where every other project file shows student. Q5.3 fixes exactly that, while you are still root and fixing it is free.</p>
   <h4>Command anatomy — what every part does, and what breaks without it</h4>
   <p>• <code>cp</code> — copy files or directories from a source to a destination.<br>
   • <code>-r</code> — recursive: copy the directory <i>and everything under it</i>. Without it, cp refuses a directory outright ("-r not specified; omitting directory") and copies nothing.<br>
-  • The source path ends in a trailing slash — <code>rhel-system-roles.timesync/</code> — naming the directory itself as the thing being copied.<br>
-  • The destination <code>roles/</code> is an existing directory, so cp places the source <i>inside</i> it, keeping its name: <code>roles/rhel-system-roles.timesync</code>. Name a non-existent destination instead and cp would rename the copy to it — same bytes, wrong address, and the playbook would not find its role.<br>
+  • The source path ends in a trailing slash — <code>rhel-system-roles.timesync/</code> — naming the directory itself as the thing being copied. The Tab listing at <code>rhel-system-roles.</code> is the package's whole catalogue: 36 roles, one per subsystem Red Hat automates. You only need one of them.<br>
+  • The destination <code>/home/student/ansible/roles</code> is absolute because your working directory is /root: a relative <code>roles/</code> from here would mean /root/roles, and the copy would land where no playbook ever looks. It is an existing directory, so cp places the source <i>inside</i> it, keeping its name.<br>
   • <b>Why the exam cares:</b> "role not found" at playbook time is this step, failed quietly. The copy is the bridge between "the package is installed" and "my playbook can call this role by name".</p>
-  <div class="tie"><b>How it ties in:</b> Q1's ansible.cfg defined where roles live for this project; Q5.3 is where that definition pays off. Verify the landing (Q5.4), then stage the playbook itself the same way — from a shipped file (Q5.5).</div>`
+  <div class="tie"><b>How it ties in:</b> Q1's ansible.cfg defined where roles live for this project; Q5.2 is where that definition pays off. Hand the copy to its real owner (Q5.3), then stage the playbook itself the same way — from a shipped file (Q5.4).</div>`
 },
 {
-  id:"Q5.4", title:"Verify the role landed in the project", sub:"ll roles/", cmd:true,
+  id:"Q5.3", title:"Hand the role to student: chown -R", sub:"chown -R student:student /home/student/ansible/roles/rhel-system-roles.timesync", cmd:true,
   files:[{ path:"shell", lang:"cmd" }],
-  spec:`<b>5.4. Verify the copy.</b><br>• List the contents of the project's <code>roles/</code> directory, long format, and confirm <code>rhel-system-roles.timesync</code> is there.<br>• Type the command at the prompt and press <b>Enter</b> to run it.`,
+  spec:`<b>5.3. Change the copied role's ownership to student.</b><br>• The copy in Q5.2 was made by root, so every file under <code>roles/rhel-system-roles.timesync</code> is currently owned by root. The project belongs to student — everything in it must be student's to read, edit, and manage.<br>• Change the ownership of the whole role tree, recursively, to the <b>student</b> user and the <b>student</b> group.<br>• Type the command at the prompt and press <b>Enter</b> to run it.`,
   checks:[[
-    { fn:t => /^\s*(ll|ls)\s+(-l\s+)?roles\/?\s*$/.test(t), msg:"List the project roles directory: ll roles/ (or ls -l roles/)" }
+    { re:/\bchown\s+/, msg:"The command is chown — change owner" },
+    { re:/\s-\w*R/, msg:"The -R flag is there — the change is recursive, down the whole role tree" },
+    { re:/\bstudent:student\b/, msg:"The new owner is student:student (user:group)" },
+    { re:/\/home\/student\/ansible\/roles\/rhel-system-roles\.timesync\/?/, msg:"The target is the copied role: /home/student/ansible/roles/rhel-system-roles.timesync" }
   ]],
-  explain:`<h2>✅ Q5.4 complete — what you just did</h2>
-  <p>You proved the copy landed: the long listing of <code>roles/</code> shows <code>rhel-system-roles.timesync</code> — a directory, owned by student, sitting next to the project's other role content.</p>
+  explain:`<h2>✅ Q5.3 complete — what you just did</h2>
+  <p>You handed the staged role to its real owner: every file and directory under <code>roles/rhel-system-roles.timesync</code> now belongs to <b>student:student</b>, exactly like the rest of the project. The copy root made is now a file set student fully controls.</p>
   <h4>How it affects the Ansible environment</h4>
-  <p>• Nothing changes — this is verification, the same do-then-prove rhythm as Q4.3 and the old install checks. Ten seconds here is what separates "the role is in the project" from "I believe the role is in the project" when Q5.7's run is at stake.<br>
-  • The details in the long format are the evidence: the leading <code>d</code> says directory (the role arrived whole, not as a stray file), and the owner says student (the Q5.3 copy ran in the right privilege world).</p>
+  <p>• Ownership is not cosmetics. The role's files are world-readable, so a run would probably have worked anyway — but student could not <i>edit</i> them, replace them, or delete them. The failure this prevents is not today's run; it is the later step, or the later question, that needs to change something inside that tree and gets "Permission denied" from files its own project owns in name only.<br>
+  • The whole project is uniform again: one owner, one story. When the grader inspects /home/student/ansible as student, nothing in it fights back.<br>
+  • Only root can give files away — chown is itself a privileged act. Doing it now, inside the root session that created the problem, costs one line. Doing it later costs another <code>su -</code> round trip.</p>
   <h4>Command anatomy — what every part does, and what breaks without it</h4>
-  <p>• <code>ll</code> — the shell's alias for <code>ls -l</code>: a long listing with permissions, owner, size, and date per entry. Plain <code>ls roles/</code> proves existence; the long form also proves shape and ownership.<br>
-  • <code>roles/</code> — a relative path, resolved from the project directory you are standing in. Run the same command from home and it lists a different directory — or errors that there is none.<br>
-  • <b>Why the exam cares:</b> every layer of Q5 gets its own proof before the next layer trusts it: package (Q5.1), role in the project (Q5.4), config on the hosts (Q5.8), daemon live (Q5.9). Skipping a proof does not save time; it moves the debugging to a more expensive step.</p>
-  <div class="tie"><b>How it ties in:</b> role confirmed in place. One more staging step — the playbook itself also starts from a file the package shipped (Q5.5).</div>`
+  <p>• <code>chown</code> — change owner: reassign which user (and optionally which group) owns a file or directory.<br>
+  • <code>-R</code> — recursive: apply the change to the directory <i>and everything under it</i>. Without it, only the top directory changes hands and every file inside stays root's — the trap wearing a fixed costume.<br>
+  • <code>student:student</code> — the new owner in user:group form. The colon matters: the first name is the user, the second is the group. <code>student</code> alone would change the user and leave the group as root's.<br>
+  • The target is the absolute path of the copy, because you are standing in /root — the same addressing discipline as Q5.2's copy.<br>
+  • <b>Why the exam cares:</b> files with the wrong owner are wrong answers even when their contents are right. This one line is the difference between "root visited the project" and "the project is student's".</p>
+  <div class="tie"><b>How it ties in:</b> the same handover happens once more, for the playbook file, at Q5.5 — a single file there, so no -R. Contrast Q7: the apache role is created by student in the first place, so it never needs this step.</div>`
 },
 {
-  id:"Q5.5", title:"Copy the shipped example playbook", sub:"cp the example-single-pool playbook to timesync.yml", cmd:true,
+  id:"Q5.4", title:"Copy the shipped example playbook — as root", sub:"cp the example-single-pool playbook to /home/student/ansible/timesync.yml", cmd:true,
   files:[{ path:"shell", lang:"cmd" }],
-  spec:`<b>5.5. Start the playbook from the vendor's example.</b><br>• The package also shipped example playbooks under <code>/usr/share/doc/rhel-system-roles/timesync/</code>. Copy <code>example-single-pool-playbook.yml</code> into the project as <code>timesync.yml</code>.<br>• You are not writing this file from a blank page — you are adopting Red Hat's known-good skeleton and editing the few lines the spec changes (next step).<br>• <b>Tab is your friend on this path too</b> — in the real lab, <code>cp /usr/share/doc/</code> + Tab is how you discover the directory layout in the first place.<br>• Type the command at the prompt and press <b>Enter</b> to run it.`,
+  spec:`<b>5.4. Start the playbook from the vendor's example.</b><br>• Still as root, still absolute paths. The package shipped example playbooks under <code>/usr/share/doc/rhel-system-roles/timesync/</code> — Tab into that folder and it offers <code>CHANGELOG.md</code>, the two example playbooks, and the READMEs. Copy <code>example-single-pool-playbook.yml</code> into the project as <code>/home/student/ansible/timesync.yml</code>.<br>• You are not writing this file from a blank page — you are adopting Red Hat's known-good skeleton and editing the few lines the spec changes (Q5.7).<br>• <b>Tab is your friend on this path too</b> — in the real lab, <code>cp /usr/share/doc/</code> + Tab is how you discover the directory layout in the first place.<br>• The copy lands root-owned, like the role did — one more handover follows.<br>• Type the command at the prompt and press <b>Enter</b> to run it.`,
   checks:[[
     { re:/\bcp\s+/, msg:"The copy command is cp" },
     { re:/\/usr\/share\/doc\/rhel-system-roles\/timesync\//, msg:"The source lives in the package's doc tree: /usr/share/doc/rhel-system-roles/timesync/" },
-    { re:/example-single-pool-playbook\.yml\s+timesync\.yml/, msg:"example-single-pool-playbook.yml is copied to the new name timesync.yml" }
+    { re:/example-single-pool-playbook\.yml\s+\/home\/student\/ansible\/timesync\.yml/, msg:"example-single-pool-playbook.yml is copied to /home/student/ansible/timesync.yml" }
   ]],
-  explain:`<h2>✅ Q5.5 complete — what you just did</h2>
-  <p>You copied Red Hat's example playbook for this exact role into the project as <code>timesync.yml</code>. The file that just landed reads: hosts <code>"{{ targets }}"</code>, one server entry <code>2.pool.ntp.org</code> with <code>pool: yes</code> and <code>iburst: yes</code>, and the role <code>rhel-system-roles.timesync</code>. It is correct in structure and wrong in three specifics — Q5.6 is the edit that fixes the specifics.</p>
+  explain:`<h2>✅ Q5.4 complete — what you just did</h2>
+  <p>You copied Red Hat's example playbook for this exact role into the project as <code>timesync.yml</code>. The file that just landed reads: hosts <code>"{{ targets }}"</code>, one server entry <code>2.pool.ntp.org</code> with <code>pool: yes</code> and <code>iburst: yes</code>, and the role <code>rhel-system-roles.timesync</code>. It is correct in structure and wrong in three specifics — Q5.7 is the edit that fixes the specifics.</p>
   <h4>How it affects the Ansible environment</h4>
   <p>• The project now has a <code>timesync.yml</code> — the file the spec names, in the directory the run will look in. Its content is the vendor's, which means the role interface (the variable name <code>timesync_ntp_servers</code>, the entry keys <code>hostname</code>/<code>iburst</code>) is guaranteed to be spelled the way the role expects.<br>
-  • Working from the example trades blank-page risk for edit risk: you cannot forget a structural piece that is already on the page, but you can forget to change a placeholder. The checks in Q5.6 hunt exactly the three leftovers.</p>
+  • Working from the example trades blank-page risk for edit risk: you cannot forget a structural piece that is already on the page, but you can forget to change a placeholder. The checks in Q5.7 hunt exactly the three leftovers.<br>
+  • The file is root-owned for now — root copied it. Q5.5 hands it to student before the root session ends, so the edit in Q5.7 happens in a file student owns.</p>
   <h4>Command anatomy — what every part does, and what breaks without it</h4>
-  <p>• <code>cp</code> with two file paths — copy <i>and rename in one move</i>: the destination is a file name, not a directory, so the copy lands as <code>timesync.yml</code> in the current directory.<br>
-  • No <code>-r</code> this time — the source is a single file. The flag from Q5.3 was for a directory tree; flags follow the shape of the source.<br>
-  • The source path is the package's documentation tree: <code>/usr/share/doc/rhel-system-roles/timesync/</code> holds this role's examples (a single-pool and a multiple-servers variant) beside its READMEs. Knowing a package ships examples — and where — is a real exam skill: it is the offline documentation you are allowed to use.<br>
+  <p>• <code>cp</code> with two file paths — copy <i>and rename in one move</i>: the destination is a file path, not a directory, so the copy lands as exactly <code>/home/student/ansible/timesync.yml</code>.<br>
+  • No <code>-r</code> this time — the source is a single file. The flag from Q5.2 was for a directory tree; flags follow the shape of the source.<br>
+  • The source path is the package's documentation tree: <code>/usr/share/doc/rhel-system-roles/timesync/</code> holds this role's examples (a single-pool and a multiple-servers variant) beside its READMEs and CHANGELOG. Knowing a package ships examples — and where — is a real exam skill: it is the offline documentation you are allowed to use.<br>
   • <b>Why the exam cares:</b> under time pressure, adopting the shipped skeleton is faster and safer than recalling the role's variable interface from memory. The exam allows it precisely because real administrators work this way.</p>
-  <div class="tie"><b>How it ties in:</b> the role came from /usr/share/ansible (Q5.3) and the playbook from /usr/share/doc (Q5.5) — the two trees the one dnf install created. Now make the file yours (Q5.6).</div>`
+  <div class="tie"><b>How it ties in:</b> the role came from /usr/share/ansible (Q5.2) and the playbook from /usr/share/doc (Q5.4) — the two trees the one dnf install created. Hand the file to student (Q5.5), put root away (Q5.6), and make the file yours (Q5.7).</div>`
 },
 {
-  id:"Q5.6", title:"Edit timesync.yml", sub:"RHEL system role — chrony via role variables",
+  id:"Q5.5", title:"Hand the playbook to student: chown", sub:"chown student:student /home/student/ansible/timesync.yml", cmd:true,
+  files:[{ path:"shell", lang:"cmd" }],
+  spec:`<b>5.5. Change the playbook's ownership to student.</b><br>• Same handover as Q5.3, one file this time: <code>timesync.yml</code> landed root-owned when root copied it in Q5.4. Make <b>student</b> its owner — user and group — so the edit in Q5.7 and the run in Q5.8 happen in a file student owns.<br>• No <code>-R</code> — the target is a single file, not a tree.<br>• Type the command at the prompt and press <b>Enter</b> to run it.`,
+  checks:[[
+    { re:/\bchown\s+/, msg:"The command is chown — change owner" },
+    { re:/\bstudent:student\b/, msg:"The new owner is student:student (user:group)" },
+    { re:/\/home\/student\/ansible\/timesync\.yml/, msg:"The target is the playbook: /home/student/ansible/timesync.yml" }
+  ]],
+  explain:`<h2>✅ Q5.5 complete — what you just did</h2>
+  <p>You handed the playbook to student: <code>timesync.yml</code> now belongs to <b>student:student</b>. With this, everything root staged in the project — the role tree at Q5.3, the playbook here — is student's property again, and the root session has nothing left to do.</p>
+  <h4>How it affects the Ansible environment</h4>
+  <p>• The edit in Q5.7 is the immediate payoff: student opens and rewrites <code>timesync.yml</code> in the editor. A root-owned file would have made that edit fail or, worse, silently saved nowhere — the classic "my changes did not take" mystery, with ownership as the whole explanation.<br>
+  • The staging pattern is now complete and repeatable: install as root, copy as root, chown to the working user, exit. Any file that enters a user's project from a privileged session needs the same third step.</p>
+  <h4>Command anatomy — what every part does, and what breaks without it</h4>
+  <p>• <code>chown</code> — change owner, as in Q5.3.<br>
+  • <code>student:student</code> — user:group, both set in one token.<br>
+  • No <code>-R</code> — recursion is for trees. The target is one file; the flag would do no harm here, but matching the flag to the shape of the target is the habit Q5.2/Q5.4 taught with cp, repeated.<br>
+  • <b>Why the exam cares:</b> this is the last privileged act of the question. Skip it and the very next step — an edit by student — is where the question quietly breaks.</p>
+  <div class="tie"><b>How it ties in:</b> root's checklist is empty: package in (Q5.1), role staged and handed over (Q5.2–Q5.3), playbook staged and handed over (Q5.4–Q5.5). Put root away (Q5.6) and the rest of Q5 is student's work.</div>`
+},
+{
+  id:"Q5.6", title:"Log out of the root shell", sub:"exit — back to student", cmd:true,
+  files:[{ path:"shell", lang:"cmd" }],
+  spec:`<b>5.6. Go back to student.</b><br>• Root's work is finished: the package is installed (Q5.1), the role and the example playbook are staged in the project (Q5.2, Q5.4), and both have been handed to student (Q5.3, Q5.5). Log out of the root shell to return to your student shell.<br>• Check the prompt when you land: <code>[student@controller ...]$</code> again, standing in the project directory you started from.<br>• Type the command at the prompt and press <b>Enter</b> to run it.`,
+  checks:[[
+    { fn:t => /^\s*(exit|logout)\s*$/.test(t), msg:"exit (or logout) — close the root shell and return to student" }
+  ]],
+  explain:`<h2>✅ Q5.6 complete — what you just did</h2>
+  <p>You closed the root shell — the shell prints <code>logout</code> — and you are <b>student</b> again. The root shell was a nested shell inside your student session: <code>su -</code> stacked it on top, and <code>exit</code> peels it off, returning you to exactly the student shell you left.</p>
+  <h4>How it affects the Ansible environment</h4>
+  <p>• From here to the end of the exam, every file you create is owned by student, in student's home — which is what the grader expects when it inspects /home/student/ansible as student.<br>
+  • Anything root-owned left inside the project would now fight you: playbooks and role directories that student cannot edit or overwrite without another trip through su — which is why Q5.3 and Q5.5 handed the staged files to student before this exit. Leaving root promptly is not tidiness; it is preventing a future failure.</p>
+  <h4>Command anatomy — what every part does, and what breaks without it</h4>
+  <p>• <code>exit</code> — end the current shell. In a login shell it runs the logout sequence and prints <code>logout</code>; <code>logout</code> typed directly does the same job here.<br>
+  • Notice what did <i>not</i> happen: you did not log out of the machine or lose your session. Only the root layer closed. The student shell underneath kept its history, its variables, and its place in the filesystem story.<br>
+  • <b>Why the exam cares:</b> privilege discipline is graded indirectly everywhere: files with the wrong owner, in the wrong home, are wrong answers even when their contents are right. Root to install and stage, chown to hand over, student for the work — that is the whole rhythm of Q5.</p>
+  <div class="tie"><b>How it ties in:</b> the staging pattern is complete — root installed (Q5.1), staged (Q5.2, Q5.4), and handed over (Q5.3, Q5.5); from here student edits (Q5.7), runs (Q5.8), and verifies (Q5.9, Q5.10). Privileged setup, ownership handover, unprivileged work: the rhythm every real multi-user system runs on.</div>`
+},
+{
+  id:"Q5.7", title:"Edit timesync.yml", sub:"RHEL system role — chrony via role variables",
   files:[{ path:"/home/student/ansible/timesync.yml", lang:"yaml", preset:"- hosts: \"{{ targets }}\"\n  vars:\n    timesync_ntp_servers:\n      - hostname: 2.pool.ntp.org\n        pool: yes\n        iburst: yes\n  roles:\n    - rhel-system-roles.timesync\n" }],
-  spec:`<b>5. Use RHEL System Role to Configure Time Synchronization</b><br>• The editor opens with the example file you copied in 5.5 already inside. Edit it into the final playbook:<br>• Runs on all managed hosts<br>• Uses the timesync role<br>• Configures the role to use the time server 2.north-america.pool.ntp.org<br>• Configures the role to set the iburst parameter as enabled<br>• Three edits to the example: aim the play at <b>all</b> hosts (the <code>{{ targets }}</code> placeholder goes), add <b>become</b> so the role can write the hosts' time config, and point the server entry at the required regional hostname — the example's generic <code>2.pool.ntp.org</code> and its <code>pool:</code> line do not survive the edit; only <b>iburst</b> stays.`,
+  spec:`<b>5. Use RHEL System Role to Configure Time Synchronization</b><br>• The editor opens with the example file you copied in 5.4 already inside. Edit it into the final playbook:<br>• Runs on all managed hosts<br>• Uses the timesync role<br>• Configures the role to use the time server 2.north-america.pool.ntp.org<br>• Configures the role to set the iburst parameter as enabled<br>• Three edits to the example: aim the play at <b>all</b> hosts (the <code>{{ targets }}</code> placeholder goes), add <b>become</b> so the role can write the hosts' time config, and point the server entry at the required regional hostname — the example's generic <code>2.pool.ntp.org</code> and its <code>pool:</code> line do not survive the edit; only <b>iburst</b> stays.`,
   checks:[[
     { re:/hosts\s*:\s*all/, msg:"The play targets hosts: all (the example's placeholder is replaced)" },
     { re:/become\s*:\s*(true|yes)/i, msg:"become: true is added — the role needs root on the nodes to write chrony.conf and restart chronyd" },
@@ -729,8 +757,8 @@ const QUESTIONS = [
     { fn:t => !/hostname\s*:\s*2\.pool\.ntp\.org/.test(t), msg:"The example's generic 2.pool.ntp.org is replaced by the required regional server" },
     { fn:t => !/^\s+pool\s*:/m.test(t), msg:"The example's pool: line is removed — the spec asks for iburst only, so the entry renders as a plain server line" }
   ]],
-  explain:`<h2>✅ Q5.6 complete — what you just did</h2>
-  <p>You configured a service <b>without writing a single task</b>. The playbook is just a variable and a role: <code>rhel-system-roles.timesync</code> — the copy you staged in Q5.3 — reads your <code>timesync_ntp_servers</code> variable and does all the work: installs and configures chrony, writes the NTP server line, restarts the service, on every host.</p>
+  explain:`<h2>✅ Q5.7 complete — what you just did</h2>
+  <p>You configured a service <b>without writing a single task</b>. The playbook is just a variable and a role: <code>rhel-system-roles.timesync</code> — the copy you staged in Q5.2 — reads your <code>timesync_ntp_servers</code> variable and does all the work: installs and configures chrony, writes the NTP server line, restarts the service, on every host.</p>
   <h4>How it affects the Ansible environment</h4>
   <p>• After this runs, every managed node's <code>/etc/chrony.conf</code> carries <code>server 2.north-america.pool.ntp.org iburst</code>, and <code>iburst</code> tells chrony to take a burst of quick measurements at startup so the clock converges fast instead of drifting in slowly.<br>
   • The role is <b>content installed on the controller</b> (the rhel-system-roles RPM, staged into the project), not on the nodes — the nodes only receive the changes the role makes.</p>
@@ -738,70 +766,70 @@ const QUESTIONS = [
   <p>• <code>hosts: "{{ targets }}"</code> → <code>hosts: all</code> — the example is written to be aimed by whoever reuses it, so it takes its target from a variable you would have to supply. The spec names the target directly: all managed hosts.<br>
   • <code>become: true</code> added — the example leaves privilege to the runner; the spec's play must carry it, because writing /etc/chrony.conf and restarting chronyd on the nodes are root work. This is the node-side privilege, declared in the play — the counterpart to Q5's controller-side root shell.<br>
   • <code>hostname: 2.pool.ntp.org</code> → <code>2.north-america.pool.ntp.org</code> — the spec's regional pool. Same service, nearer servers.<br>
-  • <code>pool: yes</code> removed — that key tells the role to render the entry as a chrony <code>pool</code> directive (a whole pool of servers behind one name). The spec asks only for iburst, so the entry renders as a plain <code>server</code> line — which is exactly what Q5.8 goes looking for.<br>
+  • <code>pool: yes</code> removed — that key tells the role to render the entry as a chrony <code>pool</code> directive (a whole pool of servers behind one name). The spec asks only for iburst, so the entry renders as a plain <code>server</code> line — which is exactly what Q5.9 goes looking for.<br>
   • Untouched on purpose: the variable's name, the entry's shape, and the role line. Those came from the vendor's example, and they were already right — editing only what the spec changes is the discipline this step teaches.<br>
   • RHEL system roles follow one pattern everywhere: <b>interface by variables</b>. You don't edit the role; you feed it documented variables and it renders the right config for the OS it finds. Q8 uses the same pattern when a variable overrides a role's defaults.</p>
   <div class="tie"><b>How it ties in:</b> synchronized clocks are invisible until they're missing — Kerberos, TLS, and log correlation across servera–serverd all quietly depend on what you just did. Structurally, this is your template for every "apply role X with variables Y" exam question.</div>`
 },
 {
-  id:"Q5.7", title:"Run timesync.yml", sub:"ansible-playbook timesync.yml", cmd:true,
+  id:"Q5.8", title:"Run timesync.yml", sub:"ansible-playbook timesync.yml", cmd:true,
   files:[{ path:"shell", lang:"cmd" }],
-  spec:`<b>5.7. Run the playbook.</b><br>• From <code>~/ansible</code>, run <code>timesync.yml</code> with ansible-playbook.<br>• No sudo — you are student, and the play already becomes root on the managed hosts itself.<br>• Type the command at the prompt and press <b>Enter</b> to run it.<br>• <b>Navigator works too:</b> <code>ansible-navigator run timesync.yml</code> runs the same playbook in the real environment — Q1's ansible-navigator.yml already sets stdout mode, the execution environment and artifacts off, so the plain form just works. Variations are accepted here as well: <code>-m stdout</code>, <code>--pae false</code>, <code>--ee false</code>, <code>--pull-policy missing</code>, <code>--eei creator-ee:v0.22.0 --pa --tls-verify=false</code>, flags before or after the file.`,
+  spec:`<b>5.8. Run the playbook.</b><br>• From <code>~/ansible</code>, run <code>timesync.yml</code> with ansible-playbook.<br>• No sudo — you are student, and the play already becomes root on the managed hosts itself.<br>• Type the command at the prompt and press <b>Enter</b> to run it.<br>• <b>Navigator works too:</b> <code>ansible-navigator run timesync.yml</code> runs the same playbook in the real environment — Q1's ansible-navigator.yml already sets stdout mode, the execution environment and artifacts off, so the plain form just works. Variations are accepted here as well: <code>-m stdout</code>, <code>--pae false</code>, <code>--ee false</code>, <code>--pull-policy missing</code>, <code>--eei creator-ee:v0.22.0 --pa --tls-verify=false</code>, flags before or after the file.`,
   checks:[[
     { re:/ansible-playbook\s+timesync\.yml/, msg:"The command is ansible-playbook timesync.yml" },
     { fn:t => /ansible-playbook\s+timesync\.yml/.test(t) && !/sudo/.test(t), msg:"No sudo — playbooks run as student; become inside the play does the privilege work" }
   ]],
-  explain:`<h2>✅ Q5.7 complete — what you just did</h2>
+  explain:`<h2>✅ Q5.8 complete — what you just did</h2>
   <p>You ran the playbook: on every host in the inventory, the timesync role configured chrony to use your NTP server and made sure the service is running.</p>
   <h4>How it affects the Ansible environment</h4>
-  <p>• This is the first question whose run reaches out and changes <i>every managed host</i> — the earlier playbooks were scoped by group guards, but Q5.6's play targets all hosts, because every machine needs correct time (Kerberos, logs, and certificates all depend on it).<br>
+  <p>• This is the first question whose run reaches out and changes <i>every managed host</i> — the earlier playbooks were scoped by group guards, but Q5.7's play targets all hosts, because every machine needs correct time (Kerberos, logs, and certificates all depend on it).<br>
   • The play ran as student and escalated with <code>become</code> only where the role needed it — that is why the command itself carries no sudo. Notice the full circle: root appeared exactly once in this question, back in Q5, to install software on the controller. It has not been needed since.</p>
   <h4>Command anatomy — what every part does, and what breaks without it</h4>
   <p>• <code>ansible-playbook</code> — the runner: read a playbook file, apply its plays to the inventory, report a recap per host. This bare command is the whole trigger for the Q5 chain.<br>
   • <code>timesync.yml</code> — the only argument, and it is a relative filename: the runner looks for it in your current directory. Run the identical command from your home directory and it fails with "the playbook could not be found" — even though the file exists, one directory away. Standing in the project directory is what makes this line work.<br>
   • What is absent is also anatomy: no <code>-i</code> (the inventory comes from ansible.cfg), no extra flags, and no <code>sudo</code> — privilege escalation is declared inside the play, so the controller process itself stays unprivileged. The checker rejects a sudo on this line even if the run would succeed.<br>
   • <b>Why the exam cares:</b> name the wrong file — or stand in the wrong directory — and nothing runs at all, while every later Q5 verification fails for reasons that look like role problems. The simplest commands fail the simplest way: by pointing at nothing.</p>
-  <div class="tie"><b>How it ties in:</b> a successful run is a claim. Q5.8 checks the config file the role wrote, and Q5.9 checks the daemon itself — two different layers of proof.</div>`
+  <div class="tie"><b>How it ties in:</b> a successful run is a claim. Q5.9 checks the config file the role wrote, and Q5.10 checks the daemon itself — two different layers of proof.</div>`
 },
 {
-  id:"Q5.8", title:"Verify: the chrony.conf server line", sub:"Ad hoc grep on all hosts", cmd:true,
+  id:"Q5.9", title:"Verify: the chrony.conf server line", sub:"Ad hoc grep on all hosts", cmd:true,
   files:[{ path:"shell", lang:"cmd" }],
-  spec:`<b>5.8. Verify the configuration.</b><br>• Using an ad hoc command on <b>all</b> hosts through the <code>command</code> module, check that <code>/etc/chrony.conf</code> now contains the line for your NTP server — the role rendered your entry as a <code>server</code> line.<br>• The grep pattern is <code>pool</code>: it still finds the line, because the hostname itself — 2.north-america.<b>pool</b>.ntp.org — contains it.<br>• Type the command at the prompt and press <b>Enter</b> to run it.`,
+  spec:`<b>5.9. Verify the configuration.</b><br>• Using an ad hoc command on <b>all</b> hosts through the <code>command</code> module, check that <code>/etc/chrony.conf</code> now contains the line for your NTP server — the role rendered your entry as a <code>server</code> line.<br>• The grep pattern is <code>pool</code>: it still finds the line, because the hostname itself — 2.north-america.<b>pool</b>.ntp.org — contains it.<br>• Type the command at the prompt and press <b>Enter</b> to run it.`,
   checks:[[
     { re:/ansible\s+all\b/, msg:"The ad hoc command targets all hosts" },
     { re:/-m\s+(ansible\.builtin\.)?command\b/, msg:"It uses the command module" },
     { re:/-a\s+['"]grep\s+pool\s+\/etc\/chrony\.conf['"]/, msg:"The -a argument runs: grep pool /etc/chrony.conf" }
   ]],
-  explain:`<h2>✅ Q5.8 complete — what you just did</h2>
-  <p>You checked the artifact the role was supposed to produce: every host's <code>/etc/chrony.conf</code> now shows <code>server 2.north-america.pool.ntp.org iburst</code> — your Q5.6 variable, rendered into chrony's config.</p>
+  explain:`<h2>✅ Q5.9 complete — what you just did</h2>
+  <p>You checked the artifact the role was supposed to produce: every host's <code>/etc/chrony.conf</code> now shows <code>server 2.north-america.pool.ntp.org iburst</code> — your Q5.7 variable, rendered into chrony's config.</p>
   <h4>How it affects the Ansible environment</h4>
   <p>• Read-only again: ad hoc <code>command</code> calls gather evidence without changing state, which is what makes them safe to run as often as you like during the exam.<br>
   • This verifies the <i>configuration layer</i>: the file says the right thing. It says nothing yet about whether chronyd has actually picked the source up — that is a different layer, and it gets its own check.</p>
   <h4>Command anatomy — what every part does, and what breaks without it</h4>
   <p>• <code>ansible all</code> — every host gets asked. The role was applied to all hosts, so the proof must cover all of them; verifying one host and assuming the rest is how a single failed host slips through.<br>
   • <code>-m ansible.builtin.command</code> — run the named binary directly on each host. No shell is started, so the argument must be one self-contained command — which grep is.<br>
-  • <code>-a 'grep pool /etc/chrony.conf'</code> — inside the quotes: <code>grep</code> the tool, <code>pool</code> the text to hunt for, <code>/etc/chrony.conf</code> the file to hunt in. The word <code>pool</code> matches inside the server line because the hostname itself contains it — the directive the role wrote is <code>server</code>, since Q5.6 dropped the example's <code>pool:</code> key. The path is the contract: the timesync role writes chrony's config at exactly that location, so this reads the artifact the role was supposed to produce.<br>
+  • <code>-a 'grep pool /etc/chrony.conf'</code> — inside the quotes: <code>grep</code> the tool, <code>pool</code> the text to hunt for, <code>/etc/chrony.conf</code> the file to hunt in. The word <code>pool</code> matches inside the server line because the hostname itself contains it — the directive the role wrote is <code>server</code>, since Q5.7 dropped the example's <code>pool:</code> key. The path is the contract: the timesync role writes chrony's config at exactly that location, so this reads the artifact the role was supposed to produce.<br>
   • No <code>-b</code> — chrony.conf is world-readable, so the verify runs unprivileged; nothing here needs root.<br>
   • <b>Why the exam cares:</b> grep for the wrong word, or in the wrong file, and the check can pass or fail independently of what the role actually did. Any host missing that line is a host the role did not reach.</p>
-  <div class="tie"><b>How it ties in:</b> variable (Q5.6) → role → config file (Q5.8) → live daemon (Q5.9). You are tracing one fact through the whole stack.</div>`
+  <div class="tie"><b>How it ties in:</b> variable (Q5.7) → role → config file (Q5.9) → live daemon (Q5.10). You are tracing one fact through the whole stack.</div>`
 },
 {
-  id:"Q5.9", title:"Verify: chronyc sources", sub:"Ad hoc on all hosts", cmd:true,
+  id:"Q5.10", title:"Verify: chronyc sources", sub:"Ad hoc on all hosts", cmd:true,
   files:[{ path:"shell", lang:"cmd" }],
-  spec:`<b>5.9. Verify the service.</b><br>• One more ad hoc check on <b>all</b> hosts, through the <code>command</code> module: ask chrony itself which time sources it is currently using.<br>• The config file (5.8) is what's written on disk; this is the daemon's live view.<br>• Type the command at the prompt and press <b>Enter</b> to run it.`,
+  spec:`<b>5.10. Verify the service.</b><br>• One more ad hoc check on <b>all</b> hosts, through the <code>command</code> module: ask chrony itself which time sources it is currently using.<br>• The config file (5.9) is what's written on disk; this is the daemon's live view.<br>• Type the command at the prompt and press <b>Enter</b> to run it.`,
   checks:[[
     { re:/ansible\s+all\b/, msg:"The ad hoc command targets all hosts" },
     { re:/-m\s+(ansible\.builtin\.)?command\b/, msg:"It uses the command module" },
     { re:/-a\s+['"]chronyc\s+sources['"]/, msg:"The -a argument runs: chronyc sources" }
   ]],
-  explain:`<h2>✅ Q5.9 complete — what you just did</h2>
+  explain:`<h2>✅ Q5.10 complete — what you just did</h2>
   <p>You asked the running daemon for its own view: <code>chronyc sources</code> lists the NTP sources chronyd is actually polling on every host. Your server should appear, marked as the selected source — proof the config change became live behavior, not just text in a file.</p>
   <h4>How it affects the Ansible environment</h4>
-  <p>• This is the deepest verification layer in the Q5 chain: root shell (Q5), package installed (Q5.1), back to student (Q5.2), role staged (Q5.3) and proven (Q5.4), playbook staged (Q5.5) and edited (Q5.6), run (Q5.7), config on disk (Q5.8), daemon using it (Q5.9). Each step was proven before the next one was trusted.<br>
+  <p>• This is the deepest verification layer in the Q5 chain: root shell (Q5), package installed (Q5.1), role staged by root (Q5.2) and handed to student (Q5.3), playbook staged (Q5.4) and handed over (Q5.5), back to student (Q5.6), edited (Q5.7), run (Q5.8), config on disk (Q5.9), daemon using it (Q5.10). Each step was proven before the next one was trusted.<br>
   • On the real exam this habit is what catches the silent failures — a role that "ran fine" but never restarted the service, or a config written to the wrong host group.</p>
   <h4>Command anatomy — what every part does, and what breaks without it</h4>
-  <p>• The frame is Q5.8's, unchanged — <code>ansible all -m ansible.builtin.command -a '...'</code> — and that sameness is deliberate: same transport, same hosts, different layer of evidence.<br>
-  • <code>chronyc</code> — chrony's control client. Unlike the file Q5.8 read, this program talks to the running chronyd daemon over its control channel and reports what the daemon is doing right now.<br>
+  <p>• The frame is Q5.9's, unchanged — <code>ansible all -m ansible.builtin.command -a '...'</code> — and that sameness is deliberate: same transport, same hosts, different layer of evidence.<br>
+  • <code>chronyc</code> — chrony's control client. Unlike the file Q5.9 read, this program talks to the running chronyd daemon over its control channel and reports what the daemon is doing right now.<br>
   • <code>sources</code> — the chronyc subcommand that lists the time sources the daemon is polling, with their reachability and offset. It is the daemon's own testimony, not the config's claim.<br>
   • <b>Why the exam cares:</b> a correct /etc/chrony.conf with a daemon that never reloaded it is a half-finished configuration — the file says one thing, the service does another. Running the config check twice would never catch that. This step exists because the graded state is a live daemon synced to your server, not a text file that mentions it.</p>
   <div class="tie"><b>How it ties in:</b> Q5 is fully closed. Q6 returns to downloaded Galaxy roles — the same roles:/requirements pattern as Q4, one level up.</div>`
@@ -2365,15 +2393,17 @@ collections:
   answer:[{ path:"shell", text:"su -" }] },
 "Q5.1": { hint:`You are root now, so no sudo: dnf install, the -y flag, and the package name rhel-system-roles.`,
   answer:[{ path:"shell", text:"dnf install -y rhel-system-roles" }] },
-"Q5.2": { hint:`One word ends the root shell and drops you back into your student shell: exit.`,
+"Q5.2": { hint:`As root, from /root, so absolute paths at both ends: cp -r the timesync role from /usr/share/ansible/roles/ into /home/student/ansible/roles. Tab after rhel-system-roles. lists the whole installed family — complete it to timesync.`,
+  answer:[{ path:"shell", text:"cp -r /usr/share/ansible/roles/rhel-system-roles.timesync/ /home/student/ansible/roles" }] },
+"Q5.3": { hint:`chown with -R (it is a whole tree): student:student on /home/student/ansible/roles/rhel-system-roles.timesync. You copied it as root, so hand the whole tree over before you leave root.`,
+  answer:[{ path:"shell", text:"chown -R student:student /home/student/ansible/roles/rhel-system-roles.timesync" }] },
+"Q5.4": { hint:`As root: cp from the doc tree, /usr/share/doc/rhel-system-roles/timesync/example-single-pool-playbook.yml, to /home/student/ansible/timesync.yml. No -r — it is one file.`,
+  answer:[{ path:"shell", text:"cp /usr/share/doc/rhel-system-roles/timesync/example-single-pool-playbook.yml /home/student/ansible/timesync.yml" }] },
+"Q5.5": { hint:`chown student:student on /home/student/ansible/timesync.yml — a single file, so no -R this time. Root copied it; hand it over before you exit.`,
+  answer:[{ path:"shell", text:"chown student:student /home/student/ansible/timesync.yml" }] },
+"Q5.6": { hint:`One word ends the root shell and drops you back into your student shell: exit.`,
   answer:[{ path:"shell", text:"exit" }] },
-"Q5.3": { hint:`cp with -r (it is a directory): from /usr/share/ansible/roles/rhel-system-roles.timesync/ into roles/ — Tab-complete the long source path.`,
-  answer:[{ path:"shell", text:"cp -r /usr/share/ansible/roles/rhel-system-roles.timesync/ roles/" }] },
-"Q5.4": { hint:`ll roles/ — the long listing of the project's roles directory. You are looking for the rhel-system-roles.timesync directory, owned by student.`,
-  answer:[{ path:"shell", text:"ll roles/" }] },
-"Q5.5": { hint:`cp from the doc tree: /usr/share/doc/rhel-system-roles/timesync/example-single-pool-playbook.yml, renamed to timesync.yml. No -r — it is one file.`,
-  answer:[{ path:"shell", text:"cp /usr/share/doc/rhel-system-roles/timesync/example-single-pool-playbook.yml timesync.yml" }] },
-"Q5.6": { hint:`Edit the example, don't rewrite it: hosts becomes all, add become: true, hostname becomes 2.north-america.pool.ntp.org, delete the pool: line, keep iburst. The role stays rhel-system-roles.timesync.`,
+"Q5.7": { hint:`Edit the example, don't rewrite it: hosts becomes all, add become: true, hostname becomes 2.north-america.pool.ntp.org, delete the pool: line, keep iburst. The role stays rhel-system-roles.timesync.`,
   answer:[{ path:"/home/student/ansible/timesync.yml", text:`- hosts: all
   become: true
   vars:
@@ -2383,11 +2413,11 @@ collections:
   roles:
     - rhel-system-roles.timesync
 ` }] },
-"Q5.7": { hint:`A plain ansible-playbook run of timesync.yml — no sudo; the play becomes root on the hosts itself. Navigator works too: ansible-navigator run timesync.yml — plain, or with -m stdout, --pae false, --ee false, --pull-policy missing; Q1's config already sets stdout mode, the EE and artifacts off.`,
+"Q5.8": { hint:`A plain ansible-playbook run of timesync.yml — no sudo; the play becomes root on the hosts itself. Navigator works too: ansible-navigator run timesync.yml — plain, or with -m stdout, --pae false, --ee false, --pull-policy missing; Q1's config already sets stdout mode, the EE and artifacts off.`,
   answer:[{ path:"shell", text:"ansible-playbook timesync.yml" }] },
-"Q5.8": { hint:`ansible all, the command module, and an -a argument that greps for the word pool in /etc/chrony.conf — it matches inside the server line's hostname.`,
+"Q5.9": { hint:`ansible all, the command module, and an -a argument that greps for the word pool in /etc/chrony.conf — it matches inside the server line's hostname.`,
   answer:[{ path:"shell", text:"ansible all -m ansible.builtin.command -a 'grep pool /etc/chrony.conf'" }] },
-"Q5.9": { hint:`ansible all, the command module, and an -a argument that asks chrony for its sources.`,
+"Q5.10": { hint:`ansible all, the command module, and an -a argument that asks chrony for its sources.`,
   answer:[{ path:"shell", text:"ansible all -m ansible.builtin.command -a 'chronyc sources'" }] },
 "Q6": { hint:`mkdir, then vim — in that order, joined by &&. The mkdir needs -p; the vim target is roles/requirements.yml. You are already in the project directory.`,
   answer:[{ path:"shell", text:"mkdir -p roles && vim roles/requirements.yml" }] },
@@ -3132,6 +3162,31 @@ try {
   }
 } catch (e) {}
 try {
+
+  // Q5 root-staging rebuild (2026-11-17): the copies and the new chown
+  // steps moved inside the root session (Q5.2-Q5.5), exit moved to
+  // Q5.6, and Q5.10 was added, shifting everything after the old Q5.9
+  // by one. Remap by what each pass proved: su and dnf stay; the old
+  // role copy lands on the new copy step, the old example copy on the
+  // new one, the old exit on the new exit; the old ll verify has no
+  // counterpart and is dropped; edit, run and the verifies move to
+  // their new numbers.
+  if (!localStorage.getItem("rhce-q5root1")) {
+    const i5r = QUESTIONS.findIndex(q => q.id === "Q5");
+    const oldDoneQ = JSON.parse(localStorage.getItem("rhce-done") || "[]");
+    if (i5r >= 0 && Array.isArray(oldDoneQ)) {
+      const MAPQ = { 0: 0, 1: 1, 2: 6, 3: 2, 5: 4, 6: 7, 7: 8, 8: 9, 9: 10 };
+      const remappedQ = [];
+      oldDoneQ.forEach(ix => {
+        if (ix < i5r) { remappedQ.push(ix); return; }
+        const rel = ix - i5r;
+        if (rel > 9) { remappedQ.push(ix + 1); return; }
+        if (Object.prototype.hasOwnProperty.call(MAPQ, rel)) remappedQ.push(i5r + MAPQ[rel]);
+      });
+      localStorage.setItem("rhce-done", JSON.stringify(Array.from(new Set(remappedQ)).sort((a, b) => a - b)));
+    }
+    localStorage.setItem("rhce-q5root1", "1");
+  }
   const savedDone = JSON.parse(localStorage.getItem("rhce-done") || "[]");
   if (Array.isArray(savedDone)) savedDone.forEach(i => { if (Number.isInteger(i) && i >= 0 && i < QUESTIONS.length) state.done.add(i); });
   state.mode = localStorage.getItem("rhce-mode") === "practice" ? "practice" : "guided";
@@ -3462,11 +3517,326 @@ const FS_TREE = {
   "/usr/share/ansible/collections/ansible_collections/redhat": [["rhel_system_roles",1]],
   "/usr/share/ansible/collections/ansible_collections/redhat/rhel_system_roles": [["roles",1]],
   "/usr/share/ansible/collections/ansible_collections/redhat/rhel_system_roles/roles": [["ad_integration",1],["certificate",1],["cockpit",1],["crypto_policies",1],["firewall",1],["ha_cluster",1],["journald",1],["kernel_settings",1],["kdump",1],["keylime_server",1],["logging",1],["metrics",1],["nbde_client",1],["nbde_server",1],["network",1],["postfix",1],["rhc",1],["selinux",1],["snapshot",1],["sshd",1],["storage",1],["system",1],["timesync",1],["tlog",1],["vpn",1]],
-  "/usr/share/ansible/roles": [["rhel-system-roles.cockpit",1],["rhel-system-roles.firewall",1],["rhel-system-roles.network",1],["rhel-system-roles.selinux",1],["rhel-system-roles.sshd",1],["rhel-system-roles.storage",1],["rhel-system-roles.timesync",1]],
+  "/usr/share/ansible/roles": [["rhel-system-roles.ad_integration",1],["rhel-system-roles.aide",1],["rhel-system-roles.auditd",1],["rhel-system-roles.bootloader",1],["rhel-system-roles.certificate",1],["rhel-system-roles.cockpit",1],["rhel-system-roles.crypto_policies",1],["rhel-system-roles.fapolicyd",1],["rhel-system-roles.firewall",1],["rhel-system-roles.gfs2",1],["rhel-system-roles.ha_cluster",1],["rhel-system-roles.journald",1],["rhel-system-roles.kdump",1],["rhel-system-roles.kernel_settings",1],["rhel-system-roles.keylime_server",1],["rhel-system-roles.logging",1],["rhel-system-roles.metrics",1],["rhel-system-roles.nbde_client",1],["rhel-system-roles.nbde_server",1],["rhel-system-roles.network",1],["rhel-system-roles.podman",1],["rhel-system-roles.postfix",1],["rhel-system-roles.postgresql",1],["rhel-system-roles.rhc",1],["rhel-system-roles.selinux",1],["rhel-system-roles.snapshot",1],["rhel-system-roles.ssh",1],["rhel-system-roles.sshd",1],["rhel-system-roles.storage",1],["rhel-system-roles.sudo",1],["rhel-system-roles.systemd",1],["rhel-system-roles.timesync",1],["rhel-system-roles.tlog",1],["rhel-system-roles.trustee_client",1],["rhel-system-roles.trustee_server",1],["rhel-system-roles.vpn",1]],
+  "/usr/share/ansible/roles/rhel-system-roles.ad_integration": [["defaults",1],["files",1],["handlers",1],["meta",1],["tasks",1],["templates",1],["tests",1],["vars",1]],
+  "/usr/share/ansible/roles/rhel-system-roles.ad_integration/defaults": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.ad_integration/files": [],
+  "/usr/share/ansible/roles/rhel-system-roles.ad_integration/handlers": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.ad_integration/meta": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.ad_integration/tasks": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.ad_integration/templates": [],
+  "/usr/share/ansible/roles/rhel-system-roles.ad_integration/tests": [],
+  "/usr/share/ansible/roles/rhel-system-roles.ad_integration/vars": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.aide": [["defaults",1],["files",1],["handlers",1],["meta",1],["tasks",1],["templates",1],["tests",1],["vars",1]],
+  "/usr/share/ansible/roles/rhel-system-roles.aide/defaults": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.aide/files": [],
+  "/usr/share/ansible/roles/rhel-system-roles.aide/handlers": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.aide/meta": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.aide/tasks": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.aide/templates": [],
+  "/usr/share/ansible/roles/rhel-system-roles.aide/tests": [],
+  "/usr/share/ansible/roles/rhel-system-roles.aide/vars": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.auditd": [["defaults",1],["files",1],["handlers",1],["meta",1],["tasks",1],["templates",1],["tests",1],["vars",1]],
+  "/usr/share/ansible/roles/rhel-system-roles.auditd/defaults": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.auditd/files": [],
+  "/usr/share/ansible/roles/rhel-system-roles.auditd/handlers": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.auditd/meta": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.auditd/tasks": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.auditd/templates": [],
+  "/usr/share/ansible/roles/rhel-system-roles.auditd/tests": [],
+  "/usr/share/ansible/roles/rhel-system-roles.auditd/vars": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.bootloader": [["defaults",1],["files",1],["handlers",1],["meta",1],["tasks",1],["templates",1],["tests",1],["vars",1]],
+  "/usr/share/ansible/roles/rhel-system-roles.bootloader/defaults": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.bootloader/files": [],
+  "/usr/share/ansible/roles/rhel-system-roles.bootloader/handlers": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.bootloader/meta": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.bootloader/tasks": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.bootloader/templates": [],
+  "/usr/share/ansible/roles/rhel-system-roles.bootloader/tests": [],
+  "/usr/share/ansible/roles/rhel-system-roles.bootloader/vars": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.certificate": [["defaults",1],["files",1],["handlers",1],["meta",1],["tasks",1],["templates",1],["tests",1],["vars",1]],
+  "/usr/share/ansible/roles/rhel-system-roles.certificate/defaults": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.certificate/files": [],
+  "/usr/share/ansible/roles/rhel-system-roles.certificate/handlers": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.certificate/meta": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.certificate/tasks": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.certificate/templates": [],
+  "/usr/share/ansible/roles/rhel-system-roles.certificate/tests": [],
+  "/usr/share/ansible/roles/rhel-system-roles.certificate/vars": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.cockpit": [["defaults",1],["files",1],["handlers",1],["meta",1],["tasks",1],["templates",1],["tests",1],["vars",1]],
+  "/usr/share/ansible/roles/rhel-system-roles.cockpit/defaults": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.cockpit/files": [],
+  "/usr/share/ansible/roles/rhel-system-roles.cockpit/handlers": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.cockpit/meta": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.cockpit/tasks": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.cockpit/templates": [],
+  "/usr/share/ansible/roles/rhel-system-roles.cockpit/tests": [],
+  "/usr/share/ansible/roles/rhel-system-roles.cockpit/vars": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.crypto_policies": [["defaults",1],["files",1],["handlers",1],["meta",1],["tasks",1],["templates",1],["tests",1],["vars",1]],
+  "/usr/share/ansible/roles/rhel-system-roles.crypto_policies/defaults": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.crypto_policies/files": [],
+  "/usr/share/ansible/roles/rhel-system-roles.crypto_policies/handlers": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.crypto_policies/meta": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.crypto_policies/tasks": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.crypto_policies/templates": [],
+  "/usr/share/ansible/roles/rhel-system-roles.crypto_policies/tests": [],
+  "/usr/share/ansible/roles/rhel-system-roles.crypto_policies/vars": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.fapolicyd": [["defaults",1],["files",1],["handlers",1],["meta",1],["tasks",1],["templates",1],["tests",1],["vars",1]],
+  "/usr/share/ansible/roles/rhel-system-roles.fapolicyd/defaults": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.fapolicyd/files": [],
+  "/usr/share/ansible/roles/rhel-system-roles.fapolicyd/handlers": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.fapolicyd/meta": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.fapolicyd/tasks": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.fapolicyd/templates": [],
+  "/usr/share/ansible/roles/rhel-system-roles.fapolicyd/tests": [],
+  "/usr/share/ansible/roles/rhel-system-roles.fapolicyd/vars": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.firewall": [["defaults",1],["files",1],["handlers",1],["meta",1],["tasks",1],["templates",1],["tests",1],["vars",1]],
+  "/usr/share/ansible/roles/rhel-system-roles.firewall/defaults": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.firewall/files": [],
+  "/usr/share/ansible/roles/rhel-system-roles.firewall/handlers": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.firewall/meta": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.firewall/tasks": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.firewall/templates": [],
+  "/usr/share/ansible/roles/rhel-system-roles.firewall/tests": [],
+  "/usr/share/ansible/roles/rhel-system-roles.firewall/vars": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.gfs2": [["defaults",1],["files",1],["handlers",1],["meta",1],["tasks",1],["templates",1],["tests",1],["vars",1]],
+  "/usr/share/ansible/roles/rhel-system-roles.gfs2/defaults": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.gfs2/files": [],
+  "/usr/share/ansible/roles/rhel-system-roles.gfs2/handlers": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.gfs2/meta": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.gfs2/tasks": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.gfs2/templates": [],
+  "/usr/share/ansible/roles/rhel-system-roles.gfs2/tests": [],
+  "/usr/share/ansible/roles/rhel-system-roles.gfs2/vars": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.ha_cluster": [["defaults",1],["files",1],["handlers",1],["meta",1],["tasks",1],["templates",1],["tests",1],["vars",1]],
+  "/usr/share/ansible/roles/rhel-system-roles.ha_cluster/defaults": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.ha_cluster/files": [],
+  "/usr/share/ansible/roles/rhel-system-roles.ha_cluster/handlers": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.ha_cluster/meta": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.ha_cluster/tasks": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.ha_cluster/templates": [],
+  "/usr/share/ansible/roles/rhel-system-roles.ha_cluster/tests": [],
+  "/usr/share/ansible/roles/rhel-system-roles.ha_cluster/vars": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.journald": [["defaults",1],["files",1],["handlers",1],["meta",1],["tasks",1],["templates",1],["tests",1],["vars",1]],
+  "/usr/share/ansible/roles/rhel-system-roles.journald/defaults": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.journald/files": [],
+  "/usr/share/ansible/roles/rhel-system-roles.journald/handlers": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.journald/meta": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.journald/tasks": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.journald/templates": [],
+  "/usr/share/ansible/roles/rhel-system-roles.journald/tests": [],
+  "/usr/share/ansible/roles/rhel-system-roles.journald/vars": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.kdump": [["defaults",1],["files",1],["handlers",1],["meta",1],["tasks",1],["templates",1],["tests",1],["vars",1]],
+  "/usr/share/ansible/roles/rhel-system-roles.kdump/defaults": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.kdump/files": [],
+  "/usr/share/ansible/roles/rhel-system-roles.kdump/handlers": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.kdump/meta": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.kdump/tasks": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.kdump/templates": [],
+  "/usr/share/ansible/roles/rhel-system-roles.kdump/tests": [],
+  "/usr/share/ansible/roles/rhel-system-roles.kdump/vars": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.kernel_settings": [["defaults",1],["files",1],["handlers",1],["meta",1],["tasks",1],["templates",1],["tests",1],["vars",1]],
+  "/usr/share/ansible/roles/rhel-system-roles.kernel_settings/defaults": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.kernel_settings/files": [],
+  "/usr/share/ansible/roles/rhel-system-roles.kernel_settings/handlers": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.kernel_settings/meta": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.kernel_settings/tasks": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.kernel_settings/templates": [],
+  "/usr/share/ansible/roles/rhel-system-roles.kernel_settings/tests": [],
+  "/usr/share/ansible/roles/rhel-system-roles.kernel_settings/vars": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.keylime_server": [["defaults",1],["files",1],["handlers",1],["meta",1],["tasks",1],["templates",1],["tests",1],["vars",1]],
+  "/usr/share/ansible/roles/rhel-system-roles.keylime_server/defaults": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.keylime_server/files": [],
+  "/usr/share/ansible/roles/rhel-system-roles.keylime_server/handlers": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.keylime_server/meta": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.keylime_server/tasks": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.keylime_server/templates": [],
+  "/usr/share/ansible/roles/rhel-system-roles.keylime_server/tests": [],
+  "/usr/share/ansible/roles/rhel-system-roles.keylime_server/vars": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.logging": [["defaults",1],["files",1],["handlers",1],["meta",1],["tasks",1],["templates",1],["tests",1],["vars",1]],
+  "/usr/share/ansible/roles/rhel-system-roles.logging/defaults": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.logging/files": [],
+  "/usr/share/ansible/roles/rhel-system-roles.logging/handlers": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.logging/meta": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.logging/tasks": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.logging/templates": [],
+  "/usr/share/ansible/roles/rhel-system-roles.logging/tests": [],
+  "/usr/share/ansible/roles/rhel-system-roles.logging/vars": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.metrics": [["defaults",1],["files",1],["handlers",1],["meta",1],["tasks",1],["templates",1],["tests",1],["vars",1]],
+  "/usr/share/ansible/roles/rhel-system-roles.metrics/defaults": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.metrics/files": [],
+  "/usr/share/ansible/roles/rhel-system-roles.metrics/handlers": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.metrics/meta": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.metrics/tasks": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.metrics/templates": [],
+  "/usr/share/ansible/roles/rhel-system-roles.metrics/tests": [],
+  "/usr/share/ansible/roles/rhel-system-roles.metrics/vars": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.nbde_client": [["defaults",1],["files",1],["handlers",1],["meta",1],["tasks",1],["templates",1],["tests",1],["vars",1]],
+  "/usr/share/ansible/roles/rhel-system-roles.nbde_client/defaults": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.nbde_client/files": [],
+  "/usr/share/ansible/roles/rhel-system-roles.nbde_client/handlers": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.nbde_client/meta": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.nbde_client/tasks": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.nbde_client/templates": [],
+  "/usr/share/ansible/roles/rhel-system-roles.nbde_client/tests": [],
+  "/usr/share/ansible/roles/rhel-system-roles.nbde_client/vars": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.nbde_server": [["defaults",1],["files",1],["handlers",1],["meta",1],["tasks",1],["templates",1],["tests",1],["vars",1]],
+  "/usr/share/ansible/roles/rhel-system-roles.nbde_server/defaults": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.nbde_server/files": [],
+  "/usr/share/ansible/roles/rhel-system-roles.nbde_server/handlers": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.nbde_server/meta": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.nbde_server/tasks": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.nbde_server/templates": [],
+  "/usr/share/ansible/roles/rhel-system-roles.nbde_server/tests": [],
+  "/usr/share/ansible/roles/rhel-system-roles.nbde_server/vars": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.network": [["defaults",1],["files",1],["handlers",1],["meta",1],["tasks",1],["templates",1],["tests",1],["vars",1]],
+  "/usr/share/ansible/roles/rhel-system-roles.network/defaults": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.network/files": [],
+  "/usr/share/ansible/roles/rhel-system-roles.network/handlers": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.network/meta": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.network/tasks": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.network/templates": [],
+  "/usr/share/ansible/roles/rhel-system-roles.network/tests": [],
+  "/usr/share/ansible/roles/rhel-system-roles.network/vars": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.podman": [["defaults",1],["files",1],["handlers",1],["meta",1],["tasks",1],["templates",1],["tests",1],["vars",1]],
+  "/usr/share/ansible/roles/rhel-system-roles.podman/defaults": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.podman/files": [],
+  "/usr/share/ansible/roles/rhel-system-roles.podman/handlers": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.podman/meta": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.podman/tasks": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.podman/templates": [],
+  "/usr/share/ansible/roles/rhel-system-roles.podman/tests": [],
+  "/usr/share/ansible/roles/rhel-system-roles.podman/vars": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.postfix": [["defaults",1],["files",1],["handlers",1],["meta",1],["tasks",1],["templates",1],["tests",1],["vars",1]],
+  "/usr/share/ansible/roles/rhel-system-roles.postfix/defaults": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.postfix/files": [],
+  "/usr/share/ansible/roles/rhel-system-roles.postfix/handlers": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.postfix/meta": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.postfix/tasks": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.postfix/templates": [],
+  "/usr/share/ansible/roles/rhel-system-roles.postfix/tests": [],
+  "/usr/share/ansible/roles/rhel-system-roles.postfix/vars": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.postgresql": [["defaults",1],["files",1],["handlers",1],["meta",1],["tasks",1],["templates",1],["tests",1],["vars",1]],
+  "/usr/share/ansible/roles/rhel-system-roles.postgresql/defaults": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.postgresql/files": [],
+  "/usr/share/ansible/roles/rhel-system-roles.postgresql/handlers": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.postgresql/meta": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.postgresql/tasks": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.postgresql/templates": [],
+  "/usr/share/ansible/roles/rhel-system-roles.postgresql/tests": [],
+  "/usr/share/ansible/roles/rhel-system-roles.postgresql/vars": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.rhc": [["defaults",1],["files",1],["handlers",1],["meta",1],["tasks",1],["templates",1],["tests",1],["vars",1]],
+  "/usr/share/ansible/roles/rhel-system-roles.rhc/defaults": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.rhc/files": [],
+  "/usr/share/ansible/roles/rhel-system-roles.rhc/handlers": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.rhc/meta": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.rhc/tasks": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.rhc/templates": [],
+  "/usr/share/ansible/roles/rhel-system-roles.rhc/tests": [],
+  "/usr/share/ansible/roles/rhel-system-roles.rhc/vars": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.selinux": [["defaults",1],["files",1],["handlers",1],["meta",1],["tasks",1],["templates",1],["tests",1],["vars",1]],
+  "/usr/share/ansible/roles/rhel-system-roles.selinux/defaults": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.selinux/files": [],
+  "/usr/share/ansible/roles/rhel-system-roles.selinux/handlers": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.selinux/meta": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.selinux/tasks": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.selinux/templates": [],
+  "/usr/share/ansible/roles/rhel-system-roles.selinux/tests": [],
+  "/usr/share/ansible/roles/rhel-system-roles.selinux/vars": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.snapshot": [["defaults",1],["files",1],["handlers",1],["meta",1],["tasks",1],["templates",1],["tests",1],["vars",1]],
+  "/usr/share/ansible/roles/rhel-system-roles.snapshot/defaults": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.snapshot/files": [],
+  "/usr/share/ansible/roles/rhel-system-roles.snapshot/handlers": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.snapshot/meta": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.snapshot/tasks": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.snapshot/templates": [],
+  "/usr/share/ansible/roles/rhel-system-roles.snapshot/tests": [],
+  "/usr/share/ansible/roles/rhel-system-roles.snapshot/vars": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.ssh": [["defaults",1],["files",1],["handlers",1],["meta",1],["tasks",1],["templates",1],["tests",1],["vars",1]],
+  "/usr/share/ansible/roles/rhel-system-roles.ssh/defaults": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.ssh/files": [],
+  "/usr/share/ansible/roles/rhel-system-roles.ssh/handlers": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.ssh/meta": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.ssh/tasks": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.ssh/templates": [],
+  "/usr/share/ansible/roles/rhel-system-roles.ssh/tests": [],
+  "/usr/share/ansible/roles/rhel-system-roles.ssh/vars": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.sshd": [["defaults",1],["files",1],["handlers",1],["meta",1],["tasks",1],["templates",1],["tests",1],["vars",1]],
+  "/usr/share/ansible/roles/rhel-system-roles.sshd/defaults": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.sshd/files": [],
+  "/usr/share/ansible/roles/rhel-system-roles.sshd/handlers": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.sshd/meta": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.sshd/tasks": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.sshd/templates": [],
+  "/usr/share/ansible/roles/rhel-system-roles.sshd/tests": [],
+  "/usr/share/ansible/roles/rhel-system-roles.sshd/vars": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.storage": [["defaults",1],["files",1],["handlers",1],["meta",1],["tasks",1],["templates",1],["tests",1],["vars",1]],
+  "/usr/share/ansible/roles/rhel-system-roles.storage/defaults": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.storage/files": [],
+  "/usr/share/ansible/roles/rhel-system-roles.storage/handlers": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.storage/meta": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.storage/tasks": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.storage/templates": [],
+  "/usr/share/ansible/roles/rhel-system-roles.storage/tests": [],
+  "/usr/share/ansible/roles/rhel-system-roles.storage/vars": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.sudo": [["defaults",1],["files",1],["handlers",1],["meta",1],["tasks",1],["templates",1],["tests",1],["vars",1]],
+  "/usr/share/ansible/roles/rhel-system-roles.sudo/defaults": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.sudo/files": [],
+  "/usr/share/ansible/roles/rhel-system-roles.sudo/handlers": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.sudo/meta": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.sudo/tasks": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.sudo/templates": [],
+  "/usr/share/ansible/roles/rhel-system-roles.sudo/tests": [],
+  "/usr/share/ansible/roles/rhel-system-roles.sudo/vars": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.systemd": [["defaults",1],["files",1],["handlers",1],["meta",1],["tasks",1],["templates",1],["tests",1],["vars",1]],
+  "/usr/share/ansible/roles/rhel-system-roles.systemd/defaults": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.systemd/files": [],
+  "/usr/share/ansible/roles/rhel-system-roles.systemd/handlers": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.systemd/meta": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.systemd/tasks": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.systemd/templates": [],
+  "/usr/share/ansible/roles/rhel-system-roles.systemd/tests": [],
+  "/usr/share/ansible/roles/rhel-system-roles.systemd/vars": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.tlog": [["defaults",1],["files",1],["handlers",1],["meta",1],["tasks",1],["templates",1],["tests",1],["vars",1]],
+  "/usr/share/ansible/roles/rhel-system-roles.tlog/defaults": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.tlog/files": [],
+  "/usr/share/ansible/roles/rhel-system-roles.tlog/handlers": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.tlog/meta": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.tlog/tasks": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.tlog/templates": [],
+  "/usr/share/ansible/roles/rhel-system-roles.tlog/tests": [],
+  "/usr/share/ansible/roles/rhel-system-roles.tlog/vars": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.trustee_client": [["defaults",1],["files",1],["handlers",1],["meta",1],["tasks",1],["templates",1],["tests",1],["vars",1]],
+  "/usr/share/ansible/roles/rhel-system-roles.trustee_client/defaults": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.trustee_client/files": [],
+  "/usr/share/ansible/roles/rhel-system-roles.trustee_client/handlers": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.trustee_client/meta": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.trustee_client/tasks": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.trustee_client/templates": [],
+  "/usr/share/ansible/roles/rhel-system-roles.trustee_client/tests": [],
+  "/usr/share/ansible/roles/rhel-system-roles.trustee_client/vars": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.trustee_server": [["defaults",1],["files",1],["handlers",1],["meta",1],["tasks",1],["templates",1],["tests",1],["vars",1]],
+  "/usr/share/ansible/roles/rhel-system-roles.trustee_server/defaults": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.trustee_server/files": [],
+  "/usr/share/ansible/roles/rhel-system-roles.trustee_server/handlers": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.trustee_server/meta": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.trustee_server/tasks": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.trustee_server/templates": [],
+  "/usr/share/ansible/roles/rhel-system-roles.trustee_server/tests": [],
+  "/usr/share/ansible/roles/rhel-system-roles.trustee_server/vars": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.vpn": [["defaults",1],["files",1],["handlers",1],["meta",1],["tasks",1],["templates",1],["tests",1],["vars",1]],
+  "/usr/share/ansible/roles/rhel-system-roles.vpn/defaults": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.vpn/files": [],
+  "/usr/share/ansible/roles/rhel-system-roles.vpn/handlers": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.vpn/meta": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.vpn/tasks": [["main.yml",0]],
+  "/usr/share/ansible/roles/rhel-system-roles.vpn/templates": [],
+  "/usr/share/ansible/roles/rhel-system-roles.vpn/tests": [],
+  "/usr/share/ansible/roles/rhel-system-roles.vpn/vars": [["main.yml",0]],
   "/usr/share/ansible/roles/rhel-system-roles.timesync": [["defaults",1],["handlers",1],["meta",1],["tasks",1],["templates",1],["vars",1]],
   "/usr/share/doc": [["rhel-system-roles",1]],
   "/usr/share/doc/rhel-system-roles": [["timesync",1]],
-  "/usr/share/doc/rhel-system-roles/timesync": [["example-multiple-ntp-servers-playbook.yml",0],["example-single-pool-playbook.yml",0],["README.html",0],["README.md",0]],
+  "/usr/share/doc/rhel-system-roles/timesync": [["CHANGELOG.md",0],["example-multiple-ntp-servers-playbook.yml",0],["example-single-pool-playbook.yml",0],["README.html",0],["README.md",0]],
   "/home": [["student",1]],
   "/home/student": [["ansible",1],[".bash_logout",0],[".bash_profile",0],[".bashrc",0],[".vimrc",0]],
   "/home/student/ansible": [["ansible.cfg",0],["inventory",0],["timesync.yml",0],["webcontent.yml",0],["hwreport.yml",0],["users.yml",0],["user_list.yml",0],["locker.yml",0],["sal.yml",0],["secret.txt",0],["hosts.yml",0],["hosts.j2",0],["issues.yml",0],["lvm.yml",0],["packages.yml",0],["roles.yml",0],["role.yml",0],["repo_key.sh",0],["ansible-navigator.yml",0],["collections",1],["roles",1],["templates",1]],
@@ -3668,7 +4038,7 @@ function termStateFor(idx){
     // Q5's root detour is section-level state: if Q5 (su -) is already
     // passed, the root-shell steps reopen inside the root shell, and Q5
     // steps resume where the section last stood.
-    if (q && (q.id === "Q5.1" || q.id === "Q5.2") && lab.user !== "root" && state.done.has(QUESTIONS.findIndex(x => x.id === "Q5"))) { lab.user = "root"; lab.cwd = "/root"; }
+    if (q && ["Q5.1", "Q5.2", "Q5.3", "Q5.4", "Q5.5"].indexOf(q.id) >= 0 && lab.user !== "root" && state.done.has(QUESTIONS.findIndex(x => x.id === "Q5"))) { lab.user = "root"; lab.cwd = "/root"; }
     const seedCwd = (q && lab.cwd && (sectionOf(q.id) === "Q5" || q.id === "Q7.1")) ? lab.cwd : "/home/student/ansible";
     termStore[idx] = { cwd: seedCwd, entries: [], made: lab.made, lab: lab };
   }
@@ -3764,6 +4134,10 @@ const SO_LOCAL_EXTRA = {
   "/root/anaconda-ks.cfg": "# Kickstart file automatically generated by anaconda.\n",
   "/var/log/messages": "Nov 11 09:12:04 controller systemd[1]: Started Daily apt activities.\nNov 11 09:12:31 controller chronyd[812]: Selected source 2.rhel.pool.ntp.org\n",
   "/usr/share/doc/rhel-system-roles/timesync/example-single-pool-playbook.yml": "- hosts: \"{{ targets }}\"\n  vars:\n    timesync_ntp_servers:\n      - hostname: 2.pool.ntp.org\n        pool: yes\n        iburst: yes\n  roles:\n    - rhel-system-roles.timesync\n",
+  "/usr/share/doc/rhel-system-roles/timesync/example-multiple-ntp-servers-playbook.yml": "- hosts: \"{{ targets }}\"\n  vars:\n    timesync_ntp_servers:\n      - hostname: 2.pool.ntp.org\n        pool: yes\n        iburst: yes\n      - hostname: 3.pool.ntp.org\n        pool: yes\n        iburst: yes\n  roles:\n    - rhel-system-roles.timesync\n",
+  "/usr/share/doc/rhel-system-roles/timesync/README.md": "# rhel-system-roles.timesync\n\nExample playbooks for the timesync system role. Copy one into your\nproject, aim it at your hosts, and set timesync_ntp_servers to the\nservers your site uses.\n",
+  "/usr/share/doc/rhel-system-roles/timesync/README.html": "<html><head><title>rhel-system-roles.timesync</title></head><body><h1>rhel-system-roles.timesync</h1><p>Example playbooks for the timesync system role.</p></body></html>\n",
+  "/usr/share/doc/rhel-system-roles/timesync/CHANGELOG.md": "# Changelog - rhel-system-roles.timesync\n\n## 1.16.2\n- Sync with the rhel-system-roles 1.16.2 release.\n\n## 1.16.0\n- Example playbooks refreshed for RHEL 9.\n",
   "/home/student/ansible/user_list.yml": "---\nusers:\n  - username: alice\n    uid: 1201\n    job: developer\n  - username: vincent\n    uid: 1202\n    job: developer\n  - username: sandy\n    uid: 2201\n    job: manager\n  - username: patrick\n    uid: 2202\n    job: manager\n"
 };
 const SO_VAULT_BLOB = "$ANSIBLE_VAULT;1.1;AES256\n65386539623962333631383539636331373262326661633538626364646165336463623265396337\n3961303962633864613866636234633963623333640a393736653137383864613935313363386461\n37623932326338313065386537643035376361383032646662636464386535653137626630663162\n3832393135316636640a343939373239663733373366653161313231396263316132663638376564\n6139";
