@@ -3616,7 +3616,7 @@ function soInGroup(host, g){ return (SO_GROUPS[g] || []).indexOf(host) >= 0; }
 const termStore = {};
 const labStore = {};
 function labStateFor(sec){
-  if (!labStore[sec]) labStore[sec] = { made: {}, loopAlt: 0, apacheInit: false, collectionsDone: false, rolesDone: false, user: "student", studentCwd: null, cwd: null };
+  if (!labStore[sec]) labStore[sec] = { made: {}, loopAlt: 0, apacheInit: false, collectionsDone: false, rolesDone: false, user: "student", studentCwd: null, cwd: null, hist: [], histIdx: null, histDraft: "" };
   return labStore[sec];
 }
 function termStateFor(idx){
@@ -4769,6 +4769,15 @@ function soErrLine(t){ return /^(fatal:|ERROR!|\[WARNING\]|.*\| FAILED!|bash: .*
 function pushTranscript(idx, typed, q, pass){
   const st = termStateFor(idx);
   if (/^\s*clear\s*$/.test(typed)) { st.entries = [{ k: "prompt", cwd: soPromptBase(st), user: soUser(st) }]; return; }
+  // bash-style history, shared across the question's steps: every run
+  // line is recorded (consecutive duplicates collapsed), and running a
+  // line resets the Up-arrow walk back to the newest entry.
+  if (typed.trim() && q) {
+    const lab = labStateFor(sectionOf(q.id));
+    lab.hist = lab.hist || [];
+    if (lab.hist[lab.hist.length - 1] !== typed.trim()) lab.hist.push(typed.trim());
+    lab.histIdx = null; lab.histDraft = "";
+  }
   if (st.entries.length && st.entries[st.entries.length - 1].k === "prompt") st.entries.pop();
   const cwdBefore = soPromptBase(st);
   const userBefore = soUser(st);
@@ -4813,6 +4822,26 @@ function wireCmd(fi){
   ta.addEventListener("keydown", (e) => {
     if (e.key === "Tab") { e.preventDefault(); e.stopPropagation(); if (tabComplete(ta, fi)) saveTexts(); }
     else if (e.ctrlKey && !e.metaKey && !e.altKey && (e.key === "c" || e.key === "C")) { e.preventDefault(); e.stopPropagation(); ctrlCancel(ta, fi); }
+    else if ((e.key === "ArrowUp" || e.key === "ArrowDown") && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      // shell history: Up walks back through the commands run in this
+      // question, Down walks forward again, past the newest restores
+      // the line that was being typed.
+      const lab = labStateFor(sectionOf(QUESTIONS[state.cur].id));
+      const hist = lab.hist || [];
+      if (!hist.length) return;
+      e.preventDefault(); e.stopPropagation();
+      if (e.key === "ArrowUp") {
+        if (lab.histIdx === null || lab.histIdx === undefined) { lab.histDraft = ta.value; lab.histIdx = hist.length - 1; }
+        else if (lab.histIdx > 0) lab.histIdx--;
+        ta.value = hist[lab.histIdx];
+      } else {
+        if (lab.histIdx === null || lab.histIdx === undefined) return;
+        if (lab.histIdx < hist.length - 1) { lab.histIdx++; ta.value = hist[lab.histIdx]; }
+        else { lab.histIdx = null; ta.value = lab.histDraft || ""; }
+      }
+      try { ta.setSelectionRange(ta.value.length, ta.value.length); } catch (err) {}
+      saveTexts();
+    }
     else if (e.key === "Enter" && !e.ctrlKey && !e.metaKey && !e.altKey) { e.preventDefault(); doCheck(); }
   });
 }
@@ -5061,6 +5090,7 @@ function doCheck(){
     pushTranscript(state.cur, "clear", q, true);
     renderTranscript(0);
     ta0.value = "";
+    saveTexts();
     return;
   }
   saveTexts();
@@ -5069,7 +5099,16 @@ function doCheck(){
   const texts = q.files.map((f, fi) => { const ta = gel("ta" + fi); return ta ? ta.value : ""; });
   const res = runChecks(q, texts);
   const bad = res.filter(r => !r.ok), good = res.filter(r => r.ok);
-  if (q.cmd) { pushTranscript(state.cur, texts[0] || "", q, bad.length === 0); renderTranscript(0); }
+  if (q.cmd) {
+    pushTranscript(state.cur, texts[0] || "", q, bad.length === 0);
+    renderTranscript(0);
+    // a real shell consumes the line when you press Enter: the command
+    // moves into the transcript (and history), the prompt comes back
+    // empty, ready for the next command.
+    const taC = gel("ta0");
+    if (taC) taC.value = "";
+    saveTexts();
+  }
   const fb = gel("fb");
   if (bad.length === 0) {
     state.done.add(state.cur);
