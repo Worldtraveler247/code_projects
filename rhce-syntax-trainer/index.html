@@ -489,24 +489,23 @@ const QUESTIONS = [
   <div class="tie"><b>How it ties in:</b> run → verify is the rhythm of the whole exam: Q2 ended with repolist checks, Q7 ends with curl, Q8 with curl loops. On to Q4 — Galaxy collections.</div>`
 },
 {
-  id:"Q4", title:"Install Collections from Ansible Galaxy — Declare Them in collections/requirements.yml, Install, and List to Prove They Landed", sub:"cd, mkdir -p, vim — one line", cmd:true,
+  id:"Q4", title:"Install Collections from Ansible Galaxy — Declare Them in collections/requirements.yml, Install, and List to Prove They Landed", sub:"mkdir -p, vim — one line", cmd:true,
   files:[{ path:"shell", lang:"cmd" }],
-  spec:`<b>4. Install Collections Using Ansible Galaxy — setup first.</b><br>• The requirements file lives at <code>/home/student/ansible/collections/requirements.yml</code> — but the <code>collections</code> directory does not exist yet, and vim cannot save a file into a directory that isn't there.<br>• In <b>one chained command line</b>: change into the ansible project directory, create the <code>collections</code> directory (with parents, and no error if it already exists), then open <code>collections/requirements.yml</code> in vim.<br>• Type the command at the prompt and press <b>Enter</b> to run it.`,
+  spec:`<b>4. Install Collections Using Ansible Galaxy — setup first.</b><br>• The requirements file lives at <code>/home/student/ansible/collections/requirements.yml</code> — but the <code>collections</code> directory does not exist yet, and vim cannot save a file into a directory that isn't there.<br>• In <b>one chained command line</b>: create the <code>collections</code> directory (with parents, and no error if it already exists), then open <code>collections/requirements.yml</code> in vim. You are already standing in the project directory, so both paths are relative to it.<br>• Type the command at the prompt and press <b>Enter</b> to run it.`,
   checks:[[
-    { re:/cd\s+(~\/ansible|\/home\/student\/ansible)/, msg:"First: cd into the ansible project directory" },
-    { re:/mkdir\s+-p\s+(\.\/)?collections\b/, msg:"Then: mkdir -p collections (the -p matters)" },
+    { re:/mkdir\s+-p\s+(\.\/)?collections\b/, msg:"First: mkdir -p collections (the -p matters)" },
     { re:/vim\s+(\.\/)?collections\/requirements\.yml/, msg:"Then: vim collections/requirements.yml" },
-    { fn:t => { const a = t.search(/cd\s/), b = t.search(/mkdir/), c = t.search(/vim\s/); return a >= 0 && b > a && c > b && (t.match(/&&/g) || []).length >= 2; }, msg:"All three steps in order, chained with &&" }
+    { fn:t => { const b = t.search(/mkdir/), c = t.search(/vim\s/); return b >= 0 && c > b && (t.match(/&&/g) || []).length >= 1; }, msg:"Both steps in order, chained with &&" }
   ]],
   explain:`<h2>✅ Q4 complete — what you just did</h2>
-  <p>You did the setup beat the exam expects before any file exists: got into the project directory, created <code>collections/</code>, and opened the requirements file in vim — one line, three steps.</p>
+  <p>You did the setup beat the exam expects before any file exists: created <code>collections/</code> and opened the requirements file in vim — one line, two steps.</p>
   <h4>How it affects the Ansible environment</h4>
   <p>• <code>mkdir -p</code> creates <code>collections</code> <i>and any missing parents</i>, and — just as important mid-exam — it exits successfully if the directory already exists. No error, no second-guessing what state the controller is in.<br>
   • The directory has to come first: vim will happily let you type a whole buffer for a path in a nonexistent directory, then fail the save with <code>E212: Can't open file for writing</code>. That is a classic way to lose exam minutes and work.<br>
   • Chaining with <code>&amp;&amp;</code> means a failed step stops the line — you never end up editing in the wrong directory.</p>
   <h4>Command anatomy — what every part does, and what breaks without it</h4>
-  <p>• <code>cd ~/ansible</code> — <code>~</code> expands to /home/student, so this anchors you in the project root. Every path after it is relative, and relative paths are only meaningful because this step fixed the starting point.<br>
-  • <code>&amp;&amp;</code> between all three parts — each step runs only if the previous one succeeded, so a failed cd can never turn into a collections directory created in the wrong place.<br>
+  <p>• You run this from the project root: you are already standing in <code>/home/student/ansible</code>, so every relative path in the line lands inside the project. That standing start is what makes the short paths safe to use.<br>
+  • <code>&amp;&amp;</code> between the two parts — the second step runs only if the first one succeeded, so a failed mkdir stops the line before vim opens a file it cannot save.<br>
   • <code>mkdir -p collections</code> — <code>-p</code> = parents: create any missing parent directories, and treat "already exists" as success. The name <code>collections</code> is not your choice — it is the directory this project's configuration points <code>collections_path</code> at.<br>
   • <code>vim collections/requirements.yml</code> — the exact filename matters twice over: Q4.1 writes the manifest here, and Q4.2's <code>-r</code> flag will read this same path. Save it as requirement.yml and the install step finds nothing to read.<br>
   • <b>Why the exam cares:</b> this one line builds the stage the next three steps stand on. Get the directory or the filename wrong and nothing errors yet — the failure waits until the install, when Galaxy reads a manifest that is not where you think it is.</p>
@@ -534,13 +533,11 @@ const QUESTIONS = [
 {
   id:"Q4.2", title:"Install the collections", sub:"ansible-galaxy collection install", cmd:true,
   files:[{ path:"shell", lang:"cmd" }],
-  spec:`<b>4.2. Install the collections.</b><br>• On the controller: change into the ansible project directory, then use <code>ansible-galaxy</code> to install the collections listed in the requirements file you just wrote.<br>• Install them into the project's local <code>collections</code> directory — that is where this project's configuration looks for them, not your home directory's default location.<br>• Chain both commands on <b>one line</b> with <code>&amp;&amp;</code>, and press <b>Enter</b> to run it.`,
+  spec:`<b>4.2. Install the collections.</b><br>• On the controller: use <code>ansible-galaxy</code> to install the collections listed in the requirements file you just wrote.<br>• Install them into the project's local <code>collections</code> directory — that is where this project's configuration looks for them, not your home directory's default location.<br>• Type the command and press <b>Enter</b> to run it.`,
   checks:[[
-    { re:/cd\s+(~\/ansible|\/home\/student\/ansible)/, msg:"First: cd into the ansible project directory" },
-    { re:/ansible-galaxy\s+collection\s+install\b/, msg:"Then: ansible-galaxy collection install" },
+    { re:/ansible-galaxy\s+collection\s+install\b/, msg:"The command: ansible-galaxy collection install" },
     { re:/-r\s+(\.\/)?collections\/requirements\.yml/, msg:"It reads the requirements file (-r collections/requirements.yml)" },
-    { re:/-p\s+(\.\/)?collections\/?(\s|$)/, msg:"It installs into the local collections directory (-p collections)" },
-    { fn:t => { const a = t.search(/cd\s/), b = t.search(/ansible-galaxy/); return a >= 0 && b > a; }, msg:"The cd comes before the install" }
+    { re:/-p\s+(\.\/)?collections\/?(\s|$)/, msg:"It installs into the local collections directory (-p collections)" }
   ]],
   explain:`<h2>✅ Q4.2 complete — what you just did</h2>
   <p>You turned the requirements file into installed code. <code>ansible-galaxy collection install</code> read <code>collections/requirements.yml</code>, downloaded community.general, ansible.posix, and ansible.netcommon from Galaxy, and unpacked them locally.</p>
@@ -548,7 +545,7 @@ const QUESTIONS = [
   <p>• The <code>-p collections</code> flag is the whole game: it installs into <code>~/ansible/collections</code>, the path this project's <code>ansible.cfg</code> points <code>collections_path</code> at. Skip it and the collections land in <code>~/.ansible/collections</code> instead — installed, but invisible to your playbooks, which then die with "couldn't resolve module/action".<br>
   • The <code>-r</code> file is what makes this repeatable: the list lives in version control with the project, not in your memory of what you once typed.</p>
   <h4>Command anatomy — what every part does, and what breaks without it</h4>
-  <p>• <code>cd ~/ansible &amp;&amp;</code> — the anchor again: both paths in this command are relative, so the install only lands in the project if you are standing in it. Run the same line from your home directory and you would create and stock a ~/collections the project never looks at.<br>
+  <p>• Both paths in this command are relative, measured from the project root — and you are already standing in it, so the install lands in the project. Run the same line from your home directory and you would create and stock a ~/collections the project never looks at.<br>
   • <code>ansible-galaxy collection install</code> — tool, branch, action. The <code>collection</code> branch matters: leave it out and ansible-galaxy defaults to the role branch, which reads requirements files in a different format and installs into role paths.<br>
   • <code>-r collections/requirements.yml</code> — r = requirements file, the input: the manifest Q4.1 wrote, naming the collections and versions to fetch. The file is only read. Without <code>-r</code> you would have to name each collection on the command line — and remember from memory which ones the project needs.<br>
   • <code>-p collections</code> — p = collections path, the destination: unpack everything into the project's own collections directory instead of the default ~/.ansible/collections.<br>
@@ -605,14 +602,14 @@ const QUESTIONS = [
   <p>You installed the <b>RHEL System Roles</b> package on the controller: <code>rhel-system-roles 1.16.2-1.el9_0</code> from the AppStream repository, about 1.8 MB. It bundles Red Hat's official roles — timesync, selinux, firewall, storage, and more — so the role this question calls actually exists on this machine.</p>
   <h4>How it affects the Ansible environment</h4>
   <p>• The RPM lays the roles down in <b>two places at once</b>: as standalone roles under <code>/usr/share/ansible/roles/</code> (each named <code>rhel-system-roles.&lt;name&gt;</code> — the form this question uses) and as the <code>redhat.rhel_system_roles</code> collection under <code>/usr/share/ansible/collections/</code>. Same content, two doors.<br>
-  • It also installs the documentation tree under <code>/usr/share/doc/rhel-system-roles/</code> — including, per role, <b>example playbooks</b>. Q5.6 puts one of those to work.<br>
+  • It also installs the documentation tree under <code>/usr/share/doc/rhel-system-roles/</code> — including, per role, <b>example playbooks</b>. Q5.5 puts one of those to work.<br>
   • All of it is system-wide: every user and every project on the controller can see these paths. That is the difference from Q4, where collections were installed into one project.</p>
   <h4>Command anatomy — what every part does, and what breaks without it</h4>
   <p>• <code>dnf install</code> — resolve the package, pull its dependencies, write it into the RPM database and onto disk. Installing writes to root-owned territory, which is why Q5 had to happen first: run this as student and dnf refuses with "This command has to be run with superuser privileges".<br>
   • <code>-y</code> = --assumeyes — answer "yes" to the transaction prompt in advance. Without it, dnf prints the plan and waits at "Is this ok [y/N]:" — on an exam, a command waiting for input is a command burning your clock.<br>
   • <code>rhel-system-roles</code> — the exact package name. Package names match literally: a near-miss like rhel-system-role returns "No match for argument" and nothing is installed.<br>
   • <b>Why the exam cares:</b> everything after this step is built on these files. If the install quietly failed — or is still sitting at a y/N prompt — the chain collapses several steps later, at the role copy or the playbook run, far from the cause.</p>
-  <div class="tie"><b>How it ties in:</b> Q4 installed collections for one project; this installs roles for the whole controller. Next you put root away and stage the one role this question needs inside the project (Q5.4).</div>`
+  <div class="tie"><b>How it ties in:</b> Q4 installed collections for one project; this installs roles for the whole controller. Next you put root away and stage the one role this question needs inside the project (Q5.3).</div>`
 },
 {
   id:"Q5.2", title:"Log out of the root shell", sub:"exit — back to student", cmd:true,
@@ -630,40 +627,22 @@ const QUESTIONS = [
   <p>• <code>exit</code> — end the current shell. In a login shell it runs the logout sequence and prints <code>logout</code>; <code>logout</code> typed directly does the same job here.<br>
   • Notice what did <i>not</i> happen: you did not log out of the machine or lose your session. Only the root layer closed. The student shell underneath kept its history, its variables, and its place in the filesystem story.<br>
   • <b>Why the exam cares:</b> privilege discipline is graded indirectly everywhere: files with the wrong owner, in the wrong home, are wrong answers even when their contents are right. Root for the install, student for the work — that is the whole rhythm of Q5.</p>
-  <div class="tie"><b>How it ties in:</b> back in student's world, the next move is positional: get into the project directory (Q5.3), because the role copy and the playbook are both addressed relative to it.</div>`
+  <div class="tie"><b>How it ties in:</b> back in student's world: exit dropped you into the student shell you started from, standing in the project directory, and the next move is staging the role (Q5.3) — the role copy and the playbook are both addressed relative to that directory.</div>`
 },
 {
-  id:"Q5.3", title:"Go to the project directory", sub:"cd /home/student/ansible", cmd:true,
+  id:"Q5.3", title:"Copy the timesync role into the project", sub:"cp -r /usr/share/ansible/roles/rhel-system-roles.timesync/ roles/", cmd:true,
   files:[{ path:"shell", lang:"cmd" }],
-  spec:`<b>5.3. Go to the project directory.</b><br>• Change into <code>/home/student/ansible</code> — the project directory where ansible.cfg, the inventory, and every playbook live.<br>• The next steps address things relative to this directory (<code>roles/</code>, <code>timesync.yml</code>), so where you stand decides where they land.<br>• Type the command at the prompt and press <b>Enter</b> to run it.`,
-  checks:[[
-    { re:/cd\s+(\/home\/student\/ansible|~\/ansible)\b/, msg:"cd into the project directory: /home/student/ansible (or ~/ansible)" }
-  ]],
-  explain:`<h2>✅ Q5.3 complete — what you just did</h2>
-  <p>You are standing in <code>/home/student/ansible</code>, the project root. It looks like a nothing step — no output, nothing installed — but it is the step that makes the next three commands mean the right thing.</p>
-  <h4>How it affects the Ansible environment</h4>
-  <p>• This directory holds <code>ansible.cfg</code>, and ansible reads the config from the current directory first. The config from Q1 points roles and collections at this project's own folders — those pointers only engage while you work from here.<br>
-  • Relative paths resolve from here too: the <code>roles/</code> you copy into in Q5.4 is <i>this</i> project's roles directory, and the <code>timesync.yml</code> you create in Q5.6 lands beside the inventory and the other playbooks, where the run in Q5.8 will look for it.</p>
-  <h4>Command anatomy — what every part does, and what breaks without it</h4>
-  <p>• <code>cd</code> — change the shell's working directory. It prints nothing on success; silence is the success signal, and <code>pwd</code> is how you confirm where you landed.<br>
-  • The absolute path leaves nothing to chance. <code>cd ~/ansible</code> says the same thing from anywhere, because <code>~</code> expands to student's home — but a bare <code>cd ansible</code> only works from home, and from /root it would have failed outright.<br>
-  • <b>Why the exam cares:</b> more exam points are lost to "right file, wrong directory" than to wrong content. A timesync.yml created in /home/student instead of /home/student/ansible is invisible to the run, the config, and the grader.</p>
-  <div class="tie"><b>How it ties in:</b> same opening move as Q4 and Q6 — cd into the project first. Now stage the role (Q5.4) and the example playbook (Q5.6) into it.</div>`
-},
-{
-  id:"Q5.4", title:"Copy the timesync role into the project", sub:"cp -r /usr/share/ansible/roles/rhel-system-roles.timesync/ roles/", cmd:true,
-  files:[{ path:"shell", lang:"cmd" }],
-  spec:`<b>5.4. Stage the role inside the project.</b><br>• The install put the standalone timesync role at <code>/usr/share/ansible/roles/rhel-system-roles.timesync/</code>. Copy that whole directory, recursively, into the project's <code>roles/</code> directory.<br>• <b>Tab works like the real shell here</b> — complete the long path piece by piece instead of typing it blind.<br>• Type the command at the prompt and press <b>Enter</b> to run it.`,
+  spec:`<b>5.3. Stage the role inside the project.</b><br>• The install put the standalone timesync role at <code>/usr/share/ansible/roles/rhel-system-roles.timesync/</code>. Copy that whole directory, recursively, into the project's <code>roles/</code> directory.<br>• <b>Tab works like the real shell here</b> — complete the long path piece by piece instead of typing it blind.<br>• Type the command at the prompt and press <b>Enter</b> to run it.`,
   checks:[[
     { re:/\bcp\s+/, msg:"The copy command is cp" },
     { re:/\s-\w*r/, msg:"The -r flag is there — a directory only copies recursively" },
     { re:/\/usr\/share\/ansible\/roles\/rhel-system-roles\.timesync\/?/, msg:"The source is the installed role: /usr/share/ansible/roles/rhel-system-roles.timesync/" },
     { fn:t => /(^|\s)roles\/?\s*$/.test(t), msg:"The destination is the project's roles/ directory" }
   ]],
-  explain:`<h2>✅ Q5.4 complete — what you just did</h2>
+  explain:`<h2>✅ Q5.3 complete — what you just did</h2>
   <p>You copied the complete timesync role — tasks, defaults, templates, handlers, the whole directory tree — from the system-wide install into <b>your project's</b> <code>roles/</code> folder, where it now sits as <code>roles/rhel-system-roles.timesync</code>, owned by student.</p>
   <h4>How it affects the Ansible environment</h4>
-  <p>• A role's name <i>is</i> its directory name. When the playbook in Q5.7 says <code>rhel-system-roles.timesync</code>, ansible searches the roles paths — and the project's <code>roles/</code> directory, wired up by Q1's ansible.cfg, is searched first. This copy is what makes that name resolve.<br>
+  <p>• A role's name <i>is</i> its directory name. When the playbook in Q5.6 says <code>rhel-system-roles.timesync</code>, ansible searches the roles paths — and the project's <code>roles/</code> directory, wired up by Q1's ansible.cfg, is searched first. This copy is what makes that name resolve.<br>
   • The project is now self-contained: the role travels with the playbooks that use it instead of depending on whatever happens to be installed system-wide. That is the same reason Q4 and Q6 keep their content inside the project too.<br>
   • The copy belongs to student, like everything else in the project — copying as student (not root) is what keeps the ownership story clean.</p>
   <h4>Command anatomy — what every part does, and what breaks without it</h4>
@@ -672,51 +651,51 @@ const QUESTIONS = [
   • The source path ends in a trailing slash — <code>rhel-system-roles.timesync/</code> — naming the directory itself as the thing being copied.<br>
   • The destination <code>roles/</code> is an existing directory, so cp places the source <i>inside</i> it, keeping its name: <code>roles/rhel-system-roles.timesync</code>. Name a non-existent destination instead and cp would rename the copy to it — same bytes, wrong address, and the playbook would not find its role.<br>
   • <b>Why the exam cares:</b> "role not found" at playbook time is this step, failed quietly. The copy is the bridge between "the package is installed" and "my playbook can call this role by name".</p>
-  <div class="tie"><b>How it ties in:</b> Q1's ansible.cfg defined where roles live for this project; Q5.4 is where that definition pays off. Verify the landing (Q5.5), then stage the playbook itself the same way — from a shipped file (Q5.6).</div>`
+  <div class="tie"><b>How it ties in:</b> Q1's ansible.cfg defined where roles live for this project; Q5.3 is where that definition pays off. Verify the landing (Q5.4), then stage the playbook itself the same way — from a shipped file (Q5.5).</div>`
 },
 {
-  id:"Q5.5", title:"Verify the role landed in the project", sub:"ll roles/", cmd:true,
+  id:"Q5.4", title:"Verify the role landed in the project", sub:"ll roles/", cmd:true,
   files:[{ path:"shell", lang:"cmd" }],
-  spec:`<b>5.5. Verify the copy.</b><br>• List the contents of the project's <code>roles/</code> directory, long format, and confirm <code>rhel-system-roles.timesync</code> is there.<br>• Type the command at the prompt and press <b>Enter</b> to run it.`,
+  spec:`<b>5.4. Verify the copy.</b><br>• List the contents of the project's <code>roles/</code> directory, long format, and confirm <code>rhel-system-roles.timesync</code> is there.<br>• Type the command at the prompt and press <b>Enter</b> to run it.`,
   checks:[[
     { fn:t => /^\s*(ll|ls)\s+(-l\s+)?roles\/?\s*$/.test(t), msg:"List the project roles directory: ll roles/ (or ls -l roles/)" }
   ]],
-  explain:`<h2>✅ Q5.5 complete — what you just did</h2>
+  explain:`<h2>✅ Q5.4 complete — what you just did</h2>
   <p>You proved the copy landed: the long listing of <code>roles/</code> shows <code>rhel-system-roles.timesync</code> — a directory, owned by student, sitting next to the project's other role content.</p>
   <h4>How it affects the Ansible environment</h4>
-  <p>• Nothing changes — this is verification, the same do-then-prove rhythm as Q4.3 and the old install checks. Ten seconds here is what separates "the role is in the project" from "I believe the role is in the project" when Q5.8's run is at stake.<br>
-  • The details in the long format are the evidence: the leading <code>d</code> says directory (the role arrived whole, not as a stray file), and the owner says student (the Q5.4 copy ran in the right privilege world).</p>
+  <p>• Nothing changes — this is verification, the same do-then-prove rhythm as Q4.3 and the old install checks. Ten seconds here is what separates "the role is in the project" from "I believe the role is in the project" when Q5.7's run is at stake.<br>
+  • The details in the long format are the evidence: the leading <code>d</code> says directory (the role arrived whole, not as a stray file), and the owner says student (the Q5.3 copy ran in the right privilege world).</p>
   <h4>Command anatomy — what every part does, and what breaks without it</h4>
   <p>• <code>ll</code> — the shell's alias for <code>ls -l</code>: a long listing with permissions, owner, size, and date per entry. Plain <code>ls roles/</code> proves existence; the long form also proves shape and ownership.<br>
-  • <code>roles/</code> — a relative path, resolved from the project directory you entered in Q5.3. Run the same command from home and it lists a different directory — or errors that there is none.<br>
-  • <b>Why the exam cares:</b> every layer of Q5 gets its own proof before the next layer trusts it: package (Q5.1), role in the project (Q5.5), config on the hosts (Q5.9), daemon live (Q5.10). Skipping a proof does not save time; it moves the debugging to a more expensive step.</p>
-  <div class="tie"><b>How it ties in:</b> role confirmed in place. One more staging step — the playbook itself also starts from a file the package shipped (Q5.6).</div>`
+  • <code>roles/</code> — a relative path, resolved from the project directory you are standing in. Run the same command from home and it lists a different directory — or errors that there is none.<br>
+  • <b>Why the exam cares:</b> every layer of Q5 gets its own proof before the next layer trusts it: package (Q5.1), role in the project (Q5.4), config on the hosts (Q5.8), daemon live (Q5.9). Skipping a proof does not save time; it moves the debugging to a more expensive step.</p>
+  <div class="tie"><b>How it ties in:</b> role confirmed in place. One more staging step — the playbook itself also starts from a file the package shipped (Q5.5).</div>`
 },
 {
-  id:"Q5.6", title:"Copy the shipped example playbook", sub:"cp the example-single-pool playbook to timesync.yml", cmd:true,
+  id:"Q5.5", title:"Copy the shipped example playbook", sub:"cp the example-single-pool playbook to timesync.yml", cmd:true,
   files:[{ path:"shell", lang:"cmd" }],
-  spec:`<b>5.6. Start the playbook from the vendor's example.</b><br>• The package also shipped example playbooks under <code>/usr/share/doc/rhel-system-roles/timesync/</code>. Copy <code>example-single-pool-playbook.yml</code> into the project as <code>timesync.yml</code>.<br>• You are not writing this file from a blank page — you are adopting Red Hat's known-good skeleton and editing the few lines the spec changes (next step).<br>• <b>Tab is your friend on this path too</b> — in the real lab, <code>cp /usr/share/doc/</code> + Tab is how you discover the directory layout in the first place.<br>• Type the command at the prompt and press <b>Enter</b> to run it.`,
+  spec:`<b>5.5. Start the playbook from the vendor's example.</b><br>• The package also shipped example playbooks under <code>/usr/share/doc/rhel-system-roles/timesync/</code>. Copy <code>example-single-pool-playbook.yml</code> into the project as <code>timesync.yml</code>.<br>• You are not writing this file from a blank page — you are adopting Red Hat's known-good skeleton and editing the few lines the spec changes (next step).<br>• <b>Tab is your friend on this path too</b> — in the real lab, <code>cp /usr/share/doc/</code> + Tab is how you discover the directory layout in the first place.<br>• Type the command at the prompt and press <b>Enter</b> to run it.`,
   checks:[[
     { re:/\bcp\s+/, msg:"The copy command is cp" },
     { re:/\/usr\/share\/doc\/rhel-system-roles\/timesync\//, msg:"The source lives in the package's doc tree: /usr/share/doc/rhel-system-roles/timesync/" },
     { re:/example-single-pool-playbook\.yml\s+timesync\.yml/, msg:"example-single-pool-playbook.yml is copied to the new name timesync.yml" }
   ]],
-  explain:`<h2>✅ Q5.6 complete — what you just did</h2>
-  <p>You copied Red Hat's example playbook for this exact role into the project as <code>timesync.yml</code>. The file that just landed reads: hosts <code>"{{ targets }}"</code>, one server entry <code>2.pool.ntp.org</code> with <code>pool: yes</code> and <code>iburst: yes</code>, and the role <code>rhel-system-roles.timesync</code>. It is correct in structure and wrong in three specifics — Q5.7 is the edit that fixes the specifics.</p>
+  explain:`<h2>✅ Q5.5 complete — what you just did</h2>
+  <p>You copied Red Hat's example playbook for this exact role into the project as <code>timesync.yml</code>. The file that just landed reads: hosts <code>"{{ targets }}"</code>, one server entry <code>2.pool.ntp.org</code> with <code>pool: yes</code> and <code>iburst: yes</code>, and the role <code>rhel-system-roles.timesync</code>. It is correct in structure and wrong in three specifics — Q5.6 is the edit that fixes the specifics.</p>
   <h4>How it affects the Ansible environment</h4>
   <p>• The project now has a <code>timesync.yml</code> — the file the spec names, in the directory the run will look in. Its content is the vendor's, which means the role interface (the variable name <code>timesync_ntp_servers</code>, the entry keys <code>hostname</code>/<code>iburst</code>) is guaranteed to be spelled the way the role expects.<br>
-  • Working from the example trades blank-page risk for edit risk: you cannot forget a structural piece that is already on the page, but you can forget to change a placeholder. The checks in Q5.7 hunt exactly the three leftovers.</p>
+  • Working from the example trades blank-page risk for edit risk: you cannot forget a structural piece that is already on the page, but you can forget to change a placeholder. The checks in Q5.6 hunt exactly the three leftovers.</p>
   <h4>Command anatomy — what every part does, and what breaks without it</h4>
   <p>• <code>cp</code> with two file paths — copy <i>and rename in one move</i>: the destination is a file name, not a directory, so the copy lands as <code>timesync.yml</code> in the current directory.<br>
-  • No <code>-r</code> this time — the source is a single file. The flag from Q5.4 was for a directory tree; flags follow the shape of the source.<br>
+  • No <code>-r</code> this time — the source is a single file. The flag from Q5.3 was for a directory tree; flags follow the shape of the source.<br>
   • The source path is the package's documentation tree: <code>/usr/share/doc/rhel-system-roles/timesync/</code> holds this role's examples (a single-pool and a multiple-servers variant) beside its READMEs. Knowing a package ships examples — and where — is a real exam skill: it is the offline documentation you are allowed to use.<br>
   • <b>Why the exam cares:</b> under time pressure, adopting the shipped skeleton is faster and safer than recalling the role's variable interface from memory. The exam allows it precisely because real administrators work this way.</p>
-  <div class="tie"><b>How it ties in:</b> the role came from /usr/share/ansible (Q5.4) and the playbook from /usr/share/doc (Q5.6) — the two trees the one dnf install created. Now make the file yours (Q5.7).</div>`
+  <div class="tie"><b>How it ties in:</b> the role came from /usr/share/ansible (Q5.3) and the playbook from /usr/share/doc (Q5.5) — the two trees the one dnf install created. Now make the file yours (Q5.6).</div>`
 },
 {
-  id:"Q5.7", title:"Edit timesync.yml", sub:"RHEL system role — chrony via role variables",
+  id:"Q5.6", title:"Edit timesync.yml", sub:"RHEL system role — chrony via role variables",
   files:[{ path:"/home/student/ansible/timesync.yml", lang:"yaml", preset:"- hosts: \"{{ targets }}\"\n  vars:\n    timesync_ntp_servers:\n      - hostname: 2.pool.ntp.org\n        pool: yes\n        iburst: yes\n  roles:\n    - rhel-system-roles.timesync\n" }],
-  spec:`<b>5. Use RHEL System Role to Configure Time Synchronization</b><br>• The editor opens with the example file you copied in 5.6 already inside. Edit it into the final playbook:<br>• Runs on all managed hosts<br>• Uses the timesync role<br>• Configures the role to use the time server 2.north-america.pool.ntp.org<br>• Configures the role to set the iburst parameter as enabled<br>• Three edits to the example: aim the play at <b>all</b> hosts (the <code>{{ targets }}</code> placeholder goes), add <b>become</b> so the role can write the hosts' time config, and point the server entry at the required regional hostname — the example's generic <code>2.pool.ntp.org</code> and its <code>pool:</code> line do not survive the edit; only <b>iburst</b> stays.`,
+  spec:`<b>5. Use RHEL System Role to Configure Time Synchronization</b><br>• The editor opens with the example file you copied in 5.5 already inside. Edit it into the final playbook:<br>• Runs on all managed hosts<br>• Uses the timesync role<br>• Configures the role to use the time server 2.north-america.pool.ntp.org<br>• Configures the role to set the iburst parameter as enabled<br>• Three edits to the example: aim the play at <b>all</b> hosts (the <code>{{ targets }}</code> placeholder goes), add <b>become</b> so the role can write the hosts' time config, and point the server entry at the required regional hostname — the example's generic <code>2.pool.ntp.org</code> and its <code>pool:</code> line do not survive the edit; only <b>iburst</b> stays.`,
   checks:[[
     { re:/hosts\s*:\s*all/, msg:"The play targets hosts: all (the example's placeholder is replaced)" },
     { re:/become\s*:\s*(true|yes)/i, msg:"become: true is added — the role needs root on the nodes to write chrony.conf and restart chronyd" },
@@ -728,8 +707,8 @@ const QUESTIONS = [
     { fn:t => !/hostname\s*:\s*2\.pool\.ntp\.org/.test(t), msg:"The example's generic 2.pool.ntp.org is replaced by the required regional server" },
     { fn:t => !/^\s+pool\s*:/m.test(t), msg:"The example's pool: line is removed — the spec asks for iburst only, so the entry renders as a plain server line" }
   ]],
-  explain:`<h2>✅ Q5.7 complete — what you just did</h2>
-  <p>You configured a service <b>without writing a single task</b>. The playbook is just a variable and a role: <code>rhel-system-roles.timesync</code> — the copy you staged in Q5.4 — reads your <code>timesync_ntp_servers</code> variable and does all the work: installs and configures chrony, writes the NTP server line, restarts the service, on every host.</p>
+  explain:`<h2>✅ Q5.6 complete — what you just did</h2>
+  <p>You configured a service <b>without writing a single task</b>. The playbook is just a variable and a role: <code>rhel-system-roles.timesync</code> — the copy you staged in Q5.3 — reads your <code>timesync_ntp_servers</code> variable and does all the work: installs and configures chrony, writes the NTP server line, restarts the service, on every host.</p>
   <h4>How it affects the Ansible environment</h4>
   <p>• After this runs, every managed node's <code>/etc/chrony.conf</code> carries <code>server 2.north-america.pool.ntp.org iburst</code>, and <code>iburst</code> tells chrony to take a burst of quick measurements at startup so the clock converges fast instead of drifting in slowly.<br>
   • The role is <b>content installed on the controller</b> (the rhel-system-roles RPM, staged into the project), not on the nodes — the nodes only receive the changes the role makes.</p>
@@ -737,83 +716,82 @@ const QUESTIONS = [
   <p>• <code>hosts: "{{ targets }}"</code> → <code>hosts: all</code> — the example is written to be aimed by whoever reuses it, so it takes its target from a variable you would have to supply. The spec names the target directly: all managed hosts.<br>
   • <code>become: true</code> added — the example leaves privilege to the runner; the spec's play must carry it, because writing /etc/chrony.conf and restarting chronyd on the nodes are root work. This is the node-side privilege, declared in the play — the counterpart to Q5's controller-side root shell.<br>
   • <code>hostname: 2.pool.ntp.org</code> → <code>2.north-america.pool.ntp.org</code> — the spec's regional pool. Same service, nearer servers.<br>
-  • <code>pool: yes</code> removed — that key tells the role to render the entry as a chrony <code>pool</code> directive (a whole pool of servers behind one name). The spec asks only for iburst, so the entry renders as a plain <code>server</code> line — which is exactly what Q5.9 goes looking for.<br>
+  • <code>pool: yes</code> removed — that key tells the role to render the entry as a chrony <code>pool</code> directive (a whole pool of servers behind one name). The spec asks only for iburst, so the entry renders as a plain <code>server</code> line — which is exactly what Q5.8 goes looking for.<br>
   • Untouched on purpose: the variable's name, the entry's shape, and the role line. Those came from the vendor's example, and they were already right — editing only what the spec changes is the discipline this step teaches.<br>
   • RHEL system roles follow one pattern everywhere: <b>interface by variables</b>. You don't edit the role; you feed it documented variables and it renders the right config for the OS it finds. Q8 uses the same pattern when a variable overrides a role's defaults.</p>
   <div class="tie"><b>How it ties in:</b> synchronized clocks are invisible until they're missing — Kerberos, TLS, and log correlation across servera–serverd all quietly depend on what you just did. Structurally, this is your template for every "apply role X with variables Y" exam question.</div>`
 },
 {
-  id:"Q5.8", title:"Run timesync.yml", sub:"ansible-playbook timesync.yml", cmd:true,
+  id:"Q5.7", title:"Run timesync.yml", sub:"ansible-playbook timesync.yml", cmd:true,
   files:[{ path:"shell", lang:"cmd" }],
-  spec:`<b>5.8. Run the playbook.</b><br>• From <code>~/ansible</code>, run <code>timesync.yml</code> with ansible-playbook.<br>• No sudo — you are student, and the play already becomes root on the managed hosts itself.<br>• Type the command at the prompt and press <b>Enter</b> to run it.<br>• <b>Navigator works too:</b> <code>ansible-navigator run timesync.yml</code> runs the same playbook in the real environment — Q1's ansible-navigator.yml already sets stdout mode, the execution environment and artifacts off, so the plain form just works. Variations are accepted here as well: <code>-m stdout</code>, <code>--pae false</code>, <code>--ee false</code>, <code>--pull-policy missing</code>, <code>--eei creator-ee:v0.22.0 --pa --tls-verify=false</code>, flags before or after the file.`,
+  spec:`<b>5.7. Run the playbook.</b><br>• From <code>~/ansible</code>, run <code>timesync.yml</code> with ansible-playbook.<br>• No sudo — you are student, and the play already becomes root on the managed hosts itself.<br>• Type the command at the prompt and press <b>Enter</b> to run it.<br>• <b>Navigator works too:</b> <code>ansible-navigator run timesync.yml</code> runs the same playbook in the real environment — Q1's ansible-navigator.yml already sets stdout mode, the execution environment and artifacts off, so the plain form just works. Variations are accepted here as well: <code>-m stdout</code>, <code>--pae false</code>, <code>--ee false</code>, <code>--pull-policy missing</code>, <code>--eei creator-ee:v0.22.0 --pa --tls-verify=false</code>, flags before or after the file.`,
   checks:[[
     { re:/ansible-playbook\s+timesync\.yml/, msg:"The command is ansible-playbook timesync.yml" },
     { fn:t => /ansible-playbook\s+timesync\.yml/.test(t) && !/sudo/.test(t), msg:"No sudo — playbooks run as student; become inside the play does the privilege work" }
   ]],
-  explain:`<h2>✅ Q5.8 complete — what you just did</h2>
+  explain:`<h2>✅ Q5.7 complete — what you just did</h2>
   <p>You ran the playbook: on every host in the inventory, the timesync role configured chrony to use your NTP server and made sure the service is running.</p>
   <h4>How it affects the Ansible environment</h4>
-  <p>• This is the first question whose run reaches out and changes <i>every managed host</i> — the earlier playbooks were scoped by group guards, but Q5.7's play targets all hosts, because every machine needs correct time (Kerberos, logs, and certificates all depend on it).<br>
+  <p>• This is the first question whose run reaches out and changes <i>every managed host</i> — the earlier playbooks were scoped by group guards, but Q5.6's play targets all hosts, because every machine needs correct time (Kerberos, logs, and certificates all depend on it).<br>
   • The play ran as student and escalated with <code>become</code> only where the role needed it — that is why the command itself carries no sudo. Notice the full circle: root appeared exactly once in this question, back in Q5, to install software on the controller. It has not been needed since.</p>
   <h4>Command anatomy — what every part does, and what breaks without it</h4>
   <p>• <code>ansible-playbook</code> — the runner: read a playbook file, apply its plays to the inventory, report a recap per host. This bare command is the whole trigger for the Q5 chain.<br>
-  • <code>timesync.yml</code> — the only argument, and it is a relative filename: the runner looks for it in your current directory. Run the identical command from your home directory and it fails with "the playbook could not be found" — even though the file exists, one directory away. Q5.3's cd is what makes this line work.<br>
+  • <code>timesync.yml</code> — the only argument, and it is a relative filename: the runner looks for it in your current directory. Run the identical command from your home directory and it fails with "the playbook could not be found" — even though the file exists, one directory away. Standing in the project directory is what makes this line work.<br>
   • What is absent is also anatomy: no <code>-i</code> (the inventory comes from ansible.cfg), no extra flags, and no <code>sudo</code> — privilege escalation is declared inside the play, so the controller process itself stays unprivileged. The checker rejects a sudo on this line even if the run would succeed.<br>
   • <b>Why the exam cares:</b> name the wrong file — or stand in the wrong directory — and nothing runs at all, while every later Q5 verification fails for reasons that look like role problems. The simplest commands fail the simplest way: by pointing at nothing.</p>
-  <div class="tie"><b>How it ties in:</b> a successful run is a claim. Q5.9 checks the config file the role wrote, and Q5.10 checks the daemon itself — two different layers of proof.</div>`
+  <div class="tie"><b>How it ties in:</b> a successful run is a claim. Q5.8 checks the config file the role wrote, and Q5.9 checks the daemon itself — two different layers of proof.</div>`
 },
 {
-  id:"Q5.9", title:"Verify: the chrony.conf server line", sub:"Ad hoc grep on all hosts", cmd:true,
+  id:"Q5.8", title:"Verify: the chrony.conf server line", sub:"Ad hoc grep on all hosts", cmd:true,
   files:[{ path:"shell", lang:"cmd" }],
-  spec:`<b>5.9. Verify the configuration.</b><br>• Using an ad hoc command on <b>all</b> hosts through the <code>command</code> module, check that <code>/etc/chrony.conf</code> now contains the line for your NTP server — the role rendered your entry as a <code>server</code> line.<br>• The grep pattern is <code>pool</code>: it still finds the line, because the hostname itself — 2.north-america.<b>pool</b>.ntp.org — contains it.<br>• Type the command at the prompt and press <b>Enter</b> to run it.`,
+  spec:`<b>5.8. Verify the configuration.</b><br>• Using an ad hoc command on <b>all</b> hosts through the <code>command</code> module, check that <code>/etc/chrony.conf</code> now contains the line for your NTP server — the role rendered your entry as a <code>server</code> line.<br>• The grep pattern is <code>pool</code>: it still finds the line, because the hostname itself — 2.north-america.<b>pool</b>.ntp.org — contains it.<br>• Type the command at the prompt and press <b>Enter</b> to run it.`,
   checks:[[
     { re:/ansible\s+all\b/, msg:"The ad hoc command targets all hosts" },
     { re:/-m\s+(ansible\.builtin\.)?command\b/, msg:"It uses the command module" },
     { re:/-a\s+['"]grep\s+pool\s+\/etc\/chrony\.conf['"]/, msg:"The -a argument runs: grep pool /etc/chrony.conf" }
   ]],
-  explain:`<h2>✅ Q5.9 complete — what you just did</h2>
-  <p>You checked the artifact the role was supposed to produce: every host's <code>/etc/chrony.conf</code> now shows <code>server 2.north-america.pool.ntp.org iburst</code> — your Q5.7 variable, rendered into chrony's config.</p>
+  explain:`<h2>✅ Q5.8 complete — what you just did</h2>
+  <p>You checked the artifact the role was supposed to produce: every host's <code>/etc/chrony.conf</code> now shows <code>server 2.north-america.pool.ntp.org iburst</code> — your Q5.6 variable, rendered into chrony's config.</p>
   <h4>How it affects the Ansible environment</h4>
   <p>• Read-only again: ad hoc <code>command</code> calls gather evidence without changing state, which is what makes them safe to run as often as you like during the exam.<br>
   • This verifies the <i>configuration layer</i>: the file says the right thing. It says nothing yet about whether chronyd has actually picked the source up — that is a different layer, and it gets its own check.</p>
   <h4>Command anatomy — what every part does, and what breaks without it</h4>
   <p>• <code>ansible all</code> — every host gets asked. The role was applied to all hosts, so the proof must cover all of them; verifying one host and assuming the rest is how a single failed host slips through.<br>
   • <code>-m ansible.builtin.command</code> — run the named binary directly on each host. No shell is started, so the argument must be one self-contained command — which grep is.<br>
-  • <code>-a 'grep pool /etc/chrony.conf'</code> — inside the quotes: <code>grep</code> the tool, <code>pool</code> the text to hunt for, <code>/etc/chrony.conf</code> the file to hunt in. The word <code>pool</code> matches inside the server line because the hostname itself contains it — the directive the role wrote is <code>server</code>, since Q5.7 dropped the example's <code>pool:</code> key. The path is the contract: the timesync role writes chrony's config at exactly that location, so this reads the artifact the role was supposed to produce.<br>
+  • <code>-a 'grep pool /etc/chrony.conf'</code> — inside the quotes: <code>grep</code> the tool, <code>pool</code> the text to hunt for, <code>/etc/chrony.conf</code> the file to hunt in. The word <code>pool</code> matches inside the server line because the hostname itself contains it — the directive the role wrote is <code>server</code>, since Q5.6 dropped the example's <code>pool:</code> key. The path is the contract: the timesync role writes chrony's config at exactly that location, so this reads the artifact the role was supposed to produce.<br>
   • No <code>-b</code> — chrony.conf is world-readable, so the verify runs unprivileged; nothing here needs root.<br>
   • <b>Why the exam cares:</b> grep for the wrong word, or in the wrong file, and the check can pass or fail independently of what the role actually did. Any host missing that line is a host the role did not reach.</p>
-  <div class="tie"><b>How it ties in:</b> variable (Q5.7) → role → config file (Q5.9) → live daemon (Q5.10). You are tracing one fact through the whole stack.</div>`
+  <div class="tie"><b>How it ties in:</b> variable (Q5.6) → role → config file (Q5.8) → live daemon (Q5.9). You are tracing one fact through the whole stack.</div>`
 },
 {
-  id:"Q5.10", title:"Verify: chronyc sources", sub:"Ad hoc on all hosts", cmd:true,
+  id:"Q5.9", title:"Verify: chronyc sources", sub:"Ad hoc on all hosts", cmd:true,
   files:[{ path:"shell", lang:"cmd" }],
-  spec:`<b>5.10. Verify the service.</b><br>• One more ad hoc check on <b>all</b> hosts, through the <code>command</code> module: ask chrony itself which time sources it is currently using.<br>• The config file (5.9) is what's written on disk; this is the daemon's live view.<br>• Type the command at the prompt and press <b>Enter</b> to run it.`,
+  spec:`<b>5.9. Verify the service.</b><br>• One more ad hoc check on <b>all</b> hosts, through the <code>command</code> module: ask chrony itself which time sources it is currently using.<br>• The config file (5.8) is what's written on disk; this is the daemon's live view.<br>• Type the command at the prompt and press <b>Enter</b> to run it.`,
   checks:[[
     { re:/ansible\s+all\b/, msg:"The ad hoc command targets all hosts" },
     { re:/-m\s+(ansible\.builtin\.)?command\b/, msg:"It uses the command module" },
     { re:/-a\s+['"]chronyc\s+sources['"]/, msg:"The -a argument runs: chronyc sources" }
   ]],
-  explain:`<h2>✅ Q5.10 complete — what you just did</h2>
+  explain:`<h2>✅ Q5.9 complete — what you just did</h2>
   <p>You asked the running daemon for its own view: <code>chronyc sources</code> lists the NTP sources chronyd is actually polling on every host. Your server should appear, marked as the selected source — proof the config change became live behavior, not just text in a file.</p>
   <h4>How it affects the Ansible environment</h4>
-  <p>• This is the deepest verification layer in the Q5 chain: root shell (Q5), package installed (Q5.1), back to student (Q5.2), project directory (Q5.3), role staged (Q5.4) and proven (Q5.5), playbook staged (Q5.6) and edited (Q5.7), run (Q5.8), config on disk (Q5.9), daemon using it (Q5.10). Each step was proven before the next one was trusted.<br>
+  <p>• This is the deepest verification layer in the Q5 chain: root shell (Q5), package installed (Q5.1), back to student (Q5.2), role staged (Q5.3) and proven (Q5.4), playbook staged (Q5.5) and edited (Q5.6), run (Q5.7), config on disk (Q5.8), daemon using it (Q5.9). Each step was proven before the next one was trusted.<br>
   • On the real exam this habit is what catches the silent failures — a role that "ran fine" but never restarted the service, or a config written to the wrong host group.</p>
   <h4>Command anatomy — what every part does, and what breaks without it</h4>
-  <p>• The frame is Q5.9's, unchanged — <code>ansible all -m ansible.builtin.command -a '...'</code> — and that sameness is deliberate: same transport, same hosts, different layer of evidence.<br>
-  • <code>chronyc</code> — chrony's control client. Unlike the file Q5.9 read, this program talks to the running chronyd daemon over its control channel and reports what the daemon is doing right now.<br>
+  <p>• The frame is Q5.8's, unchanged — <code>ansible all -m ansible.builtin.command -a '...'</code> — and that sameness is deliberate: same transport, same hosts, different layer of evidence.<br>
+  • <code>chronyc</code> — chrony's control client. Unlike the file Q5.8 read, this program talks to the running chronyd daemon over its control channel and reports what the daemon is doing right now.<br>
   • <code>sources</code> — the chronyc subcommand that lists the time sources the daemon is polling, with their reachability and offset. It is the daemon's own testimony, not the config's claim.<br>
   • <b>Why the exam cares:</b> a correct /etc/chrony.conf with a daemon that never reloaded it is a half-finished configuration — the file says one thing, the service does another. Running the config check twice would never catch that. This step exists because the graded state is a live daemon synced to your server, not a text file that mentions it.</p>
   <div class="tie"><b>How it ties in:</b> Q5 is fully closed. Q6 returns to downloaded Galaxy roles — the same roles:/requirements pattern as Q4, one level up.</div>`
 },
 {
-  id:"Q6", title:"Install Roles from Ansible Galaxy — Declare Them in roles/requirements.yml and Pull Them Down for Playbooks to Call", sub:"cd, mkdir -p, vim — one line", cmd:true,
+  id:"Q6", title:"Install Roles from Ansible Galaxy — Declare Them in roles/requirements.yml and Pull Them Down for Playbooks to Call", sub:"mkdir -p, vim — one line", cmd:true,
   files:[{ path:"shell", lang:"cmd" }],
-  spec:`<b>6. Install Roles Using Ansible Galaxy — setup first.</b><br>• The requirements file lives at <code>/home/student/ansible/roles/requirements.yml</code> — but the <code>roles</code> directory does not exist yet.<br>• In <b>one chained command line</b>: change into the ansible project directory, create the <code>roles</code> directory (with parents, no error if it already exists), then open <code>roles/requirements.yml</code> in vim.<br>• Type the command at the prompt and press <b>Enter</b> to run it.`,
+  spec:`<b>6. Install Roles Using Ansible Galaxy — setup first.</b><br>• The requirements file lives at <code>/home/student/ansible/roles/requirements.yml</code> — but the <code>roles</code> directory does not exist yet.<br>• In <b>one chained command line</b>: create the <code>roles</code> directory (with parents, no error if it already exists), then open <code>roles/requirements.yml</code> in vim. You are already standing in the project directory, so both paths are relative to it.<br>• Type the command at the prompt and press <b>Enter</b> to run it.`,
   checks:[[
-    { re:/cd\s+(~\/ansible|\/home\/student\/ansible)/, msg:"First: cd into the ansible project directory" },
-    { re:/mkdir\s+-p\s+(\.\/)?roles\b/, msg:"Then: mkdir -p roles (the -p matters)" },
+    { re:/mkdir\s+-p\s+(\.\/)?roles\b/, msg:"First: mkdir -p roles (the -p matters)" },
     { re:/vim\s+(\.\/)?roles\/requirements\.yml/, msg:"Then: vim roles/requirements.yml" },
-    { fn:t => { const a = t.search(/cd\s/), b = t.search(/mkdir/), c2 = t.search(/vim\s/); return a >= 0 && b > a && c2 > b && (t.match(/&&/g) || []).length >= 2; }, msg:"All three steps in order, chained with &&" }
+    { fn:t => { const b = t.search(/mkdir/), c2 = t.search(/vim\s/); return b >= 0 && c2 > b && (t.match(/&&/g) || []).length >= 1; }, msg:"Both steps in order, chained with &&" }
   ]],
   explain:`<h2>✅ Q6 complete — what you just did</h2>
   <p>Same setup beat as Q4, one directory over: you created <code>roles/</code> and opened its requirements file in one chained line. The directory has to exist before vim can save into it — skip the mkdir and the save fails with E212 after you've typed the whole file.</p>
@@ -821,8 +799,8 @@ const QUESTIONS = [
   <p>• <code>roles/</code> is not just a folder: it is where this project's configuration looks for roles (<code>roles_path</code>), and it is the install target Q6.2 uses. Everything Galaxy installs for this question lands here.<br>
   • <code>mkdir -p</code> keeps the line safe to re-run — no error if the directory is already there.</p>
   <h4>Command anatomy — what every part does, and what breaks without it</h4>
-  <p>• <code>cd ~/ansible</code> — anchor in the project root; both paths that follow are relative to it.<br>
-  • <code>&amp;&amp;</code> — the chain is stop-on-failure: no directory gets created, and no editor opens, in the wrong place.<br>
+  <p>• You run this from the project root: you are already standing in <code>/home/student/ansible</code>, so both paths that follow are relative to it and land inside the project.<br>
+  • <code>&amp;&amp;</code> — the chain is stop-on-failure: if the mkdir fails, the editor never opens on a file it cannot save.<br>
   • <code>mkdir -p roles</code> — <code>-p</code> = parents plus no-error-if-it-exists. The directory's name is load-bearing: <code>roles</code> is where this project's <code>roles_path</code> looks, and it is the shelf Q6.2 will stock. Call it role/ and Galaxy, the playbooks, and the checker would all be looking somewhere else.<br>
   • <code>vim roles/requirements.yml</code> — same manifest filename as Q4, different directory — and the directory is what gives it meaning: inside roles/ it is the roles manifest Galaxy's role branch reads; the identical name inside collections/ was the collections manifest. Location is part of the file's identity.<br>
   • <b>Why the exam cares:</b> Q6 mirrors Q4 on purpose — directory, manifest, install, verify. Slip the directory name or skip the mkdir and the damage is silent now and loud in Q6.2, when the save fails or the install reads a manifest that is not there.</p>
@@ -848,13 +826,11 @@ const QUESTIONS = [
 {
   id:"Q6.2", title:"Install the roles", sub:"ansible-galaxy role install -p roles", cmd:true,
   files:[{ path:"shell", lang:"cmd" }],
-  spec:`<b>6.2. Install the roles.</b><br>• On the controller: change into the ansible project directory, then use <code>ansible-galaxy</code> to install the roles listed in the requirements file you just wrote.<br>• Install them into the project's local <code>roles</code> directory — the location this project's configuration searches.<br>• Chain both commands on <b>one line</b> with <code>&amp;&amp;</code>, and press <b>Enter</b> to run it.`,
+  spec:`<b>6.2. Install the roles.</b><br>• On the controller: use <code>ansible-galaxy</code> to install the roles listed in the requirements file you just wrote.<br>• Install them into the project's local <code>roles</code> directory — the location this project's configuration searches.<br>• Type the command and press <b>Enter</b> to run it.`,
   checks:[[
-    { re:/cd\s+(~\/ansible|\/home\/student\/ansible)/, msg:"First: cd into the ansible project directory" },
-    { re:/ansible-galaxy\s+role\s+install\b/, msg:"Then: ansible-galaxy role install" },
+    { re:/ansible-galaxy\s+role\s+install\b/, msg:"The command: ansible-galaxy role install" },
     { re:/-r\s+(\.\/)?roles\/requirements\.yml/, msg:"It reads the requirements file (-r roles/requirements.yml)" },
-    { re:/-p\s+(\.\/)?roles\/?(\s|$)/, msg:"It installs into the local roles directory (-p roles)" },
-    { fn:t => { const a = t.search(/cd\s/), b = t.search(/ansible-galaxy/); return a >= 0 && b > a; }, msg:"The cd comes before the install" }
+    { re:/-p\s+(\.\/)?roles\/?(\s|$)/, msg:"It installs into the local roles directory (-p roles)" }
   ]],
   explain:`<h2>✅ Q6.2 complete — what you just did</h2>
   <p>You installed the two Galaxy roles — and the renames from Q6.1 took effect: on disk they are now <code>roles/balancer</code> and <code>roles/phpinfo</code>, not geerlingguy.anything. From here on, playbooks on this controller know them only by those local names.</p>
@@ -862,13 +838,13 @@ const QUESTIONS = [
   <p>• The <code>-p roles</code> flag is doing the same job as Q4.2's <code>-p collections</code>: install into the project, where <code>roles_path</code> points — not into your home directory's default role location, where this project's playbooks would never find them.<br>
   • The requirements file made it repeatable: anyone with this project can rebuild the same roles directory with one command.</p>
   <h4>Command anatomy — what every part does, and what breaks without it</h4>
-  <p>• <code>cd ~/ansible &amp;&amp;</code> — the anchor: both relative paths in this command (<code>roles/requirements.yml</code> and <code>roles</code>) are measured from the project root, so the command only means what it should if you are standing there when it runs.<br>
+  <p>• Both relative paths in this command (<code>roles/requirements.yml</code> and <code>roles</code>) are measured from the project root — and you are already standing in it, so the command means what it should.<br>
   • <code>ansible-galaxy role install</code> — tool, branch, action: fetch roles from Galaxy and install them. The <code>role</code> branch is what makes the requirements file's rename entries (src → name) take effect.<br>
   • Break the command into its two halves:<br>
   • <code>-r roles/requirements.yml</code> — the input. r = requirements file. This is the shopping list you wrote in Q6.1: geerlingguy.haproxy to be named balancer, geerlingguy.php to be named phpinfo. The file is only read — nothing is written into it.<br>
   • <code>-p roles</code> — the destination. p = path. Each role on the list gets downloaded and unpacked as a folder inside ~/ansible/roles/, so you end up with roles/balancer/ and roles/phpinfo/, each containing its own tasks/, templates/, defaults/ and so on.<br>
   • Metaphor: -r is the grocery list, -p is the pantry shelf you stock it on. The list doesn't hold the groceries — the shelf does.<br>
-  • <b>Why the exam cares:</b> without -p roles, ansible-galaxy installs into its default pantry, ~/.ansible/roles. But your playbooks live in ~/ansible, and when Q8's roles.yml says "run the role named balancer," Ansible looks for it in the roles/ folder sitting next to the playbook first. Installing with -p roles puts the roles exactly where the playbooks expect to find them — that is also why the command starts with cd ~/ansible.</p>
+  • <b>Why the exam cares:</b> without -p roles, ansible-galaxy installs into its default pantry, ~/.ansible/roles. But your playbooks live in ~/ansible, and when Q8's roles.yml says "run the role named balancer," Ansible looks for it in the roles/ folder sitting next to the playbook first. Installing with -p roles puts the roles exactly where the playbooks expect to find them.</p>
   <div class="tie"><b>How it ties in:</b> Q8's roles.yml applies <code>balancer</code> and <code>phpinfo</code> by name — those names exist because of the rename in Q6.1 and this install. Q6.3 proves they landed.</div>`
 },
 {
@@ -1951,10 +1927,9 @@ const QUESTIONS = [
   files:[{ path:"shell", lang:"cmd" }],
   spec:`<b>14. Create the vault password file.</b><br>• In <code>~/ansible</code>: write the vault password <code>redhat123</code> into <code>secret.txt</code> and lock its permissions down to <code>600</code>, chained in one command line. No vim needed.<br>• Type the command and press <b>Enter</b>.`,
   checks:[[
-    { re:/cd\s+(\/home\/student\/ansible|~\/ansible)/, msg:"cd ~/ansible" },
     { re:/echo\s+['"]redhat123['"]\s*>\s*secret\.txt/, msg:"echo 'redhat123' > secret.txt" },
     { re:/chmod\s+600\s+secret\.txt/, msg:"chmod 600 secret.txt" },
-    { fn:t => { const a = t.search(/cd\s/), b = t.search(/echo\s/), c = t.search(/chmod\s/); return a >= 0 && b > a && c > b && ((t.match(/&&/g) || []).length >= 2 || (t.match(/;/g) || []).length >= 2 || t.split("\n").filter(l => l.trim()).length >= 3); }, msg:"All three steps in order, chained with &&" }
+    { fn:t => { const b = t.search(/echo\s/), c = t.search(/chmod\s/); return b >= 0 && c > b && ((t.match(/&&/g) || []).length >= 1 || (t.match(/;/g) || []).length >= 1 || t.split("\n").filter(l => l.trim()).length >= 2); }, msg:"Both steps in order, chained with &&" }
   ]],
   explain:`<h2>✅ Q14 complete — what you just did</h2>
   <p>You made the key before the lock: a one-line file holding the vault password, with mode <code>600</code> so only your user can read it. Every later vault command points at this file with <code>--vault-password-file</code> instead of prompting, which is what makes the vault usable by playbooks and scripts, not just by a human at a keyboard.</p>
@@ -1962,11 +1937,11 @@ const QUESTIONS = [
   <p>• The password file is itself a secret — in production it never goes into Git (it belongs in .gitignore) and the password itself comes from a secrets manager through a script. Here it is a lab file with lab permissions.<br>
   • Deliberately <i>not</i> done: adding <code>vault_password_file</code> to ansible.cfg. Q16's vault uses a different password, and a global setting would silently point every command at the wrong key. Explicit flags beat global state.</p>
   <h4>Command anatomy — what every part does, and what breaks without it</h4>
-  <p>• <code>cd ~/ansible &amp;&amp;</code> — the password file must live beside the vault it will unlock, in the project directory, because every later command names it by the relative path <code>secret.txt</code>. Create it anywhere else and Q14.1's flag points at a file that is not there.<br>
+  <p>• The file is created in the project directory, where you are standing — beside the vault it will unlock, because every later command names it by the relative path <code>secret.txt</code>. Create it anywhere else and Q14.1's flag points at a file that is not there.<br>
   • <code>echo 'redhat123'</code> — echo writes its argument plus a newline (Ansible trims the newline when it reads a vault password file, so the password is exactly redhat123). The single quotes keep the shell from interpreting anything in the string — a habit that matters the day a password contains a $ or a space.<br>
   • <code>&gt; secret.txt</code> — the redirect creates the file (or truncates it) and sends echo's output into it. The filename is the one Q14.1 and Q15.2 will pass to --vault-password-file.<br>
   • <code>chmod 600 secret.txt</code> — the octal is the security of the whole question: 6 = read+write for the owner, 0 for group, 0 for everyone else. At 644 the vault's password would be readable by any account on the machine, and the encryption built on top of it would be theatre. This step is checked on the mode exactly.<br>
-  • <b>Why the exam cares:</b> three properties are graded here — right directory, right content, right permissions — and each clause of the chain carries one of them. Drop the chmod and you have built a strong lock and left its key under a doormat everyone can reach.</p>
+  • <b>Why the exam cares:</b> the graded properties here are the right content and the right permissions, and each clause of the chain carries one of them. Drop the chmod and you have built a strong lock and left its key under a doormat everyone can reach.</p>
   <div class="tie"><b>How it ties in:</b> the key exists. Q14.1 uses it to create the lock itself.</div>`
 },
 {
@@ -1983,7 +1958,7 @@ const QUESTIONS = [
   <p>• Q14 is the exam's odd one out: no playbook, no managed hosts, and no ansible-navigator equivalent — ansible-vault is the only tool. Nothing on servera–d changed.</p>
   <h4>Command anatomy — what every part does, and what breaks without it</h4>
   <p>• <code>ansible-vault create</code> — the subcommand is the design decision: <code>create</code> makes a brand-new file that is encrypted from its first byte — the editor session it opens encrypts whatever you save, on the way out. Its sibling <code>encrypt</code> converts a file that already exists as plaintext, which means the plaintext had to sit on disk first; that window is precisely what this question refuses. (The checker also rejects building the file with plain vim for the same reason.)<br>
-  • <code>locker.yml</code> — the new vault's filename, created in your current directory — which is why Q14's cd came first. Q15.1's playbook will reference this exact name in vars_files.<br>
+  • <code>locker.yml</code> — the new vault's filename, created in the project directory where you are standing. Q15.1's playbook will reference this exact name in vars_files.<br>
   • <code>--vault-password-file secret.txt</code> — where the password comes from: read it from the 600-permission file instead of prompting. The interactive prompt would work for you, once, at a keyboard — but no playbook run can answer a prompt, and the whole point of Q14's setup is a key the automation can use. A wrong path here (or running from the wrong directory, since the path is relative) fails with the password file not found.<br>
   • <b>Why the exam cares:</b> create plus password-file is the only flow in this set that never exposes plaintext and stays usable by later steps. Every alternative trades one of those away — and Q15.2 will spend exactly the mechanism this command sets up.</p>
   <div class="tie"><b>How it ties in:</b> the editor is open. Q14.2 is what you type into it.</div>`
@@ -2043,17 +2018,16 @@ const QUESTIONS = [
   files:[{ path:"shell", lang:"cmd" }],
   spec:`<b>15. Download the user list.</b><br>• From <code>~/ansible</code>: download <code>user_list.yml</code> from the exam server and immediately <code>cat</code> it — you need to read its keys before writing the playbook that consumes them.<br>• Type the command and press <b>Enter</b>.`,
   checks:[[
-    { re:/cd\s+(\/home\/student\/ansible|~\/ansible)/, msg:"cd ~/ansible" },
     { re:/curl\s+-o\s+user_list\.yml\s+https?:\/\/10\.1\.10\.121\/user_list\.yml/, msg:"curl -o user_list.yml http://10.1.10.121/user_list.yml" },
     { re:/cat\s+user_list\.yml/, msg:"cat user_list.yml (read the keys before you code against them)" },
-    { fn:t => { const a = t.search(/cd\s/), b = t.search(/curl\s/), c = t.search(/cat\s/); return a >= 0 && b > a && c > b && ((t.match(/&&/g) || []).length >= 2 || (t.match(/;/g) || []).length >= 2 || t.split("\n").filter(l => l.trim()).length >= 3); }, msg:"All three steps in order, chained with &&" }
+    { fn:t => { const b = t.search(/curl\s/), c = t.search(/cat\s/); return b >= 0 && c > b && ((t.match(/&&/g) || []).length >= 1 || (t.match(/;/g) || []).length >= 1 || t.split("\n").filter(l => l.trim()).length >= 2); }, msg:"Both steps in order, chained with &&" }
   ]],
   explain:`<h2>✅ Q15 complete — what you just did</h2>
   <p>The cat is the point: <code>users</code> is a list of dictionaries, and each item carries exactly three keys — <code>username</code>, <code>uid</code>, <code>job</code>. alice (1201, developer), vincent (1202, developer), sandy (2201, manager), patrick (2202, manager). The playbook reads them as <code>item.username</code>, <code>item.uid</code>, <code>item.job</code> — and the key is <code>username</code>, not <code>name</code>. Coding against a data file you haven't read is how silent undefined-variable failures are born.</p>
   <h4>How it affects the Ansible environment</h4>
   <p>• The file now sits in the project directory next to users.yml — which matters, because vars_files paths are relative to the playbook.</p>
   <h4>Command anatomy — what every part does, and what breaks without it</h4>
-  <p>• <code>cd ~/ansible &amp;&amp;</code> — the anchor: the download and the read both happen in the project directory, because Q15.1's vars_files will look for user_list.yml relative to the playbook.<br>
+  <p>• The download and the read both happen in the project directory, where you are standing — which matters, because Q15.1's vars_files will look for user_list.yml relative to the playbook.<br>
   • <code>curl -o user_list.yml http://10.1.10.121/user_list.yml</code> — the standard download shape, and the filename is again a contract: users.yml will name <code>user_list.yml</code> in vars_files, literally. Save it as users_list.yml and the playbook fails at load time, before a single task.<br>
   • <code>&amp;&amp; cat user_list.yml</code> — the third link is the step's real payload: print the downloaded data before writing a line of playbook against it. The && guarantees the cat only runs on a file that actually arrived.<br>
   • What the cat buys you: the true key names — <code>username</code>, <code>uid</code>, <code>job</code>. Guess instead (say, <code>name</code>) and every loop item resolves that key to nothing, quietly, per user.<br>
@@ -2196,9 +2170,7 @@ const QUESTIONS = [
   files:[{ path:"shell", lang:"cmd" }],
   spec:`<b>16. Rekey sal.yml — download the vault.</b><br>• In <code>~/ansible</code>, download <code>sal.yml</code> from <code>http://10.1.10.121/sal.yml</code>. The file is <b>already encrypted</b> — this question rotates its password from <code>insecure4sure</code> to <code>secure1234</code> without the secrets ever sitting on disk in plaintext.<br>• Type the command and press <b>Enter</b>.`,
   checks:[[
-    { re:/cd\s+(\/home\/student\/ansible|~\/ansible)/, msg:"cd ~/ansible" },
-    { re:/curl\s+-o\s+sal\.yml\s+http:\/\/10\.1\.10\.121\/sal\.yml/, msg:"curl -o sal.yml http://10.1.10.121/sal.yml" },
-    { fn:t => { const a = t.search(/cd\s/), b = t.search(/curl\s/); return a >= 0 && b > a && ((t.match(/&&/g) || []).length >= 1 || (t.match(/;/g) || []).length >= 1 || t.split("\n").filter(l => l.trim()).length >= 2); }, msg:"cd first, then the download — chained with && or on separate lines" }
+    { re:/curl\s+-o\s+sal\.yml\s+http:\/\/10\.1\.10\.121\/sal\.yml/, msg:"curl -o sal.yml http://10.1.10.121/sal.yml" }
   ]],
   explain:`<h2>✅ Q16 complete — what you just did</h2>
   <p>You downloaded a vault that already exists. None of its contents are yours to write — the job is credential hygiene: the password protecting this file is changing, from <code>insecure4sure</code> to <code>secure1234</code>, and the file stays sealed the whole way through.</p>
@@ -2206,7 +2178,7 @@ const QUESTIONS = [
   <p>• Same download shape as Q15's user_list.yml, with one difference: that file was data to read, this one is ciphertext. <code>curl</code> moves it byte for byte; the encryption survives the trip untouched.<br>
   • Like Q14, this question has no playbook and no Navigator equivalent — <code>ansible-vault</code> is the only tool, working here on the controller.</p>
   <h4>Command anatomy — what every part does, and what breaks without it</h4>
-  <p>• <code>cd ~/ansible</code> — on its own line this time (the checks accept && or separate lines): the download that follows writes relative to wherever you are standing, and every later Q16 step assumes sal.yml is in the project directory. Run the pair from your home directory and the vault lands in ~, where rekey — run from the project — will not find it.<br>
+  <p>• The download writes into the project directory, where you are standing — and every later Q16 step assumes sal.yml is there. Run it from your home directory instead and the vault lands in ~, where rekey — run from the project — will not find it.<br>
   • <code>curl -o sal.yml http://10.1.10.121/sal.yml</code> — the familiar download shape with one difference in kind: the payload is ciphertext. curl neither knows nor cares; it moves the bytes intact, and the encryption survives the trip untouched — a vault can be copied by anyone and opened only by the password holder.<br>
   • <code>-o sal.yml</code> — the name is preserved exactly, because Q16.1's rekey and Q16.3's view both address the file as sal.yml.<br>
   • <b>Why the exam cares:</b> location discipline, one last time: the file's content cannot be wrong (you are not authoring it), so the only failure available in this step is placing it where the rest of the question is not looking — and that failure would present, misleadingly, as a vault problem in Q16.1.</p>
@@ -2243,7 +2215,7 @@ const QUESTIONS = [
   <p>The first line reads <code>$ANSIBLE_VAULT;1.1;AES256</code> — the same header Q14.3 checked on locker.yml. The rekey rewrote the ciphertext beneath it, but the file's identity never changed: a vault before, a vault after, and no plaintext moment in between.</p>
   <h4>Command anatomy — what every part does, and what breaks without it</h4>
   <p>• <code>head -1 sal.yml</code> — the same one-line instrument as Q14.3, aimed at a new question: not "was this file born a vault" but "did the operation leave it a vault". <code>-1</code> takes the first line only, because the format puts its declaration there: $ANSIBLE_VAULT;1.1;AES256.<br>
-  • <code>sal.yml</code> — bare filename, current directory assumed: the hygiene steps share Q16's cd as their foundation.<br>
+  • <code>sal.yml</code> — bare filename, current directory assumed: the hygiene steps share Q16's location as their foundation — the file sits in the project directory.<br>
   • What a failure would look like is the point of the check: after a decrypt-instead-of-rekey slip, this line would show YAML content — <code>some_variable: ...</code> — instead of the vault header, and no subsequent step would be needed to know the question was lost. Conversely, the header's presence proves the seal survived the key change.<br>
   • <b>Why the exam cares:</b> rekey rewrites the whole file; this is the integrity check that the rewrite kept the format. It costs one line and no password, and it is done before Q16.3 spends the new credential — verify the container first, then trust it with the key.</p>
   <div class="tie"><b>How it ties in:</b> sealed from the outside. Q16.3 opens it with the new key — and the old key's failure is the other half of the proof.</div>`
@@ -2352,8 +2324,8 @@ ansible all -m ansible.builtin.yum_repository -a "name='AppStream' description='
   answer:[{ path:"shell", text:"ansible-playbook packages.yml --syntax-check && ansible-playbook packages.yml" }] },
 "Q3.2": { hint:`ansible dev -m ansible.builtin.command -a '...' — inside the quotes goes a dnf command that lists groups, with the --installed flag (two hyphens).`,
   answer:[{ path:"shell", text:"ansible dev -m ansible.builtin.command -a 'dnf group list --installed'" }] },
-"Q4": { hint:`cd, then mkdir, then vim — in that order, joined by &&. The mkdir needs its -p flag, and the vim target is collections/requirements.yml.`,
-  answer:[{ path:"shell", text:"cd ~/ansible && mkdir -p collections && vim collections/requirements.yml" }] },
+"Q4": { hint:`mkdir, then vim — in that order, joined by &&. The mkdir needs its -p flag, and the vim target is collections/requirements.yml. You are already in the project directory.`,
+  answer:[{ path:"shell", text:"mkdir -p collections && vim collections/requirements.yml" }] },
 "Q4.1": { hint:`Start with ---, then a "collections:" list holding three name entries: community.general, ansible.posix, ansible.netcommon.`,
   answer:[{ path:"/home/student/ansible/collections/requirements.yml", text:`---
 collections:
@@ -2361,8 +2333,8 @@ collections:
   - name: ansible.posix
   - name: ansible.netcommon
 ` }] },
-"Q4.2": { hint:`cd ~/ansible first, then ansible-galaxy collection install with two flags: -r points at the requirements file, -p points at the local collections directory. Join them with &&.`,
-  answer:[{ path:"shell", text:"cd ~/ansible && ansible-galaxy collection install -r collections/requirements.yml -p collections" }] },
+"Q4.2": { hint:`ansible-galaxy collection install with two flags: -r points at the requirements file, -p points at the local collections directory.`,
+  answer:[{ path:"shell", text:"ansible-galaxy collection install -r collections/requirements.yml -p collections" }] },
 "Q4.3": { hint:`ansible-galaxy collection list — with the same -p collections you used for the install, so you are listing the project's directory, not the default paths.`,
   answer:[{ path:"shell", text:"ansible-galaxy collection list -p collections" }] },
  "Q5": { hint:`Two words: su, then the dash that makes it a login shell. You are becoming root for exactly one job — the install.`,
@@ -2371,15 +2343,13 @@ collections:
   answer:[{ path:"shell", text:"dnf install -y rhel-system-roles" }] },
 "Q5.2": { hint:`One word ends the root shell and drops you back into your student shell: exit.`,
   answer:[{ path:"shell", text:"exit" }] },
-"Q5.3": { hint:`cd to the project directory by its full path: /home/student/ansible.`,
-  answer:[{ path:"shell", text:"cd /home/student/ansible" }] },
-"Q5.4": { hint:`cp with -r (it is a directory): from /usr/share/ansible/roles/rhel-system-roles.timesync/ into roles/ — Tab-complete the long source path.`,
+"Q5.3": { hint:`cp with -r (it is a directory): from /usr/share/ansible/roles/rhel-system-roles.timesync/ into roles/ — Tab-complete the long source path.`,
   answer:[{ path:"shell", text:"cp -r /usr/share/ansible/roles/rhel-system-roles.timesync/ roles/" }] },
-"Q5.5": { hint:`ll roles/ — the long listing of the project's roles directory. You are looking for the rhel-system-roles.timesync directory, owned by student.`,
+"Q5.4": { hint:`ll roles/ — the long listing of the project's roles directory. You are looking for the rhel-system-roles.timesync directory, owned by student.`,
   answer:[{ path:"shell", text:"ll roles/" }] },
-"Q5.6": { hint:`cp from the doc tree: /usr/share/doc/rhel-system-roles/timesync/example-single-pool-playbook.yml, renamed to timesync.yml. No -r — it is one file.`,
+"Q5.5": { hint:`cp from the doc tree: /usr/share/doc/rhel-system-roles/timesync/example-single-pool-playbook.yml, renamed to timesync.yml. No -r — it is one file.`,
   answer:[{ path:"shell", text:"cp /usr/share/doc/rhel-system-roles/timesync/example-single-pool-playbook.yml timesync.yml" }] },
-"Q5.7": { hint:`Edit the example, don't rewrite it: hosts becomes all, add become: true, hostname becomes 2.north-america.pool.ntp.org, delete the pool: line, keep iburst. The role stays rhel-system-roles.timesync.`,
+"Q5.6": { hint:`Edit the example, don't rewrite it: hosts becomes all, add become: true, hostname becomes 2.north-america.pool.ntp.org, delete the pool: line, keep iburst. The role stays rhel-system-roles.timesync.`,
   answer:[{ path:"/home/student/ansible/timesync.yml", text:`- hosts: all
   become: true
   vars:
@@ -2389,14 +2359,14 @@ collections:
   roles:
     - rhel-system-roles.timesync
 ` }] },
-"Q5.8": { hint:`A plain ansible-playbook run of timesync.yml — no sudo; the play becomes root on the hosts itself. Navigator works too: ansible-navigator run timesync.yml — plain, or with -m stdout, --pae false, --ee false, --pull-policy missing; Q1's config already sets stdout mode, the EE and artifacts off.`,
+"Q5.7": { hint:`A plain ansible-playbook run of timesync.yml — no sudo; the play becomes root on the hosts itself. Navigator works too: ansible-navigator run timesync.yml — plain, or with -m stdout, --pae false, --ee false, --pull-policy missing; Q1's config already sets stdout mode, the EE and artifacts off.`,
   answer:[{ path:"shell", text:"ansible-playbook timesync.yml" }] },
-"Q5.9": { hint:`ansible all, the command module, and an -a argument that greps for the word pool in /etc/chrony.conf — it matches inside the server line's hostname.`,
+"Q5.8": { hint:`ansible all, the command module, and an -a argument that greps for the word pool in /etc/chrony.conf — it matches inside the server line's hostname.`,
   answer:[{ path:"shell", text:"ansible all -m ansible.builtin.command -a 'grep pool /etc/chrony.conf'" }] },
-"Q5.10": { hint:`ansible all, the command module, and an -a argument that asks chrony for its sources.`,
+"Q5.9": { hint:`ansible all, the command module, and an -a argument that asks chrony for its sources.`,
   answer:[{ path:"shell", text:"ansible all -m ansible.builtin.command -a 'chronyc sources'" }] },
-"Q6": { hint:`cd, mkdir, vim — in that order, joined by &&. The mkdir needs -p; the vim target is roles/requirements.yml.`,
-  answer:[{ path:"shell", text:"cd ~/ansible && mkdir -p roles && vim roles/requirements.yml" }] },
+"Q6": { hint:`mkdir, then vim — in that order, joined by &&. The mkdir needs -p; the vim target is roles/requirements.yml. You are already in the project directory.`,
+  answer:[{ path:"shell", text:"mkdir -p roles && vim roles/requirements.yml" }] },
 "Q6.1": { hint:`Two src/name pairs: geerlingguy.haproxy renamed to balancer, and geerlingguy.php renamed to phpinfo. The rename lives in the "name:" key paired with each src.`,
   answer:[{ path:"/home/student/ansible/roles/requirements.yml", text:`---
 - src: geerlingguy.haproxy
@@ -2404,8 +2374,8 @@ collections:
 - src: geerlingguy.php
   name: phpinfo
 ` }] },
-"Q6.2": { hint:`cd ~/ansible first, then ansible-galaxy role install with -r (roles/requirements.yml) and -p (the local roles directory), joined by &&.`,
-  answer:[{ path:"shell", text:"cd ~/ansible && ansible-galaxy role install -r roles/requirements.yml -p roles" }] },
+"Q6.2": { hint:`ansible-galaxy role install with -r (roles/requirements.yml) and -p (the local roles directory).`,
+  answer:[{ path:"shell", text:"ansible-galaxy role install -r roles/requirements.yml -p roles" }] },
 "Q6.3": { hint:`ansible-galaxy role list — no flags; you are looking for balancer and phpinfo in the output.`,
   answer:[{ path:"shell", text:"ansible-galaxy role list" }] },
 "Q7": { hint:`The full path of the project's roles directory: /home/student/ansible/roles.`,
@@ -2707,8 +2677,8 @@ ansible-playbook lvm.yml --syntax-check
   answer:[{ path:"shell", text:"ansible all -m ansible.builtin.setup -a 'filter=ansible_devices'" }] },
 "Q13.4": { hint:`ansible all with -b, the command module, and a double-quoted -a argument: grep -L = /root/hwreport.txt — silence and rc=1 is the pass.`,
   answer:[{ path:"shell", text:"ansible all -b -m ansible.builtin.command -a \"grep -L = /root/hwreport.txt\"" }] },
-"Q14": { hint:`One chained line: cd ~/ansible && echo 'redhat123' > secret.txt && chmod 600 secret.txt — write the password, then lock the file down.`,
-  answer:[{ path:"shell", text:"cd ~/ansible && echo 'redhat123' > secret.txt && chmod 600 secret.txt" }] },
+"Q14": { hint:`One chained line: echo 'redhat123' > secret.txt && chmod 600 secret.txt — write the password, then lock the file down.`,
+  answer:[{ path:"shell", text:"echo 'redhat123' > secret.txt && chmod 600 secret.txt" }] },
 "Q14.1": { hint:`ansible-vault create locker.yml, with --vault-password-file secret.txt. Create, not encrypt, and never vim — the tool makes the file.`,
   answer:[{ path:"shell", text:"ansible-vault create locker.yml --vault-password-file secret.txt" }] },
 "Q14.2": { hint:`Two plain YAML lines, exact case: pw_developer: Imadev and pw_manager: Imamgr. Saving is what encrypts them.`,
@@ -2719,8 +2689,8 @@ pw_manager: Imamgr
   answer:[{ path:"shell", text:"head -1 locker.yml" }] },
 "Q14.4": { hint:`ansible-vault view locker.yml with --vault-password-file secret.txt — view decrypts to the screen and writes nothing.`,
   answer:[{ path:"shell", text:"ansible-vault view locker.yml --vault-password-file secret.txt" }] },
-"Q15": { hint:`One chained line: cd ~/ansible && curl -o user_list.yml http://10.1.10.121/user_list.yml && cat user_list.yml — download it, then read its keys (username, uid, job).`,
-  answer:[{ path:"shell", text:"cd ~/ansible && curl -o user_list.yml http://10.1.10.121/user_list.yml && cat user_list.yml" }] },
+"Q15": { hint:`One chained line: curl -o user_list.yml http://10.1.10.121/user_list.yml && cat user_list.yml — download it, then read its keys (username, uid, job).`,
+  answer:[{ path:"shell", text:"curl -o user_list.yml http://10.1.10.121/user_list.yml && cat user_list.yml" }] },
 "Q15.1": { hint:`ONE play: hosts: all, become: true, vars_files user_list.yml then locker.yml. Group task loops over devops and opsmgr with name: "{{ item }}". Both user tasks loop: "{{ users }}" with name/uid from item.username/item.uid, append: true, shell /bin/bash, state: present — developers get groups: devops + pw_developer hashed sha512 with when (developer and dev) or (developer and test); managers get opsmgr + pw_manager with when manager and prod. No selectattr — the when does the filtering.`,
   answer:[{ path:"/home/student/ansible/users.yml", text:`---
 - name: Manage Users and Groups
@@ -2770,8 +2740,8 @@ pw_manager: Imamgr
   answer:[{ path:"shell", text:"ansible all -b -m ansible.builtin.shell -a 'getent shadow alice sandy | cut -d: -f1,2 | cut -c1-12'" }] },
 "Q15.6": { hint:`ansible all, the command module, and an -a argument running getent group devops opsmgr — both groups, in that order.`,
   answer:[{ path:"shell", text:"ansible all -m ansible.builtin.command -a 'getent group devops opsmgr'" }] },
-"Q16": { hint:`cd ~/ansible, then curl -o sal.yml http://10.1.10.121/sal.yml — the file arrives already encrypted; you are rotating its key, not writing it.`,
-  answer:[{ path:"shell", text:"cd ~/ansible\ncurl -o sal.yml http://10.1.10.121/sal.yml" }] },
+"Q16": { hint:`curl -o sal.yml http://10.1.10.121/sal.yml — the file arrives already encrypted; you are rotating its key, not writing it.`,
+  answer:[{ path:"shell", text:"curl -o sal.yml http://10.1.10.121/sal.yml" }] },
 "Q16.1": { hint:`ansible-vault rekey sal.yml, one command. Prompts: old insecure4sure, then secure1234 twice. Never decrypt-then-encrypt — that leaves plaintext on disk.`,
   answer:[{ path:"shell", text:"ansible-vault rekey sal.yml" }] },
 "Q16.2": { hint:`head -1 sal.yml — you are after the $ANSIBLE_VAULT header line, proof the file stayed encrypted.`,
@@ -3084,6 +3054,22 @@ try {
       localStorage.setItem("rhce-done", JSON.stringify(remappedR));
     }
     localStorage.setItem("rhce-q21run1", "1");
+  }
+} catch (e) {}
+// Q5 cd step removal (2026-11-17): the old Q5.3 (cd into the project
+// directory) was removed — the student is already in the project
+// directory — and Q5.4-Q5.10 were renumbered down by one. Remap saved
+// passes once: a pass on the old Q5.3 is dropped, every later pass
+// shifts by -1. (In the current list, new Q5.3 sits at the old index.)
+try {
+  if (!localStorage.getItem("rhce-q5nocd1")) {
+    const i53 = QUESTIONS.findIndex(q => q.id === "Q5.3");
+    const oldDoneN = JSON.parse(localStorage.getItem("rhce-done") || "[]");
+    if (i53 >= 0 && Array.isArray(oldDoneN) && oldDoneN.length) {
+      const remappedN = oldDoneN.filter(i => i < i53).concat(oldDoneN.filter(i => i > i53).map(i => i - 1));
+      localStorage.setItem("rhce-done", JSON.stringify(remappedN));
+    }
+    localStorage.setItem("rhce-q5nocd1", "1");
   }
 } catch (e) {}
 try {
@@ -4207,7 +4193,7 @@ function soExecSegment(st, segText, q){
     return { lines: [], ok: true };
   }
   if (cmd === "exit" || cmd === "logout") {
-    if (soUser(st) === "root") { st.lab.user = "student"; st.cwd = "/home/student"; st.lab.cwd = "/home/student"; }
+    if (soUser(st) === "root") { st.lab.user = "student"; const back = st.lab.studentCwd || "/home/student/ansible"; st.cwd = back; st.lab.cwd = back; }
     return { lines: ["logout"], ok: true };
   }
   if (cmd === "ll") return soLsLines(st, ["-l"].concat(tokens.slice(1)), "ls -l " + tokens.slice(1).join(" "));
@@ -4401,6 +4387,7 @@ function simulateShell(q, text, st, stepPass){
 function soErrLine(t){ return /^(fatal:|ERROR!|\[WARNING\]|.*\| FAILED!|bash: .*command not found|.*No such file or directory|curl: \(|mkdir: |ls: |cat: |grep: )/.test(t); }
 function pushTranscript(idx, typed, q, pass){
   const st = termStateFor(idx);
+  if (/^\s*clear\s*$/.test(typed)) { st.entries = [{ k: "prompt", cwd: soBase(st.cwd), user: soUser(st) }]; return; }
   if (st.entries.length && st.entries[st.entries.length - 1].k === "prompt") st.entries.pop();
   const cwdBefore = soBase(st.cwd);
   const userBefore = soUser(st);
@@ -4688,6 +4675,13 @@ function renderStage(){
 
 function doCheck(){
   const q = QUESTIONS[state.cur];
+  const ta0 = gel("ta0");
+  if (q.cmd && ta0 && /^\s*clear\s*$/.test(ta0.value || "")) {
+    pushTranscript(state.cur, "clear", q, true);
+    renderTranscript(0);
+    ta0.value = "";
+    return;
+  }
   saveTexts();
   state.attempts[state.cur] = (state.attempts[state.cur] || 0) + 1;
   const att = gel("att"); if (att) att.textContent = state.attempts[state.cur];
