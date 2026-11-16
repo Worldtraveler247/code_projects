@@ -398,6 +398,26 @@ const QUESTIONS = [
   <div class="tie"><b>How it ties in:</b> Q3's <code>dnf</code> installs — and even the definition of the "RPM Development Tools" package group — come from the metadata of the repos you just created. No Q2, no Q3.</div>`
 },
 {
+  id:"Q2.1", title:"Run repo_key.sh — Push the GPG Key and Both Repos onto Every Node", sub:"bash repo_key.sh", cmd:true,
+  files:[{ path:"shell", lang:"cmd" }],
+  spec:`<b>2.1. Execute the script.</b><br>• You are <code>student</code>, in <code>/home/student/ansible</code>, and the <code>repo_key.sh</code> you wrote in Q2 is sitting in the project. Run it as a shell script.<br>• Watch the shape of the run: the script's three ad hoc commands execute <b>in order</b>, and each one fans out to <b>all four managed hosts at once</b>. First the GPG key is imported into every node's RPM keyring (<code>rpm_key</code>), then the BaseOS repo file is written on every node, then the AppStream repo file (<code>yum_repository</code> twice).<br>• Pass looks like <code>SUCCESS</code> with <code>changed</code> on every host for all three commands: one key imported per node, two repo files written per node.<br>• Type the command at the prompt and press <b>Enter</b> to run it.`,
+  checks:[[
+    { fn:t => /(^|\s)(bash|sh)\s+(\S+\/)?repo_key\.sh\b/.test(t) || /(^|\s)\.\/repo_key\.sh\b/.test(t), msg:"Execute the script itself: bash repo_key.sh (sh repo_key.sh, or ./repo_key.sh, also run it)" },
+    { fn:t => !/ansible\s+all\s/.test(t), msg:"Run the script — do not retype the three ad hoc lines from Q2" }
+  ]],
+  explain:`<h2>✅ Q2.1 complete — what you just did</h2>
+  <p>You executed <code>repo_key.sh</code>, and the three commands from Q2 stopped being text in a file and became state on the fleet. On <b>every</b> managed node, in order: the DAG GPG key entered the RPM keyring, then <code>/etc/yum.repos.d/BaseOS.repo</code> was written, then <code>/etc/yum.repos.d/AppStream.repo</code>. Twelve successes — three commands times four hosts — and each node's package foundation now exists.</p>
+  <h4>How it affects the Ansible environment</h4>
+  <p>• Before this run, the nodes had no usable package source for this lab; after it, <code>dnf</code> on any node can resolve packages from BaseOS and AppStream, and can verify their signatures because the key arrived <i>first</i> — the order inside the script is what makes <code>gpgcheck=true</code> pass instead of fail.<br>
+  • The run is safe to repeat: every line asks for a state (<code>state=present</code>, a repo definition), so a second run reports the hosts already correct instead of erroring. That is the ad hoc version of idempotence, and it is why the script can be re-run to repair one drifted node without side effects on the rest.</p>
+  <h4>Command anatomy — what every part does, and what breaks without it</h4>
+  <p>• <code>bash repo_key.sh</code> — hand the file to bash as a script. The shell reads it top to bottom and runs each line as if you had typed it, in this session, as student; the <code>-b</code> inside each line is what carries root onto the nodes.<br>
+  • Why not <code>./repo_key.sh</code>? That form asks the kernel to execute the file directly, which needs the execute bit — and a file fresh out of vim is <code>644</code>, not executable, so it would stop at "Permission denied" until a <code>chmod +x</code>. Naming <code>bash</code> first sidesteps the bit entirely: bash only has to <i>read</i> the file. Both forms are correct on the exam once the bit is set; the bash form works as the file stands.<br>
+  • Nothing about the run is new syntax — and that is the point. A script is typed commands, saved. Q2 proved you can write the three lines; this step proves they land.<br>
+  • <b>Why the exam cares:</b> a repo_key.sh that is never run configures nothing. Graders check the <i>nodes</i> — the keyring and the two .repo files on each host — not the script sitting on the controller.</p>
+  <div class="tie"><b>How it ties in:</b> the loop-closing proofs from Q2's study doc belong to this moment: <code>dnf repolist</code> on the nodes shows both repos, and <code>rpm -q gpg-pubkey</code> shows the imported key. Q3 now spends the foundation — its very first task installs from these repos, and its "RPM Development Tools" group exists only in their metadata.</div>`
+},
+{
   id:"Q3", title:"The Right Packages on the Right Hosts — php + MariaDB for dev/test/prod; Development Tools Group and Full Updates for dev Only (when Guards)", sub:"One play, task-level when guards",
   files:[{ path:"/home/student/ansible/packages.yml", lang:"yaml" }],
   spec:`<b>3. Manage Packages and Package Groups Using a Playbook</b><br>• Create a playbook called /home/student/ansible/packages.yml<br>• The playbook must perform the following tasks:<br>• Install the php and mariadb packages on hosts in the dev, test, and prod groups<br>• Install the RPM Development Tools package group on hosts in the dev group<br>• Update all packages to the latest version on hosts in the dev group`,
@@ -2302,6 +2322,8 @@ become = false
 ansible all -m ansible.builtin.yum_repository -a "name='BaseOS' description='BaseOS Repo' baseurl='http://10.1.14.36/RHEL9/BaseOS' gpgcheck=true gpgkey='http://apt.sw.be/RPM-GPG-KEY.dag.txt' enabled=true" -b
 ansible all -m ansible.builtin.yum_repository -a "name='AppStream' description='AppStream Repo' baseurl='http://10.1.14.36/RHEL9/AppStream' gpgcheck=true gpgkey='http://apt.sw.be/RPM-GPG-KEY.dag.txt' enabled=true" -b
 ` }] },
+"Q2.1": { hint:`Run the file you just wrote as a shell script from the project directory: bash repo_key.sh. (./repo_key.sh works too once the file is executable; bash needs no execute bit.) The three ad hoc lines then run in order against every host: key first, then BaseOS, then AppStream.`,
+  answer:[{ path:"shell", text:"bash repo_key.sh" }] },
 "Q3": { hint:`One play (hosts: all, become: true) with three dnf tasks. php + mariadb are guarded by an "or" across the dev, test, and prod groups; the "@" group task and the "*" latest task are both dev-only.`,
   answer:[{ path:"/home/student/ansible/packages.yml", text:`---
 - name: Install packages
@@ -3047,6 +3069,21 @@ try {
       localStorage.setItem("rhce-done", JSON.stringify(remappedP));
     }
     localStorage.setItem("rhce-q1ping1", "1");
+  }
+} catch (e) {}
+// Q2.1 run step (2026-11-17): Q2.1 (execute repo_key.sh) was inserted
+// after Q2. Remap saved passes once: passes up to and including Q2 keep
+// their index, every pass after Q2 shifts by +1.
+try {
+  if (!localStorage.getItem("rhce-q21run1")) {
+    const i2 = QUESTIONS.findIndex(q => q.id === "Q2");
+    const oldDoneR = JSON.parse(localStorage.getItem("rhce-done") || "[]");
+    if (i2 >= 0 && Array.isArray(oldDoneR) && oldDoneR.length) {
+      const bR = i2 + 1;
+      const remappedR = oldDoneR.filter(i => i < bR).concat(oldDoneR.filter(i => i >= bR).map(i => i + 1));
+      localStorage.setItem("rhce-done", JSON.stringify(remappedR));
+    }
+    localStorage.setItem("rhce-q21run1", "1");
   }
 } catch (e) {}
 try {
@@ -4225,6 +4262,22 @@ function soExecSegment(st, segText, q){
     if (!known) return { lines: ["ERROR! the playbook: " + (typedTok || play) + " could not be found"], ok: false };
     const okAll = !!(q && q.id === "Q11.3");
     return { lines: soRunPlaybook(play, { okAll: okAll }), ok: true };
+  }
+  if (cmd === "bash" || cmd === "sh" || /\.sh$/.test(cmd)) {
+    // Running a shell script: repo_key.sh replays its three ad hoc lines
+    // in order, each fanning out to all hosts (Q2.1).
+    const target = (cmd === "bash" || cmd === "sh") ? (tokens[1] || "") : cmd;
+    if (/(^|\/)repo_key\.sh$/.test(target) || /^\.\/repo_key\.sh$/.test(target)) {
+      const scriptLines = [
+        ["all", "-m", "ansible.builtin.rpm_key", "-a", "key='http://apt.sw.be/RPM-GPG-KEY.dag.txt' state=present", "-b"],
+        ["all", "-m", "ansible.builtin.yum_repository", "-a", "name='BaseOS' description='BaseOS Repo' baseurl='http://10.1.14.36/RHEL9/BaseOS' gpgcheck=true gpgkey='http://apt.sw.be/RPM-GPG-KEY.dag.txt' enabled=true", "-b"],
+        ["all", "-m", "ansible.builtin.yum_repository", "-a", "name='AppStream' description='AppStream Repo' baseurl='http://10.1.14.36/RHEL9/AppStream' gpgcheck=true gpgkey='http://apt.sw.be/RPM-GPG-KEY.dag.txt' enabled=true", "-b"]
+      ];
+      const out = [];
+      scriptLines.forEach(tk => { const r = soAdhoc(tk); r.lines.forEach(l => out.push(l)); });
+      return { lines: out, ok: true };
+    }
+    return { lines: [], ok: true };
   }
   if (cmd === "ansible") return soAdhoc(tokens.slice(1));
   if (cmd === "dnf" || cmd === "yum") {
