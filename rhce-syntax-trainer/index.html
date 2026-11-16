@@ -3410,9 +3410,18 @@ const FS_TREE = {
   "/usr/share/doc/rhel-system-roles/timesync": [["example-multiple-ntp-servers-playbook.yml",0],["example-single-pool-playbook.yml",0],["README.html",0],["README.md",0]],
   "/home": [["student",1]],
   "/home/student": [["ansible",1],[".vimrc",0]],
-  "/home/student/ansible": [["ansible.cfg",0],["inventory",0],["site.yml",0],["timesync.yml",0],["webcontent.yml",0],["hwreport.yml",0],["users.yml",0],["user_list.yml",0],["locker.yml",0],["secret.txt",0],["hosts.yml",0],["hosts.j2",0],["issues.yml",0],["lvm.yml",0],["packages.yml",0],["roles.yml",0],["role.yml",0],["repo_key.sh",0],["ansible-navigator.yml",0],["collections",1],["roles",1],["templates",1]],
+  "/home/student/ansible": [["ansible.cfg",0],["inventory",0],["timesync.yml",0],["webcontent.yml",0],["hwreport.yml",0],["users.yml",0],["user_list.yml",0],["locker.yml",0],["sal.yml",0],["secret.txt",0],["hosts.yml",0],["hosts.j2",0],["issues.yml",0],["lvm.yml",0],["packages.yml",0],["roles.yml",0],["role.yml",0],["repo_key.sh",0],["ansible-navigator.yml",0],["collections",1],["roles",1],["templates",1]],
   "/home/student/ansible/collections": [["requirements.yml",0],["ansible_collections",1]],
-  "/home/student/ansible/roles": [["requirements.yml",0],["apache",1]],
+  "/home/student/ansible/collections/ansible_collections": [["ansible",1],["community",1]],
+  "/home/student/ansible/collections/ansible_collections/ansible": [["netcommon",1],["posix",1]],
+  "/home/student/ansible/collections/ansible_collections/ansible/netcommon": [["plugins",1]],
+  "/home/student/ansible/collections/ansible_collections/ansible/posix": [["plugins",1]],
+  "/home/student/ansible/collections/ansible_collections/community": [["general",1]],
+  "/home/student/ansible/collections/ansible_collections/community/general": [["plugins",1]],
+  "/home/student/ansible/roles": [["requirements.yml",0],["apache",1],["balancer",1],["phpinfo",1],["rhel-system-roles.timesync",1]],
+  "/home/student/ansible/roles/balancer": [["defaults",1],["handlers",1],["meta",1],["tasks",1],["templates",1],["vars",1]],
+  "/home/student/ansible/roles/phpinfo": [["defaults",1],["handlers",1],["meta",1],["tasks",1],["templates",1],["vars",1]],
+  "/home/student/ansible/roles/rhel-system-roles.timesync": [["defaults",1],["handlers",1],["meta",1],["tasks",1],["templates",1],["vars",1]],
   "/home/student/ansible/roles/apache": [["tasks",1],["templates",1],["handlers",1]],
   "/home/student/ansible/roles/apache/tasks": [["main.yml",0]],
   "/home/student/ansible/roles/apache/templates": [["index.html.j2",0]],
@@ -3586,11 +3595,13 @@ function soMakeFile(st, abs, content){ st.made[abs] = { dir: false, content: con
 // defines, keyed by its absolute path; a few downloaded/vault files are
 // curriculum-known too.
 const SO_LOCAL_EXTRA = {
+  "/home/student/ansible/secret.txt": "redhat123\n",
   "/usr/share/doc/rhel-system-roles/timesync/example-single-pool-playbook.yml": "- hosts: \"{{ targets }}\"\n  vars:\n    timesync_ntp_servers:\n      - hostname: 2.pool.ntp.org\n        pool: yes\n        iburst: yes\n  roles:\n    - rhel-system-roles.timesync\n",
   "/home/student/ansible/user_list.yml": "---\nusers:\n  - username: alice\n    uid: 1201\n    job: developer\n  - username: vincent\n    uid: 1202\n    job: developer\n  - username: sandy\n    uid: 2201\n    job: manager\n  - username: patrick\n    uid: 2202\n    job: manager\n"
 };
 const SO_VAULT_BLOB = "$ANSIBLE_VAULT;1.1;AES256\n65386539623962333631383539636331373262326661633538626364646165336463623265396337\n3961303962633864613866636234633963623333640a393736653137383864613935313363386461\n37623932326338313065386537643035376361383032646662636464386535653137626630663162\n3832393135316636640a343939373239663733373366653161313231396263316132663638376564\n6139";
 function soLocalContent(st, abs){
+  if (abs === "/home/student/ansible/templates/hosts.j2") abs = "/home/student/ansible/hosts.j2";
   if (st.made[abs] && typeof st.made[abs].content === "string") return st.made[abs].content;
   if (abs === "/home/student/ansible/locker.yml" || abs === "/home/student/ansible/sal.yml") return SO_VAULT_BLOB;
   if (SO_LOCAL_EXTRA[abs] !== undefined) return SO_LOCAL_EXTRA[abs];
@@ -4011,7 +4022,7 @@ function soLsLines(st, tokens, typed){
     const kids = soFsKids(st, abs);
     let names = Object.keys(kids).sort();
     if (abs === "/home/student/ansible/roles/apache" && st.lab.apacheInit) names = ["README.md", "defaults", "files", "handlers", "meta", "tasks", "templates", "tests", "vars"];
-    if (abs === "/home/student/ansible/roles" && st.lab.rolesDone) names = ["apache", "balancer", "phpinfo", "requirements.yml"].filter(n => kids[n] || n !== "apache" || st.lab.apacheInit);
+    if (abs === "/home/student/ansible/roles" && st.lab.rolesDone) names = ["apache", "balancer", "phpinfo", "requirements.yml", "rhel-system-roles.timesync"].filter(n => kids[n] || n !== "apache" || st.lab.apacheInit);
     if (longFmt) {
       const lines = ["total " + Math.max(4, names.length * 4)];
       names.forEach(n => lines.push(metaFor(abs + "/" + n, n)));
@@ -4218,7 +4229,21 @@ function soExecSegment(st, segText, q){
     });
     return { lines: out, ok: ok };
   }
-  if (cmd === "vim" || cmd === "vi" || cmd === "nano") return { lines: [], ok: true };
+  if (cmd === "vim" || cmd === "vi" || cmd === "nano") {
+    // vim opens the file: show its buffer the way vim presents it —
+    // the file's lines, tilde lines for the rest of the screen, and the
+    // status line with the filename and size.
+    const fileTok = tokens.slice(1).filter(t => t.charAt(0) !== "-").pop();
+    if (!fileTok) return { lines: ["~", "~", "~", "VIM - Vi IMproved"], ok: true };
+    const abs = soResolve(st, fileTok);
+    const content = soLocalContent(st, abs);
+    const exists = !!soFsExists(st, abs) || content !== null;
+    const body = content !== null ? content.replace(/\n$/, "").split("\n") : [];
+    const frame = body.slice(0, 14);
+    while (frame.length < 14) frame.push("~");
+    frame.push("\"" + fileTok + "\"" + (exists ? " " + body.length + "L, " + (content ? content.length : 0) + "B" : " [New File]"));
+    return { lines: frame, ok: true };
+  }
   if (cmd === "ls") return soLsLines(st, tokens.slice(1), seg);
   if (cmd === "curl") return soCurl(st, tokens, seg);
   if (cmd === "ansible-galaxy") return soGalaxy(st, tokens);
