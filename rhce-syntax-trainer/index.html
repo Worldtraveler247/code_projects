@@ -3630,7 +3630,7 @@ function termStateFor(idx){
     // passed, the root-shell steps reopen inside the root shell, and Q5
     // steps resume where the section last stood.
     if (q && (q.id === "Q5.1" || q.id === "Q5.2") && lab.user !== "root" && state.done.has(QUESTIONS.findIndex(x => x.id === "Q5"))) { lab.user = "root"; lab.cwd = "/root"; }
-    const seedCwd = (q && sectionOf(q.id) === "Q5" && lab.cwd) ? lab.cwd : "/home/student/ansible";
+    const seedCwd = (q && lab.cwd && (sectionOf(q.id) === "Q5" || q.id === "Q7.1")) ? lab.cwd : "/home/student/ansible";
     termStore[idx] = { cwd: seedCwd, entries: [], made: lab.made, lab: lab };
   }
   return termStore[idx];
@@ -4222,7 +4222,10 @@ function soCurl(st, tokens, segText){
   const lines = [];
   if (outfile !== null || /-O\b/.test(segText)) {
     const name = outfile !== null ? outfile : pathPart.split("/").pop();
-    soMakeFile(st, soResolve(st, name), body || "");
+    const resolvedOut = soResolve(st, name);
+    const parentOut = resolvedOut.slice(0, resolvedOut.lastIndexOf("/")) || "/";
+    if (!soFsExists(st, parentOut)) return { lines: ["curl: (23) Failure writing output to destination"], ok: false };
+    soMakeFile(st, resolvedOut, body || "");
     if (!silent) {
       const size = (body || "").length + 120;
       lines.push("  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current");
@@ -4234,11 +4237,20 @@ function soCurl(st, tokens, segText){
   if (body === null) return { lines: ["curl: (22) The requested URL returned error: 404"], ok: false };
   return { lines: body === "" ? [] : body.split("\n"), ok: true };
 }
+// Directory discipline: installs only take effect from the one directory
+// where this project's configuration makes Ansible find the result. From
+// anywhere else the sim refuses, names the directory the user is actually
+// in, and says where the command belongs - the way the real lab strands
+// files installed from the wrong place, except it tells you.
+function soWrongDir(st, required, reason){
+  return { lines: ["ERROR! - incorrect directory: you are in " + st.cwd + ", but this must run from " + required + ". " + reason + " cd " + required + " and run it again."], ok: false };
+}
 function soGalaxy(st, tokens){
   const sub = tokens[1];
   if (sub === "collection") {
     const action = tokens[2];
     if (action === "install") {
+      if (st.cwd !== "/home/student/ansible") return soWrongDir(st, "/home/student/ansible", "That is where this project's ansible.cfg points Ansible - collections installed from anywhere else land where Ansible never looks, and the questions that depend on them will not work.");
       const lines = ["Starting galaxy collection install process", "Process install dependency map", "Starting collection install process"];
       const cols = [["community.general", "8.5.0"], ["ansible.posix", "1.5.4"], ["ansible.netcommon", "7.1.0"]];
       cols.forEach(c => {
@@ -4257,6 +4269,7 @@ function soGalaxy(st, tokens){
   if (sub === "role") {
     const action = tokens[2];
     if (action === "install") {
+      if (st.cwd !== "/home/student/ansible") return soWrongDir(st, "/home/student/ansible", "That is where this project's ansible.cfg points Ansible - roles installed from anywhere else land where Ansible never looks, and the questions that depend on them will not work.");
       const lines = ["Starting galaxy role install process"];
       [["haproxy", "balancer"], ["php", "phpinfo"]].forEach(r => {
         lines.push("- downloading role '" + r[0] + "', owned by geerlingguy");
@@ -4274,6 +4287,7 @@ function soGalaxy(st, tokens){
       return { lines: lines, ok: true };
     }
     if (action === "init") {
+      if (st.cwd !== "/home/student/ansible/roles") return soWrongDir(st, "/home/student/ansible/roles", "ansible-galaxy role init scaffolds the new role in the directory you are standing in, and this project's roles belong in its roles/ directory (Q7's first step cds you there).");
       const name = tokens[3];
       const target = soResolve(st, name);
       if (st.lab.apacheInit && name === "apache") return { lines: ["[WARNING]: - apache is already in " + st.cwd, "- apache already exists, skipping"], ok: false };
@@ -4292,9 +4306,15 @@ function soVault(st, tokens, segText){
   const hasPwFile = segText.indexOf("--vault-password-file") >= 0;
   const lines = [];
   if (action === "create") {
+    if (st.cwd !== "/home/student/ansible") return soWrongDir(st, "/home/student/ansible", "The vault file has to live in the project directory, beside the playbooks that read it.");
     if (!hasPwFile) { lines.push("New Vault password: "); lines.push("Confirm New Vault password: "); }
     if (fileTok) soMakeFile(st, soResolve(st, fileTok), SO_VAULT_BLOB);
     return { lines: lines, ok: true };
+  }
+  if (fileTok && !soFsExists(st, soResolve(st, fileTok))) {
+    const miss = ["ERROR! The vault file " + fileTok + " could not be found"];
+    if (st.cwd !== "/home/student/ansible") miss.push("You are in the incorrect directory: " + st.cwd + ". The vault files live in /home/student/ansible - cd /home/student/ansible and run it from there.");
+    return { lines: miss, ok: false };
   }
   if (action === "view") {
     if (!hasPwFile) lines.push("Vault password: ");
@@ -4497,12 +4517,18 @@ function soExecSegment(st, segText, q){
     if (norm === null) return { lines: ["ERROR! Unable to determine the name of the playbook — pass the playbook file as an argument"], ok: false };
     const play = norm.split(/\s+/)[1];
     const isSyntax = norm.indexOf("--syntax-check") >= 0;
-    const known = !!soPlaybook(play) || !!soFsExists(st, soResolve(st, play));
+    // Playbooks resolve from where you stand, like the real thing: the
+    // file has to exist relative to the current directory (or by the
+    // absolute path typed). From the wrong directory the run cannot
+    // find it, and the transcript says so and names the right one.
+    const known = !!soFsExists(st, soResolve(st, typedTok || play));
+    const notFound = ["ERROR! the playbook: " + (typedTok || play) + " could not be found"];
+    if (st.cwd !== "/home/student/ansible") notFound.push("You are in the incorrect directory: " + st.cwd + ". The playbooks live in /home/student/ansible - cd /home/student/ansible and run it from there.");
     if (isSyntax) {
-      if (!known) return { lines: ["ERROR! the playbook: " + (typedTok || play) + " could not be found"], ok: false };
+      if (!known) return { lines: notFound, ok: false };
       return { lines: ["playbook: " + (typedTok || play)], ok: true };
     }
-    if (!known) return { lines: ["ERROR! the playbook: " + (typedTok || play) + " could not be found"], ok: false };
+    if (!known) return { lines: notFound, ok: false };
     const okAll = !!(q && q.id === "Q11.3");
     return { lines: soRunPlaybook(play, { okAll: okAll }), ok: true };
   }
@@ -4511,6 +4537,7 @@ function soExecSegment(st, segText, q){
     // in order, each fanning out to all hosts (Q2.1).
     const target = (cmd === "bash" || cmd === "sh") ? (tokens[1] || "") : cmd;
     if (/(^|\/)repo_key\.sh$/.test(target) || /^\.\/repo_key\.sh$/.test(target)) {
+      if (!soFsExists(st, soResolve(st, target))) return { lines: ["bash: " + target + ": No such file or directory", "You are in the incorrect directory: " + st.cwd + ". repo_key.sh lives in /home/student/ansible - cd /home/student/ansible and run it from there."], ok: false };
       const scriptLines = [
         ["all", "-m", "ansible.builtin.rpm_key", "-a", "key='http://apt.sw.be/RPM-GPG-KEY.dag.txt' state=present", "-b"],
         ["all", "-m", "ansible.builtin.yum_repository", "-a", "name='BaseOS' description='BaseOS Repo' baseurl='http://10.1.14.36/RHEL9/BaseOS' gpgcheck=true gpgkey='http://apt.sw.be/RPM-GPG-KEY.dag.txt' enabled=true", "-b"],
@@ -4520,6 +4547,7 @@ function soExecSegment(st, segText, q){
       scriptLines.forEach(tk => { const r = soAdhoc(tk); r.lines.forEach(l => out.push(l)); });
       return { lines: out, ok: true };
     }
+    if (target && !soFsExists(st, soResolve(st, target))) return { lines: ["bash: " + target + ": No such file or directory"], ok: false };
     return { lines: [], ok: true };
   }
   if (cmd === "ansible") return soAdhoc(tokens.slice(1));
@@ -4592,6 +4620,7 @@ function soExecSegment(st, segText, q){
       if (!srcEnt) { out.push("cp: cannot stat '" + srcTok + "': No such file or directory"); okCp = false; return; }
       if (srcEnt.dir && !rec) { out.push("cp: -r not specified; omitting directory '" + srcTok + "'"); okCp = false; return; }
       const target = (dstEnt && dstEnt.dir) ? dstAbs0 + "/" + soBase(srcAbs) : dstAbs0;
+      if (srcAbs.indexOf("/usr/share/ansible/roles/") === 0 && target.indexOf("/home/student/ansible/roles/") !== 0) { out.push(soWrongDir(st, "/home/student/ansible", "The copied role has to land in the project's roles/ directory - that is the only place this project's Ansible looks for standalone roles.").lines[0]); okCp = false; return; }
       if (srcEnt.dir) {
         soMakeDir(st, target);
         const kids = soFsKids(st, srcAbs);
