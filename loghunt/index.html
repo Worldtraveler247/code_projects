@@ -7,7 +7,7 @@
     <meta name="referrer" content="strict-origin-when-cross-origin">
     <meta name="description" content="LOGHUNT: Incident at Bastion-7 — investigate an intrusion with find, grep, awk, sed and sort in a real Linux shell that runs entirely in your browser.">
     <!-- 'wasm-unsafe-eval' and worker-src blob: are for the v86 emulator; see DECISIONS.md. -->
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'self' 'wasm-unsafe-eval'; worker-src blob:; base-uri 'none'; object-src 'none'; form-action 'none';">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'self' 'wasm-unsafe-eval' https://static.cloudflareinsights.com; connect-src 'self' https://cloudflareinsights.com; worker-src blob:; base-uri 'none'; object-src 'none'; form-action 'none';">
     <title>LOGHUNT: Incident at Bastion-7 · Eddie's Portfolio</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -205,5 +205,7 @@
             </form>
         </div>
     </main>
+<!-- cf-web-analytics (managed by tools/inject_analytics.py) -->
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "f728a20b49cc4a0fbe02cde72f03301c"}'></script>
 </body>
 </html>

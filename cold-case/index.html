@@ -6,7 +6,7 @@
     <meta name="color-scheme" content="dark">
     <meta name="referrer" content="strict-origin-when-cross-origin">
     <meta name="description" content="Cold Case Server: a lateral-thinking Linux triage game. Characterize undocumented servers with a command budget: purpose, load, errors, attack surface. Read-only.">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'self'; img-src 'self' data:; base-uri 'none'; object-src 'none'; form-action 'none';">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'self' https://static.cloudflareinsights.com; connect-src 'self' https://cloudflareinsights.com; img-src 'self' data:; base-uri 'none'; object-src 'none'; form-action 'none';">
     <title>Cold Case Server · Eddie's Portfolio</title>
     <link rel="icon" href="../favicon.svg" type="image/svg+xml">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -110,5 +110,7 @@
         </div>
     </section>
 </main>
+<!-- cf-web-analytics (managed by tools/inject_analytics.py) -->
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "f728a20b49cc4a0fbe02cde72f03301c"}'></script>
 </body>
 </html>
