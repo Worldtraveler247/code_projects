@@ -1233,6 +1233,12 @@ function filter(sess, argv, input, priv) {
   return { err: `-bash: ${name}: command not found`, code: 127 };
 }
 
+// Reused by kube-harbor: run a stdin text filter (grep/sort/uniq/head/tail/wc/cut/tr/awk/column).
+export function stdinFilter(argv, input) {
+  const stub = { world: { vfs: new Map(), home: '/', user: 'user', byPid: new Map() }, cwd: '/', c: {}, history: [] };
+  return filter(stub, argv, input, false);
+}
+
 function checkDestructive(text) {
   const t = text.replace(/^sudo\s+(-\S+\s+)*/, '');
   for (const [re, why] of DESTRUCTIVE) if (re.test(t)) return why;

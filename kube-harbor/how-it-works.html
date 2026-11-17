@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'none'; img-src 'self' data:; base-uri 'none'; object-src 'none';">
+  <title>How It's Built — Kube Harbor | Eddie's App Hub</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Inter:wght@400;500;600&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../how-it-works.css">
+</head>
+<body>
+<a href="../index.html" style="position:fixed;top:12px;left:12px;z-index:9999;background:rgba(10,10,20,0.85);backdrop-filter:blur(6px);color:#4af7ff;border:1px solid #4af7ff;border-radius:20px;padding:6px 14px;font-family:sans-serif;font-size:13px;text-decoration:none;font-weight:600;">← App Hub</a>
+
+<div class="hiw-page">
+
+  <header class="hiw-header">
+    <div class="hiw-icon">⎈</div>
+    <h1>Kube Harbor — How It's Built</h1>
+    <p class="hiw-tagline">A Kubernetes cluster simulated in the browser: real control loops, real kubectl output, 19 missions from first <code>get pods</code> to a broken control plane.</p>
+  </header>
+
+  <section class="hiw-section">
+    <h2>Overview</h2>
+    <p>
+      Kube Harbor teaches Kubernetes by making you operate one. A three-node cluster (one control plane,
+      two workers) runs a small app, "Harbor Watch", with web, api, worker and postgres tiers. Each mission
+      explains a concept, plants a realistic fault, and checks the <strong>cluster's state</strong>, not your
+      keystrokes, to decide whether you fixed it. Any correct fix counts, including one I didn't think of.
+    </p>
+    <p>
+      The missions follow a four-session workshop arc. Session 2 meets the cluster: RBAC, self-healing,
+      ImagePullBackOff, CrashLoopBackOff. Session 3 deploys the whole app: Secrets, Service selectors, DNS,
+      NodePort, probes, node-local storage. Session 4 operates it: OOMKilled, Pending, rollouts, rollback,
+      Ingress, LoadBalancer. An Expert tier covers Secret exposure, a drain blocked by a PodDisruptionBudget,
+      and a crashed kube-scheduler.
+    </p>
+  </section>
+
+  <section class="hiw-section">
+    <h2>Tech Stack</h2>
+    <div class="hiw-badges">
+      <span class="hiw-badge">JavaScript (ES modules)</span>
+      <span class="hiw-badge">HTML</span>
+      <span class="hiw-badge">CSS</span>
+      <span class="hiw-badge">node:test</span>
+    </div>
+    <ul class="hiw-caption-list">
+      <li><strong>No framework and no dependencies.</strong> The YAML parser, kubectl, and the controllers are all hand-written, so the page runs under a strict <code>script-src 'self'</code> CSP.</li>
+      <li><strong>Shared code with Cold Case Server:</strong> the pipe filters (<code>grep</code>, <code>sort</code>, <code>awk</code> …) are imported from <code>../cold-case/shell.js</code>.</li>
+      <li><strong>51 tests</strong> replay every mission's solution against a fresh cluster.</li>
+    </ul>
+  </section>
+
+  <section class="hiw-section">
+    <h2>How Each Part Works</h2>
+
+    <div class="hiw-file-block">
+      <h3><code>cluster.js</code>: the reconcile loop</h3>
+      <p>
+        Kubernetes is declarative: you change the desired state and controllers converge reality toward it.
+        The simulator runs the same loop. Every <code>kubectl</code> command lets 10 simulated seconds pass,
+        and each tick runs the controllers in order:
+      </p>
+      <pre class="hiw-code">tick() {
+  this.deploymentController();   // template hash → ReplicaSet; rolling update with maxSurge / maxUnavailable
+  this.replicaSetController();   // create or delete Pods until count == spec.replicas
+  this.scheduler();              // taints, nodeSelector, requests vs allocatable, PV node affinity
+  this.kubelet();                // image pull, config refs, start, crash back-off, OOM, probes
+  this.endpointsController();    // Ready Pods matching each Service selector
+}</pre>
+      <p>
+        Behavior emerges from the loop instead of being scripted. A bad image tag produces
+        <code>ErrImagePull</code> → <code>ImagePullBackOff</code>. A missing environment variable produces a crash
+        with exponential back-off. A memory limit below the app's usage produces <code>OOMKilled</code> with exit
+        code 137. A crashing rollout stalls while the old ReplicaSet keeps serving, because maxUnavailable
+        protects it. Relabeling a Pod makes its ReplicaSet <em>release</em> it and create a replacement, just as the
+        real controller does.
+      </p>
+    </div>
+
+    <div class="hiw-file-block">
+      <h3><code>kubectl.js</code>: output a real operator recognizes</h3>
+      <p>
+        Column layouts, error strings and events copy real kubectl v1.33. That includes RBAC
+        <code>Forbidden</code> errors naming the ServiceAccount and scope, <code>FailedScheduling</code>
+        censuses (<em>"0/3 nodes are available: 2 Insufficient cpu, 1 node(s) had untolerated taint…"</em>),
+        event counters like <code>(x6 over 50s)</code>, and RESTARTS like <code>4 (40s ago)</code>. Supported
+        verbs: get / describe / logs / exec / apply / create / delete / edit / patch (strategic merge by
+        container name) / label / set image|env|resources / scale / rollout / expose / auth / top / cordon /
+        drain. Output formats are <code>-o wide|yaml|json|name|jsonpath</code>, plus <code>-w</code>, <code>-l</code>,
+        <code>$(…)</code> and pipes.
+      </p>
+      <pre class="hiw-code">$ kubectl get secret harbor-db -o jsonpath='{.data.DB_PASSWORD}' | base64 -d
+tide-7Kq2-harbor          ← the Expert lesson: base64 is an encoding, not encryption</pre>
+    </div>
+
+    <div class="hiw-file-block">
+      <h3><code>missions.js</code>: goals are predicates on state</h3>
+      <pre class="hiw-code">goal: (c) => { const s = c.get('Service', NS, 'api'); const d = dep(c, 'api');
+  return eps(c, 'api') &gt;= 2 &amp;&amp;
+    Object.entries(s.spec.selector).every(([k, v]) =&gt; d.spec.template.metadata.labels[k] === v); }</pre>
+      <p>
+        The second clause makes the fix <strong>durable</strong>. Hand-labeling the running Pods fills the
+        endpoints for a moment, but it doesn't count, because the next rollout would break it again.
+      </p>
+    </div>
+
+    <div class="hiw-file-block">
+      <h3><code>yaml.js</code>: a YAML subset for <code>kubectl edit</code></h3>
+      <p>
+        <code>kubectl edit</code> and <code>nano FILE</code> open an in-page editor. Saving parses the YAML
+        (block maps, lists, list-of-maps, quoted scalars, <code>|</code> blocks) and applies it. A test
+        round-trips every manifest the game ships: <code>load(dump(x))</code> must equal <code>x</code>.
+      </p>
+    </div>
+
+    <div class="hiw-file-block">
+      <h3>Honest simulation limits</h3>
+      <p>
+        This is a model of Kubernetes, not Kubernetes. There is one container per Pod, no
+        StatefulSets/DaemonSets/Jobs, no HPA and no NetworkPolicy, and HTTP is simulated per image. Time
+        advances per command instead of continuously. Every mission ends with a command to run on a real
+        cluster (<code>kind</code> in Podman), because the simulator is the map, not the territory.
+      </p>
+    </div>
+  </section>
+
+  <section class="hiw-section">
+    <h2>File Map</h2>
+    <pre class="hiw-file-map">kube-harbor/
+├── index.html          ← three-pane layout: missions · mission + terminal · cluster map
+├── style.css           ← App Hub tokens, responsive down to phone width
+├── game.js             ← DOM: terminal, editor dialog, live cluster map, stars in localStorage
+├── kubectl.js          ← kubectl + shell: parsing, printers, RBAC checks, curl, exec
+├── cluster.js          ← object store + controllers + scheduler + kubelet state machine
+├── missions.js         ← 19 missions: concept, fault, hints, solution, goal predicate, debrief
+├── yaml.js             ← YAML subset load/dump
+├── how-it-works.html   ← this page
+└── tests/
+    └── missions.test.mjs   ← node --test 'kube-harbor/tests/*.test.mjs'</pre>
+  </section>
+
+  <section class="hiw-section">
+    <h2>Replicate It Yourself</h2>
+    <ol class="hiw-steps">
+      <li><span>Store objects as plain JSON keyed by <code>kind/namespace/name</code>, with the same shape the real API uses. Then <code>-o yaml</code> is just a serializer.</span></li>
+      <li><span>Write controllers as pure functions over the store, and run them in a fixed order on every tick. Make the kubelet a per-Pod state machine (creating → running → back-off).</span></li>
+      <li><span>Express each mission's win condition as a predicate on cluster state, and make a test replay the reference solution against it.</span></li>
+      <li><span>Validate realism against a real cluster: <code>kind create cluster</code> in Podman, break the same things, and diff the output. Reference: <a href="https://kubernetes.io/docs/concepts/architecture/controller/" target="_blank" rel="noopener noreferrer">Kubernetes controllers</a>.</span></li>
+    </ol>
+  </section>
+
+</div>
+</body>
+</html>

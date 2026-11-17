@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="dark">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <meta name="description" content="Kube Harbor: learn Kubernetes in a simulated cluster. 19 hands-on missions from first kubectl to drains, rollbacks and a broken control plane.">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'self'; img-src 'self' data:; base-uri 'none'; object-src 'none'; form-action 'none';">
+    <title>Kube Harbor · Eddie's Portfolio</title>
+    <link rel="icon" href="../favicon.svg" type="image/svg+xml">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Inter:wght@400;500;600&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css?v=1">
+    <script type="module" src="game.js?v=1"></script>
+</head>
+<body>
+<a class="skip" href="#term">Skip to the terminal</a>
+<nav class="top-nav" aria-label="App">
+    <div class="nav-left">
+        <a class="back-btn" href="../index.html">← App Hub</a>
+        <span class="app-title">KUBE HARBOR</span>
+    </div>
+    <div class="nav-right">
+        <span class="progress" id="progress" aria-live="polite"></span>
+        <a class="hiw-btn" href="how-it-works.html">📖 How It's Built</a>
+    </div>
+</nav>
+
+<div class="app">
+    <aside class="missions pane" aria-label="Missions">
+        <div class="missions-head">
+            <h2>Missions</h2>
+            <button type="button" id="btn-toggle-list" class="small only-mobile" aria-expanded="false" aria-controls="mission-list">Show list</button>
+        </div>
+        <nav id="mission-list"></nav>
+    </aside>
+
+    <main class="stage" id="main">
+        <section class="pane mission-card" aria-labelledby="m-title">
+            <div class="kicker" id="m-kicker"></div>
+            <h1 id="m-title"></h1>
+            <details class="concept" id="concept" open>
+                <summary>Concept</summary>
+                <ul id="m-concept"></ul>
+            </details>
+            <p class="brief" id="m-brief"></p>
+            <p class="objective"><b>Objective:</b> <span id="m-objective"></span></p>
+            <div class="mission-actions">
+                <button type="button" id="btn-hint">💡 Hint</button>
+                <button type="button" id="btn-solution">Show solution</button>
+                <button type="button" id="btn-reset">↺ Reset mission</button>
+                <span class="stat" id="m-stat"></span>
+            </div>
+            <ol class="hint-list" id="hint-list"></ol>
+            <div class="solution" id="solution" hidden></div>
+        </section>
+
+        <section class="pane term-pane" aria-label="Terminal">
+            <div class="term" id="term">
+                <div class="term-out" id="term-out" role="log" aria-label="Terminal output"></div>
+                <div class="term-input">
+                    <label for="cmd" class="prompt">student@laptop:~/harbor$</label>
+                    <input id="cmd" type="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="send">
+                </div>
+            </div>
+        </section>
+
+        <section class="pane debrief" id="debrief" hidden aria-live="polite">
+            <h2 id="d-title">Mission complete</h2>
+            <div class="stars" id="d-stars"></div>
+            <p id="d-text"></p>
+            <p class="lab"><b>Try it on a real cluster</b> (kind in Podman):<code id="d-lab"></code></p>
+            <div class="mission-actions"><button type="button" class="primary" id="btn-next">Next mission →</button><button type="button" id="btn-stay">Keep exploring</button></div>
+        </section>
+    </main>
+
+    <aside class="pane map" aria-label="Cluster map">
+        <h2>Cluster <span class="ns">ns/harbor</span></h2>
+        <div id="map"></div>
+        <ul class="legend">
+            <li><span class="dot ok"></span>Ready</li><li><span class="dot warn"></span>Starting / not ready</li><li><span class="dot bad"></span>Failing</li><li><span class="dot pend"></span>Pending</li>
+        </ul>
+    </aside>
+</div>
+
+<dialog id="editor" aria-labelledby="ed-title">
+    <form method="dialog" class="editor-form">
+        <div class="editor-head"><h2 id="ed-title"></h2><span class="hint">Ctrl/⌘+S saves · Esc cancels</span></div>
+        <textarea id="ed-text" spellcheck="false" autocapitalize="off" aria-label="File contents"></textarea>
+        <div class="mission-actions"><button type="button" id="ed-cancel">Cancel</button><button type="button" class="primary" id="ed-save">Save &amp; exit</button></div>
+    </form>
+</dialog>
+</body>
+</html>
