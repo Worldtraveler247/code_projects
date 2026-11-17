@@ -7,6 +7,11 @@ a cookieless, consent-banner-free analytics beacon to every hand-authored
 beacon by a stable HTML-comment marker before inserting, so it survives new
 project cards being added later.
 
+It also reconciles each page's Content-Security-Policy <meta> so the beacon is
+actually allowed to load and report (script-src + connect-src). A beacon behind
+a CSP that blocks it records nothing and fails silently, so the CSP check runs
+on every page, including ones whose beacon is already present.
+
 Scope decisions (see module-level constants below):
   - We track the root hub page plus each hand-authored project's index.html.
   - We EXCLUDE machine-generated output: the Next.js export under
@@ -58,9 +63,70 @@ EXCLUDED_DIR_SEGMENTS: frozenset[str] = frozenset(
     {".git", "node_modules", ".venv", "venv", "_next", "mathpath-to-ai"}
 )
 
+# Root-relative pages to track in addition to every index.html.
+EXTRA_TARGETS: tuple[str, ...] = ("playground.html",)
+
 # Match the closing body tag, case-insensitively, capturing the leading
 # whitespace on its line so we can mirror the file's indentation style.
 _BODY_CLOSE_RE = re.compile(r"(?im)^([ \t]*)</body>")
+
+# Hosts the beacon needs through a page's Content-Security-Policy: the script is
+# served from static.*, and it reports page views to cloudflareinsights.com.
+# Injecting the <script> without these is silently useless on any page with a
+# CSP — the browser blocks it and records nothing (bug fixed 2026-11-18, 5b028ba).
+CSP_ALLOW: tuple[tuple[str, str], ...] = (
+    ("script-src", "https://static.cloudflareinsights.com"),
+    ("connect-src", "https://cloudflareinsights.com"),
+)
+
+# The CSP <meta> tag's content attribute (pages here set CSP via meta, not headers).
+_CSP_META_RE = re.compile(
+    r'(http-equiv=["\']Content-Security-Policy["\']\s+content=")([^"]*)(")', re.I
+)
+
+
+def allow_beacon_in_csp(policy: str) -> str:
+    """Return `policy` with the beacon's hosts allowed. Idempotent.
+
+    A directive set to 'none' becomes 'self' plus the host. A missing directive
+    falls back to default-src in the browser, so we add it explicitly with 'self'
+    to keep same-origin loads working.
+    """
+    parts = [p.strip() for p in policy.strip().rstrip(";").split(";") if p.strip()]
+    if all(
+        any(p.split()[0] == d and h in p.split() for p in parts) for d, h in CSP_ALLOW
+    ):
+        # Already allowed: return byte-for-byte so we never reformat a page
+        # (e.g. the generated newsletter) just to normalise punctuation.
+        return policy
+    for directive, host in CSP_ALLOW:
+        idx = next((i for i, p in enumerate(parts) if p.split()[0] == directive), None)
+        if idx is None:
+            after = next(
+                (i + 1 for i, p in enumerate(parts) if p.split()[0] == "script-src"),
+                len(parts),
+            )
+            parts.insert(after, f"{directive} 'self' {host}")
+            continue
+        tokens = parts[idx].split()
+        if "'none'" in tokens:
+            tokens = [directive, "'self'"]
+        if host not in tokens:
+            tokens.append(host)
+        parts[idx] = " ".join(tokens)
+    return "; ".join(parts) + ";"
+
+
+def patch_csp(html: str) -> tuple[str, bool]:
+    """Return (new_html, changed) with the page's CSP meta allowing the beacon.
+    Pages without a CSP need nothing and come back unchanged."""
+    match = _CSP_META_RE.search(html)
+    if match is None:
+        return html, False
+    new_policy = allow_beacon_in_csp(match.group(2))
+    if new_policy == match.group(2):
+        return html, False
+    return html[: match.start(2)] + new_policy + html[match.end(2):], True
 
 
 @dataclass(frozen=True)
@@ -87,13 +153,16 @@ def find_target_files(root: Path) -> list[Path]:
         if rel_parts & EXCLUDED_DIR_SEGMENTS:
             continue
         targets.append(path)
+    # Tracked pages that aren't named index.html. Listed explicitly rather than
+    # scanning *.html, which would also pull in the how-it-works pages.
+    targets += [root / name for name in EXTRA_TARGETS if (root / name).is_file()]
     return sorted(targets)
 
 
 def inject_into_text(html: str) -> tuple[str, bool]:
     """Return (new_html, changed). Idempotent: if the marker is already present,
     returns the input unchanged. Raises ValueError if there is no </body> to
-    anchor against."""
+    anchor against. Only inserts the <script>; see `patch_csp` for the policy."""
     if BEACON_MARKER in html:
         return html, False
 
@@ -124,21 +193,27 @@ def process_file(path: Path, *, check_only: bool) -> Result:
         return Result(path, "error", f"not valid UTF-8: {exc}")
 
     try:
-        updated, changed = inject_into_text(original)
+        updated, injected = inject_into_text(original)
     except ValueError as exc:
         return Result(path, "error", str(exc))
+    # Always reconcile the CSP, even when the beacon was already present: a page
+    # can carry the beacon yet block it, which is exactly the silent failure.
+    updated, csp_changed = patch_csp(updated)
 
     # Effective content is what ends up on disk: the injected text if we changed
     # it, otherwise the file as-is. The NOTE keys off this real content, so a file
     # already carrying the swapped-in real token won't trigger a false warning.
     uses_placeholder = BEACON_TOKEN_PLACEHOLDER in updated
 
-    if not changed:
+    if not (injected or csp_changed):
         return Result(path, "skipped-present", uses_placeholder=uses_placeholder)
 
+    what = " + ".join(
+        w for w, on in (("beacon", injected), ("CSP", csp_changed)) if on
+    )
     if check_only:
         return Result(
-            path, "patched", "(check mode: not written)", uses_placeholder
+            path, "patched", f"[{what}] (check mode: not written)", uses_placeholder
         )
 
     try:
@@ -146,7 +221,7 @@ def process_file(path: Path, *, check_only: bool) -> Result:
     except OSError as exc:
         return Result(path, "error", f"write failed: {exc}")
 
-    return Result(path, "patched", uses_placeholder=uses_placeholder)
+    return Result(path, "patched", f"[{what}]", uses_placeholder)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -193,7 +268,7 @@ def main(argv: list[str] | None = None) -> int:
         suffix = f" {r.detail}" if r.detail else ""
         print(f"  PATCHED  {r.path.relative_to(root)}{suffix}")
     for r in skipped:
-        print(f"  skipped  {r.path.relative_to(root)} (beacon already present)")
+        print(f"  skipped  {r.path.relative_to(root)} (beacon present, CSP allows it)")
     for r in errors:
         print(f"  ERROR    {r.path.relative_to(root)}: {r.detail}", file=sys.stderr)
 
