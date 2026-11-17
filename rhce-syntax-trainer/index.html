@@ -929,7 +929,7 @@ const QUESTIONS = [
   <p>This question exists because of how the next one works. <b>Role scaffolding</b> — Ansible Galaxy generating a role's standard empty directory structure, the skeleton — happens wherever you are standing when you run it: <code>role init</code> takes no destination flag in this flow, so this cd is what decides the role's birthplace. The chain from here:<br>
   • <b>Q7 (this step)</b> — you cd into <code>roles/</code> first, because init builds the scaffold in your current directory.<br>
   • <b>Q7.1</b> — <code>role init apache</code> raises the frame: the full standard tree of directories and stub files, generated in one command.<br>
-  • <b>Q7.2</b> — <code>ls roles/apache</code> is you walking the frame to confirm every room exists.<br>
+  • <b>Q7.2</b> — <code>ls apache</code>, still standing in roles/, is you walking the frame to confirm every room exists.<br>
   • <b>Q7.3 / Q7.4</b> — now you furnish it: replace the stub <code>tasks/main.yml</code> with the real httpd/firewalld tasks, and drop <code>index.html.j2</code> into <code>templates/</code>.<br>
   • And the contrast with Q6: <code>role install</code> downloads someone else's finished house; <code>role init</code> frames a new one for you to build yourself.</p>
   <h4>How it affects the Ansible environment</h4>
@@ -975,19 +975,19 @@ const QUESTIONS = [
   <div class="tie"><b>How it ties in:</b> the downloaded roles from Q6 have this same skeleton inside them — you have been using this layout all along; now you see how it is made. Q7.2 confirms it exists.</div>`
 },
 {
-  id:"Q7.2", title:"List the role's files", sub:"ls roles/apache", cmd:true,
+  id:"Q7.2", title:"List the role's files", sub:"ls apache", cmd:true,
   files:[{ path:"shell", lang:"cmd" }],
-  spec:`<b>7.2. Verify the skeleton.</b><br>• List the contents of the role you just created: <code>roles/apache</code>.<br>• You are confirming the scaffold produced the standard directory layout before you write into it.<br>• Type the command at the prompt and press <b>Enter</b> to run it.`,
+  spec:`<b>7.2. Verify the skeleton.</b><br>• You are still standing in the <code>roles</code> directory, where Q7.1 just built the role.<br>• List the contents of the role you just created: <code>apache</code>.<br>• You are confirming the scaffold produced the standard directory layout before you write into it.<br>• Type the command at the prompt and press <b>Enter</b> to run it.`,
   checks:[[
-    { re:/ls\s+(\.\/)?(roles\/)?apache\/?(\s|$)/, msg:"ls of the apache role directory" }
+    { re:/ls\s+((\.\/)?apache|\/home\/student\/ansible\/roles\/apache)\/?(\s|$)/, msg:"ls of the apache role directory" }
   ]],
   explain:`<h2>✅ Q7.2 complete — what you just did</h2>
   <p>You verified the scaffold: the listing shows the role's directories — the two you care about are <code>tasks/</code> and <code>templates/</code>. Ten seconds of looking now beats a "file not found" from the template task later.</p>
   <h4>How it affects the Ansible environment</h4>
   <p>• Nothing changes — evidence again, the same rhythm as Q4.3, Q5.1, and Q6.3: create, then confirm, then build on it.</p>
   <h4>Command anatomy — what every part does, and what breaks without it</h4>
-  <p>• <code>ls roles/apache</code> — list the contents of the scaffold directory by path, without moving. One argument, no flags: this verify needs names, not details, so there is deliberately no <code>-l</code> here.<br>
-  • <code>roles/apache</code> — the path is the claim being tested: the role Q7.1 created, in the roles/ shelf. List the wrong path and ls either errors or shows you some other directory's contents — you would be doubting (or trusting) a scaffold you never actually looked at.<br>
+  <p>• <code>ls apache</code> — list the contents of the scaffold directory, without moving. One argument, no flags: this verify needs names, not details, so there is deliberately no <code>-l</code> here.<br>
+  • <code>apache</code> — just the name, because you are already standing in roles/: Q7 cd'ed you here and Q7.1 built the role at your feet, so the name alone is the path. The claim being tested is the same as ever: the role Q7.1 created, in the roles/ shelf. From the project root the same listing would be <code>ls roles/apache</code> — same role, different address, because a relative path is always measured from where you stand. List the wrong path and ls either errors or shows you some other directory's contents — you would be doubting (or trusting) a scaffold you never actually looked at.<br>
   • What the listing must contain: the standard role layout, and in particular <code>tasks/</code> and <code>templates/</code> — the two directories Q7.3 and Q7.4 are about to write into.<br>
   • <b>Why the exam cares:</b> template and task lookups fail at playbook runtime with "file not found" errors that point at the playbook, not at the missing directory. Ten seconds of ls now proves the two folders your next files depend on are really there.</p>
   <div class="tie"><b>How it ties in:</b> skeleton confirmed. Q7.3 writes the role's tasks into tasks/main.yml.</div>`
@@ -1354,9 +1354,9 @@ const QUESTIONS = [
   <div class="tie"><b>How it ties in:</b> Q8 closes the web stack. Act 4 changes the subject to the machines themselves — it opens with a precheck (Q9.0), then storage with a fallback plan (Q9).</div>`
 },
 {
-  id:"Q9.0", title:"Precheck for Q9 — a Reference Guide, Not a Script", sub:"Reference guide: 8 standalone check commands before lvm.yml",
-  files:[{ path:"shell", lang:"bash" }],
-  spec:`<b>9.0. Precheck — a reference guide, run before Q9.</b><br>• <b>This is not a script.</b> There is no file to create, save, or run: in the exam you run each command on its own at the terminal, read what it tells you, and only then start Q9. Eight separate checks, not one program.<br>• Here, type the eight commands, one per line, to learn what each one checks, then press <b>Ctrl+Enter</b>.<br>• 1. Will the modules load?<br>• 2. Do the nodes have LVM tools?<br>• 3. What will the facts say?<br>• 4. Predict each host's path from vg_free.<br>• 5. Is there an old data LV?<br>• 6. Is the device already formatted or mounted?<br>• 7. Which disk is free? (practice setup only)<br>• 8. Syntax only.<br>• Line 8 can also be Navigator: <code>ansible-navigator run lvm.yml -m stdout --syntax-check</code> — navigator passes --syntax-check through to the same engine.`,
+  id:"Q9.0", title:"Q9 Precheck — Gather the LVM Information First", sub:"Precheck (not a script): run 8 useful LVM commands in the terminal, one by one", cmd:true, multi:true,
+  files:[{ path:"shell", lang:"cmd" }],
+  spec:`<b>9.0. PRECHECK — this is not a script.</b><br>• There is no file to create, save, or submit here. This precheck is a set of useful commands for gathering pertinent information about the LVM setup before you write and run Q9's playbook.<br>• Run each command in the terminal on its own, press <b>Enter</b>, and read the output it gives back, the way you would in a real environment. What each host tells you here predicts what the play will do there.<br>• 1. Will the modules load?<br>• 2. Do the nodes have LVM tools?<br>• 3. What will the facts say?<br>• 4. Predict each host's path from vg_free.<br>• 5. Is there an old data LV?<br>• 6. Is the device already formatted or mounted?<br>• 7. What do the disks look like?<br>• 8. Syntax only.<br>• The step completes when all eight have been run. Line 8 can also be Navigator: <code>ansible-navigator run lvm.yml -m stdout --syntax-check</code> — navigator passes --syntax-check through to the same engine.`,
   checks:[[
     { re:/ansible-galaxy\s+collection\s+list\s+community\.general/, msg:"1. ansible-galaxy collection list community.general" },
     { re:/ansible\s+all\s+-b\s+-m\s+ansible\.builtin\.command\s+-a\s*['"]rpm\s+-q\s+lvm2['"]/, msg:"2. ansible all -b -m ansible.builtin.command -a 'rpm -q lvm2'" },
@@ -1369,7 +1369,7 @@ const QUESTIONS = [
     { fn:t => !/--check/.test(t.split("--syntax-check").join("")), msg:"No --check dry run — it false-alarms on the format task" }
   ]],
   explain:`<h2>✅ Q9.0 complete — what you just did</h2>
-  <p><b>Reference guide, not a script:</b> nothing you typed here is saved or run as a file. Each command is a standalone check — run it, read it, act on it — and the precheck habit itself is the skill this step teaches.</p>
+  <p><b>Precheck, not a script:</b> nothing here was saved as a file. You ran each command in the terminal on its own, read the output it gave back, and acted on what it said — and the precheck habit itself is the skill this step teaches.</p>
   <p>Eight questions, answered before the play runs: the collection is installed, lvm2 is on every node, the facts — read with <code>-b</code>, because without it <code>vgs</code> comes back empty and the fail task fires on every host — say which hosts have yellowtail, and <code>vg_free</code> predicts each host's path before you run anything.</p>
   <p>• vg_free ≥ 1500 MiB → block succeeds · 800–1499 → rescue fires, <code>rescued=1</code> · under 800 → the rescue's retry fails too · VG missing → fail task, <code>failed=1</code> with the required message.<br>
   • An old <code>data</code> LV changes the story — <code>lvol</code> resizes it instead of creating fresh. <code>blkid</code> failing on a host with no device is expected. And <code>lsblk</code> before any <code>vgcreate</code>, always: never create a VG on a disk you haven't seen empty.</p>
@@ -1381,7 +1381,7 @@ const QUESTIONS = [
   • Line 4, <code>vgs --units m -o vg_name,vg_size,vg_free yellowtail</code> — <code>--units m</code> forces MiB, so vg_free can be compared directly against the playbook's 1500 and 800 numbers; <code>-o</code> picks exactly the three columns the decision needs; the trailing <code>yellowtail</code> scopes the report to that one VG instead of every VG on the host.<br>
   • Line 5, <code>lvs yellowtail</code> — list the LVs already inside the VG: an existing data LV means the play will resize, not create. Line 6, <code>blkid /dev/yellowtail/data</code> — probe that device path (VG/LV form) for an existing filesystem signature; silence here on a fresh host is expected.<br>
   • Line 7, <code>lsblk -o NAME,SIZE,TYPE,FSTYPE,MOUNTPOINTS</code> — the disk map with the columns chosen explicitly: the safety rule is to never build on a disk you have not seen.<br>
-  • Line 8, <code>ansible-playbook lvm.yml --syntax-check</code> — the parse gate for the real run — and note what is deliberately absent from the whole script: no <code>--check</code> dry run anywhere, because a dry run false-alarms on this playbook's format task.<br>
+  • Line 8, <code>ansible-playbook lvm.yml --syntax-check</code> — the parse gate for the real run — and note what is deliberately absent from the whole precheck: no <code>--check</code> dry run anywhere, because a dry run false-alarms on this playbook's format task.<br>
   • <b>Why the exam cares:</b> these eight lines convert Q9's run from a surprise into a prediction — collection present, tools present, and per host: enough free space, fallback territory, or no VG at all. Skip the precheck and you will be interpreting rescued=1 and failed=1 cold, after the run, when the minutes to react are already spent.</p>
   <div class="tie"><b>How it ties in:</b> two minutes here is the difference between reading a recap and being surprised by it. On to Q9.</div>`
 },
@@ -2436,8 +2436,8 @@ collections:
   answer:[{ path:"shell", text:"cd /home/student/ansible/roles" }] },
 "Q7.1": { hint:`ansible-galaxy role init, followed by the role's name: apache.`,
   answer:[{ path:"shell", text:"ansible-galaxy role init apache" }] },
-"Q7.2": { hint:`ls, then the role's path: roles/apache.`,
-  answer:[{ path:"shell", text:"ls roles/apache" }] },
+"Q7.2": { hint:`ls, then the role's name: apache. You are already standing in roles/, so the name alone is the path.`,
+  answer:[{ path:"shell", text:"ls apache" }] },
 "Q7.3": { hint:`Four tasks: dnf install of httpd + firewalld; a service loop (started, enabled) over both daemons; a firewalld loop over http and https with immediate + permanent; then a template task with setype: httpd_sys_content_t.`,
   answer:[{ path:"/home/student/ansible/roles/apache/tasks/main.yml", text:`---
 - name: Install httpd and firewalld
@@ -2539,7 +2539,7 @@ collections:
   answer:[{ path:"shell", text:"curl -s http://serverb/hello.php | head -5; curl -s http://serverc/hello.php | head -5" }] },
 "Q8.11": { hint:`One line: a for loop over 1 2 3 4, and inside it a quiet curl to http://serverd.lab.example.com — the balancer's own address, no page name.`,
   answer:[{ path:"shell", text:"for i in 1 2 3 4; do curl -s http://serverd.lab.example.com; done" }] },
-"Q9.0": { hint:`Reference guide, not a script: eight standalone check commands, run one by one before Q9. Every ad hoc command takes -b — your ansible.cfg has become off. Six use the command module; the facts one uses the setup module with filter=ansible_lvm; the free-disk one is lsblk with -o NAME,SIZE,TYPE,FSTYPE,MOUNTPOINTS. The last line is the playbook's own --syntax-check, and there is no --check anywhere. Line 8 may be Navigator too: ansible-navigator run lvm.yml -m stdout --syntax-check.`,
+"Q9.0": { hint:`Precheck, not a script: run the eight commands in the terminal one by one, before Q9, and read each output. Every ad hoc command takes -b — your ansible.cfg has become off. Six use the command module; the facts one uses the setup module with filter=ansible_lvm; the disk-picture one is lsblk with -o NAME,SIZE,TYPE,FSTYPE,MOUNTPOINTS. The last line is the playbook's own --syntax-check, and there is no --check anywhere. Line 8 may be Navigator too: ansible-navigator run lvm.yml -m stdout --syntax-check.`,
   answer:[{ path:"shell", text:`ansible-galaxy collection list community.general
 ansible all -b -m ansible.builtin.command -a 'rpm -q lvm2'
 ansible all -b -m ansible.builtin.setup -a 'filter=ansible_lvm'
@@ -4039,9 +4039,10 @@ function termStateFor(idx){
     // passed, the root-shell steps reopen inside the root shell, and Q5
     // steps resume where the section last stood.
     if (q && ["Q5.1", "Q5.2", "Q5.3", "Q5.4", "Q5.5"].indexOf(q.id) >= 0 && lab.user !== "root" && state.done.has(QUESTIONS.findIndex(x => x.id === "Q5"))) { lab.user = "root"; lab.cwd = "/root"; }
-    // Q7.1 opens standing in the roles directory, where role init has to
-    // run, whether or not Q7's cd step was done first in this session.
-    const seedDefault = (q && q.id === "Q7.1") ? "/home/student/ansible/roles" : "/home/student/ansible";
+    // Q7.1 and Q7.2 open standing in the roles directory: role init has
+    // to run there, and the verify listing continues from the same spot,
+    // whether or not Q7's cd step was done first in this session.
+    const seedDefault = (q && (q.id === "Q7.1" || q.id === "Q7.2")) ? "/home/student/ansible/roles" : "/home/student/ansible";
     const seedCwd = (q && lab.cwd && (sectionOf(q.id) === "Q5" || q.id === "Q7.1")) ? lab.cwd : seedDefault;
     termStore[idx] = { cwd: seedCwd, entries: [], made: lab.made, lab: lab };
   }
@@ -4356,6 +4357,12 @@ function soRemoteCmd(cmdStr, host, ctx){
   }
   const cmd = tokens[0];
   const rest = cmdStr.trim().slice(cmd.length).trim();
+  if (cmd === "rpm") {
+    const pkg = tokens[tokens.length - 1];
+    if (pkg === "lvm2") return { out: ["lvm2-2.03.21-8.el9.x86_64"], failed: false };
+    if (pkg === "gpg-pubkey") return { out: ["gpg-pubkey-fd431d51-4ae0493b"], failed: false };
+    return { out: [], failed: true, stderr: "package " + pkg + " is not installed" };
+  }
   if (cmd === "dnf" || cmd === "yum") {
     if (/group\s+list\s+--installed/.test(rest)) return { out: ["Last metadata expiration check: 0:42:17 ago on Tue 11 Nov 2026 09:14:02 AM JST.", "Installed Groups:", "   RPM Development Tools"], failed: false };
     if (/group\s+list/.test(rest)) return { out: ["Available Groups:", "   RPM Development Tools", "Installed Groups:", "   RPM Development Tools"], failed: false };
@@ -4420,14 +4427,47 @@ function soRemoteCmd(cmdStr, host, ctx){
     return { out: [], failed: false };
   }
   if (cmd === "lvs") {
+    const vgName = tokens[1] && tokens[1].charAt(0) !== "-" ? tokens[1] : null;
+    if (vgName && !soLvmFor(host).vgs[vgName]) return { out: [], failed: true, stderr: "Volume group \"" + vgName + "\" not found" };
     return { out: ["  LV   VG         Attr       LSize   Pool Origin Data%  Meta%  Move Log Cpy%Sync Convert", "  data yellowtail -wi-a----- 800.00m"], failed: false };
   }
   if (cmd === "vgs") {
-    return { out: ["  VG         #PV #LV #SN Attr   VSize   VFree", "  yellowtail   1   1   0 wz--n-  <1.95g  <1.17g"], failed: false };
+    // Host-aware, from the same fact model the setup module reports: a
+    // host with no yellowtail VG errors when the VG is named, and the
+    // -o/--units form prints the MiB numbers the Q9 precheck compares
+    // against the playbook's 1500 and 800.
+    const lvm = soLvmFor(host);
+    let vgName = null, cols = null, unitsM = false;
+    for (let i = 1; i < tokens.length; i++) {
+      if (tokens[i] === "--units") { if (/^m/i.test(tokens[i + 1] || "")) unitsM = true; i++; continue; }
+      if (tokens[i] === "-o") { cols = tokens[i + 1] || ""; i++; continue; }
+      if (tokens[i].charAt(0) !== "-") vgName = tokens[i];
+    }
+    if (vgName && !lvm.vgs[vgName]) return { out: [], failed: true, stderr: "Volume group \"" + vgName + "\" not found" };
+    const vg = lvm.vgs[vgName || "yellowtail"];
+    if (!vg) return { out: ["  VG         #PV #LV #SN Attr   VSize   VFree"], failed: false };
+    if (cols && unitsM) {
+      const sz = (parseFloat(vg.size_g) * 1024).toFixed(2) + "m", fr = (parseFloat(vg.free_g) * 1024).toFixed(2) + "m";
+      return { out: ["  VG         VSize     VFree", "  " + (vgName || "yellowtail") + " " + sz + "  " + fr], failed: false };
+    }
+    return { out: ["  VG         #PV #LV #SN Attr   VSize   VFree", "  yellowtail   1   " + (vg.num_lvs || "1") + "   0 wz--n-  <" + vg.size_g + "g  <" + vg.free_g + "g"], failed: false };
+  }
+  if (cmd === "lsblk") {
+    const devs = soDevicesFor(host), lvm = soLvmFor(host);
+    const out = ["NAME             SIZE TYPE FSTYPE      MOUNTPOINTS", "sda               20G disk", "├─sda1             1G part vfat        /boot/efi", "└─sda2            19G part LVM2_member", "  └─rhel-root     17G lvm  xfs         /"];
+    if (devs.sdb) {
+      const hasVg = !!lvm.vgs["yellowtail"];
+      out.push("sdb               10G disk" + (hasVg ? " LVM2_member" : ""));
+      if (hasVg && lvm.lvs.data) out.push("└─yellowtail-data " + (Math.round(parseFloat(lvm.lvs.data.size_g) * 10) / 10) + "G lvm  ext4");
+    }
+    return { out: out, failed: false };
   }
   if (cmd === "blkid") {
     const dev = tokens[1];
-    if (dev === "/dev/yellowtail/data") return { out: ["/dev/yellowtail/data: UUID=\"7c4a91be-2f6d-4c1a-9a03-51d2e6b84f10\" BLOCK_SIZE=\"512\" TYPE=\"ext4\""], failed: false };
+    if (dev === "/dev/yellowtail/data") {
+      if (!soLvmFor(host).vgs["yellowtail"]) return { out: [], failed: true, stderr: "" };
+      return { out: ["/dev/yellowtail/data: UUID=\"7c4a91be-2f6d-4c1a-9a03-51d2e6b84f10\" BLOCK_SIZE=\"512\" TYPE=\"ext4\""], failed: false };
+    }
     return { out: [], failed: true, stderr: "blkid: " + dev + ": not a block device" };
   }
   if (cmd === "id") {
@@ -4790,8 +4830,15 @@ function soGalaxy(st, tokens){
       return { lines: lines, ok: true };
     }
     if (action === "list") {
-      if (!st.lab.collectionsDone) return { lines: ["# /home/student/ansible/collections/ansible_collections", "Collection        Version", "----------------- -------"], ok: true };
-      return { lines: ["# /home/student/ansible/collections/ansible_collections", "Collection        Version", "----------------- -------", "ansible.netcommon 7.1.0  ", "ansible.posix     1.5.4  ", "community.general 8.5.0  "], ok: true };
+      const head = ["# /home/student/ansible/collections/ansible_collections", "Collection        Version", "----------------- -------"];
+      // Installed means installed: Q4's install sets the lab flag, and the
+      // project on disk carries the collections either way, so a later
+      // question's terminal (the Q9.0 precheck) still sees them.
+      const installed = st.lab.collectionsDone || !!soFsExists(st, "/home/student/ansible/collections/ansible_collections/community");
+      if (!installed) return { lines: head, ok: true };
+      const rows = ["ansible.netcommon 7.1.0  ", "ansible.posix     1.5.4  ", "community.general 8.5.0  "];
+      const want = tokens[3];
+      return { lines: head.concat(want ? rows.filter(r => r.indexOf(want) === 0) : rows), ok: true };
     }
     return { lines: [], ok: true };
   }
@@ -5820,6 +5867,36 @@ function doCheck(){
   saveTexts();
   state.attempts[state.cur] = (state.attempts[state.cur] || 0) + 1;
   const att = gel("att"); if (att) att.textContent = state.attempts[state.cur];
+  if (q.cmd && q.multi) {
+    // Multi-command terminal steps (the Q9.0 precheck): each Enter runs
+    // one command for real in the terminal, with its honest output, and
+    // the step completes when every check has been satisfied across the
+    // whole transcript, not by any single line.
+    const line = ta0 ? ta0.value : "";
+    pushTranscript(state.cur, line, q, false);
+    renderTranscript(0);
+    if (ta0) ta0.value = "";
+    saveTexts();
+    const stM = termStateFor(state.cur);
+    const all = stM.entries.filter(e => e.k === "cmd").map(e => e.text).join("\n");
+    const resM = runChecks(q, [all]);
+    const badM = resM.filter(r => !r.ok), goodM = resM.filter(r => r.ok);
+    const fbM = gel("fb");
+    if (badM.length === 0) {
+      state.done.add(state.cur);
+      persistProgress();
+      fbM.className = "feedback show good";
+      fbM.innerHTML = "<b>[OK] precheck complete</b> — all " + resM.length + " requirements met. Read the breakdown below — that's the part that makes it stick.";
+      gel("ex").className = "explain show";
+      updateNextline(); renderNav();
+      gel("ex").scrollIntoView({ behavior: "smooth", block: "start" });
+    } else {
+      fbM.className = "feedback show";
+      fbM.innerHTML = "<b>Precheck in progress</b> — " + goodM.length + " of " + resM.length + " checks gathered so far. Still to run:<ul>" + badM.map(r => "<li>" + r.msg.replace(/&/g, "&amp;").replace(/</g, "&lt;") + "</li>").join("") + "</ul><span style='color:var(--dim)'>Run each remaining command in the terminal and read its output.</span>";
+      fbM.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
+    return;
+  }
   const texts = q.files.map((f, fi) => { const ta = gel("ta" + fi); return ta ? ta.value : ""; });
   const res = runChecks(q, texts);
   const bad = res.filter(r => !r.ok), good = res.filter(r => r.ok);
