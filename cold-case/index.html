@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="dark">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <meta name="description" content="Cold Case Server: a lateral-thinking Linux triage game. Characterize undocumented servers with a command budget: purpose, load, errors, attack surface. Read-only.">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'self'; img-src 'self' data:; base-uri 'none'; object-src 'none'; form-action 'none';">
+    <title>Cold Case Server · Eddie's Portfolio</title>
+    <link rel="icon" href="../favicon.svg" type="image/svg+xml">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Inter:wght@400;500;600&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css?v=3">
+    <script type="module" src="game.js?v=3"></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<nav class="top-nav" aria-label="App">
+    <div class="nav-left">
+        <a class="back-btn" href="../index.html">← App Hub</a>
+        <span class="app-title">COLD CASE SERVER</span>
+    </div>
+    <a class="hiw-btn" href="how-it-works.html">📖 How It's Built</a>
+</nav>
+
+<main id="main">
+    <!-- ============ case select ============ -->
+    <section id="view-select" aria-labelledby="h-select">
+        <h1 id="h-select">Cold Case Server</h1>
+        <p class="subtitle">You get SSH to a server nobody documented. Answer three questions before you touch anything: <em>what does it do, is it struggling, is anything broken?</em> Every command costs budget, and a pipeline counts as one. The obvious tool won't always be there. Change nothing.</p>
+        <div class="rules">
+            <div><b>Survey, then target.</b> Fewer, sharper commands score higher.</div>
+            <div><b>Clues light up</b> on the case board when your output proves a fact.</div>
+            <div><b>Read-only.</b> <code>kill</code>, <code>restart</code>, <code>rm</code> and <code>setenforce</code> are blocked and cost 25 points.</div>
+            <div><b>Red herrings</b> are planted. Calling noise a finding costs points.</div>
+        </div>
+        <div class="case-grid" id="case-grid"></div>
+    </section>
+
+    <!-- ============ investigation ============ -->
+    <section id="view-play" hidden aria-labelledby="case-title">
+        <div class="layout">
+            <aside class="pane brief" aria-label="Case file">
+                <div class="case-kicker" id="case-kicker"></div>
+                <h1 id="case-title"></h1>
+                <div id="case-brief" class="brief-text"></div>
+                <p class="lens" id="case-lens"></p>
+
+                <h2>Budget</h2>
+                <div class="meter" role="meter" aria-labelledby="budget-label" id="budget-meter" aria-valuemin="0">
+                    <div class="meter-fill" id="budget-fill"></div>
+                </div>
+                <div class="budget-label" id="budget-label" aria-live="polite"></div>
+
+                <h2>Case board <span class="count" id="clue-count"></span></h2>
+                <ul class="clues" id="clue-list" aria-live="polite"></ul>
+
+                <h2>You'll answer</h2>
+                <ol class="qlist" id="q-list"></ol>
+
+                <div class="brief-actions">
+                    <button class="primary" id="btn-verdict" type="button">File verdict</button>
+                    <button id="btn-abandon" type="button">Case list</button>
+                </div>
+            </aside>
+
+            <section class="pane term-pane" aria-label="Terminal">
+                <div class="term-head">
+                    <h2>Terminal</h2>
+                    <span class="hint">↑/↓ history · Tab completes · <code>help</code> is free</span>
+                </div>
+                <div class="term" id="term">
+                    <div class="term-out" id="term-out" role="log" aria-label="Terminal output"></div>
+                    <div class="term-input">
+                        <label for="cmd" class="prompt" id="prompt"></label>
+                        <input id="cmd" type="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="send">
+                    </div>
+                </div>
+            </section>
+        </div>
+    </section>
+
+    <!-- ============ verdict ============ -->
+    <section id="view-verdict" hidden aria-labelledby="h-verdict">
+        <h1 id="h-verdict">File your verdict</h1>
+        <p class="subtitle" id="verdict-sub"></p>
+        <form id="verdict-form" class="verdict-form">
+            <div id="verdict-questions"></div>
+            <fieldset class="findings">
+                <legend>Findings: tick only what belongs in the report</legend>
+                <div id="verdict-findings"></div>
+            </fieldset>
+            <div class="verdict-actions">
+                <button type="button" id="btn-back-investigate">← Back to the terminal</button>
+                <button type="submit" class="primary">Submit verdict</button>
+            </div>
+        </form>
+    </section>
+
+    <!-- ============ debrief ============ -->
+    <section id="view-debrief" hidden aria-labelledby="h-debrief">
+        <div class="score-card" id="score-card"></div>
+        <div id="debrief-body"></div>
+        <div class="verdict-actions">
+            <button type="button" id="btn-retry">Retry case</button>
+            <button type="button" id="btn-cases">Case list</button>
+            <button type="button" class="primary" id="btn-next">Next case →</button>
+        </div>
+    </section>
+</main>
+</body>
+</html>

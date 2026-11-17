@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'none'; img-src 'self' data:; base-uri 'none'; object-src 'none';">
+  <title>How It's Built — Cold Case Server | Eddie's App Hub</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Inter:wght@400;500;600&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../how-it-works.css">
+</head>
+<body>
+<a href="../index.html" style="position:fixed;top:12px;left:12px;z-index:9999;background:rgba(10,10,20,0.85);backdrop-filter:blur(6px);color:#4af7ff;border:1px solid #4af7ff;border-radius:20px;padding:6px 14px;font-family:sans-serif;font-size:13px;text-decoration:none;font-weight:600;">← App Hub</a>
+
+<div class="hiw-page">
+
+  <header class="hiw-header">
+    <div class="hiw-icon">🕵️</div>
+    <h1>Cold Case Server — How It's Built</h1>
+    <p class="hiw-tagline">A lateral-thinking Linux triage game: characterize undocumented servers on a command budget, read-only.</p>
+  </header>
+
+  <section class="hiw-section">
+    <h2>Overview</h2>
+    <p>
+      Each case drops you onto a simulated server with a brief and a hidden truth. You investigate in a
+      terminal, and every command that reads the server costs budget (a whole pipeline counts as one).
+      Then you file a verdict: purpose, load, errors and risk, plus which findings belong in the report.
+      The game trains the habit that separates seniors from juniors: <strong>survey, then target, then
+      conclude from evidence</strong>, without changing anything.
+    </p>
+    <p>
+      The lateral part comes from constraints. Case 2 removes <code>ss</code>, <code>netstat</code> and
+      <code>lsof</code>, so you have to walk <code>/proc/net/tcp</code> → socket inode →
+      <code>/proc/PID/fd</code> yourself. Case 3 punishes trusting a healthy snapshot. Case 4 makes you prove
+      effective config (<code>sshd -T</code>) rather than read the file. Case 5 is RHEL, where Debian
+      habits fail and "Permission denied" means SELinux.
+    </p>
+  </section>
+
+  <section class="hiw-section">
+    <h2>Tech Stack</h2>
+    <div class="hiw-badges">
+      <span class="hiw-badge">HTML</span>
+      <span class="hiw-badge">CSS</span>
+      <span class="hiw-badge">JavaScript (ES modules)</span>
+      <span class="hiw-badge">node:test</span>
+    </div>
+    <ul class="hiw-caption-list">
+      <li><strong>HTML</strong>: four views (case list, investigation, verdict, debrief) in one page, with no framework.</li>
+      <li><strong>CSS</strong>: the App Hub design tokens, a sticky case file beside the terminal, and a single-column layout on phones.</li>
+      <li><strong>JavaScript</strong>: a pure shell engine (<code>shell.js</code>) with no DOM access, case data (<code>cases.js</code>), and a thin DOM layer (<code>game.js</code>).</li>
+      <li><strong>node:test</strong>: 29 tests that prove every case can be solved and that every tool agrees with every other tool.</li>
+    </ul>
+  </section>
+
+  <section class="hiw-section">
+    <h2>How Each Part Works</h2>
+
+    <div class="hiw-file-block">
+      <h3><code>shell.js</code>: one world model, many views</h3>
+      <p>
+        The core design rule: <strong>tools are views of one kernel state</strong>. A case declares its
+        sockets once. <code>ss</code>, <code>netstat</code>, <code>lsof</code>, <code>/proc/net/tcp</code>,
+        <code>/proc/PID/fd/*</code> symlinks and <code>curl</code> are all rendered from that one list, so
+        two tools can never disagree, which is exactly how the real kernel behaves. File descriptors and
+        inodes are assigned at build time and reused everywhere.
+      </p>
+      <pre class="hiw-code">// /proc/net/tcp: IPv4 little-endian hex, port big-endian hex, same inode ss would report
+`${String(i).padStart(4)}: ${ipToHex(s.laddr)}:${hex4(s.lport)} ${ipToHex(s.raddr)}:${hex4(s.rport)} ${st} … ${s.inode}`
+
+// /proc/PID/fd/N: a symlink to socket:[inode], readable only by the owner or root
+put(`${base}/fd/${s.fd}`, { type: 'link', target: `socket:[${s.inode}]`, procPriv: true, … });</pre>
+      <p>
+        Privilege is modeled too. <code>ss -p</code> hides other users' processes without
+        <code>sudo</code>, <code>dmesg</code> is restricted on Debian/Ubuntu, <code>docker</code> needs root
+        or the docker group, and <code>/proc/PID/cwd</code> of another user is unreadable. Pipelines,
+        quoting, <code>2&gt;/dev/null</code>, <code>$(…)</code> and <code>$((16#1F40))</code> are parsed by a
+        small tokenizer, and the classic <code>ps aux | grep x</code> self-match (and the
+        <code>[x]</code> trick that avoids it) happens just as it does on a real box.
+      </p>
+    </div>
+
+    <div class="hiw-file-block">
+      <h3><code>shell.js</code>: the read-only rule</h3>
+      <p>Every pipeline segment is checked before it runs. A change does not execute; it is logged as a violation and costs 25 points.</p>
+      <pre class="hiw-code">[/^systemctl\s+(.*\s)?(stop|restart|kill|…)\b/, 'You changed a service state with no ticket and no rollback plan.'],
+[/^setenforce\b/, 'You switched SELinux mode. …'],
+// plus kill, rm/mv/chmod, package installs, firewall edits, and any &gt; redirect to a real file</pre>
+    </div>
+
+    <div class="hiw-file-block">
+      <h3><code>cases.js</code>: the case file format</h3>
+      <p>
+        Each case is data: host facts, processes, sockets, systemd units, files, journal entries, plus the
+        hidden truth. <strong>Evidence markers</strong> are strings or regexes. When a command's output
+        contains one, that clue lights up on the case board, so the board rewards what you actually
+        displayed, not what you typed.
+      </p>
+      <pre class="hiw-code">{ id: 'inode', label: 'Socket inode 48213 → PID 4127 (fd 3)',
+  markers: ['/proc/4127/fd/3 -&gt; socket:[48213]', '/proc/4127/fd/3\n'] }</pre>
+    </div>
+
+    <div class="hiw-file-block">
+      <h3>Scoring</h3>
+      <p>
+        <strong>60</strong> for verdict accuracy (questions, plus each finding correctly reported or rejected),
+        <strong>20</strong> for evidence actually seen, and <strong>20</strong> for efficiency against par.
+        Par is the budget the expert route spends, computed by running it, so free calculators such as
+        <code>printf</code> don't inflate it. Efficiency is multiplied by the evidence fraction, so guessing
+        with zero commands can't farm points. Answer options are shuffled every run.
+      </p>
+    </div>
+
+    <div class="hiw-file-block">
+      <h3><code>tests/cases.test.mjs</code>: proving the puzzles are fair</h3>
+      <p>A deduction game with a contradictory clue is broken. The test suite guarantees, for every case:</p>
+      <pre class="hiw-code">✔ the expert route runs with no errors, stays in budget, and lights every clue
+✔ /proc/net/tcp decodes back to exactly the socket list; ss agrees; find -lname maps every inode to its PID
+✔ a perfect run scores 100; pure guessing scores ≤ 60
+✔ destructive commands are blocked, free, and logged; strict budgets lock the shell</pre>
+    </div>
+
+    <div class="hiw-file-block">
+      <h3>Honest simulation limits</h3>
+      <p>
+        This is a renderer, not a kernel. About 40 commands are modeled with the flags real triage uses.
+        Anything else gets a realistic usage error. Globs expand with the privilege of the command, so
+        <code>sudo ls /proc/*/fd/*</code> works here, while on a real box the unprivileged shell expands
+        the glob first; the portable answer is <code>sudo find /proc/[0-9]*/fd -lname …</code>, which is the
+        expert route. <code>top</code> and <code>tail -f</code> run in batch mode only.
+      </p>
+    </div>
+  </section>
+
+  <section class="hiw-section">
+    <h2>File Map</h2>
+    <pre class="hiw-file-map">cold-case/
+├── index.html            ← four views, CSP script-src 'self'
+├── style.css             ← App Hub tokens, responsive layout
+├── game.js               ← DOM: terminal, history, Tab completion, verdict, debrief
+├── shell.js              ← pure engine: world builder, tokenizer, ~40 commands, scoring
+├── cases.js              ← five case files + hidden truths + expert routes
+├── how-it-works.html     ← this page
+└── tests/
+    └── cases.test.mjs    ← node --test 'cold-case/tests/*.test.mjs'</pre>
+  </section>
+
+  <section class="hiw-section">
+    <h2>Replicate It Yourself</h2>
+    <ol class="hiw-steps">
+      <li><span>Model the state first. Write one list of processes and one list of sockets, and give every socket a PID, an fd and an inode. Every tool you add is just a renderer over that list.</span></li>
+      <li><span>Build a tokenizer that respects quotes, then split on <code>|</code> outside quotes. Make the first segment a "producer" (reads the world) and the rest "filters" (text → text: grep, sort, uniq, awk, cut, tr).</span></li>
+      <li><span>Write a case as data, and make the test suite replay its expert route. If the expert can't light every clue within budget, the case doesn't ship.</span></li>
+      <li><span>Validate realism against a real box: run the same commands on a RHEL or Debian VM and diff the column layouts. Reference: <a href="https://man7.org/linux/man-pages/man5/proc.5.html" target="_blank" rel="noopener noreferrer">proc(5)</a> for <code>/proc/net/tcp</code> and <code>/proc/PID/fd</code>.</span></li>
+      <li><span>Ship as static files. ES modules plus a strict CSP need no build step and no server. Run it locally with <code>python3 -m http.server --bind 127.0.0.1 8000</code> from the repo root. Note the <code>--bind</code>: without it you have just built case 2, then push to GitHub Pages.</span></li>
+    </ol>
+  </section>
+
+</div>
+</body>
+</html>
