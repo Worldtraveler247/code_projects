@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="dark">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'self' https://static.cloudflareinsights.com; connect-src 'self' https://cloudflareinsights.com; img-src 'self' data:; form-action https://buttondown.com; base-uri 'none'; object-src 'none'">
+    <meta name="description" content="The Daily Brief for Wednesday, November 18, 2026: security incidents, senior security advice, engineering explainers, and tech news.">
+    <title>The Daily Brief · Nov 18, 2026</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="icon" href="../../../favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="../../../style.css">
+    <link rel="stylesheet" href="../../newsletter.css">
+</head>
+<body class="brief-page">
+    <a href="#main-content" class="skip-nav">Skip to main content</a>
+    <nav class="brief-nav">
+        <a href="../../../index.html">← App Hub</a>
+        <a href="../../">All issues</a>
+    </nav>
+    
+<header class="brief-masthead">
+    <p class="brief-eyebrow">THE DAILY BRIEF</p>
+    <h1>Wednesday, November 18, 2026</h1>
+    <ol class="brief-toc">
+        <li><a href="#current-events">Current Events</a></li><li><a href="#security-advice">Senior Security Advice</a></li><li><a href="#talk-track">Senior Talk Tracks</a></li>
+    </ol>
+</header>
+<main id="main-content" class="brief">
+    
+    <article class="brief-section" id="current-events">
+        <p class="brief-kicker">Current Events</p>
+        <h2>Salesloft Drift OAuth Token Breach</h2>
+        
+            
+            <p>Here's how a single stolen login at a marketing-tech vendor turned into a data breach at more than seven hundred companies — without the attackers ever touching those companies' own networks. This is the Salesloft Drift OAuth token breach, and it's one of the cleanest lessons in why trusting a vendor's access token is the same as trusting the vendor's entire security program.</p>
+<p>Salesloft makes a sales-engagement tool called Drift, and Drift connects to customers' Salesforce instances through OAuth — a standard way for one application to access another on a user's behalf, without ever handling that user's password directly. Sometime between roughly March and June of 2025 — reporting differs on the exact entry point here — attackers compromised Salesloft's GitHub account. From there, they pivoted into Salesloft's AWS environment, where Drift's integration credentials lived. By early-to-mid August, a group tracked as UNC6395 had stolen OAuth and refresh tokens tied to the Drift-to-Salesforce integration — and, Google later disclosed, tokens tied to a separate Drift email integration too.</p>
+<p>Here's the part that makes this a blast-radius story, not just a vendor-breach story: those tokens worked directly against customer Salesforce instances. No phishing email to the customer. No password to crack. The attacker simply replayed a stolen, valid token, and Salesforce let them in, because from Salesforce's point of view that token was Drift, and Drift was authorized. Between roughly August 8th and 18th, the group queried and exfiltrated data — cases, accounts, users, support tickets — across more than seven hundred downstream organizations, among them Cloudflare, Palo Alto Networks, and Zscaler.</p>
+<p>Salesloft disclosed the issue on August 20th and revoked every active Drift token; Google's Threat Intelligence Group published the technical write-up on August 26th; and by August 28th, Google had found its own Workspace accounts touched through the email-integration tokens, and told everyone to treat all Drift-connected tokens as burned. The FBI and the Internet Crime Complaint Center followed with a joint advisory on September 12th.</p>
+<p>The root cause: long-lived, broadly scoped OAuth tokens that nobody was watching for anomalous use. A single vendor compromise became a multi-tenant breach because the trust those tokens carried was standing and unmonitored.</p>
+<p>What actually contained this was fast, public token revocation — inside about two days of detection — and Google's decision to publish the technical detail openly, which let hundreds of downstream victims self-audit instead of waiting to be told. Several victims, including Cloudflare and Palo Alto Networks, published their own transparent postmortems. That's the senior move here: naming the controls that worked is just as valuable in an interview as naming what failed.</p>
+<p>For a senior Linux sysadmin or ISSO, the lesson a junior engineer misses is this: a vendor integration token is not a lower-risk credential just because a human never typed it. It needs the same lifecycle discipline as any other credential — short lifetimes, scoped permissions, monitoring for anomalous use. A senior engineer takes that lesson into the lab, not just the interview: standing up a test identity provider and checking the default access-token lifetime before trusting any integration in production — the same action in today's lab verification below.</p>
+
+        
+            <h3>Timeline</h3>
+            <table>
+<thead>
+<tr>
+<th>Date</th>
+<th>Event</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>~March–June 2025 (disputed/secondary sourcing)</td>
+<td>Attacker allegedly first compromises Salesloft's GitHub account</td>
+</tr>
+<tr>
+<td>Aug 8–18, 2025</td>
+<td>UNC6395 uses stolen OAuth/refresh tokens to query and exfiltrate data from customer Salesforce instances via the Drift integration</td>
+</tr>
+<tr>
+<td>Aug 20, 2025</td>
+<td>Salesloft discloses the breach; Salesloft and Salesforce revoke all active Drift tokens; Drift pulled from Salesforce AppExchange</td>
+</tr>
+<tr>
+<td>Aug 26, 2025</td>
+<td>Google Threat Intelligence Group publishes technical report on the campaign; Mandiant engaged</td>
+</tr>
+<tr>
+<td>Aug 28–29, 2025</td>
+<td>Google discloses Drift Email integration tokens also compromised; small number of Google Workspace accounts accessed; advises treating all Drift tokens as compromised</td>
+</tr>
+<tr>
+<td>Sept 12, 2025</td>
+<td>FBI/IC3 publish joint Cybersecurity Advisory on UNC6395 and related UNC6040, with IOCs</td>
+</tr>
+</tbody>
+</table>
+
+        
+            <h3>Control Failures</h3>
+            <table>
+<thead>
+<tr>
+<th>Failure</th>
+<th>NIST SP 800-53 Rev 5 Control Family</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Long-lived, broadly scoped OAuth tokens with no expiration/rotation enforcement</td>
+<td>IA-5 (Authenticator Management)</td>
+</tr>
+<tr>
+<td>No anomaly detection on token usage patterns across customer tenants</td>
+<td>AU-6 (Audit Record Review, Analysis, and Reporting)</td>
+</tr>
+<tr>
+<td>Vendor's source-code repository (GitHub) compromised, opening a path to production credentials</td>
+<td>AC-6 (Least Privilege) / SC-7 (Boundary Protection)</td>
+</tr>
+<tr>
+<td>Standing trust granted to a third-party integration without continuous verification</td>
+<td>SA-9 (External System Services)</td>
+</tr>
+<tr>
+<td>No scoping to limit a single integration's reach across unrelated customer data fields</td>
+<td>AC-6 (Least Privilege)</td>
+</tr>
+</tbody>
+</table>
+
+        
+            <h3>What Held</h3>
+            <p>Fast, coordinated token revocation across Salesloft and Salesforce within roughly two days of detection cut off the active campaign before further expansion. Google's decision to publish full technical detail — rather than a vague advisory — let over 700 downstream organizations self-audit their own logs immediately instead of waiting for individual notification. Victim organizations including Cloudflare and Palo Alto Networks ran their own transparent postmortems and rotated every credential that had touched the Drift integration, treating the compromise as total rather than partial. Naming these controls — rapid revocation, public disclosure, &quot;assume full compromise&quot; rotation — as what worked signals defense-in-depth thinking in an interview, not just headline recall.</p>
+
+        
+            <h3>Sources</h3>
+            <ul>
+<li><a href="https://www.ic3.gov/CSA/2025/250912.pdf" target="_blank" rel="noopener noreferrer">FBI/CISA joint Cybersecurity Advisory (IC3), Sept 12 2025 (primary)</a></li>
+<li><a href="https://cloud.google.com/blog/topics/threat-intelligence/data-theft-salesforce-instances-via-salesloft-drift" target="_blank" rel="noopener noreferrer">Google Threat Intelligence Group — Widespread Data Theft Targets Salesforce Instances via Salesloft Drift (primary)</a></li>
+<li><a href="https://www.bleepingcomputer.com/news/security/salesloft-breached-to-steal-oauth-tokens-for-salesforce-data-theft-attacks" target="_blank" rel="noopener noreferrer">BleepingComputer — Salesloft breached to steal OAuth tokens for Salesforce data theft attacks</a></li>
+<li><a href="https://thehackernews.com/2025/08/salesloft-oauth-breach-via-drift-ai.html" target="_blank" rel="noopener noreferrer">The Hacker News — Salesloft OAuth breach via Drift AI</a></li>
+<li><a href="https://www.theregister.com/2025/08/27/salesforce_salesloft_breach/" target="_blank" rel="noopener noreferrer">The Register — Salesforce Salesloft breach</a></li>
+<li><a href="https://www.securityweek.com/fbi-shares-iocs-for-recent-salesforce-intrusion-campaigns/" target="_blank" rel="noopener noreferrer">SecurityWeek — FBI shares IOCs for recent Salesforce intrusion campaigns</a></li>
+</ul>
+<p><strong>Tomorrow's Thread:</strong> Tomorrow I'll cover the F5 BIG-IP source-code and undisclosed-vulnerability theft disclosed via SEC filing in October 2025 — a software supply-chain story, a different family than today's identity and credential compromise.</p>
+
+        
+    </article>
+    
+    <article class="brief-section" id="security-advice">
+        <p class="brief-kicker">Senior Security Advice</p>
+        <h2>Scan Container Images for Vulnerabilities Before They Reach Production</h2>
+        
+            <h3>The Advice</h3>
+            <p>Scan every container image for known vulnerabilities at build time, in the registry, and again before deployment, and block the pipeline when a scan finds a critical flaw.</p>
+
+        
+            <h3>Why It Matters</h3>
+            <p>A container image is a frozen snapshot of an operating system, a runtime, and every library the application depends on. If any layer ships with a known vulnerability, that flaw rides into production inside every container built from it, often without anyone looking at the base layer again. Images get pulled from public registries and rebuilt from cached layers for months, so a vulnerability patched upstream a year ago can still be running today simply because nobody rescanned it. This is the well-documented incident class behind container compromises: attackers do not need a zero-day when a public base image carries an old, unpatched library with a public exploit already written for it. Scanning catches that before the image ever runs, when fixing it means rebuilding, not responding to an incident.</p>
+
+        
+            <h3>How to Implement It</h3>
+            <ol>
+<li>Add a container-aware scanner (Trivy, Grype, Snyk Container, or Docker Scout) to the CI pipeline so every image is checked for known CVEs the moment it is built.</li>
+<li>Set a policy gate, not just a report: fail the build on critical and high-severity findings, so a vulnerable image cannot be pushed to the registry.</li>
+<li>Scan the registry itself on a recurring schedule, since a new CVE can be disclosed against a library already sitting in a stored image.</li>
+<li>Pin and minimize base images (distroless or slim variants) so there is less surface to scan and less to patch.</li>
+<li>Verify the control works: build a test image with a library known to carry a published CVE and confirm the pipeline blocks it, with both the alert and the block visible in the pipeline logs.</li>
+</ol>
+
+        
+            <h3>The Pushback You&#39;ll Hear</h3>
+            <p>&quot;Scanning slows down every build over vulnerabilities nobody will exploit.&quot; The senior response: a scan in CI adds seconds to a build that was running anyway, and a blocked build is a five-minute rebuild with a patched base image, not a multi-day incident response. NIST's own container security guidance says image vulnerabilities should be caught by purpose-built scanning tools wired into the pipeline, because catching them before deployment is far cheaper than after. Skipping this doesn't avoid the slowdown, it just moves it to whenever that old CVE gets used against you.</p>
+
+        
+            <h3>Sources</h3>
+            <ul>
+<li>NIST SP 800-190, &quot;Application Container Security Guide,&quot; Section 4.1.1 (Image Vulnerabilities): https://csrc.nist.gov/pubs/sp/800/190/final</li>
+<li>CIS Docker Benchmark, image and Dockerfile recommendations on scanning and rebuilding images for security patches: https://docs.docker.com/dhi/explore/security-concepts/cis.md</li>
+</ul>
+
+        
+    </article>
+    
+    <article class="brief-section" id="talk-track">
+        <p class="brief-kicker">Senior Talk Tracks</p>
+        <h2>ConfigMaps vs Secrets</h2>
+        
+            
+            <p>If you've ever stored a database password in a Kubernetes Secret and felt safe because it wasn't a ConfigMap, I need to walk you back from that. Here's what you need to know: a Kubernetes Secret is not encrypted by default. It's base64-encoded — that's just a text format, not encryption — and anyone can reverse it in about two seconds.</p>
+<p>So what's actually going on? Kubernetes gives you two similar-looking objects: a ConfigMap, for non-sensitive configuration, and a Secret, for sensitive values like passwords and API keys. They look almost identical in how you create and mount them. But under the hood, by default, both are stored the same way inside etcd — the cluster's backing database — in effectively plain text, unless you've explicitly turned on encryption at rest. And if anyone on your team has permission to run &quot;get&quot; or &quot;list&quot; on secrets in that namespace, they can read every one of them, no extra barrier required.</p>
+<p>Here's the senior take: the failure mode isn't a hacker breaking in through some exotic exploit. It's an engineer who assumes the object type alone is the security control. Secrets leak constructively all the time — through a pod's environment variables showing up in a crash dump, through &quot;kubectl describe,&quot; through a process-inspection tool. A senior engineer's response is to turn on etcd encryption at rest, scope role-based access control tightly so only the pods and people that truly need a secret can read it, mount secrets as files instead of environment variables wherever possible, and often skip the built-in Secret object entirely in favor of an external secrets manager that Kubernetes just references.</p>
+<p>Think of it like a locked drawer with a label that says &quot;valuables&quot; sitting in an unlocked office. The label tells you what's supposed to be protected — it doesn't actually protect it. The lock is a separate thing you have to add.</p>
+<p>Here's a line you could open with at work: &quot;Hey, are we actually encrypting secrets at rest in that cluster, or just trusting the object name?&quot;</p>
+
+        
+            <h3>Key Takeaways</h3>
+            <ol>
+<li>A Kubernetes Secret is base64-encoded, not encrypted — encoding and encryption are not the same thing.</li>
+<li>Without etcd encryption at rest explicitly enabled, Secrets sit in the cluster database in effectively plain text.</li>
+<li>Mounting secrets as files instead of environment variables, and scoping RBAC tightly, does more for real security than the object type ever will.</li>
+</ol>
+
+        
+            <h3>Reader Question</h3>
+            <p><strong>Q:</strong> &quot;If Secrets aren't actually secret by default, what would you change on a cluster you inherited that had never been hardened?&quot;</p>
+
+        
+    </article>
+    
+    <section class="brief-subscribe" id="subscribe">
+    <h2>Get The Daily Brief by email</h2>
+    <p>One short email each morning. Unsubscribe anytime.</p>
+    <form action="https://buttondown.com/api/emails/embed-subscribe/cybercider" method="post">
+        <label for="bd-email">Email address</label>
+        <input type="email" name="email" id="bd-email" required autocomplete="email" placeholder="you@example.com">
+        <button type="submit">Subscribe</button>
+    </form>
+</section>
+</main>
+
+    <footer><p class="copyright">The Daily Brief · Eddie Camacho</p></footer>
+<!-- cf-web-analytics (managed by tools/inject_analytics.py) -->
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "f728a20b49cc4a0fbe02cde72f03301c"}'></script>
+</body>
+</html>
