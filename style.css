@@ -2,6 +2,8 @@
 
 /* ── Reset ── */
 *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+/* Author display rules (e.g. .card { display: flex }) beat the UA [hidden] rule; restore it so the filter/search can hide cards. */
+[hidden] { display: none !important; }
 
 :root {
     --bg:     #07010f;
