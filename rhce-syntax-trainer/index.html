@@ -4039,7 +4039,10 @@ function termStateFor(idx){
     // passed, the root-shell steps reopen inside the root shell, and Q5
     // steps resume where the section last stood.
     if (q && ["Q5.1", "Q5.2", "Q5.3", "Q5.4", "Q5.5"].indexOf(q.id) >= 0 && lab.user !== "root" && state.done.has(QUESTIONS.findIndex(x => x.id === "Q5"))) { lab.user = "root"; lab.cwd = "/root"; }
-    const seedCwd = (q && lab.cwd && (sectionOf(q.id) === "Q5" || q.id === "Q7.1")) ? lab.cwd : "/home/student/ansible";
+    // Q7.1 opens standing in the roles directory, where role init has to
+    // run, whether or not Q7's cd step was done first in this session.
+    const seedDefault = (q && q.id === "Q7.1") ? "/home/student/ansible/roles" : "/home/student/ansible";
+    const seedCwd = (q && lab.cwd && (sectionOf(q.id) === "Q5" || q.id === "Q7.1")) ? lab.cwd : seedDefault;
     termStore[idx] = { cwd: seedCwd, entries: [], made: lab.made, lab: lab };
   }
   return termStore[idx];
