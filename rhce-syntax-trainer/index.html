@@ -128,7 +128,8 @@
   .explain code{background:#1a1a1a;padding:0 5px;color:var(--amber);font-size:12.5px}
   .explain .tie{background:#0d0d0d;border-left:3px solid var(--amber);padding:9px 12px;margin-top:12px}
   .explain .nextline{margin-top:14px;color:var(--amber)}
-  .seniorbox{border:1px solid var(--amber);background:#0d0b06;padding:14px 16px;margin:0 0 12px;line-height:1.7;font-size:13.5px}
+  .seniorbox{display:none;border:1px solid var(--amber);background:#0d0b06;padding:14px 16px;margin:0 0 12px;line-height:1.7;font-size:13.5px}
+  .seniorbox.show{display:block}
   .seniorbox .seniorlabel{display:inline-block;font-weight:bold;color:#000;background:var(--amber);padding:2px 10px;margin-bottom:10px;font-size:12.5px;letter-spacing:.4px}
   .seniorbox .seniorhead{font-weight:bold;color:#fff;margin:12px 0 4px}
   .seniorbox p{margin:0 0 9px}
@@ -5774,6 +5775,11 @@ function wireHelp(q){
       nb.addEventListener("click", () => goQuestion(state.cur + 1));
     }
   }
+  const sbtn = gel("seniorbtn"), sbox = gel("seniorbox");
+  if (sbtn && sbox) sbtn.addEventListener("click", () => {
+    const open = sbox.classList.toggle("show");
+    sbtn.textContent = open ? "🧑‍💼 Hide Senior Admin Explanation" : "🧑‍💼 Senior Admin Explanation";
+  });
   if (!hb || !rb) return;
   hb.addEventListener("click", () => {
     const open = hbox.classList.toggle("show");
@@ -5853,8 +5859,8 @@ function renderStage(){
       + "<div class='statusline'><span class='mode'>-- INSERT --</span><span>" + f.path + "</span><span class='pos' id='pos" + fi + "'>Ln 1, Col 1</span></div><div class='tablist' id='tablist" + fi + "'></div></div>";
   });
   h += "<div class='keys'><b>[Ctrl+Enter / F2]</b> check &nbsp;<b>[Alt+↑/↓]</b> switch file &nbsp;<b>[Alt+→]</b> next question &nbsp;<b>[Alt+←]</b> previous &nbsp;<b>[Tab]</b> complete path (shell-style) · in files: indent · <b>[Shift+Tab]</b> outdent · <b>[Ctrl+C]</b> clear the shell (^C) &nbsp;::&nbsp; attempts: <span class='n' id='att'>" + (state.attempts[state.cur] || 0) + "</span></div>";
-  h += "<div class='helprow'><button class='hbtn' id='checkbtn'>▶ Check</button><button class='hbtn' id='hintbtn'>💡 Hint</button><button class='hbtn' id='revealbtn'>👁 Reveal answer</button><button class='hbtn' id='listenbtn'>🔊 Listen</button><button class='hbtn' id='deepbtn'>🎙 Deep dive</button><button class='hbtn' id='videobtn'>🎬 Lesson video</button><button class='hbtn' id='nextbtn'>Next ▸</button><button class='hbtn qreset' id='qresetbtn' title='Start this question over: clears its typed text, its attempts counter and its pass mark. Other questions are untouched.'>↺ Reset question</button></div>";
-  if (q.senior) h += "<div class='seniorbox'><span class='seniorlabel'>Senior Admin Explanation</span>" + q.senior + "</div>";
+  h += "<div class='helprow'><button class='hbtn' id='checkbtn'>▶ Check</button><button class='hbtn' id='hintbtn'>💡 Hint</button><button class='hbtn' id='revealbtn'>👁 Reveal answer</button><button class='hbtn' id='listenbtn'>🔊 Listen</button><button class='hbtn' id='deepbtn'>🎙 Deep dive</button><button class='hbtn' id='videobtn'>🎬 Lesson video</button><button class='hbtn' id='nextbtn'>Next ▸</button>" + (q.senior ? "<button class='hbtn' id='seniorbtn'>🧑‍💼 Senior Admin Explanation</button>" : "") + "<button class='hbtn qreset' id='qresetbtn' title='Start this question over: clears its typed text, its attempts counter and its pass mark. Other questions are untouched.'>↺ Reset question</button></div>";
+  if (q.senior) h += "<div class='seniorbox' id='seniorbox'><span class='seniorlabel'>Senior Admin Explanation</span>" + q.senior + "</div>";
   h += "<div class='audiobox' id='audiobox'></div>";
   h += "<div class='audiobox' id='deepbox'></div>";
   h += "<div class='audiobox' id='videobox'></div>";
