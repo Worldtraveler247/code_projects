@@ -1767,19 +1767,19 @@ const QUESTIONS = [
     { re:/dest\s*:\s*\/webdev\/index\.html/, msg:"copy dest: /webdev/index.html" },
     { re:/content\s*:\s*Development\b/, msg:"copy content: Development" },
     { re:/state\s*:\s*link/, msg:"Link task: state: link" },
-    { re:/src\s*:\s*\/webdev\//, msg:"Link task: src: /webdev/ — the target, trailing slash included, exactly as specified" },
+    { re:/src\s*:\s*\/webdev[ \t]*$/m, msg:"Link task: src: /webdev — the target, no trailing slash, exactly as specified" },
     { re:/path\s*:\s*\/var\/www\/html\/webdev/, msg:"Link task: path: /var/www/html/webdev — where the link lives" },
     { re:/force\s*:\s*(true|yes)/i, msg:"Link task: force: true" },
     { fn:t => { const a = t.search(/ansible\.builtin\.group\s*:/), b = t.search(/state\s*:\s*directory/), c = t.search(/ansible\.builtin\.copy\s*:/), d = t.search(/state\s*:\s*link/); return a >= 0 && b > a && c > b && d > c; }, msg:"Task order is group, directory, file, link — the dependency order" }
   ]],
   senior:`<p class='seniorhead'>Q12 — the webcontent structure</p>
-<p>A web content structure on the dev hosts, built in four tasks in a fixed order: create the devops group, create /webdev owned by that group with mode 2775, drop an index.html containing Development into it, then symlink /var/www/html/webdev to /webdev/ with force.</p>
+<p>A web content structure on the dev hosts, built in four tasks in a fixed order: create the devops group, create /webdev owned by that group with mode 2775, drop an index.html containing Development into it, then symlink /var/www/html/webdev to /webdev with force.</p>
 <p>The order is dependency, not tidiness: the directory cannot take devops as its group before the group exists. The mode is the senior detail. 2775 is setgid plus rwxrwxr-x, so files created inside inherit the devops group, which is what makes the directory shareable in practice, and it is quoted in the YAML because an unquoted mode is a number waiting to be misread. Note what is absent: no when anywhere. The play targets dev directly, so targeting lives at the play level here, the opposite choice from Q11, and both are right in context. The force on the link replaces whatever already sits at the web root path instead of failing on it.</p>`,
   explain:`<h2>✅ Q12 complete — what you just did</h2>
   <p>Four tasks build one shared team directory, and the file's order is the dependency order: the group exists before the directory names it as owner (else "failed to look up group devops"), the directory exists before the file goes inside it (else "Destination directory /webdev does not exist"), and the link comes last. Because the play targets <code>dev</code>, no task needs a <code>when</code> — contrast Q11, where the play aimed at all and every task narrowed itself.</p>
   <h4>How it affects the Ansible environment</h4>
   <p>• The <code>2</code> in <code>2775</code> is SGID: anything created under /webdev inherits the devops group — that inheritance is what makes a shared directory actually shared. index.html is created by root yet still lands in group devops. The mode is quoted because unquoted <code>2775</code> is a YAML integer and produces the wrong permissions.<br>
-  • On the link task, <code>src</code> is the target and <code>path</code> is the link itself — same order as <code>ln -s TARGET LINK_NAME</code>. Swap them and force tries to convert /webdev itself into a link and fails. The trailing slash on <code>src: /webdev/</code> is stored in the link exactly as written and resolves to the same directory.<br>
+  • On the link task, <code>src</code> is the target and <code>path</code> is the link itself — same order as <code>ln -s TARGET LINK_NAME</code>. Swap them and force tries to convert /webdev itself into a link and fails. There is no trailing slash on <code>src: /webdev</code> — it is written exactly as specified, and the link stores it that way.<br>
   • <code>force: true</code> creates the link even if the target is missing and replaces a plain file sitting at the path — it does not create parent directories, which is why Q12.0 checked /var/www/html first.</p>
   <div class="tie"><b>How it ties in:</b> the devops group created here is the one Q15's developers join on servera. If a variant question also asks for the page to be <i>served</i>, the usual missing piece is SELinux labeling on /webdev (a 403 with correct permissions) — never fix that with setenforce 0. Q12.1 runs it.</div>`
 },
@@ -1804,12 +1804,12 @@ const QUESTIONS = [
 {
   id:"Q12.2", title:"Verify: ls -ld both paths", sub:"SGID s + link arrow", cmd:true,
   files:[{ path:"shell", lang:"cmd" }],
-  spec:`<b>12.2. Verify the directory and the link.</b><br>• On the dev hosts, list <code>/webdev</code> and <code>/var/www/html/webdev</code> themselves with <code>ls -ld</code> in one ad hoc command. Pass means <code>drwxrwsr-x</code> with group devops on the first, and an <code>l</code> line with an arrow to /webdev/ on the second.<br>• Type the command and press <b>Enter</b>.`,
+  spec:`<b>12.2. Verify the directory and the link.</b><br>• On the dev hosts, list <code>/webdev</code> and <code>/var/www/html/webdev</code> themselves with <code>ls -ld</code> in one ad hoc command. Pass means <code>drwxrwsr-x</code> with group devops on the first, and an <code>l</code> line with an arrow to /webdev on the second.<br>• Type the command and press <b>Enter</b>.`,
   checks:[[
     { re:/ansible\s+dev\s+-m\s+ansible\.builtin\.command\s+-a\s*['"]ls\s+-ld\s+\/webdev\s+\/var\/www\/html\/webdev['"]/, msg:"ansible dev -m ansible.builtin.command -a 'ls -ld /webdev /var/www/html/webdev'" }
   ]],
   explain:`<h2>✅ Q12.2 complete — what you just did</h2>
-  <p>Two lines carry the whole question: <code>drwxrwsr-x … root devops … /webdev</code> — the <code>s</code> sitting in the group triplet is SGID made visible — and <code>lrwxrwxrwx … /var/www/html/webdev -&gt; /webdev/</code>, the arrow showing the stored target, trailing slash and all. The <code>-d</code> is what makes ls describe the paths themselves instead of their contents.</p>
+  <p>Two lines carry the whole question: <code>drwxrwsr-x … root devops … /webdev</code> — the <code>s</code> sitting in the group triplet is SGID made visible — and <code>lrwxrwxrwx … /var/www/html/webdev -&gt; /webdev</code>, the arrow showing the stored target exactly as src wrote it. The <code>-d</code> is what makes ls describe the paths themselves instead of their contents.</p>
   <h4>How it affects the Ansible environment</h4>
   <p>• Nothing changes. Trap worth memorizing: put a trailing slash on the link's path (<code>ls -ld /var/www/html/webdev/</code>) and ls follows the link and shows /webdev's details instead — you would be inspecting the target while believing you inspected the link.</p>
   <h4>Command anatomy — what every part does, and what breaks without it</h4>
@@ -1845,7 +1845,7 @@ const QUESTIONS = [
     { re:/ansible\s+dev\s+-m\s+ansible\.builtin\.stat\s+-a\s*['"](path=\/var\/www\/html\/webdev\s+follow=false|follow=false\s+path=\/var\/www\/html\/webdev)['"]/, msg:"ansible dev -m ansible.builtin.stat -a 'path=/var/www/html/webdev follow=false'" }
   ]],
   explain:`<h2>✅ Q12.4 complete — what you just did</h2>
-  <p>The JSON answers as data what ls showed as text: <code>"exists": true</code>, <code>"islnk": true</code> (a link, not a real directory someone made by hand), <code>"lnk_target": "/webdev/"</code> — the raw stored target, exactly what <code>src:</code> wrote — and <code>"lnk_source": "/webdev"</code>, the resolved target with the slash normalized away. <code>follow=false</code> is the whole point: with the default follow behavior, stat would describe /webdev and islnk would never appear.</p>
+  <p>The JSON answers as data what ls showed as text: <code>"exists": true</code>, <code>"islnk": true</code> (a link, not a real directory someone made by hand), <code>"lnk_target": "/webdev"</code> — the raw stored target, exactly what <code>src:</code> wrote — and <code>"lnk_source": "/webdev"</code>, the resolved target, identical here because src carried no trailing slash to normalize. <code>follow=false</code> is the whole point: with the default follow behavior, stat would describe /webdev and islnk would never appear.</p>
   <h4>How it affects the Ansible environment</h4>
   <p>• Nothing changes — stat is a pure read, and it returns facts a playbook could branch on, not just text for a human.</p>
   <h4>Command anatomy — what every part does, and what breaks without it</h4>
@@ -1859,12 +1859,12 @@ const QUESTIONS = [
 {
   id:"Q12.5", title:"Verify: link provenance", sub:"ls -l --time-style=full-iso", cmd:true,
   files:[{ path:"shell", lang:"cmd" }],
-  spec:`<b>12.5. Verify the link is yours.</b><br>• On the dev hosts, list the link with a full ISO timestamp. Pass means today's date and an arrow to <code>/webdev/</code> — an old date, or a target without the trailing slash, is a leftover from an earlier attempt.<br>• Type the command and press <b>Enter</b>.`,
+  spec:`<b>12.5. Verify the link is yours.</b><br>• On the dev hosts, list the link with a full ISO timestamp. Pass means today's date and an arrow to <code>/webdev</code> — an old date, or a target carrying a trailing slash, is a leftover from an earlier attempt.<br>• Type the command and press <b>Enter</b>.`,
   checks:[[
     { re:/ansible\s+dev\s+-m\s+ansible\.builtin\.command\s+-a\s*['"]ls\s+-l\s+--time-style=full-iso\s+\/var\/www\/html\/webdev['"]/, msg:"ansible dev -m ansible.builtin.command -a 'ls -l --time-style=full-iso /var/www/html/webdev'" }
   ]],
   explain:`<h2>✅ Q12.5 complete — what you just did</h2>
-  <p>Provenance is the proof level people skip: a correct-looking link can be yesterday's leftover that your task never actually replaced, and every other check would still pass. The full-iso timestamp dates the link's creation, and the arrow re-confirms the stored target. Today's date plus <code>-&gt; /webdev/</code> means this run did the work.</p>
+  <p>Provenance is the proof level people skip: a correct-looking link can be yesterday's leftover that your task never actually replaced, and every other check would still pass. The full-iso timestamp dates the link's creation, and the arrow re-confirms the stored target. Today's date plus <code>-&gt; /webdev</code> means this run did the work.</p>
   <h4>How it affects the Ansible environment</h4>
   <p>• Nothing changes. Graders — and senior admins — trust work they can attribute; this is how you attribute it.</p>
   <h4>Command anatomy — what every part does, and what breaks without it</h4>
@@ -2681,7 +2681,7 @@ ansible-playbook lvm.yml --syntax-check
   answer:[{ path:"shell", text:"ansible-playbook issues.yml" }] },
 "Q12.0": { hint:`ansible dev, the command module, and an -a argument running ls -ld on /var/www/html — the directory the link will live inside.`,
   answer:[{ path:"shell", text:"ansible dev -m ansible.builtin.command -a 'ls -ld /var/www/html'" }] },
-"Q12": { hint:`One play on dev, become: true, four tasks in dependency order: group devops present; file state: directory on /webdev with group: devops and mode: "2775" (quoted); copy Development to /webdev/index.html; file state: link with src: /webdev/ (target, trailing slash) and path: /var/www/html/webdev (the link), force: true.`,
+"Q12": { hint:`One play on dev, become: true, four tasks in dependency order: group devops present; file state: directory on /webdev with group: devops and mode: "2775" (quoted); copy Development to /webdev/index.html; file state: link with src: /webdev (the target, no trailing slash) and path: /var/www/html/webdev (the link), force: true.`,
   answer:[{ path:"/home/student/ansible/webcontent.yml", text:`---
 - name: Create a webcontent file
   hosts: dev
@@ -2704,7 +2704,7 @@ ansible-playbook lvm.yml --syntax-check
     - name: Create symbolic link
       ansible.builtin.file:
         state: link
-        src: /webdev/
+        src: /webdev
         path: /var/www/html/webdev
         force: true
 ` }] },
@@ -4433,7 +4433,7 @@ function soRemoteCmd(cmdStr, host, ctx){
     const out = [];
     for (const p of paths.length ? paths : ["."]) {
       const meta = SO_REMOTE_META[p];
-      if (longFmt && meta) { out.push(meta + " " + p + (p === "/var/www/html/webdev" ? " -> /webdev/" : "")); continue; }
+      if (longFmt && meta) { out.push(meta + " " + p + (p === "/var/www/html/webdev" ? " -> /webdev" : "")); continue; }
       if (meta || soRemoteFileLines(p, host)) { out.push(p); continue; }
       return { out: [], failed: true, stderr: "ls: cannot access '" + p + "': No such file or directory" };
     }
@@ -4540,7 +4540,7 @@ function soRemoteCmd(cmdStr, host, ctx){
     if (/-c\s/.test(cmdStr) || / -c/.test(cmdStr)) return { out: ["Configuration file is valid"], failed: false };
     return { out: [], failed: false };
   }
-  if (cmd === "stat") return { out: ["  File: " + (tokens[1] || "") + " -> /webdev/", "  Size: 7         	Blocks: 0          IO Block: 4096   symbolic link"], failed: false };
+  if (cmd === "stat") return { out: ["  File: " + (tokens[1] || "") + " -> /webdev", "  Size: 7         	Blocks: 0          IO Block: 4096   symbolic link"], failed: false };
   return { out: [], failed: false };
 }
 function soPipeFilter(lines, stage){
@@ -4731,7 +4731,7 @@ function soAdhoc(st, tokens){
       const pm = (args || "").match(/path=(\S+)/);
       const p = pm ? pm[1] : "";
       lines.push(h + " | SUCCESS => {");
-      if (p === "/var/www/html/webdev") lines.push("    \"changed\": false,", "    \"stat\": {", "        \"exists\": true,", "        \"islnk\": true,", "        \"lnk_source\": \"/webdev/\",", "        \"path\": \"/var/www/html/webdev\"", "    }", "}");
+      if (p === "/var/www/html/webdev") lines.push("    \"changed\": false,", "    \"stat\": {", "        \"exists\": true,", "        \"islnk\": true,", "        \"lnk_source\": \"/webdev\",", "        \"path\": \"/var/www/html/webdev\"", "    }", "}");
       else lines.push("    \"changed\": false,", "    \"stat\": {", "        \"exists\": " + (SO_REMOTE_META[p] ? "true" : "false") + ",", "        \"path\": \"" + p + "\"", "    }", "}");
       lines.push("");
       return;
@@ -4757,7 +4757,7 @@ function soLsLines(st, tokens, typed){
     const e = soFsExists(st, abs);
     const isDir = e && e.dir;
     const size = !isDir && typeof (e && e.content) === "string" ? e.content.length : (isDir ? 4096 : 512);
-    if (abs === "/var/www/html/webdev") return "lrwxrwxrwx. 1 root root 8 " + (fullIso ? "2026-11-11 09:12:04.000000000 +0900" : "Nov 11 09:12") + " " + name + " -> /webdev/";
+    if (abs === "/var/www/html/webdev") return "lrwxrwxrwx. 1 root root 7 " + (fullIso ? "2026-11-11 09:12:04.000000000 +0900" : "Nov 11 09:12") + " " + name + " -> /webdev";
     if (abs === "/home/student/ansible/roles/apache") return "drwxr-xr-x. 8 student student 4096 Nov 11 09:02 " + name;
     if (!isDir && st.lab.execFiles && st.lab.execFiles[abs]) return "-rwxr-xr-x. 1 student student " + size + " " + (fullIso ? "2026-11-11 09:12:04.000000000 +0900" : "Nov 11 09:12") + " " + name;
     return (isDir ? "drwxr-xr-x" : "-rw-r--r--") + ". 1 student student " + size + " " + (fullIso ? "2026-11-11 09:12:04.000000000 +0900" : "Nov 11 09:12") + " " + name;
@@ -6110,7 +6110,5 @@ renderStage();
 focusEditor(0);
 
 </script>
-<!-- cf-web-analytics (managed by tools/inject_analytics.py) -->
-<script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "f728a20b49cc4a0fbe02cde72f03301c"}'></script>
 </body>
 </html>
