@@ -19,6 +19,7 @@ A portfolio of small, self-contained web apps built by **Eddie Camacho** — Lin
 | App | What it does |
 | --- | --- |
 | [DevSecOps Job Hub](https://github.com/Worldtraveler247/devsecops-job-hub) | Finds cleared DevSecOps and cloud security roles at U.S. government contractors |
+| [Proton Mail Triage Agent](proton-mail-agent/how-it-works.html) | Python daemon that triages a Proton inbox with an LLM and alerts over Telegram; write-up of the design and threat model (source is private) |
 | [CIDR Calculator](cidr-calc/) | Subnet math in real time, with binary breakdown and a subnet splitter |
 | [Career Ladder](career-ladder/) | A map of IT/security career rungs and what each one requires |
 | [Dashboard](my-dashboard/) | Start-page widget: live clock, greeting, and GPS weather via Open-Meteo |

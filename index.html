@@ -51,7 +51,7 @@
             <p class="hero-sub">Linux systems administration and security compliance, built in public.</p>
             <div class="hero-stats">
                 <div class="stat">
-                    <span class="stat-num">33</span>
+                    <span class="stat-num">34</span>
                     <span class="stat-label">Projects</span>
                 </div>
                 <div class="stat-sep"></div>
@@ -238,6 +238,28 @@
                             <span>VS Code</span>
                         </a>
                         <a href="https://github.com/Worldtraveler247/macos-hardening-audit#readme" class="action-btn action-btn--build" target="_blank" rel="noopener noreferrer" aria-label="How this app is built" title="How It's Built">
+                            📖 <span>How It's Built</span>
+                        </a>
+                    </div>
+                </article>
+
+                <!-- Proton Mail Triage Agent (source repo is private: write-up only) -->
+                <article class="card" data-tag="Tool">
+                    <a href="proton-mail-agent/how-it-works.html" class="card-link">
+                        <div class="card-visual" style="--a:#0f0a1f;--b:#2a1a5e;--c:#8b6cff">
+                            <div class="orb orb1"></div>
+                            <div class="orb orb2"></div>
+                            <div class="card-icon">📬</div>
+                        </div>
+                        <div class="card-body">
+                            <div class="card-tag">Tool</div>
+                            <h3>Proton Mail Triage Agent</h3>
+                            <p>Python daemon under launchd that triages a Proton inbox with Claude and alerts over Telegram. Every email is treated as untrusted input: forced-schema classification, owner allowlist, confirm-before-send, and token redaction at the log sink, plus a dead-man alert for silent outages. 52 offline tests.</p>
+                            <span class="card-cta">Read the Write-Up →</span>
+                        </div>
+                    </a>
+                    <div class="card-actions">
+                        <a href="proton-mail-agent/how-it-works.html" class="action-btn action-btn--build" aria-label="How this app is built" title="How It's Built">
                             📖 <span>How It's Built</span>
                         </a>
                     </div>
