@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="dark">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'self' https://static.cloudflareinsights.com; connect-src 'self' https://cloudflareinsights.com; img-src 'self' data:; form-action https://buttondown.com; base-uri 'none'; object-src 'none'">
+    <meta name="description" content="The Daily Brief for Friday, November 20, 2026: security incidents, senior security advice, engineering explainers, and tech news.">
+    <title>The Daily Brief · Nov 20, 2026</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="icon" href="../../../favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="../../../style.css">
+    <link rel="stylesheet" href="../../newsletter.css">
+</head>
+<body class="brief-page">
+    <a href="#main-content" class="skip-nav">Skip to main content</a>
+    <nav class="brief-nav">
+        <a href="../../../index.html">← App Hub</a>
+        <a href="../../">All issues</a>
+    </nav>
+    
+<header class="brief-masthead">
+    <p class="brief-eyebrow">THE DAILY BRIEF</p>
+    <h1>Friday, November 20, 2026</h1>
+    <ol class="brief-toc">
+        <li><a href="#current-events">Current Events</a></li><li><a href="#security-advice">Senior Security Advice</a></li><li><a href="#talk-track">Senior Talk Tracks</a></li>
+    </ol>
+</header>
+<main id="main-content" class="brief">
+    
+    <article class="brief-section" id="current-events">
+        <p class="brief-kicker">Current Events</p>
+        <h2>EchoLeak: Zero-Click Prompt Injection in Microsoft 365 Copilot</h2>
+        
+            
+            <p>You didn't click anything. You didn't open an attachment. Someone just sent you an email, and your own AI assistant handed your company's internal data to a stranger. That's EchoLeak, the first documented zero-click attack against a production AI agent, and if you're building or defending anything with Microsoft 365 Copilot — or any AI tool that reads your email on your behalf — this is the case study you need to know cold.</p>
+<p>Here's what happened, in plain terms. Researchers at Aim Security found a flaw, tracked as CVE-2025-32711, in Microsoft 365 Copilot, the AI assistant Microsoft built into Office apps that can read a user's email, chat, and documents to answer questions. An attacker could send an ordinary-looking email to a target inside an organization. Nobody has to open it, click a link, or even read it. The next time that person asks Copilot a question that happens to touch the same topic, Copilot's own retrieval system pulls the malicious email into its context — and the hidden instructions inside it hijack the assistant.</p>
+<p>Here's the chain, step by step. First, the email evades Microsoft's prompt-injection filter by phrasing its instructions so they don't look like a command to a human reader. Second, Copilot is told to format its response as a markdown image link pointing to an attacker-controlled address — and while Copilot strips plain external links, it didn't strip image references the same way, so the payload survives. Third, that address isn't blocked by Copilot's content security policy, because the attacker routes it through a Microsoft-owned service already on the assistant's allow list — Teams' own link-preview infrastructure — so the browser dutifully fetches the image, and the data riding along with it leaves the building disguised as ordinary traffic.</p>
+<p>Aim Security's own term for the underlying flaw is a scope violation: untrusted data — an email anyone can send you — was allowed to steer what a trusted AI agent does with your trusted internal data, without you ever asking it to. That's the root cause, and according to Microsoft, it required no action from the user at all.</p>
+<p>What held: Aim Security reported this privately in January 2025 and sat on publication until Microsoft shipped a server-side fix, finished in May, disclosed in June. Microsoft says it found no evidence of exploitation in the wild. That's responsible disclosure working as designed, and it's also why you, the user, never had to patch anything — Microsoft fixed it entirely on their end.</p>
+<p>My read: this isn't really a Microsoft bug, it's a preview of every retrieval-augmented AI agent out there. Any time you let a model automatically pull in data a stranger can write to — an email, a ticket, a support form — you've built an input channel for that stranger. A senior engineer auditing an AI agent wouldn't just check whether the model resists jailbreaks. They'd ask what untrusted content automatically lands in that model's context, and whether the agent's own output channels — links, images, tool calls — can be hijacked to move data somewhere it shouldn't go.</p>
+<p>So what's the actual lesson? The attacker never touched a password or a login. They just mailed a sentence to the one piece of software in your company that reads everything and asks no questions.</p>
+
+        
+            <h3>Timeline</h3>
+            <table>
+<thead>
+<tr>
+<th>Date</th>
+<th>Event</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>January 2025</td>
+<td>Aim Security's research team (Aim Labs) privately reports the vulnerability to the Microsoft Security Response Center</td>
+</tr>
+<tr>
+<td>~April 2025 (disputed/secondary sourcing)</td>
+<td>Some secondary reporting describes an initial partial mitigation around this time; not confirmed in Microsoft's own advisory language</td>
+</tr>
+<tr>
+<td>May 2025</td>
+<td>Microsoft completes a server-side fix; Microsoft states no customer action is required</td>
+</tr>
+<tr>
+<td>June 11, 2025</td>
+<td>CVE-2025-32711 is publicly disclosed; Aim Security publishes its &quot;EchoLeak&quot; technical write-up; Microsoft credits Aim Labs for responsible disclosure</td>
+</tr>
+</tbody>
+</table>
+
+        
+            <h3>Control Failures</h3>
+            <table>
+<thead>
+<tr>
+<th>#</th>
+<th>Failure</th>
+<th>NIST SP 800-53 Rev 5 Control Family</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>The cross-prompt-injection content filter failed to flag malicious instructions embedded in an ordinary-looking email</td>
+<td>SI-10 — Information Input Validation</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Link-redaction logic stripped plain external markdown links but not image references, leaving an undetected exfiltration path</td>
+<td>CM-7 — Least Functionality</td>
+</tr>
+<tr>
+<td>3</td>
+<td>The content security policy allow-listed Microsoft's own services without accounting for those services being usable as an open proxy to an attacker's server</td>
+<td>SC-7 — Boundary Protection</td>
+</tr>
+<tr>
+<td>4</td>
+<td>No enforced separation between untrusted retrieved content (an email anyone can send) and the trust level the agent extended to data already in its context window</td>
+<td>AC-4 — Information Flow Enforcement</td>
+</tr>
+<tr>
+<td>5</td>
+<td>No detection surfaced the anomalous outbound data flow riding on an image-fetch request before Aim Security reported it</td>
+<td>SI-4 — System Monitoring</td>
+</tr>
+</tbody>
+</table>
+
+        
+            <h3>What Held</h3>
+            <p>Aim Security followed coordinated disclosure — reporting privately in January 2025 and withholding publication until Microsoft's fix was live — which is the senior move worth naming explicitly in an interview, not just the vulnerability itself. Microsoft fixed the flaw entirely server-side, meaning no customer had to patch anything, which removed the usual &quot;slow patch cycle&quot; blast-radius problem that plagues on-premises vulnerabilities. Microsoft states it found no evidence of in-the-wild exploitation, which is the reason this incident is taught as a proof-of-concept case study rather than a breach-notification case study.</p>
+
+        
+            <h3>Sources</h3>
+            <ul>
+<li><a href="https://msrc.microsoft.com/update-guide/vulnerability/CVE-2025-32711" target="_blank" rel="noopener noreferrer">Microsoft Security Response Center — Security Update Guide, CVE-2025-32711 (primary)</a></li>
+<li><a href="https://www.aim.security/lp/aim-labs-echoleak-blogpost" target="_blank" rel="noopener noreferrer">Aim Security / Aim Labs — EchoLeak: Zero-Click AI Vulnerability Enabling Data Exfiltration from Microsoft 365 Copilot (primary)</a></li>
+<li><a href="https://nvd.nist.gov/vuln/detail/CVE-2025-32711" target="_blank" rel="noopener noreferrer">NVD — CVE-2025-32711 Detail</a></li>
+<li><a href="https://thehackernews.com/2025/06/zero-click-ai-vulnerability-exposes.html" target="_blank" rel="noopener noreferrer">The Hacker News — Zero-Click AI Vulnerability Exposes Microsoft 365 Copilot Data Without User Interaction</a></li>
+<li><a href="https://www.darkreading.com/application-security/researchers-detail-zero-click-copilot-exploit-echoleak" target="_blank" rel="noopener noreferrer">Dark Reading — Researchers Detail Zero-Click Copilot Exploit 'EchoLeak'</a></li>
+<li><a href="https://www.securityweek.com/echoleak-ai-attack-enabled-theft-of-sensitive-data-via-microsoft-365-copilot/" target="_blank" rel="noopener noreferrer">SecurityWeek — EchoLeak AI Attack Enabled Theft of Sensitive Data via Microsoft 365 Copilot</a></li>
+<li><a href="https://www.infosecurity-magazine.com/news/microsoft-365-copilot-zeroclick-ai" target="_blank" rel="noopener noreferrer">Infosecurity Magazine — Microsoft 365 Copilot: New Zero-Click AI Vulnerability Allows Corporate Data Theft</a></li>
+</ul>
+<p><strong>Tomorrow's Thread:</strong> Day 64 moves to the container and orchestration escape family — the original runc container breakout tracked as CVE-2019-5736, a different incident from the Leaky Vessels/CVE-2024-21626 runc flaw already covered in this folder, and a different family from today's AI and agent security topic.</p>
+
+        
+    </article>
+    
+    <article class="brief-section" id="security-advice">
+        <p class="brief-kicker">Senior Security Advice</p>
+        <h2>Cap Every IAM Role With a Permission Boundary, Then Prove It With Access Analyzer</h2>
+        
+            <h3>The Advice</h3>
+            <p>Put a permission boundary on every IAM role so no policy change, however generous, can ever push that role past a ceiling you set on purpose - then use IAM Access Analyzer to continuously prove the role isn't sitting on access it never uses.</p>
+
+        
+            <h3>Why It Matters</h3>
+            <p>Most cloud compromises don't stop at the first account an attacker gets into - they spread through it. A role that was scoped broadly &quot;to be safe&quot; turns one stolen credential or one misconfigured CI pipeline into a path toward the whole account. AWS's own Well-Architected guidance treats least privilege as the default assumption, not an exception: a role should only ever hold the exact permissions its job requires, and that set should keep shrinking as the job becomes better understood. The incident class this stops is privilege escalation after initial access - an attacker lands in a low-value service role, finds it can create new IAM policies or assume an admin role, and turns a minor foothold into full account takeover. That escalation path is exactly what a permission boundary is designed to cut off, because a boundary caps what any identity-based policy attached to that role can ever grant, no matter who edits the policy later or how.</p>
+
+        
+            <h3>How to Implement It</h3>
+            <ol>
+<li>Identify every IAM role that isn't already scoped to a single, well-understood job, starting with roles created by automation, CI/CD pipelines, and third-party tools - these tend to accumulate the broadest permissions fastest.</li>
+<li>Attach a permission boundary to each role that sets a hard ceiling on what its policies can ever grant, and apply that boundary to the role itself, not to the individual developer who manages it.</li>
+<li>Use IAM Access Analyzer's last-accessed and unused-access findings to see which permissions a role holds but has never actually called, then trim the role's policy down to match real usage.</li>
+<li>Turn on Access Analyzer's unused-access analysis at the organization level so new roles get checked automatically instead of waiting for a manual audit.</li>
+<li>Verify the boundary is actually working, not just attached: in a test account, try to grant the role a permission outside its boundary and confirm AWS denies it, and re-check Access Analyzer findings on a recurring schedule so permissions that go unused for 90 days get flagged again rather than forgotten.</li>
+</ol>
+
+        
+            <h3>The Pushback You&#39;ll Hear</h3>
+            <p>&quot;We can't lock this down - the team needs flexibility to try new AWS services without filing a ticket every time.&quot; The senior rebuttal: a permission boundary isn't a ban, it's a ceiling, and you set that ceiling wide enough to cover the services the team legitimately needs while still ruling out the ones it doesn't - like IAM or billing changes a service role has no business making. AWS explicitly frames this as an iterative process, not a one-time lockdown: you widen or narrow the boundary as the real job becomes clearer, and Access Analyzer gives you the usage data to do that safely instead of guessing. The alternative - no ceiling at all - means the day someone's credentials leak or a pipeline gets compromised, the blast radius is whatever that role could theoretically do, not what it actually needed to do.</p>
+
+        
+            <h3>Sources</h3>
+            <ul>
+<li>SEC03-BP02 Grant least privilege access, AWS Well-Architected Framework Security Pillar: https://docs.aws.amazon.com/wellarchitected/latest/security-pillar/sec_permissions_least_privileges.html</li>
+<li>SEC03-BP04 Reduce permissions continuously, AWS Well-Architected Framework: https://docs.aws.amazon.com/wellarchitected/latest/framework/sec_permissions_continuous_reduction.html</li>
+<li>When and where to use IAM permissions boundaries, AWS Security Blog: https://aws.amazon.com/blogs/security/when-and-where-to-use-iam-permissions-boundaries</li>
+<li>IAM Access Analyzer simplifies inspection of unused access in your organization, AWS Security Blog: https://aws.amazon.com/blogs/security/iam-access-analyzer-simplifies-inspection-of-unused-access-in-your-organization</li>
+</ul>
+
+        
+    </article>
+    
+    <article class="brief-section" id="talk-track">
+        <p class="brief-kicker">Senior Talk Tracks</p>
+        <h2>Least Privilege as a Process, Not a Setting</h2>
+        
+            
+            <p>Here's a question that trips up almost every engineer early in their career: you set least privilege once when you build a system, so you're done, right? Wrong. And that gap is exactly what I want to walk you through today.</p>
+<p>Least privilege just means giving a person or a system only the access it actually needs to do its job, nothing more. Most teams do this reasonably well on day one. They look at what a new service needs, write a tight permission policy, and ship it. The problem is day one isn't the whole story.</p>
+<p>Here's why it breaks down. Systems change constantly. A developer gets added to a project and someone grants them broad access &quot;just to unblock them this week.&quot; A service gets a new feature and picks up a new permission it needed for one task, and that permission never gets removed once the task is done. Six months later, that tight policy from day one has quietly turned into a sprawling one nobody fully remembers granting.</p>
+<p>So here's the senior take. A junior engineer treats least privilege as a setting — something you configure once in an identity and access management policy and move on. A senior engineer treats it as a process — something you have to continuously re-check, because access rights only ever drift in one direction: outward. That means scheduled access reviews, automatically flagging permissions nobody has used in ninety days, and treating &quot;temporary&quot; access grants as technical debt with an actual expiration date, not a permanent fixture.</p>
+<p>Think of it like the keys to a building. On day one, everyone gets exactly the keys their job requires. But people change roles, contractors come and go, copies of keys get made for a weekend project and never collected back. If nobody ever re-checks who's holding what, eventually half the building's locks don't mean anything anymore — not because the original key policy was wrong, but because nobody kept it current.</p>
+<p>So next time someone says a system &quot;follows least privilege,&quot; here's a good way to open that conversation: &quot;Great — when was the last time we actually reviewed who still needs that access?&quot;</p>
+
+        
+            <h3>Key Takeaways</h3>
+            <ol>
+<li>Least privilege is easy to get right on day one and hard to keep right over time, because access naturally drifts outward, never inward, unless something actively pulls it back.</li>
+<li>Treating &quot;temporary&quot; access grants without an expiration date is one of the most common ways least privilege quietly erodes.</li>
+<li>A real least-privilege program includes scheduled access reviews and automated flags for permissions that go unused, not just a tight policy at launch.</li>
+</ol>
+
+        
+            <h3>Reader Question</h3>
+            <p><strong>Q:</strong> &quot;If we scoped access correctly when we built the system, why would least privilege ever become a problem later?&quot;</p>
+
+        
+    </article>
+    
+    <section class="brief-subscribe" id="subscribe">
+    <h2>Get The Daily Brief by email</h2>
+    <p>One short email each morning. Unsubscribe anytime.</p>
+    <form action="https://buttondown.com/api/emails/embed-subscribe/cybercider" method="post">
+        <label for="bd-email">Email address</label>
+        <input type="email" name="email" id="bd-email" required autocomplete="email" placeholder="you@example.com">
+        <button type="submit">Subscribe</button>
+    </form>
+</section>
+</main>
+
+    <footer><p class="copyright">The Daily Brief · Eddie Camacho</p></footer>
+<!-- cf-web-analytics (managed by tools/inject_analytics.py) -->
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "f728a20b49cc4a0fbe02cde72f03301c"}'></script>
+</body>
+</html>
