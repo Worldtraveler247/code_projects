@@ -5641,7 +5641,12 @@ function wireCmd(fi){
   ta.addEventListener("focus", () => { activeFile = fi; });
   ta.addEventListener("keydown", (e) => {
     if (e.key === "Tab") { e.preventDefault(); e.stopPropagation(); if (tabComplete(ta, fi)) saveTexts(); }
-    else if (e.ctrlKey && !e.metaKey && !e.altKey && (e.key === "c" || e.key === "C")) { e.preventDefault(); e.stopPropagation(); ctrlCancel(ta, fi); }
+    else if (e.ctrlKey && !e.metaKey && !e.altKey && (e.key === "c" || e.key === "C")) {
+      // with text selected, Ctrl+C copies it out like everywhere else on the
+      // page; with no selection it stays bash's ^C and throws the line away
+      if (ta.selectionStart !== ta.selectionEnd) return;
+      e.preventDefault(); e.stopPropagation(); ctrlCancel(ta, fi);
+    }
     else if ((e.key === "ArrowUp" || e.key === "ArrowDown") && !e.ctrlKey && !e.metaKey && !e.altKey) {
       // shell history: Up walks back through the commands run in this
       // question, Down walks forward again, past the newest restores
@@ -6028,10 +6033,13 @@ document.addEventListener("keydown", (e) => {
 // The wheel is NEVER intercepted: wherever the pointer sits (spec, editor, feedback), scrolling
 // the question page top-to-bottom has to work. Clicks inside a file box focus that box's editor,
 // so the mouse can move from box to box; other stray clicks just flash the reminder bar.
+// Copy is free everywhere (added 2026-11-20 at Ed's direction): text selection, double-click
+// word selection and the right-click menu are NOT intercepted anywhere on the page, so any
+// text — spec, hint, revealed answer, shell output — can be selected and copied out.
 const ttyBar = gel("ttybar");
 const ttyOrig = ttyBar ? ttyBar.textContent : "";
 let ttyTimer = null;
-["mousedown", "mouseup", "click", "dblclick", "contextmenu"].forEach(ev => {
+["click"].forEach(ev => {
   document.addEventListener(ev, (e) => {
     const t = e.target;
     if (t && (t.tagName === "TEXTAREA" || (t.closest && (t.closest("nav") || t.closest(".hbtn"))))) return; // mouse may use the question list (scroll + click), focus an editor, or use the hint/reveal buttons
@@ -6041,6 +6049,9 @@ let ttyTimer = null;
       if (ev === "click") { const ta = block.querySelector("textarea"); if (ta) ta.focus(); }
       return;
     }
+    // a click that ends a text selection is a copy in progress, not a stray click
+    const sel = window.getSelection ? window.getSelection() : null;
+    if (sel && sel.toString().length > 0) return;
     e.preventDefault();
     if (ttyBar) {
       ttyBar.textContent = "!! mouse works on the question list and editor focus only. [Ctrl+Enter / F2] check · [Alt+↑/↓] switch file · [Alt+←/→] switch question";
@@ -6048,6 +6059,20 @@ let ttyTimer = null;
       ttyTimer = setTimeout(() => { ttyBar.textContent = ttyOrig; }, 2200);
     }
   }, { passive: false });
+});
+
+// Paste is shell-only (added 2026-11-20 at Ed's direction): the shell input
+// (.cmdinput) accepts pasted or dropped text; the YAML file editors stay
+// type-only, like the exam, and paste/drop anywhere else is ignored.
+document.addEventListener("paste", (e) => {
+  const t = e.target;
+  if (t && t.classList && t.classList.contains("cmdinput")) return;
+  e.preventDefault();
+});
+document.addEventListener("drop", (e) => {
+  const t = e.target;
+  if (t && t.classList && t.classList.contains("cmdinput")) return;
+  e.preventDefault();
 });
 
 // Wheel hand-off: inside an editor box the wheel scrolls that box first; once the box can
