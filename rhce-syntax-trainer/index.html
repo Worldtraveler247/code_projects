@@ -888,11 +888,11 @@ const QUESTIONS = [
 {
   id:"Q6.2", title:"Install the roles", sub:"ansible-galaxy role install -p roles", cmd:true,
   files:[{ path:"shell", lang:"cmd" }],
-  spec:`<b>6.2. Install the roles.</b><br>• On the controller: use <code>ansible-galaxy</code> to install the roles listed in the requirements file you just wrote.<br>• Install them into the project's local <code>roles</code> directory — the location this project's configuration searches.<br>• Type the command and press <b>Enter</b> to run it.`,
+  spec:`<b>6.2. Install the roles.</b><br>• On the controller: use <code>ansible-galaxy</code> to install the roles listed in the requirements file you just wrote.<br>• Install them into the project's local <code>roles</code> directory — the location this project's configuration searches.<br>• Run it from the project directory with <code>-r roles/requirements.yml -p roles</code>, or from inside the <code>roles</code> directory itself with <code>-r requirements.yml -p .</code> — both paths are relative, so they shrink to match where you stand, exactly as in Q4.2.<br>• Type the command and press <b>Enter</b> to run it.`,
   checks:[[
     { re:/ansible-galaxy\s+role\s+install\b/, msg:"The command: ansible-galaxy role install" },
-    { re:/-r\s+(\.\/)?roles\/requirements\.yml/, msg:"It reads the requirements file (-r roles/requirements.yml)" },
-    { re:/-p\s+(\.\/)?roles\/?(\s|$)/, msg:"It installs into the local roles directory (-p roles)" }
+    { re:/-r\s+(\.\/)?(roles\/)?requirements\.yml/, msg:"It reads the requirements file (-r roles/requirements.yml from the project directory, -r requirements.yml from inside roles/)" },
+    { re:/-p\s+(\.\/)?(roles\/?|\.\/?)(\s|$)/, msg:"It installs into the local roles directory (-p roles from the project directory, -p . from inside roles/)" }
   ]],
   explain:`<h2>✅ Q6.2 complete — what you just did</h2>
   <p>You installed the two Galaxy roles — and the renames from Q6.1 took effect: on disk they are now <code>roles/balancer</code> and <code>roles/phpinfo</code>, not geerlingguy.anything. From here on, playbooks on this controller know them only by those local names.</p>
@@ -900,7 +900,7 @@ const QUESTIONS = [
   <p>• The <code>-p roles</code> flag is doing the same job as Q4.2's <code>-p collections</code>: install into the project, where <code>roles_path</code> points — not into your home directory's default role location, where this project's playbooks would never find them.<br>
   • The requirements file made it repeatable: anyone with this project can rebuild the same roles directory with one command.</p>
   <h4>Command anatomy — what every part does, and what breaks without it</h4>
-  <p>• Both relative paths in this command (<code>roles/requirements.yml</code> and <code>roles</code>) are measured from the project root — and you are already standing in it, so the command means what it should.<br>
+  <p>• Both relative paths in this command (<code>roles/requirements.yml</code> and <code>roles</code>) are measured from where you stand — from the project root they are spelled in full, so the command means what it should. The same install also works standing inside the roles directory itself, with the paths shrunk to match: <code>-r requirements.yml -p .</code> But beware the half-shrunk form: <code>-p roles</code> from inside the roles directory would nest a second roles folder inside the first — stocked, and invisible, the same trap as Q4.2.<br>
   • <code>ansible-galaxy role install</code> — tool, branch, action: fetch roles from Galaxy and install them. The <code>role</code> branch is what makes the requirements file's rename entries (src → name) take effect.<br>
   • Break the command into its two halves:<br>
   • <code>-r roles/requirements.yml</code> — the input. r = requirements file. This is the shopping list you wrote in Q6.1: geerlingguy.haproxy to be named balancer, geerlingguy.php to be named phpinfo. The file is only read — nothing is written into it.<br>
@@ -2468,7 +2468,7 @@ collections:
 - src: geerlingguy.php
   name: phpinfo
 ` }] },
-"Q6.2": { hint:`ansible-galaxy role install with -r (roles/requirements.yml) and -p (the local roles directory).`,
+"Q6.2": { hint:`ansible-galaxy role install with -r (roles/requirements.yml) and -p (the local roles directory). From the project directory: -r roles/requirements.yml -p roles. From inside the roles directory: -r requirements.yml -p .`,
   answer:[{ path:"shell", text:"ansible-galaxy role install -r roles/requirements.yml -p roles" }] },
 "Q6.3": { hint:`ansible-galaxy role list — no flags; you are looking for balancer and phpinfo in the output.`,
   answer:[{ path:"shell", text:"ansible-galaxy role list" }] },
@@ -4916,9 +4916,35 @@ function soGalaxy(st, tokens){
   if (sub === "role") {
     const action = tokens[2];
     if (action === "install") {
-      if (st.cwd !== "/home/student/ansible") return soWrongDir(st, "/home/student/ansible", "That is where this project's ansible.cfg points Ansible - roles installed from anywhere else land where Ansible never looks, and the questions that depend on them will not work.");
+      // Two correct stands (2026-11-20, at Ed's direction — the Q4.2 rule
+      // applied to roles): the project root with -r roles/requirements.yml
+      // -p roles, or inside the roles directory itself with
+      // -r requirements.yml -p . — both paths are relative, so what
+      // decides success is where they land. The resolution below grades
+      // the landing spot, not the spelling: a -r that resolves to some
+      // other file errors, and a -p that resolves anywhere else installs
+      // there, visibly, on a shelf this project's ansible.cfg never
+      // searches (rolesDone stays off).
+      if (st.cwd !== "/home/student/ansible" && st.cwd !== "/home/student/ansible/roles") return soWrongDir(st, "/home/student/ansible", "That is where this project's ansible.cfg points Ansible - roles installed from anywhere else land where Ansible never looks, and the questions that depend on them will not work. (Standing in the roles directory itself also works, with -r requirements.yml -p .)");
+      const flagVal = (flag) => { const i = tokens.indexOf(flag); return i >= 0 && i + 1 < tokens.length ? tokens[i + 1] : null; };
+      const rVal = flagVal("-r"), pVal = flagVal("-p");
+      const rolePairs = [["haproxy", "balancer"], ["php", "phpinfo"]];
+      if (rVal !== null && pVal !== null) {
+        if (soResolve(st, rVal) !== "/home/student/ansible/roles/requirements.yml") return { lines: ["ERROR! The requirements file '" + rVal + "' does not exist, relative to " + st.cwd + ". From the project directory it is -r roles/requirements.yml; from inside the roles directory it is -r requirements.yml."], ok: false };
+        const dest = soResolve(st, pVal);
+        const lines = ["Starting galaxy role install process"];
+        rolePairs.forEach(r => {
+          lines.push("- downloading role '" + r[0] + "', owned by geerlingguy");
+          lines.push("- extracting " + r[1] + " to " + dest + "/" + r[1]);
+          lines.push("- " + r[1] + " (master) was installed successfully");
+          soMakeDir(st, dest + "/" + r[1]);
+        });
+        if (dest === "/home/student/ansible/roles") st.lab.rolesDone = true;
+        else lines.push("[WARNING]: installed under " + dest + " - this project's ansible.cfg points roles_path at /home/student/ansible/roles, so these roles are invisible to its playbooks.");
+        return { lines: lines, ok: true };
+      }
       const lines = ["Starting galaxy role install process"];
-      [["haproxy", "balancer"], ["php", "phpinfo"]].forEach(r => {
+      rolePairs.forEach(r => {
         lines.push("- downloading role '" + r[0] + "', owned by geerlingguy");
         lines.push("- extracting " + r[1] + " to /home/student/ansible/roles/" + r[1]);
         lines.push("- " + r[1] + " (master) was installed successfully");
