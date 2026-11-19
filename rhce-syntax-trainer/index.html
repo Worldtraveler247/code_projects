@@ -567,11 +567,11 @@ const QUESTIONS = [
 {
   id:"Q4.2", title:"Install the collections", sub:"ansible-galaxy collection install", cmd:true,
   files:[{ path:"shell", lang:"cmd" }],
-  spec:`<b>4.2. Install the collections.</b><br>• On the controller: use <code>ansible-galaxy</code> to install the collections listed in the requirements file you just wrote.<br>• Install them into the project's local <code>collections</code> directory — that is where this project's configuration looks for them, not your home directory's default location.<br>• Type the command and press <b>Enter</b> to run it.`,
+  spec:`<b>4.2. Install the collections.</b><br>• On the controller: use <code>ansible-galaxy</code> to install the collections listed in the requirements file you just wrote.<br>• Install them into the project's local <code>collections</code> directory — that is where this project's configuration looks for them, not your home directory's default location.<br>• Run it from the project directory with <code>-r collections/requirements.yml -p collections</code>, or from inside the <code>collections</code> directory itself with <code>-r requirements.yml -p .</code> — both paths are relative, so they shrink to match where you stand.<br>• Type the command and press <b>Enter</b> to run it.`,
   checks:[[
     { re:/ansible-galaxy\s+collection\s+install\b/, msg:"The command: ansible-galaxy collection install" },
-    { re:/-r\s+(\.\/)?collections\/requirements\.yml/, msg:"It reads the requirements file (-r collections/requirements.yml)" },
-    { re:/-p\s+(\.\/)?collections\/?(\s|$)/, msg:"It installs into the local collections directory (-p collections)" }
+    { re:/-r\s+(\.\/)?(collections\/)?requirements\.yml/, msg:"It reads the requirements file (-r collections/requirements.yml from the project directory, -r requirements.yml from inside collections/)" },
+    { re:/-p\s+(\.\/)?(collections\/?|\.\/?)(\s|$)/, msg:"It installs into the local collections directory (-p collections from the project directory, -p . from inside collections/)" }
   ]],
   explain:`<h2>✅ Q4.2 complete — what you just did</h2>
   <p>You turned the requirements file into installed code. <code>ansible-galaxy collection install</code> read <code>collections/requirements.yml</code>, downloaded community.general, ansible.posix, and ansible.netcommon from Galaxy, and unpacked them locally.</p>
@@ -579,7 +579,7 @@ const QUESTIONS = [
   <p>• The <code>-p collections</code> flag is the whole game: it installs into <code>~/ansible/collections</code>, the path this project's <code>ansible.cfg</code> points <code>collections_path</code> at. Skip it and the collections land in <code>~/.ansible/collections</code> instead — installed, but invisible to your playbooks, which then die with "couldn't resolve module/action".<br>
   • The <code>-r</code> file is what makes this repeatable: the list lives in version control with the project, not in your memory of what you once typed.</p>
   <h4>Command anatomy — what every part does, and what breaks without it</h4>
-  <p>• Both paths in this command are relative, measured from the project root — and you are already standing in it, so the install lands in the project. Run the same line from your home directory and you would create and stock a ~/collections the project never looks at.<br>
+  <p>• Both paths in this command are relative, measured from where you stand — from the project root they are spelled <code>collections/requirements.yml</code> and <code>collections</code>, so the install lands in the project. The same install also works standing inside the collections directory itself, with the paths shrunk to match: <code>-r requirements.yml -p .</code> But beware the half-shrunk form: <code>-p collections</code> from inside the collections directory would nest a second collections folder inside the first — stocked, and invisible. Run the project-root line from your home directory instead and you would create and stock a ~/collections the project never looks at.<br>
   • <code>ansible-galaxy collection install</code> — tool, branch, action. The <code>collection</code> branch matters: leave it out and ansible-galaxy defaults to the role branch, which reads requirements files in a different format and installs into role paths.<br>
   • <code>-r collections/requirements.yml</code> — r = requirements file, the input: the manifest Q4.1 wrote, naming the collections and versions to fetch. The file is only read. Without <code>-r</code> you would have to name each collection on the command line — and remember from memory which ones the project needs.<br>
   • <code>-p collections</code> — p = collections path, the destination: unpack everything into the project's own collections directory instead of the default ~/.ansible/collections.<br>
@@ -2425,7 +2425,7 @@ collections:
   - name: ansible.posix
   - name: ansible.netcommon
 ` }] },
-"Q4.2": { hint:`ansible-galaxy collection install with two flags: -r points at the requirements file, -p points at the local collections directory.`,
+"Q4.2": { hint:`ansible-galaxy collection install with two flags: -r points at the requirements file, -p points at the local collections directory. From the project directory: -r collections/requirements.yml -p collections. From inside the collections directory: -r requirements.yml -p .`,
   answer:[{ path:"shell", text:"ansible-galaxy collection install -r collections/requirements.yml -p collections" }] },
 "Q4.3": { hint:`ansible-galaxy collection list — with the same -p collections you used for the install, so you are listing the project's directory, not the default paths.`,
   answer:[{ path:"shell", text:"ansible-galaxy collection list -p collections" }] },
@@ -4861,9 +4861,31 @@ function soGalaxy(st, tokens){
   if (sub === "collection") {
     const action = tokens[2];
     if (action === "install") {
-      if (st.cwd !== "/home/student/ansible") return soWrongDir(st, "/home/student/ansible", "That is where this project's ansible.cfg points Ansible - collections installed from anywhere else land where Ansible never looks, and the questions that depend on them will not work.");
-      const lines = ["Starting galaxy collection install process", "Process install dependency map", "Starting collection install process"];
+      // Two correct stands (2026-11-20, at Ed's direction): the project root
+      // with -r collections/requirements.yml -p collections, or inside the
+      // collections directory itself with -r requirements.yml -p . — both
+      // paths are relative, so what decides success is where they land.
+      // The resolution below grades the landing spot, not the spelling:
+      // a -r that resolves to some other file errors, and a -p that
+      // resolves anywhere else installs there, visibly, on a shelf this
+      // project's ansible.cfg never searches (collectionsDone stays off).
+      if (st.cwd !== "/home/student/ansible" && st.cwd !== "/home/student/ansible/collections") return soWrongDir(st, "/home/student/ansible", "That is where this project's ansible.cfg points Ansible - collections installed from anywhere else land where Ansible never looks, and the questions that depend on them will not work. (Standing in the collections directory itself also works, with -r requirements.yml -p .)");
+      const flagVal = (flag) => { const i = tokens.indexOf(flag); return i >= 0 && i + 1 < tokens.length ? tokens[i + 1] : null; };
+      const rVal = flagVal("-r"), pVal = flagVal("-p");
       const cols = [["community.general", "8.5.0"], ["ansible.posix", "1.5.4"], ["ansible.netcommon", "7.1.0"]];
+      if (rVal !== null && pVal !== null) {
+        if (soResolve(st, rVal) !== "/home/student/ansible/collections/requirements.yml") return { lines: ["ERROR! The requirements file '" + rVal + "' does not exist, relative to " + st.cwd + ". From the project directory it is -r collections/requirements.yml; from inside the collections directory it is -r requirements.yml."], ok: false };
+        const dest = soResolve(st, pVal);
+        const lines = ["Starting galaxy collection install process", "Process install dependency map", "Starting collection install process"];
+        cols.forEach(c => {
+          lines.push("Installing '" + c[0] + ":" + c[1] + "' to '" + dest + "/ansible_collections/" + c[0].replace(".", "/") + "'");
+          lines.push(c[0] + " (" + c[1] + ") was installed successfully");
+        });
+        if (dest === "/home/student/ansible/collections") { st.lab.collectionsDone = true; soMakeDir(st, dest + "/ansible_collections/community"); }
+        else lines.push("[WARNING]: installed under " + dest + " - this project's ansible.cfg points collections_path at /home/student/ansible/collections, so these collections are invisible to its playbooks.");
+        return { lines: lines, ok: true };
+      }
+      const lines = ["Starting galaxy collection install process", "Process install dependency map", "Starting collection install process"];
       cols.forEach(c => {
         lines.push("Installing '" + c[0] + ":" + c[1] + "' to '/home/student/ansible/collections/ansible_collections/" + c[0].replace(".", "/") + "'");
         lines.push(c[0] + " (" + c[1] + ") was installed successfully");
