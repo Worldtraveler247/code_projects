@@ -55,7 +55,7 @@
   .filehead .cmd{color:#fff}
   .filehead .lang{float:right;color:#5c5c5c}
   .vimedit{display:flex;border:1px solid var(--line);background:#000;height:288px}
-  .gutter{background:#070707;color:#565656;text-align:right;padding:12px 7px 12px 9px;font-size:14px;line-height:21px;overflow:hidden;border-right:1px solid #262626;flex:none;min-width:44px;user-select:none}
+  .gutter{background:#070707;color:#8f8f8f;text-align:right;padding:12px 7px 12px 9px;font-size:14px;line-height:21px;overflow:hidden;border-right:1px solid #262626;flex:none;min-width:44px;user-select:none}
   .gutter span{display:block;will-change:transform}
   .editwrap{position:relative;flex:1;overflow:hidden}
   .hl{position:absolute;inset:0;pointer-events:none;z-index:0}
@@ -109,6 +109,11 @@
   .answerbox.show{display:block}
   .anspath{color:var(--amber);font-size:12.5px;padding:8px 12px 0}
   .ansfile pre{margin:0;padding:6px 12px 12px;color:#e8e8e8;white-space:pre-wrap;font-size:13.5px;line-height:1.55}
+  .answrap{display:flex;align-items:flex-start}
+  .ansfile pre.ansgut{padding:6px 8px 12px 12px;color:#9a9a9a;text-align:right;border-right:1px solid #3a3a3a;user-select:none;flex:none;min-width:34px}
+  .ansfile pre.anscode{flex:1;overflow-x:auto;white-space:pre}
+  .gutter .gnum{display:block}
+  .gutter .gnum.cur{color:var(--amber);font-weight:700}
   .ansnote{color:var(--dim);font-size:12.5px;padding:8px 12px;border-top:1px solid var(--line)}
   .keys{color:var(--dim);font-size:12.5px;margin:10px 0;line-height:1.7}
   .keys b{color:var(--amber);font-weight:400}
@@ -143,6 +148,7 @@
     nav{width:100%;border-right:none;border-bottom:1px solid var(--line);height:auto;max-height:36vh}
     section{height:auto}
     textarea,.syntax,.cmdinput{font-size:16px}
+    .gutter{font-size:16px}
     .vimedit{height:240px}
     .qitem{padding:10px 8px}
     .keys{display:none}
@@ -3331,9 +3337,10 @@ function gutterSync(fi){
   const ta = gel("ta" + fi), gut = gel("gut" + fi);
   if (!ta || !gut) return;
   const n = ta.value.split("\n").length;
+  const cur = ta.value.slice(0, ta.selectionStart || 0).split("\n").length;
   let nums = "";
-  for (let i = 1; i <= n; i++) nums += i + "\n";
-  gut.textContent = nums;
+  for (let i = 1; i <= n; i++) nums += "<span class='gnum" + (i === cur ? " cur" : "") + "'>" + i + "</span>";
+  gut.innerHTML = nums;
   gut.style.transform = "translateY(" + (-ta.scrollTop) + "px)";
 }
 
@@ -3343,6 +3350,7 @@ function caretSync(fi){
   const lines = ta.value.slice(0, pos).split("\n");
   const ln = lines.length, col = lines[lines.length - 1].length + 1;
   const p = gel("pos" + fi); if (p) p.textContent = "Ln " + ln + ", Col " + col;
+  gutterSync(fi);
   const lEl = gel("hll" + fi), cEl = gel("hlc" + fi);
   if (lEl) { lEl.style.top = (PAD_T + (ln - 1) * LH - ta.scrollTop) + "px"; lEl.style.height = LH + "px"; }
   if (cEl) { cEl.style.left = (PAD_L + (col - 1) * CHAR_W - ta.scrollLeft) + "px"; cEl.style.width = CHAR_W + "px"; }
@@ -5709,6 +5717,13 @@ const VIDEO_SECTIONS = {};
 for (const _k of Object.keys(DEEPDIVE_SECTIONS)) {
   VIDEO_SECTIONS[_k] = { url: "https://github.com/Worldtraveler247/code_projects/releases/download/gn-video/" + _k.toLowerCase() + ".mp4" };
 }
+function numberedAnswer(a){
+  if (a.path === "shell") return "<div class='ansfile'><div class='anspath'>" + esc(a.path) + "</div><pre>" + esc(a.text) + "</pre></div>";
+  const lines = a.text.replace(/\n+$/, "").split("\n");
+  let nums = "";
+  for (let i = 1; i <= lines.length; i++) nums += i + "\n";
+  return "<div class='ansfile'><div class='anspath'>" + esc(a.path) + " · " + lines.length + " lines</div><div class='answrap'><pre class='ansgut'>" + nums + "</pre><pre class='anscode'>" + esc(a.text) + "</pre></div></div>";
+}
 function wireHelp(q){
   const help = HELP[q.id]; if (!help) return;
   const lb = gel("listenbtn"), aud = gel("audiobox");
@@ -5814,7 +5829,7 @@ function wireHelp(q){
       return;
     }
     clearTimeout(armTimer); armed = false;
-    abox.innerHTML = help.answer.map(a => "<div class='ansfile'><div class='anspath'>" + esc(a.path) + "</div><pre>" + esc(a.text) + "</pre></div>").join("")
+    abox.innerHTML = help.answer.map(a => numberedAnswer(a)).join("")
       + "<div class='ansnote'>Type it yourself to complete the question — revealing does not mark it passed.</div>";
     abox.classList.add("show");
     rb.textContent = "👁 Hide answer";
