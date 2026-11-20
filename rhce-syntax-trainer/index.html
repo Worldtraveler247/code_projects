@@ -6109,19 +6109,17 @@ let ttyTimer = null;
   }, { passive: false });
 });
 
-// Paste is shell-only (added 2026-11-20 at Ed's direction): the shell input
-// (.cmdinput) accepts pasted or dropped text; the YAML file editors stay
-// type-only, like the exam, and paste/drop anywhere else is ignored.
-document.addEventListener("paste", (e) => {
-  const t = e.target;
-  if (t && t.classList && t.classList.contains("cmdinput")) return;
-  e.preventDefault();
-});
-document.addEventListener("drop", (e) => {
-  const t = e.target;
-  if (t && t.classList && t.classList.contains("cmdinput")) return;
-  e.preventDefault();
-});
+// Paste targets (changed 2026-11-20 at Ed's direction): the shell input
+// (.cmdinput) and every vim file editor (the textarea inside .vimedit)
+// accept pasted or dropped text, so an answer can be copied straight into
+// an editor; paste/drop anywhere else is ignored.
+function pasteOk(t){
+  if (!t || !t.classList) return false;
+  if (t.classList.contains("cmdinput")) return true;
+  return t.tagName === "TEXTAREA" && !!(t.closest && t.closest(".vimedit"));
+}
+document.addEventListener("paste", (e) => { if (!pasteOk(e.target)) e.preventDefault(); });
+document.addEventListener("drop", (e) => { if (!pasteOk(e.target)) e.preventDefault(); });
 
 // Wheel hand-off: inside an editor box the wheel scrolls that box first; once the box can
 // scroll no further in that direction, the wheel moves the whole question page instead of
