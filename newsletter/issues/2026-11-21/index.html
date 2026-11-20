@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="dark">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'self' https://static.cloudflareinsights.com; connect-src 'self' https://cloudflareinsights.com; img-src 'self' data:; form-action https://buttondown.com; base-uri 'none'; object-src 'none'">
+    <meta name="description" content="The Daily Brief for Saturday, November 21, 2026: security incidents, senior security advice, engineering explainers, and tech news.">
+    <title>The Daily Brief · Nov 21, 2026</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="icon" href="../../../favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="../../../style.css">
+    <link rel="stylesheet" href="../../newsletter.css">
+</head>
+<body class="brief-page">
+    <a href="#main-content" class="skip-nav">Skip to main content</a>
+    <nav class="brief-nav">
+        <a href="../../../index.html">← App Hub</a>
+        <a href="../../">All issues</a>
+    </nav>
+    
+<header class="brief-masthead">
+    <p class="brief-eyebrow">THE DAILY BRIEF</p>
+    <h1>Saturday, November 21, 2026</h1>
+    <ol class="brief-toc">
+        <li><a href="#current-events">Current Events</a></li><li><a href="#security-advice">Senior Security Advice</a></li><li><a href="#talk-track">Senior Talk Tracks</a></li>
+    </ol>
+</header>
+<main id="main-content" class="brief">
+    
+    <article class="brief-section" id="current-events">
+        <p class="brief-kicker">Current Events</p>
+        <h2>The Original runc Container Breakout</h2>
+        
+            
+            <p>A container is supposed to be a locked room inside your server. This vulnerability let a process inside that room walk out, rewrite the lock on the front door, and come back in as root on the host itself. This is CVE-2019-5736 — the original runc container breakout — and it's the incident most people mean, without realizing it, when they say &quot;a container escape.&quot;</p>
+<p>Here's what runc actually is. It's the low-level tool that Docker, and most of the container world underneath it, actually uses to create and start a container — the thing that does the actual work of putting a process in its own isolated namespace. In February 2019, runc's own maintainer, Aleksa Sarai, publicly disclosed a flaw he and other researchers had found: a malicious container image could overwrite the runc binary on the host machine itself.</p>
+<p>Here's the chain, step by step. First, an attacker builds a malicious container image — nothing unusual yet, container registries are full of images from people you don't personally know. Second, someone with access to the host runs that container, or execs into it, as root — a completely routine administrative action. Third, during that exec operation, runc briefly opens a file handle to its own binary on the host, by path, through /proc/self/exe. The malicious process inside the container was able to race that exact moment, replacing what that file handle pointed to with its own payload. Once runc's own host binary was overwritten, every single container start or exec on that host afterward ran the attacker's code instead — as root.</p>
+<p>Root cause, in one sentence: runc trusted a file-descriptor-and-path operation it assumed was safe because the container boundary was supposed to make it safe, and a malicious container used a race condition to break that assumption from the inside.</p>
+<p>Here's what's worth saying plainly: exploitation required a privileged, interactive action — someone actually running or exec-ing into the malicious container as root. A container that just sat there running on its own, never exec'd into by an administrator, couldn't trigger this on its own. That's not a reason to shrug it off — plenty of automated pipelines routinely exec into containers as root — but it's the detail that separates this from a zero-click disaster.</p>
+<p>What held: because this was caught and disclosed by the project's own maintainer rather than exploited first, there was no customer-zero scramble — Sarai coordinated a fix with Docker and the major Linux distributions before going public, and patches landed the same day as disclosure.</p>
+<p>My read: this incident is the reason every container security conversation eventually arrives at &quot;don't treat the container boundary as a security boundary you can fully trust.&quot; A senior engineer auditing a host doesn't just ask whether containers are isolated from each other — they ask what happens the moment a human or an automated job execs into one of those containers as root, because that's exactly the privileged seam this bug lived in.</p>
+
+        
+            <h3>Timeline</h3>
+            <table>
+<thead>
+<tr>
+<th>Date</th>
+<th>Event</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>~Late 2018 (disputed/secondary sourcing)</td>
+<td>Researchers including Aleksa Sarai, Adam Iwaniuk, and Borys Popławski independently identify the underlying runc flaw; exact discovery date not stated in the original advisory</td>
+</tr>
+<tr>
+<td>February 11, 2019</td>
+<td>Aleksa Sarai posts the public disclosure to the oss-security mailing list; CVE-2019-5736 assigned; CERT-EU publishes Security Advisory 2019-003 the same day</td>
+</tr>
+<tr>
+<td>February 11–18, 2019</td>
+<td>Docker ships the fix in Docker CE/EE 18.09.2; Red Hat issues RHSA-2019:0401 and RHSA-2019:0408; Ubuntu, Debian, and other distributions issue matching advisories</td>
+</tr>
+</tbody>
+</table>
+
+        
+            <h3>Control Failures</h3>
+            <table>
+<thead>
+<tr>
+<th>#</th>
+<th>Failure</th>
+<th>NIST SP 800-53 Rev 5 Control Family</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>runc performed a path-based re-open of its own binary (<code>/proc/self/exe</code>) without verifying the file handle still referred to the trusted binary, letting a race condition substitute attacker-controlled content</td>
+<td>SI-10 — Information Input Validation</td>
+</tr>
+<tr>
+<td>2</td>
+<td>The container runtime's isolation boundary did not prevent a process inside the container from affecting a host-level binary shared by every other container on the same host</td>
+<td>SC-7 — Boundary Protection</td>
+</tr>
+<tr>
+<td>3</td>
+<td>No capability restriction prevented a routine, expected administrative action (execing into a container as root) from carrying host-compromising consequences</td>
+<td>AC-6 — Least Privilege</td>
+</tr>
+<tr>
+<td>4</td>
+<td>Hosts running an unpatched runc had no compensating control (such as restricting interactive exec into untrusted images) to reduce exposure before the patch was available</td>
+<td>CM-7 — Least Functionality</td>
+</tr>
+</tbody>
+</table>
+
+        
+            <h3>What Held</h3>
+            <p>The flaw was found and disclosed by the runc project's own maintainer and collaborating researchers, not discovered first by an attacker exploiting it in the wild — coordinated disclosure meant Docker and every major Linux distribution had a tested patch ready the same day CVE-2019-5736 became public, with no &quot;zero-day&quot; window of mass exploitation to manage. Exploitation also required an administrator to actively exec into or run the malicious container as root, which meant hosts that restricted who could run untrusted images, or who could exec into running containers at all, reduced their exposure even before patching. Naming that combination — coordinated disclosure plus a privileged-action precondition — in an interview signals that you understand why some critical-sounding CVEs never produce a mass-exploitation event, which is just as useful a judgment as being able to recite the CVE number.</p>
+
+        
+            <h3>Sources</h3>
+            <ul>
+<li><a href="https://nvd.nist.gov/vuln/detail/cve-2019-5736" target="_blank" rel="noopener noreferrer">NVD — CVE-2019-5736 Detail (primary)</a></li>
+<li><a href="https://access.redhat.com/security/cve/CVE-2019-5736" target="_blank" rel="noopener noreferrer">Red Hat — CVE-2019-5736 (primary)</a></li>
+<li><a href="https://seclists.org/oss-sec/2019/q1/119" target="_blank" rel="noopener noreferrer">oss-security mailing list — runc container breakout disclosure by Aleksa Sarai (primary, original disclosure)</a></li>
+<li><a href="https://cert.europa.eu/publications/security-advisories/2019-003/" target="_blank" rel="noopener noreferrer">CERT-EU Security Advisory 2019-003 (primary)</a></li>
+<li><a href="https://access.redhat.com/node/3899181" target="_blank" rel="noopener noreferrer">Red Hat — runc: Malicious container escape — CVE-2019-5736 (primary vendor explainer)</a></li>
+<li><a href="https://security-tracker.debian.org/CVE-2019-5736" target="_blank" rel="noopener noreferrer">Debian Security Tracker — CVE-2019-5736</a></li>
+<li><a href="https://www.cloudfoundry.org/blog/cve-2019-5736/" target="_blank" rel="noopener noreferrer">Cloud Foundry — CVE-2019-5736: runC container breakout</a></li>
+</ul>
+<p><strong>Tomorrow's Thread:</strong> Day 65 moves to the identity and credential compromise family — the 2023 Okta support-system breach, where a compromised support-case file let an attacker reach customer session tokens — a different family from today's container-escape topic.</p>
+
+        
+    </article>
+    
+    <article class="brief-section" id="security-advice">
+        <p class="brief-kicker">Senior Security Advice</p>
+        <h2>Enforce Default-Deny Egress Filtering at Every Network Boundary</h2>
+        
+            <h3>The Advice</h3>
+            <p>Configure every network boundary to deny all outbound traffic by default and allow only the specific destinations and ports a system actually needs.</p>
+
+        
+            <h3>Why It Matters</h3>
+            <p>Most firewall programs put all their effort into keeping attackers out and almost none into controlling what talks its way back out. That gap is exactly what attackers rely on once they're already inside. After an initial compromise - a phished laptop, a vulnerable web app, a malicious package pulled into a build - the next step is almost always a callback: the malware reaches out to a command-and-control server, or an attacker starts quietly pushing data to an external host. If outbound traffic is wide open, that connection just works, and nobody notices until the data is already gone. This is the incident class ransomware and data-theft operations depend on - encryption or exfiltration both need a live outbound channel. NIST's control catalog addresses this directly: SP 800-53's SC-7(5), &quot;Deny by Default / Allow by Exception,&quot; requires boundary devices to block all network traffic by default and permit only the connections an organization has explicitly approved, and SP 800-171 ties the same requirement to the plain rationale that a deny-all, permit-by-exception policy ensures only essential, approved connections are allowed. DISA's Firewall Security Requirements Guide enforces this as an auditable finding: a firewall that doesn't deny all traffic by default at a managed interface, inbound or outbound, fails the check.</p>
+
+        
+            <h3>How to Implement It</h3>
+            <ol>
+<li>Map what each system segment actually needs to talk to on the way out - specific IPs, domains, and ports - before touching any firewall rule, so the allow-list reflects real traffic instead of guesswork.</li>
+<li>Flip the default outbound rule on every boundary device and security group to deny, then add narrow allow rules only for the mapped destinations.</li>
+<li>Roll it out zone by zone, starting with the segments that hold the most sensitive data or the least business justification for broad internet access, rather than flipping the whole network at once.</li>
+<li>Verify the control is actually working, not just configured: from inside each segment, attempt a connection to an unapproved external destination and confirm it's blocked, and check the firewall logs to confirm the attempt was logged as denied, not silently dropped with no record.</li>
+<li>Review the exception list on a set schedule and remove any allowed destination that no longer has a current business or mission need, which is the same ongoing-review requirement NIST's SC-7 control calls for.</li>
+</ol>
+
+        
+            <h3>The Pushback You&#39;ll Hear</h3>
+            <p>&quot;This is going to break things we don't even know depend on outbound access.&quot; The senior rebuttal: that risk is real, which is exactly why step one is mapping real traffic before changing any rule, and why rollout happens zone by zone with logging turned on first. A short monitor-only period - logging what would be denied without actually blocking it yet - surfaces those hidden dependencies safely before the rule goes live. The alternative, leaving outbound traffic wide open indefinitely because an unknown dependency might exist somewhere, guarantees that the day a breach happens, the attacker's exit door is standing wide open too.</p>
+
+        
+            <h3>Sources</h3>
+            <ul>
+<li>SC-7(5) Boundary Protection | Deny by Default / Allow by Exception, NIST SP 800-53 Rev. 5: https://csf.tools/reference/nist-sp-800-53/r4/sc/sc-7/sc-7-5/</li>
+<li>3.13.6 Deny Network Communications Traffic by Default, NIST SP 800-171: https://www.stigviewer.com/controls/nist-800-171/3.13.6</li>
+<li>Firewall Security Requirements Guide, Finding V-206694 (deny-by-default at managed interfaces), DISA: https://www.stigviewer.com/stigs/firewall_security_requirements_guide/2025-09-22/finding/V-206694</li>
+</ul>
+
+        
+    </article>
+    
+    <article class="brief-section" id="talk-track">
+        <p class="brief-kicker">Senior Talk Tracks</p>
+        <h2>Why SELinux Contexts Break Copied Files</h2>
+        
+            
+            <p>Here's a moment almost every Linux admin hits at least once: you copy a config file to a new location, the permissions look completely fine, and the service still refuses to read it. Nine times out of ten on a Red Hat system, that's not a permissions problem at all — it's SELinux, and today I want you to actually understand why.</p>
+<p>SELinux stands for Security-Enhanced Linux, and it's a second layer of access control sitting on top of the regular Linux permissions you already know — the read, write, and execute bits owned by a user and a group. Here's the part that trips people up: every single file on an SELinux-enabled system also carries an invisible label called a security context, and it's that label — not the file's owner or its permission bits — that decides whether a given process is actually allowed to touch it.</p>
+<p>So here's why copying breaks things. When you copy a file into a new directory, Linux generally gives that new file the SELinux context that's &quot;correct&quot; for wherever it landed — often inherited from the parent directory. But when you move a file instead of copying it, the file keeps its original context from wherever it used to live. That's the trap: moving a web server's config file into the right directory can leave it carrying the wrong label, even though the regular permissions look completely correct, and the regular owner and group look completely correct too.</p>
+<p>Here's the senior take. A junior engineer sees &quot;permission denied,&quot; checks <code>ls -l</code>, sees the right owner and the right mode bits, and gets stuck — because they're only looking at one of the two access-control systems actually running. A senior engineer immediately also runs a command to check the SELinux context itself, and treats a mismatched label as just as likely a cause as a wrong permission bit, especially right after a file got copied or moved from somewhere else.</p>
+<p>Think of it like a building that has a keycard lock on every door, in addition to the regular physical lock. Your key might fit the physical lock perfectly, but if your keycard is coded for the wrong floor, the door still won't open — and if you only ever check whether your key fits, you'll stand there confused, convinced the lock must be broken.</p>
+<p>So here's a good line to use at work the next time someone says &quot;the permissions are definitely right, I don't get it&quot;: &quot;Permissions aren't the only lock on that door — have we actually checked the SELinux context?&quot;</p>
+
+        
+            <h3>Key Takeaways</h3>
+            <ol>
+<li>SELinux is a second, independent access-control layer on top of normal Linux permissions, and it can deny access even when the regular owner, group, and mode bits all look correct.</li>
+<li>Copying a file into a new location usually gives it the destination's SELinux context; moving a file can carry its old context along instead, which is a common, confusing source of &quot;permission denied&quot; errors after a file relocation.</li>
+<li>Disabling SELinux entirely to fix one mislabeled file removes a whole security layer system-wide — the targeted fix is relabeling the file, not turning the system off.</li>
+</ol>
+
+        
+            <h3>Reader Question</h3>
+            <p><strong>Q:</strong> &quot;If a junior engineer tells you they fixed a SELinux problem by disabling SELinux, what's your actual concern?&quot;</p>
+
+        
+    </article>
+    
+    <section class="brief-subscribe" id="subscribe">
+    <h2>Get The Daily Brief by email</h2>
+    <p>One short email each morning. Unsubscribe anytime.</p>
+    <form action="https://buttondown.com/api/emails/embed-subscribe/cybercider" method="post">
+        <label for="bd-email">Email address</label>
+        <input type="email" name="email" id="bd-email" required autocomplete="email" placeholder="you@example.com">
+        <button type="submit">Subscribe</button>
+    </form>
+</section>
+</main>
+
+    <footer><p class="copyright">The Daily Brief · Eddie Camacho</p></footer>
+<!-- cf-web-analytics (managed by tools/inject_analytics.py) -->
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "f728a20b49cc4a0fbe02cde72f03301c"}'></script>
+</body>
+</html>
