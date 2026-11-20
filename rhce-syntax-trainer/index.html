@@ -4667,7 +4667,11 @@ function soFactsFor(h, become){
   f.ansible_kernel_version = "#1 SMP PREEMPT_DYNAMIC Thu Apr 13 17:51:25 EDT 2023";
   f.ansible_lo = { active: true, device: "lo", ipv4: { address: "127.0.0.1", broadcast: "", netmask: "255.0.0.0", network: "127.0.0.0" }, mtu: 65536, type: "loopback" };
   f.ansible_lsb = { codename: "Plow", description: "Red Hat Enterprise Linux release 9.2 (Plow)", id: "RedHatEnterprise", major_release: "9", release: "9.2" };
-  f.ansible_lvm = soLvmFor(h);
+  // LVM facts are privileged: gathered without become, the lvm collector
+  // cannot read the volume metadata and ansible_lvm comes back with empty
+  // lvs/pvs/vgs — which is why Q9.0 reads the facts with -b and why the
+  // Q9 play itself sets become: true. With -b, the full per-host story.
+  f.ansible_lvm = become ? soLvmFor(h) : { lvs: {}, pvs: {}, vgs: {} };
   f.ansible_machine = "x86_64";
   f.ansible_machine_id = "8f14e45fceea167a5a36dedd4bea254" + idx;
   f.ansible_memfree_mb = 1100 + idx * 37;
