@@ -71,6 +71,16 @@
   .statusline .mode{color:var(--amber);font-weight:700}
   .statusline .pos{color:var(--amber)}
   .cmdinput{position:static;width:100%;height:52px;background:#000;color:#e8e8e8;border:1px solid var(--line);border-top:none;padding:12px 14px;font-family:inherit;font-size:14px;line-height:21px;resize:none;outline:none;white-space:pre;overflow-x:auto;overflow-y:hidden}
+  .shelltabs{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin:14px 0 0}
+  .stab{background:#161b22;border:1px solid var(--line);color:var(--dim);padding:5px 12px;font:inherit;font-size:12.5px;cursor:pointer;border-radius:4px}
+  .stab:hover{border-color:var(--amber);color:var(--amber)}
+  .stab.on{color:#fff;border-color:var(--amber)}
+  .stab.add{color:var(--amber);border-style:dashed}
+  .stab .sx{color:#ff7b72;font-weight:700;margin-left:4px}
+  .shellnote{color:#5c5c5c;font-size:11.5px}
+  .shellpanes{display:flex;gap:10px;align-items:flex-start}
+  .shellpane{flex:1 1 0;min-width:0}
+  .shellpanes .fileblock{margin:6px 0}
   .term{background:#060a07;border:1px solid var(--line);border-top:none;max-height:240px;overflow-y:auto;padding:8px 12px;font-size:12.5px;line-height:1.6;color:#a9bfa5;white-space:pre-wrap;word-break:break-word}
   .term:empty{display:none}
   .tline{min-height:1.55em}
@@ -150,6 +160,8 @@
     textarea,.syntax,.cmdinput{font-size:16px}
     .gutter{font-size:16px}
     .vimedit{height:240px}
+    .shellpanes{flex-direction:column}
+    .shellpane{width:100%}
     .qitem{padding:10px 8px}
     .keys{display:none}
     h1{font-size:17px}
@@ -3955,7 +3967,7 @@ function showTabList(fi, items){
   el.className = "tablist show";
 }
 // Returns true when Tab was consumed as a completion (or a candidate listing), false to fall through.
-function tabComplete(ta, fi){
+function tabComplete(ta, fi, stOverride){
   if (ta.selectionStart !== ta.selectionEnd) return false;
   const pos = ta.selectionStart, val = ta.value;
   const lineStart = val.lastIndexOf("\n", pos - 1) + 1;
@@ -3984,7 +3996,7 @@ function tabComplete(ta, fi){
   // there, including files created during the session. File editors
   // keep resolving from the project root, where playbook paths live.
   const qNow = QUESTIONS[state.cur];
-  const stNow = (qNow && qNow.cmd) ? termStateFor(state.cur) : null;
+  const stNow = stOverride || ((qNow && qNow.cmd) ? termStateFor(state.cur) : null);
   const cwdAbs = stNow ? stNow.cwd : FS_CWD;
   const homeAbs = stNow ? soHome(stNow) : FS_HOME;
   let lookup = word;
@@ -4089,6 +4101,29 @@ function termStateFor(idx){
     termStore[idx] = { cwd: seedCwd, entries: [], made: lab.made, lab: lab };
   }
   return termStore[idx];
+}
+// --- scratch shells (the shell deck, added 2026-11-20 at Ed's direction) ----
+// Every question gets a shell deck under its work: Shell 1 is the graded
+// shell on shell steps and a scratch shell on file steps; Shell 2 is always
+// a scratch shell, opened with the + tab. Scratch shells share the section's
+// simulated machine (the same lab filesystem and state, so files and installs
+// are visible in both) but keep their own cwd, transcript and draft line, and
+// nothing run in them is graded — they are for looking things up mid-question:
+// grep the project directory, read a file, check the facts.
+const scratchStore = {};
+const shellUiStore = {};
+function shellUiFor(idx){
+  if (!shellUiStore[idx]) { const q = QUESTIONS[idx]; shellUiStore[idx] = { s1: !!(q && q.cmd), s2: false }; }
+  return shellUiStore[idx];
+}
+function scratchStateFor(idx, suffix){
+  const key = idx + ":" + suffix;
+  if (!scratchStore[key]) {
+    const q = QUESTIONS[idx];
+    const lab = q ? labStateFor(sectionOf(q.id)) : labStateFor("Q" + idx);
+    scratchStore[key] = { cwd: "/home/student/ansible", entries: [], made: lab.made, lab: lab, draft: "" };
+  }
+  return scratchStore[key];
 }
 function soResolve(st, p){
   if (!p) return st.cwd;
@@ -5719,6 +5754,125 @@ function wireCmd(fi){
   });
 }
 
+// --- scratch shell plumbing (mirrors the graded shell, minus the grading) ---
+function pushScratch(suffix, typed){
+  const idx = state.cur, q = QUESTIONS[idx];
+  const st = scratchStateFor(idx, suffix);
+  if (/^\s*clear\s*$/.test(typed)) { st.entries = [{ k: "prompt", cwd: soPromptBase(st), user: soUser(st) }]; return; }
+  if (typed.trim()) {
+    const lab = labStateFor(sectionOf(q.id));
+    lab.hist = lab.hist || [];
+    if (lab.hist[lab.hist.length - 1] !== typed.trim()) lab.hist.push(typed.trim());
+    lab.histIdx = null; lab.histDraft = "";
+  }
+  if (st.entries.length && st.entries[st.entries.length - 1].k === "prompt") st.entries.pop();
+  const cwdBefore = soPromptBase(st), userBefore = soUser(st);
+  const lines = simulateShell(q, typed, st, false);
+  if (typed.trim()) st.entries.push({ k: "cmd", cwd: cwdBefore, user: userBefore, text: typed });
+  lines.forEach(l => st.entries.push({ k: "out", text: l }));
+  st.entries.push({ k: "prompt", cwd: soPromptBase(st), user: soUser(st) });
+}
+function renderScratch(suffix){
+  const el = gel("term" + suffix); if (!el) return;
+  const st = scratchStateFor(state.cur, suffix);
+  el.innerHTML = st.entries.map(e => {
+    if (e.k === "cmd") return "<div class='tline'><span class='tp'>" + esc(soPromptStr(e.user || "student", e.cwd)) + "</span> <span class='tc'>" + esc(e.text) + "</span></div>";
+    if (e.k === "prompt") return "<div class='tline'><span class='tp'>" + esc(soPromptStr(e.user || "student", e.cwd)) + "</span></div>";
+    return "<div class='tline" + (soErrLine(e.text) ? " terr" : "") + "'>" + (e.text ? esc(e.text) : "&nbsp;") + "</div>";
+  }).join("");
+  el.scrollTop = el.scrollHeight;
+  const hp = gel("prompt" + suffix);
+  if (hp) hp.textContent = soPromptStr(soUser(st), soPromptBase(st));
+}
+function ctrlCancelScratch(ta, suffix){
+  const typed = ta.value;
+  ta.value = "";
+  try { ta.setSelectionRange(0, 0); } catch (err) {}
+  const st = scratchStateFor(state.cur, suffix);
+  st.draft = "";
+  const el = gel("tablist" + suffix);
+  if (el) { el.textContent = "^C"; el.className = "tablist show"; }
+  if (st.entries.length && st.entries[st.entries.length - 1].k === "prompt") st.entries.pop();
+  st.entries.push({ k: "cmd", cwd: soPromptBase(st), user: soUser(st), text: typed + "^C" });
+  st.entries.push({ k: "prompt", cwd: soPromptBase(st), user: soUser(st) });
+  renderScratch(suffix);
+}
+function wireScratch(suffix){
+  const ta = gel("ta" + suffix); if (!ta) return;
+  const st = scratchStateFor(state.cur, suffix);
+  ta.addEventListener("input", () => { st.draft = ta.value; showTabList(suffix, null); });
+  ta.addEventListener("keydown", (e) => {
+    if (e.key === "Tab") { e.preventDefault(); e.stopPropagation(); if (tabComplete(ta, suffix, st)) st.draft = ta.value; }
+    else if (e.ctrlKey && !e.metaKey && !e.altKey && (e.key === "c" || e.key === "C")) {
+      if (ta.selectionStart !== ta.selectionEnd) return;
+      e.preventDefault(); e.stopPropagation(); ctrlCancelScratch(ta, suffix);
+    }
+    else if ((e.key === "ArrowUp" || e.key === "ArrowDown") && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      const lab = labStateFor(sectionOf(QUESTIONS[state.cur].id));
+      const hist = lab.hist || [];
+      if (!hist.length) return;
+      e.preventDefault(); e.stopPropagation();
+      if (e.key === "ArrowUp") {
+        if (lab.histIdx === null || lab.histIdx === undefined) { lab.histDraft = ta.value; lab.histIdx = hist.length - 1; }
+        else if (lab.histIdx > 0) lab.histIdx--;
+        ta.value = hist[lab.histIdx];
+      } else {
+        if (lab.histIdx === null || lab.histIdx === undefined) return;
+        if (lab.histIdx < hist.length - 1) { lab.histIdx++; ta.value = hist[lab.histIdx]; }
+        else { lab.histIdx = null; ta.value = lab.histDraft || ""; }
+      }
+      try { ta.setSelectionRange(ta.value.length, ta.value.length); } catch (err) {}
+      st.draft = ta.value;
+    }
+    else if (e.key === "Enter" && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      e.preventDefault();
+      const line = ta.value;
+      ta.value = ""; st.draft = "";
+      pushScratch(suffix, line);
+      renderScratch(suffix);
+    }
+  });
+}
+function shellTabsHtml(){
+  const ui = shellUiFor(state.cur);
+  return "<div class='shelltabs'>"
+    + "<button class='stab" + (ui.s1 ? " on" : "") + "' id='stab1' title='Shell 1'>Shell 1</button>"
+    + "<button class='stab add' id='stabadd'" + (ui.s2 ? " style='display:none'" : "") + " title='Open a second shell beside this one'>+ New shell</button>"
+    + "<button class='stab on' id='stab2'" + (ui.s2 ? "" : " style='display:none'") + " title='Close shell 2'>Shell 2 <span class='sx'>×</span></button>"
+    + "<span class='shellnote'>both shells share the same machine and files — keep your work in one, look things up in the other</span></div>";
+}
+function scratchPaneHtml(suffix){
+  const ui = shellUiFor(state.cur);
+  const open = suffix === "S1" ? ui.s1 : ui.s2;
+  const st = scratchStateFor(state.cur, suffix);
+  const draft = (st.draft || "").replace(/&/g, "&amp;").replace(/</g, "&lt;");
+  return "<div class='fileblock shellpane' id='shellpane" + suffix + "'" + (open ? "" : " style='display:none'") + "><div class='filehead'><span class='prompt' id='prompt" + suffix + "'>" + soPromptStr(soUser(st), soPromptBase(st)) + "</span> <span class='cmd'>scratch shell — look things up, nothing here is graded</span><span class='lang'>shell " + (suffix === "S2" ? "2" : "1") + "</span></div>"
+    + "<div class='term' id='term" + suffix + "'></div>"
+    + "<textarea class='cmdinput' id='ta" + suffix + "' spellcheck='false' autocomplete='off' autocapitalize='off' placeholder='type a command, then press Enter to run it...'>" + draft + "</textarea><div class='tablist' id='tablist" + suffix + "'></div></div>";
+}
+function wireShellDeck(q){
+  if (!q.cmd) { wireScratch("S1"); renderScratch("S1"); }
+  wireScratch("S2"); renderScratch("S2");
+  const ui = shellUiFor(state.cur);
+  const t1 = gel("stab1"), tAdd = gel("stabadd"), t2 = gel("stab2");
+  const setS2 = (open) => {
+    ui.s2 = open;
+    const p = gel("shellpaneS2"); if (p) p.style.display = open ? "" : "none";
+    if (tAdd) tAdd.style.display = open ? "none" : "";
+    if (t2) t2.style.display = open ? "" : "none";
+    if (open) { renderScratch("S2"); const ta = gel("taS2"); if (ta) ta.focus(); }
+  };
+  if (tAdd) tAdd.addEventListener("click", () => setS2(true));
+  if (t2) t2.addEventListener("click", () => setS2(false));
+  if (t1) t1.addEventListener("click", () => {
+    if (q.cmd) { const m = gel("ta0"); if (m) m.focus(); return; }
+    ui.s1 = !ui.s1;
+    const p = gel("shellpaneS1"); if (p) p.style.display = ui.s1 ? "" : "none";
+    t1.className = "stab" + (ui.s1 ? " on" : "");
+    if (ui.s1) { renderScratch("S1"); const ta = gel("taS1"); if (ta) ta.focus(); }
+  });
+}
+
 // Section audio: one narrated walkthrough per main question (Q1–Q16), 5–10 minutes each.
 // Sections appear here as their audio is generated; the Listen button only shows for those.
 const AUDIO_SECTIONS = {
@@ -5929,11 +6083,12 @@ function renderStage(){
   }
   h += "<div class='pbar'><i style='width:" + Math.round(100 * state.done.size / QUESTIONS.length) + "%'></i></div>";
   h += "<div class='spec'>" + q.spec + "</div>";
+  if (q.cmd) h += shellTabsHtml() + "<div class='shellpanes'>";
   q.files.forEach((f, fi) => {
     const raw = saved[fi] !== undefined ? saved[fi] : (f.preset || "");
     const val = raw.replace(/&/g, "&amp;").replace(/</g, "&lt;");
     if (q.cmd) {
-      h += "<div class='fileblock'><div class='filehead'><span class='prompt' id='prompt" + fi + "'>" + soPromptStr(soUser(termStateFor(state.cur)), soPromptBase(termStateFor(state.cur))) + "</span> <span class='cmd'>type the command, then press Enter to run it</span><span class='lang'>shell</span></div>"
+      h += "<div class='fileblock shellpane' id='shellpaneM'><div class='filehead'><span class='prompt' id='prompt" + fi + "'>" + soPromptStr(soUser(termStateFor(state.cur)), soPromptBase(termStateFor(state.cur))) + "</span> <span class='cmd'>type the command, then press Enter to run it</span><span class='lang'>shell</span></div>"
         + "<div class='term' id='term" + fi + "'></div>"
         + "<textarea class='cmdinput' id='ta" + fi + "' spellcheck='false' autocomplete='off' autocapitalize='off' placeholder='" + placeholders(f).replace(/'/g, "&#39;") + "'>" + val + "</textarea><div class='tablist' id='tablist" + fi + "'></div></div>";
       return;
@@ -5944,6 +6099,8 @@ function renderStage(){
       + "<textarea id='ta" + fi + "' spellcheck='false' autocomplete='off' autocapitalize='off' placeholder='" + placeholders(f).replace(/'/g, "&#39;") + "'>" + val + "</textarea></div></div>"
       + "<div class='statusline'><span class='mode'>-- INSERT --</span><span>" + f.path + "</span><span class='pos' id='pos" + fi + "'>Ln 1, Col 1</span></div><div class='tablist' id='tablist" + fi + "'></div></div>";
   });
+  if (q.cmd) { h += scratchPaneHtml("S2") + "</div>"; }
+  else { h += shellTabsHtml() + "<div class='shellpanes'>" + scratchPaneHtml("S1") + scratchPaneHtml("S2") + "</div>"; }
   h += "<div class='keys'><b>[Ctrl+Enter / F2]</b> check &nbsp;<b>[Alt+↑/↓]</b> switch file &nbsp;<b>[Alt+→]</b> next question &nbsp;<b>[Alt+←]</b> previous &nbsp;<b>[Tab]</b> complete path (shell-style) · in files: indent · <b>[Shift+Tab]</b> outdent · <b>[Ctrl+C]</b> clear the shell (^C) &nbsp;::&nbsp; attempts: <span class='n' id='att'>" + (state.attempts[state.cur] || 0) + "</span></div>";
   h += "<div class='helprow'><button class='hbtn' id='checkbtn'>▶ Check</button><button class='hbtn' id='hintbtn'>💡 Hint</button><button class='hbtn' id='revealbtn'>👁 Reveal answer</button><button class='hbtn' id='listenbtn'>🔊 Listen</button><button class='hbtn' id='deepbtn'>🎙 Deep dive</button><button class='hbtn' id='videobtn'>🎬 Lesson video</button><button class='hbtn' id='nextbtn'>Next ▸</button>" + (q.senior ? "<button class='hbtn' id='seniorbtn'>🧑‍💼 Senior Admin Explanation</button>" : "") + "<button class='hbtn qreset' id='qresetbtn' title='Start this question over: clears its typed text, its attempts counter and its pass mark. Other questions are untouched.'>↺ Reset question</button></div>";
   if (q.senior) h += "<div class='seniorbox' id='seniorbox'><span class='seniorlabel'>Senior Admin Explanation</span>" + q.senior + "</div>";
@@ -5963,6 +6120,7 @@ function renderStage(){
     });
   });
   if (q.cmd) { wireCmd(0); renderTranscript(0); } else { q.files.forEach((f, fi) => { wireEditor(fi); gutterSync(fi); caretSync(fi); syntaxSync(fi); if (f.preset && saved[fi] === undefined) { const ta = gel("ta" + fi); if (ta) { const end = ta.value.length; try { ta.setSelectionRange(end, end); } catch(e){} caretSync(fi); } } }); }
+  wireShellDeck(q);
   updateNextline();
   wireQReset();
   if (state.done.has(state.cur)) gel("ex").className = "explain show";
