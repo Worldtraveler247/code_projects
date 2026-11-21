@@ -117,7 +117,9 @@
   .lockstage button{margin-top:10px}
   .answerbox{display:none;border:1px solid #f85149;background:#160d0d;margin:0 0 12px}
   .answerbox.show{display:block}
-  .anspath{color:var(--amber);font-size:12.5px;padding:8px 12px 0}
+  .anspath{color:var(--amber);font-size:12.5px;padding:8px 12px 0;display:flex;justify-content:space-between;align-items:center}
+  .copybtn{background:#21262d;border:1px solid #444c56;color:#e8e8e8;border-radius:6px;padding:2px 10px;font-size:12px;cursor:pointer;margin-left:12px;flex:none}
+  .copybtn:hover{border-color:var(--amber);color:var(--amber)}
   .ansfile pre{margin:0;padding:6px 12px 12px;color:#e8e8e8;white-space:pre-wrap;font-size:13.5px;line-height:1.55}
   .answrap{display:flex;align-items:flex-start}
   .ansfile pre.ansgut{padding:6px 8px 12px 12px;color:#9a9a9a;text-align:right;border-right:1px solid #3a3a3a;user-select:none;flex:none;min-width:34px}
@@ -5997,12 +5999,25 @@ const VIDEO_SECTIONS = {};
 for (const _k of Object.keys(DEEPDIVE_SECTIONS)) {
   VIDEO_SECTIONS[_k] = { url: "https://github.com/Worldtraveler247/code_projects/releases/download/gn-video/" + _k.toLowerCase() + ".mp4" };
 }
-function numberedAnswer(a){
-  if (a.path === "shell") return "<div class='ansfile'><div class='anspath'>" + esc(a.path) + "</div><pre>" + esc(a.text) + "</pre></div>";
+function copyAnswerText(t, btn){
+  const done = () => { if (btn) { const o = btn.textContent; btn.textContent = "✓ Copied"; setTimeout(() => { btn.textContent = o; }, 1500); } };
+  const legacy = () => {
+    const ta = document.createElement("textarea");
+    ta.value = t; ta.style.position = "fixed"; ta.style.opacity = "0";
+    document.body.appendChild(ta); ta.select();
+    try { document.execCommand("copy"); } catch (e) {}
+    ta.remove(); done();
+  };
+  if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(t).then(done).catch(legacy);
+  else legacy();
+}
+function numberedAnswer(a, ci){
+  const btn = "<button class='copybtn' data-ci='" + ci + "' title='Copy this answer to the clipboard'>📋 Copy</button>";
+  if (a.path === "shell") return "<div class='ansfile'><div class='anspath'>" + esc(a.path) + btn + "</div><pre>" + esc(a.text) + "</pre></div>";
   const lines = a.text.replace(/\n+$/, "").split("\n");
   let nums = "";
   for (let i = 1; i <= lines.length; i++) nums += i + "\n";
-  return "<div class='ansfile'><div class='anspath'>" + esc(a.path) + " · " + lines.length + " lines</div><div class='answrap'><pre class='ansgut'>" + nums + "</pre><pre class='anscode'>" + esc(a.text) + "</pre></div></div>";
+  return "<div class='ansfile'><div class='anspath'>" + esc(a.path) + " · " + lines.length + " lines" + btn + "</div><div class='answrap'><pre class='ansgut'>" + nums + "</pre><pre class='anscode'>" + esc(a.text) + "</pre></div></div>";
 }
 function wireHelp(q){
   const help = HELP[q.id]; if (!help) return;
@@ -6109,9 +6124,10 @@ function wireHelp(q){
       return;
     }
     clearTimeout(armTimer); armed = false;
-    abox.innerHTML = help.answer.map(a => numberedAnswer(a)).join("")
+    abox.innerHTML = help.answer.map((a, ci) => numberedAnswer(a, ci)).join("")
       + "<div class='ansnote'>Type it yourself to complete the question — revealing does not mark it passed.</div>";
     abox.classList.add("show");
+    abox.querySelectorAll(".copybtn").forEach(b => b.addEventListener("click", () => copyAnswerText(help.answer[+b.dataset.ci].text, b)));
     rb.textContent = "👁 Hide answer";
   });
 }
