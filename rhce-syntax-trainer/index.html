@@ -4044,7 +4044,7 @@ const SO_HOSTS = ["servera.lab.example.com", "serverb.lab.example.com", "serverc
 const SO_IP = { "servera.lab.example.com": "172.25.250.10", "serverb.lab.example.com": "172.25.250.11", "serverc.lab.example.com": "172.25.250.12", "serverd.lab.example.com": "172.25.250.13" };
 const SO_GROUPS = {
   all: SO_HOSTS.slice(),
-  dev: ["servera.lab.example.com", "serverb.lab.example.com"],
+  dev: ["servera.lab.example.com"],
   test: ["serverb.lab.example.com"],
   prod: ["serverb.lab.example.com", "serverc.lab.example.com"],
   balancers: ["serverd.lab.example.com"],
@@ -4074,6 +4074,42 @@ function soHosts(pattern){
   return SO_HOSTS.filter(h => found.has(h));
 }
 function soInGroup(host, g){ return (SO_GROUPS[g] || []).indexOf(host) >= 0; }
+function soGroupNames(h){
+  // group_names: every group the host belongs to except all/ungrouped,
+  // alphanumerically sorted by name (Ansible sorts by name, never by
+  // definition order). Parent groups count: webservers reaches serverb
+  // and serverc through its child group prod.
+  return Object.keys(SO_GROUPS).filter(g => g !== "all" && g !== "ungrouped" && soInGroup(h, g)).sort();
+}
+function soDebugExpr(expr, h){
+  // The expressions a student actually tests with debug: membership checks
+  // against group_names / groups, and the two magic variables themselves.
+  // Returns { val, isBool } or null when the expression is not one of these.
+  let m = expr.match(/^'(\w+)'\s+in\s+group_names$/);
+  if (m) return { val: soInGroup(h, m[1]), isBool: true };
+  m = expr.match(/^inventory_hostname\s+in\s+groups\['(\w+)'\]$/);
+  if (m) return { val: soInGroup(h, m[1]), isBool: true };
+  m = expr.match(/^'(\w+)'\s+not\s+in\s+group_names$/);
+  if (m) return { val: !soInGroup(h, m[1]), isBool: true };
+  if (expr === "group_names") return { val: "[" + soGroupNames(h).map(g => "'" + g + "'").join(", ") + "]", isBool: false };
+  if (expr === "inventory_hostname") return { val: h, isBool: false };
+  return null;
+}
+function soDebugMsg(raw, h){
+  // Render a debug msg= argument the way Ansible would: a lone {{ expr }}
+  // keeps its type (a boolean stays a boolean); anything else is a string
+  // with each {{ expr }} substituted.
+  const lone = raw.match(/^\{\{\s*(.+?)\s*\}\}$/);
+  if (lone) {
+    const r = soDebugExpr(lone[1].trim(), h);
+    if (r) return r.isBool ? String(r.val) : JSON.stringify(r.val);
+  }
+  const sub = raw.replace(/\{\{\s*(.+?)\s*\}\}/g, (whole, expr) => {
+    const r = soDebugExpr(expr.trim(), h);
+    return r ? String(r.val) : whole;
+  });
+  return JSON.stringify(sub);
+}
 
 // --- per-step terminal state (session only, never persisted) ----------------
 const termStore = {};
@@ -4784,6 +4820,31 @@ function soAdhoc(st, tokens){
       return;
     }
     if (short === "ping") { lines.push(h + " | SUCCESS => {", "    \"changed\": false,", "    \"ping\": \"pong\"", "}"); lines.push(""); return; }
+    if (short === "debug") {
+      const a = args || "";
+      const vm = a.match(/var\s*=\s*([\w.]+)/);
+      const mm = a.match(/msg\s*=\s*([\s\S]+)$/);
+      lines.push(h + " | SUCCESS => {");
+      if (vm) {
+        const vn = vm[1];
+        if (vn === "group_names") {
+          const gs = soGroupNames(h);
+          if (!gs.length) lines.push("    \"group_names\": []");
+          else {
+            lines.push("    \"group_names\": [");
+            gs.forEach((g, i) => lines.push("        \"" + g + "\"" + (i < gs.length - 1 ? "," : "")));
+            lines.push("    ]");
+          }
+        }
+        else if (vn === "inventory_hostname") lines.push("    \"inventory_hostname\": \"" + h + "\"");
+        else lines.push("    \"" + vn + "\": \"VARIABLE IS NOT DEFINED!\"");
+      }
+      else if (mm) lines.push("    \"msg\": " + soDebugMsg(mm[1].trim(), h));
+      else lines.push("    \"msg\": \"Hello world!\"");
+      lines.push("}");
+      lines.push("");
+      return;
+    }
     const changing = ["dnf", "yum", "service", "firewalld", "user", "group", "file", "copy", "template", "lvol", "filesystem", "yum_repository", "rpm_key"].indexOf(short) >= 0;
     lines.push(h + " | SUCCESS => {");
     lines.push("    \"changed\": " + (changing ? "true" : "false") + (args ? ",\n    \"msg\": \"\"" : ""));
