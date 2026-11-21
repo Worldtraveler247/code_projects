@@ -2824,7 +2824,7 @@ pw_manager: Imamgr
         state: present
       loop: "{{ users }}"
       when: (item.job == 'developer' and inventory_hostname in groups['dev']) or (item.job == 'developer' and inventory_hostname in groups['test'])
-    - name: create users whose job is manager on database host group
+    - name: create users whose job is manager on prod host group
       ansible.builtin.user:
         name: "{{ item.username }}"
         uid: "{{ item.uid }}"
@@ -4314,7 +4314,7 @@ const SO_PLAY_TASKS = {
   "users.yml": [
     { name: "Ensure devops group exist", res: "changed" },
     { name: "create users whose job is a developer on dev and test host group", res: { groups: ["dev", "test"], run: "changed" } },
-    { name: "create users whose job is manager on database host group", res: { groups: ["prod"], run: "changed" } }
+    { name: "create users whose job is manager on prod host group", res: { groups: ["prod"], run: "changed" } }
   ]
 };
 function soPlaybook(base){
