@@ -1,0 +1,142 @@
+/* blog.css — additions on top of ../how-it-works.css for the Blogs section.
+   Loaded after how-it-works.css, so it reuses that file's tokens (--cyan, --muted, --border). */
+
+.blog-back {
+  position: fixed;
+  top: 12px;
+  left: 12px;
+  z-index: 9999;
+  background: rgba(10, 10, 20, 0.85);
+  backdrop-filter: blur(6px);
+  color: #4af7ff;
+  border: 1px solid #4af7ff;
+  border-radius: 20px;
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+}
+.blog-back:hover,
+.blog-back:focus-visible { background: rgba(74, 247, 255, 0.12); }
+
+.blog-meta {
+  color: var(--muted);
+  font-size: .8rem;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  margin-bottom: 14px;
+}
+
+/* ── Article body ── */
+.blog-article p { margin-bottom: 16px; }
+.blog-article p:last-child { margin-bottom: 0; }
+.blog-article h3 {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--text);
+  margin: 26px 0 10px;
+}
+.blog-article a { color: var(--cyan); }
+.blog-article ul,
+.blog-article ol {
+  margin: 0 0 16px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.blog-article li strong,
+.blog-article p strong { color: #fff; }
+.blog-lede { font-size: 1.08rem; color: var(--text); }
+
+.blog-callout {
+  border-left: 3px solid var(--cyan);
+  background: var(--surface);
+  border-radius: 0 10px 10px 0;
+  padding: 16px 18px;
+  margin: 20px 0;
+}
+.blog-callout p { margin-bottom: 0; }
+
+/* ── Tables: scroll sideways on phones instead of breaking the page width ── */
+.blog-table-wrap { overflow-x: auto; margin: 18px 0 20px; }
+.blog-table {
+  width: 100%;
+  min-width: 520px;
+  border-collapse: collapse;
+  font-size: .92rem;
+}
+.blog-table th,
+.blog-table td {
+  text-align: left;
+  vertical-align: top;
+  padding: 11px 12px;
+  border-bottom: 1px solid var(--border);
+}
+.blog-table th {
+  color: var(--cyan);
+  font-size: .74rem;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+/* Only tables whose first column is a row label get the emphasis. */
+.blog-table--keyed td:first-child { color: #fff; font-weight: 500; }
+
+.blog-sources { font-size: .88rem; color: var(--muted); }
+.blog-sources li { overflow-wrap: anywhere; }
+
+/* ── Index page: list of entries ── */
+.blog-list { display: flex; flex-direction: column; gap: 16px; }
+.blog-entry {
+  display: block;
+  padding: 22px 24px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--surface);
+  color: inherit;
+  text-decoration: none;
+  transition: border-color .2s ease, background .2s ease;
+}
+.blog-entry:hover,
+.blog-entry:focus-visible {
+  border-color: var(--cyan);
+  background: rgba(74, 247, 255, 0.06);
+}
+.blog-entry-meta {
+  display: block;
+  color: var(--cyan);
+  font-size: .72rem;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+.blog-entry-title {
+  display: block;
+  font-size: 1.12rem;
+  font-weight: 600;
+  color: #fff;
+  margin-bottom: 6px;
+}
+.blog-entry-desc { display: block; color: var(--muted); font-size: .92rem; }
+
+.blog-footer-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: center;
+  margin-top: 8px;
+}
+.blog-footer-nav a {
+  padding: 8px 16px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--cyan);
+  text-decoration: none;
+  font-size: .88rem;
+}
+.blog-footer-nav a:hover,
+.blog-footer-nav a:focus-visible { border-color: var(--cyan); }
+
+@media (prefers-reduced-motion: reduce) {
+  .blog-entry { transition: none; }
+}

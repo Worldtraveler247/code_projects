@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="dark">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'self' https://static.cloudflareinsights.com; connect-src 'self' https://cloudflareinsights.com; img-src 'self' data:; base-uri 'none'; object-src 'none';">
+  <meta name="description" content="The Claude command line against the macOS app, what you gain by conducting several AI agents from one terminal, and whether three subscriptions is diligence or waste.">
+  <meta property="og:title" content="Terminal or Desktop? And Is Running Three AI Agents Worth Paying For?">
+  <meta property="og:description" content="Log Entry 001: the Claude CLI against the macOS app, multi-agent orchestration, subscription cost, and the published usage numbers.">
+  <meta property="og:type" content="article">
+  <meta property="og:url" content="https://worldtraveler247.github.io/code_projects/blog/log-001/">
+  <link rel="canonical" href="https://worldtraveler247.github.io/code_projects/blog/log-001/">
+  <title>Log Entry 001: Terminal or Desktop? And Is Running Three AI Agents Worth Paying For? | Eddie's App Hub</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="icon" href="../../favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="../../how-it-works.css">
+  <link rel="stylesheet" href="../blog.css">
+</head>
+<body>
+<a href="../../index.html" class="blog-back">← App Hub</a>
+
+<div class="hiw-page">
+
+  <header class="hiw-header">
+    <p class="blog-meta">Log Entry 001 · November 22, 2026 · 7 min read</p>
+    <h1>Terminal or Desktop? And Is Running Three AI Agents Worth Paying For?</h1>
+    <p class="hiw-tagline">The Claude command line against the macOS app, what you gain by conducting several agents from one terminal, and whether three subscriptions is diligence or waste.</p>
+  </header>
+
+  <main class="blog-article">
+
+    <section class="hiw-section">
+      <h2>The Short Version</h2>
+      <p class="blog-lede">
+        The command line and the desktop app are two front doors to the same model, and they suit
+        different work. The terminal wins when the task is to <strong>change</strong> something on a
+        machine. The app wins when the task is to <strong>think</strong> something through.
+      </p>
+      <p>
+        Running several agents side by side is useful for a narrow set of jobs, mainly checking one
+        model's answer against another's. For most people, most of the time, a second and third
+        subscription buys overlap. The rest of this entry shows the reasoning and the numbers.
+      </p>
+    </section>
+
+    <section class="hiw-section">
+      <h2>Two Front Doors to the Same Model</h2>
+      <p>
+        Claude's command-line interface (CLI) runs inside a terminal, in whatever folder you start it
+        from. It can read files, run commands, and edit code directly, with your approval. The macOS
+        application is a conversation window: you type, attach files, and read formatted answers.
+        The intelligence behind both is the same. What differs is how close the assistant sits to
+        the work.
+      </p>
+
+      <h3>The command line</h3>
+      <div class="blog-table-wrap">
+        <table class="blog-table">
+          <thead>
+            <tr><th scope="col">Advantages</th><th scope="col">Disadvantages</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Acts where the work lives: it reads the real files and runs the real commands, so there is no copying advice from a chat window into a terminal.</td>
+              <td>It can change your system. A mistaken command has real consequences, so permission prompts and backups matter.</td>
+            </tr>
+            <tr>
+              <td>Scriptable. It can run without a window, on a schedule, or as one step in a pipeline.</td>
+              <td>Steeper learning curve. You need to be comfortable with a shell, file paths, and version control.</td>
+            </tr>
+            <tr>
+              <td>Its instructions are plain text files that can be version-controlled and reviewed like code.</td>
+              <td>Plain-text output. Charts, images, and long formatted documents are harder to read.</td>
+            </tr>
+            <tr>
+              <td>Works over a remote connection, on servers that have no screen.</td>
+              <td>Long autonomous runs consume usage quickly, and the spend is easy to lose track of.</td>
+            </tr>
+            <tr>
+              <td>Can delegate to helper agents and connect to outside tools through standard connectors.</td>
+              <td>Easy to over-trust. Output that scrolls past in a terminal gets less scrutiny than a document you read.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>The macOS application</h3>
+      <div class="blog-table-wrap">
+        <table class="blog-table">
+          <thead>
+            <tr><th scope="col">Advantages</th><th scope="col">Disadvantages</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Approachable. Nothing to install beyond the app, and nothing to learn beyond typing a question.</td>
+              <td>A gap between advice and action: you carry the answer to wherever the work is and apply it yourself.</td>
+            </tr>
+            <tr>
+              <td>Rich presentation: formatted documents, tables, images, and interactive pages are easy to read and share.</td>
+              <td>Harder to automate. A conversation window is built for a person, not for a script.</td>
+            </tr>
+            <tr>
+              <td>Good for attachments such as documents, screenshots, and photos.</td>
+              <td>It sees only what you give it, so it knows less about the actual state of your files and systems.</td>
+            </tr>
+            <tr>
+              <td>Lower risk by default, because it is not running commands on your computer.</td>
+              <td>Repetitive work stays manual, since each request is typed by hand.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="blog-callout">
+        <p>
+          <strong>A working rule:</strong> if the result of the task is a changed file or a changed
+          system, use the terminal. If the result is a decision, a draft, or an understanding, use
+          the app. Many people end up using both, for exactly that reason.
+        </p>
+      </div>
+    </section>
+
+    <section class="hiw-section">
+      <h2>Conducting More Than One Agent</h2>
+      <p>
+        An agent is an assistant that can take actions, not only answer. Three that are prominent at
+        the time of writing come from three different companies:
+      </p>
+      <ul>
+        <li><strong>Muse</strong>, from Meta, built on its Muse Spark models. Meta also ships a terminal coding agent called Muse Code.</li>
+        <li><strong>Claude Duet</strong>, from Anthropic, a research preview that opened in October 2026. It is designed to prepare work on its own between conversations and to run scheduled tasks.</li>
+        <li><strong>ChatGPT</strong>, from OpenAI, the most widely used assistant by a large margin.</li>
+      </ul>
+      <p>
+        Orchestration means one program hands the same job to several agents and compares what comes
+        back. A terminal assistant is a natural conductor, because it can already run commands,
+        collect output, and write the comparison down.
+      </p>
+
+      <h3>What you gain</h3>
+      <ul>
+        <li><strong>An independent second opinion.</strong> Models trained by different companies tend to make different mistakes. When three agree, confidence rises. When they disagree, you have found the part worth checking by hand.</li>
+        <li><strong>Evidence about which agent suits which job.</strong> Giving all three the same task, scored against the same criteria, replaces brand loyalty with a measurement.</li>
+        <li><strong>Routing.</strong> Once you know the strengths, each kind of task can go to the agent that handles it best.</li>
+        <li><strong>Resilience.</strong> If one service is down or you have hit its usage limit, the work continues elsewhere.</li>
+        <li><strong>Less lock-in.</strong> Habits and instructions that work across vendors are easier to move when prices or products change.</li>
+      </ul>
+
+      <h3>What it costs you</h3>
+      <ul>
+        <li><strong>Coordination overhead.</strong> Three answers have to be read, compared, and reconciled. For a simple question that takes longer than doing it once.</li>
+        <li><strong>Brittle plumbing.</strong> Consumer apps are built for people, and they do not expose a common way to be driven by another program. A conductor reaches them through a developer interface where one exists, or by operating the app's window, which is slower and breaks when the screen changes.</li>
+        <li><strong>A wider privacy surface.</strong> Every agent you send a task to is another company that receives it. Material that should stay with one provider should not be fanned out to three.</li>
+        <li><strong>Repeated context.</strong> Each agent starts without the background the others have, so you explain the situation more than once.</li>
+        <li><strong>False comfort.</strong> Agreement between models is evidence, not proof. They can share a blind spot, especially on recent events.</li>
+      </ul>
+    </section>
+
+    <section class="hiw-section">
+      <h2>Waste of Money, or Worth It?</h2>
+      <p>
+        The arithmetic is simple. Where an assistant charges for its entry tier, the common price is
+        about US$20 a month. Three of those is about US$60 a month, or US$720 a year, and the heavier
+        tiers cost several times more. The question is what the second and third subscriptions add
+        that the first does not.
+      </p>
+      <div class="blog-table-wrap">
+        <table class="blog-table blog-table--keyed">
+          <thead>
+            <tr><th scope="col">Situation</th><th scope="col">Verdict</th><th scope="col">Why</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Everyday questions, writing help, summaries</td>
+              <td>One is enough</td>
+              <td>The leading assistants overlap heavily on these tasks. A second opinion rarely changes the outcome.</td>
+            </tr>
+            <tr>
+              <td>High-stakes output: money, contracts, security, published facts</td>
+              <td>Two can pay for themselves</td>
+              <td>An independent check that catches one costly error is worth more than a month's fee.</td>
+            </tr>
+            <tr>
+              <td>Each agent has a distinct, non-overlapping job</td>
+              <td>Three can be justified</td>
+              <td>For example one for hands-on technical work, one for scheduled background tasks, one for general questions.</td>
+            </tr>
+            <tr>
+              <td>Three subscriptions "just in case"</td>
+              <td>Waste</td>
+              <td>Paying for capacity you do not use, three times over.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p>
+        A fair test costs one month. Give all three the same ten real tasks, score the results, and
+        keep a tally of how often the second and third answers changed what you did. If the tally is
+        near zero, cancel them. Subscriptions can be restarted in a minute, so the cost of being
+        wrong is small.
+      </p>
+    </section>
+
+    <section class="hiw-section">
+      <h2>The Numbers: Who Is Paying</h2>
+      <p>
+        Only one of the three companies publishes a subscriber count, so a single worldwide total
+        for paid AI subscriptions does not exist. These are the figures that have been reported:
+      </p>
+      <div class="blog-table-wrap">
+        <table class="blog-table blog-table--keyed">
+          <thead>
+            <tr><th scope="col">Assistant</th><th scope="col">Reported figure</th><th scope="col">As of</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>ChatGPT (OpenAI)</td>
+              <td>900 million weekly active users and 50 million paying subscribers</td>
+              <td>February 2026</td>
+            </tr>
+            <tr>
+              <td>Claude (Anthropic)</td>
+              <td>No total published. Paid subscriptions were reported to have more than doubled during 2026.</td>
+              <td>2026</td>
+            </tr>
+            <tr>
+              <td>Meta AI (Meta)</td>
+              <td>More than 1 billion monthly users, reached through its existing apps. Meta does not report paying subscribers.</td>
+              <td>Late 2025</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p>
+        Two cautions apply. Weekly and monthly figures are not comparable with each other, and later
+        reports that put ChatGPT above one billion weekly users come from secondary sources.
+      </p>
+      <p>
+        The most telling number is a ratio. Fifty million paying subscribers against 900 million
+        weekly users is about 5.6 percent, roughly one user in eighteen. The great majority of people
+        using the most popular assistant pay nothing. Anyone holding three paid subscriptions is a
+        long way from typical.
+      </p>
+    </section>
+
+    <section class="hiw-section">
+      <h2>What People Actually Use AI For</h2>
+      <p>
+        The published usage research points the same way: mostly ordinary tasks, with agent-style
+        work concentrated in software.
+      </p>
+      <ul>
+        <li><strong>Three categories dominate ChatGPT.</strong> A study by OpenAI with the National Bureau of Economic Research, published in September 2025, found that about 80 percent of conversations were practical guidance, seeking information, or writing.</li>
+        <li><strong>Most use is personal.</strong> In the same study, the share of messages unrelated to work rose from 53 percent to 73 percent between June 2024 and June 2025.</li>
+        <li><strong>At work, writing leads.</strong> Writing made up about 40 percent of work-related messages. Computer programming was only about 4 percent of all messages.</li>
+        <li><strong>Claude skews technical.</strong> Anthropic's Economic Index for March 2026 reported that tasks tied to computer and mathematical occupations made up 35 percent of conversations on Claude.ai, and that coding was moving toward its developer tools.</li>
+        <li><strong>Agent use is growing more autonomous.</strong> Anthropic's analysis of about 400,000 Claude Code sessions found that the share spent on debugging fell by nearly half over roughly six months, as people handed over larger, end-to-end tasks.</li>
+      </ul>
+      <p>
+        Put plainly, the typical person uses an assistant to ask, to learn, and to write. Handing an
+        agent a multi-step job and letting it run remains a minority activity, and it is strongest
+        among people who build software.
+      </p>
+    </section>
+
+    <section class="hiw-section">
+      <h2>Verdict</h2>
+      <ul>
+        <li><strong>Terminal or desktop:</strong> use the terminal to change things and the app to think things through. They complement each other.</li>
+        <li><strong>One agent or three:</strong> start with one. Add a second when a wrong answer would be expensive. Keep a third only if it has a job the other two do not do.</li>
+        <li><strong>Waste or benefit:</strong> it is a benefit when you can name what each subscription is for and show that it changed an outcome. Otherwise it is a waste.</li>
+      </ul>
+    </section>
+
+    <section class="hiw-section">
+      <h2>Field Notes</h2>
+      <p>
+        This entry is deliberately general. Hands-on results from running these tools side by side,
+        with specific tasks and scores, will follow in a later entry.
+      </p>
+    </section>
+
+    <section class="hiw-section">
+      <h2>Sources</h2>
+      <ul class="blog-sources">
+        <li><a href="https://techcrunch.com/2026/02/27/chatgpt-reaches-900m-weekly-active-users" target="_blank" rel="noopener noreferrer">TechCrunch: ChatGPT reaches 900M weekly active users</a> (February 27, 2026)</li>
+        <li><a href="https://www.cnbc.com/2025/09/17/openai-releases-first-of-kind-study-revealing-how-people-use-chatgpt.html" target="_blank" rel="noopener noreferrer">CNBC: OpenAI study on how people use ChatGPT</a> (September 17, 2025)</li>
+        <li><a href="https://www.anthropic.com/research/economic-index-march-2026-report" target="_blank" rel="noopener noreferrer">Anthropic Economic Index, March 2026 report</a></li>
+        <li><a href="https://www.anthropic.com/research/claude-code-expertise" target="_blank" rel="noopener noreferrer">Anthropic: analysis of Claude Code sessions</a> (June 2026)</li>
+        <li><a href="https://www.emarketer.com/content/claude-s-paid-subscriber-surge-reveals-competitive-shift-consumer-ai" target="_blank" rel="noopener noreferrer">eMarketer: Claude's paid subscriber growth</a> (2026)</li>
+        <li><a href="https://claude.com/resources/articles/claude-duet" target="_blank" rel="noopener noreferrer">Anthropic: Introducing Claude Duet</a> (October 2026)</li>
+        <li><a href="https://research.meta.ai/blog/introducing-muse-code-and-muse-spark-1-2" target="_blank" rel="noopener noreferrer">Meta: Introducing Muse Code and Muse Spark 1.2</a></li>
+        <li><a href="https://www.demandsage.com/meta-ai-users/" target="_blank" rel="noopener noreferrer">DemandSage: Meta AI user statistics</a> (secondary source for the Meta figure)</li>
+      </ul>
+      <p style="margin-top:18px">
+        Figures are quoted as reported by each source on the date shown and will go out of date.
+        Prices are approximate and vary by country and plan.
+      </p>
+    </section>
+
+    <nav class="blog-footer-nav" aria-label="Blog navigation">
+      <a href="../index.html">← All entries</a>
+      <a href="../../index.html">App Hub</a>
+    </nav>
+
+  </main>
+
+</div>
+
+<!-- cf-web-analytics (managed by tools/inject_analytics.py) -->
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "f728a20b49cc4a0fbe02cde72f03301c"}'></script>
+</body>
+</html>
