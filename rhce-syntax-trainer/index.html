@@ -157,6 +157,12 @@
   .prebox .prehead{font-weight:bold;color:#fff;margin:12px 0 4px}
   .prebox p{margin:0 0 9px}
   .prebox code{background:#1a1a1a;padding:0 5px;color:var(--cyan);font-size:12.5px}
+  .undbox{display:none;border:1px solid var(--green);background:#06110a;padding:14px 16px;margin:0 0 12px;line-height:1.7;font-size:13.5px}
+  .undbox.show{display:block}
+  .undbox .undlabel{display:inline-block;font-weight:bold;color:#000;background:var(--green);padding:2px 10px;margin-bottom:10px;font-size:12.5px;letter-spacing:.4px}
+  .undbox .undhead{font-weight:bold;color:#fff;margin:12px 0 4px}
+  .undbox p{margin:0 0 9px}
+  .undbox code{background:#1a1a1a;padding:0 5px;color:var(--green);font-size:12.5px}
   .finish{display:none;background:#050505;border:1px solid var(--green);padding:20px;text-align:center;margin:20px auto;max-width:900px}
   .finish.show{display:block}
   .finish .big{font-size:24px;margin-bottom:6px;color:var(--green)}
@@ -1808,6 +1814,15 @@ const QUESTIONS = [
     { re:/force\s*:\s*(true|yes)/i, msg:"Link task: force: true" },
     { fn:t => { const a = t.search(/ansible\.builtin\.group\s*:/), b = t.search(/state\s*:\s*directory/), c = t.search(/ansible\.builtin\.copy\s*:/), d = t.search(/state\s*:\s*link/); return a >= 0 && b > a && c > b && d > c; }, msg:"Task order is group, directory, file, link — the dependency order" }
   ]],
+  understand:`<p>Each word answers a different question. That is the whole trick:</p>
+<p class='undhead'>path: /webdev — "Where is the thing itself?"</p>
+<p>The file module manages things in place. The directory IS /webdev, so <code>path</code> names the thing being created. The plot of land.</p>
+<p class='undhead'>dest: /webdev/index.html — "Where does the delivery land?"</p>
+<p>Copy is a delivery: content travels and lands somewhere. <code>dest</code> is the drop-off address, and it names the finished file, filename included, not just the folder. The package's destination.</p>
+<p class='undhead'>src: /webdev — "What does the shortcut point at?"</p>
+<p>A link connects two places, so it is the only task with two locations. <code>src</code> is the real, existing thing the arrow aims at. <code>path: /var/www/html/webdev</code> is where the new shortcut itself sits. src = the target, path = the pointer. And src is exactly <code>/webdev</code>, no trailing slash, because it names the directory itself.</p>
+<p><b>Path = the thing. Dest = the drop-off. Src = what it points to.</b></p>
+<p>Quick self-check when you write Q12: if the task makes or manages a place, it is path. If it delivers content to a place, it is dest. If it points at a place, that place is src, and the shortcut's own home is path again.</p>`,
   senior:`<p class='seniorhead'>Q12 — the webcontent structure</p>
 <p>A web content structure on the dev hosts, built in four tasks in a fixed order: create the devops group, create /webdev owned by that group with mode 2775, drop an index.html containing Development into it, then symlink /var/www/html/webdev to /webdev with force.</p>
 <p>The order is dependency, not tidiness: the directory cannot take devops as its group before the group exists. The mode is the senior detail. 2775 is setgid plus rwxrwxr-x, so files created inside inherit the devops group, which is what makes the directory shareable in practice, and it is quoted in the YAML because an unquoted mode is a number waiting to be misread. Note what is absent: no when anywhere. The play targets dev directly, so targeting lives at the play level here, the opposite choice from Q11, and both are right in context. The force on the link replaces whatever already sits at the web root path instead of failing on it.</p>`,
@@ -6129,6 +6144,11 @@ function wireHelp(q){
     const open = pbox.classList.toggle("show");
     pbtn.textContent = open ? "Hide Pre ✓ ad hoc" : "Pre ✓ ad hoc";
   });
+  const ubtn = gel("undbtn"), ubox = gel("undbox");
+  if (ubtn && ubox) ubtn.addEventListener("click", () => {
+    const open = ubox.classList.toggle("show");
+    ubtn.textContent = open ? "Hide Understanding modules" : "Understanding modules";
+  });
   if (!hb || !rb) return;
   hb.addEventListener("click", () => {
     const open = hbox.classList.toggle("show");
@@ -6212,9 +6232,10 @@ function renderStage(){
   if (q.cmd) { h += scratchPaneHtml("S2") + "</div>"; }
   else { h += shellTabsHtml() + "<div class='shellpanes'>" + scratchPaneHtml("S1") + scratchPaneHtml("S2") + "</div>"; }
   h += "<div class='keys'><b>[Ctrl+Enter / F2]</b> check &nbsp;<b>[Alt+↑/↓]</b> switch file &nbsp;<b>[Alt+→]</b> next question &nbsp;<b>[Alt+←]</b> previous &nbsp;<b>[Tab]</b> complete path (shell-style) · in files: indent · <b>[Shift+Tab]</b> outdent · <b>[Ctrl+C]</b> clear the shell (^C) &nbsp;::&nbsp; attempts: <span class='n' id='att'>" + (state.attempts[state.cur] || 0) + "</span></div>";
-  h += "<div class='helprow'><button class='hbtn' id='checkbtn'>▶ Check</button><button class='hbtn' id='hintbtn'>💡 Hint</button><button class='hbtn' id='revealbtn'>👁 Reveal answer</button>" + (q.precheck ? "<button class='hbtn' id='prebtn'>Pre ✓ ad hoc</button>" : "") + "<button class='hbtn' id='listenbtn'>🔊 Listen</button><button class='hbtn' id='deepbtn'>🎙 Deep dive</button><button class='hbtn' id='videobtn'>🎬 Lesson video</button><button class='hbtn' id='nextbtn'>Next ▸</button>" + (q.senior ? "<button class='hbtn' id='seniorbtn'>🧑‍💼 Senior Admin Explanation</button>" : "") + "<button class='hbtn qreset' id='qresetbtn' title='Start this question over: clears its typed text, its attempts counter and its pass mark. Other questions are untouched.'>↺ Reset question</button></div>";
+  h += "<div class='helprow'><button class='hbtn' id='checkbtn'>▶ Check</button><button class='hbtn' id='hintbtn'>💡 Hint</button><button class='hbtn' id='revealbtn'>👁 Reveal answer</button>" + (q.precheck ? "<button class='hbtn' id='prebtn'>Pre ✓ ad hoc</button>" : "") + (q.understand ? "<button class='hbtn' id='undbtn'>Understanding modules</button>" : "") + "<button class='hbtn' id='listenbtn'>🔊 Listen</button><button class='hbtn' id='deepbtn'>🎙 Deep dive</button><button class='hbtn' id='videobtn'>🎬 Lesson video</button><button class='hbtn' id='nextbtn'>Next ▸</button>" + (q.senior ? "<button class='hbtn' id='seniorbtn'>🧑‍💼 Senior Admin Explanation</button>" : "") + "<button class='hbtn qreset' id='qresetbtn' title='Start this question over: clears its typed text, its attempts counter and its pass mark. Other questions are untouched.'>↺ Reset question</button></div>";
   if (q.senior) h += "<div class='seniorbox' id='seniorbox'><span class='seniorlabel'>Senior Admin Explanation</span>" + q.senior + "</div>";
   if (q.precheck) h += "<div class='prebox' id='prebox'><span class='prelabel'>Pre ✓ ad hoc</span>" + q.precheck + "</div>";
+  if (q.understand) h += "<div class='undbox' id='undbox'><span class='undlabel'>Understanding modules</span>" + q.understand + "</div>";
   h += "<div class='audiobox' id='audiobox'></div>";
   h += "<div class='audiobox' id='deepbox'></div>";
   h += "<div class='audiobox' id='videobox'></div>";
