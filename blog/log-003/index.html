@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="dark">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'self' https://static.cloudflareinsights.com; connect-src 'self' https://cloudflareinsights.com; img-src 'self' data:; base-uri 'none'; object-src 'none';">
+  <meta name="description" content="A step-by-step home lab for Kubernetes and Terraform on a Mac: a free local cluster, Terraform managing it, short low-cost cloud sessions, who uses these tools in production, and what the related jobs pay.">
+  <meta property="og:title" content="A Home Lab for Kubernetes and Terraform on macOS: Free First, Cheap Second">
+  <meta property="og:description" content="Log Entry 003: a free local cluster, Terraform managing it, low-cost cloud sessions, real organizations that run these tools, and what the related jobs pay.">
+  <meta property="og:type" content="article">
+  <meta property="og:url" content="https://worldtraveler247.github.io/code_projects/blog/log-003/">
+  <link rel="canonical" href="https://worldtraveler247.github.io/code_projects/blog/log-003/">
+  <title>Log Entry 003: A Home Lab for Kubernetes and Terraform on macOS | Eddie's App Hub</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Inter:wght@400;500;600&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="icon" href="../../favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="../../how-it-works.css">
+  <link rel="stylesheet" href="../blog.css?v=2">
+</head>
+<body>
+<a href="../../index.html" class="blog-back">← App Hub</a>
+
+<div class="hiw-page">
+
+  <header class="hiw-header">
+    <p class="blog-meta">Log Entry 003 · November 22, 2026 · 11 min read</p>
+    <h1>A Home Lab for Kubernetes and Terraform on macOS: Free First, Cheap Second</h1>
+    <p class="hiw-tagline">A free local cluster, Terraform managing it, short cloud sessions that cost a few dollars, the organizations that run these tools in production, and what the related jobs pay.</p>
+  </header>
+
+  <div class="blog-audio" role="group" aria-label="Audio version of this entry">
+    <p class="blog-audio-label">Listen to this entry · 16 min</p>
+    <audio controls preload="none" src="audio.mp3">Your browser does not support audio playback. Use the download link below.</audio>
+    <p class="blog-audio-note">Synthesized narration. <a href="audio.mp3" download>Download the MP3</a></p>
+  </div>
+
+  <main class="blog-article">
+
+    <section class="hiw-section">
+      <h2>The Short Version</h2>
+      <p class="blog-lede">
+        You can learn Kubernetes and Terraform to a professional standard on one Mac, and most of
+        it costs nothing. Build the lab in three tiers: <strong>a multi-node cluster on the laptop,
+        Terraform managing that cluster, then short cloud sessions you destroy the same day</strong>.
+      </p>
+      <p>
+        The first two tiers are free. The third costs roughly one to three dollars per session if
+        you tear everything down before you close the laptop. This entry walks through the tiers in
+        order, then covers who runs these tools in production and what the related jobs pay.
+      </p>
+      <p>
+        The commands assume an Apple silicon Mac with Homebrew installed and 16 GB of memory.
+      </p>
+    </section>
+
+    <section class="hiw-section">
+      <h2>The Model Before the Tools</h2>
+      <p>
+        Kubernetes and Terraform are both declarative systems. You describe the end state you want,
+        and the tool works out the steps to reach it. Kubernetes does this continuously with control
+        loops. Terraform does it on demand with a plan followed by an apply.
+      </p>
+      <p>
+        Each keeps a record of what it believes exists. For Terraform that record is the state file.
+        For Kubernetes it is the API server, backed by a database called etcd. The gap between what
+        is declared and what is actually running is called drift, and most of the daily work with
+        either tool is finding and closing that gap.
+      </p>
+    </section>
+
+    <section class="hiw-section">
+      <h2>Who Runs This in Production</h2>
+      <p>
+        Kubernetes makes servers interchangeable: any machine in the cluster can run any workload,
+        so a failed machine is replaced instead of repaired. Terraform makes infrastructure
+        reviewable: a change to a network or a permission arrives as a code change that someone can
+        read before it happens.
+      </p>
+      <h3>Kubernetes</h3>
+      <div class="blog-table-wrap">
+        <table class="blog-table blog-table--keyed">
+          <thead>
+            <tr><th scope="col">Organization</th><th scope="col">What it runs on Kubernetes</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Spotify</td>
+              <td>Its backend services. Spotify replaced a homegrown orchestrator called Helios, and reported that creating a new service dropped from about an hour to seconds.</td>
+            </tr>
+            <tr>
+              <td>CERN</td>
+              <td>Physics data processing. Batch workloads make up more than 80 percent of its resource usage.</td>
+            </tr>
+            <tr>
+              <td>Chick-fil-A</td>
+              <td>A small cluster inside each restaurant, on three low-power computers, so ordering and kitchen systems do not depend on a distant data center.</td>
+            </tr>
+            <tr>
+              <td>United States Air Force</td>
+              <td>Flight software experiments. Kubernetes ran on an F-16 in 2019 and flew on a U-2 in September 2020, running machine learning code alongside the aircraft's existing computers.</td>
+            </tr>
+            <tr>
+              <td>OpenAI</td>
+              <td>Machine learning training. It published how it scaled a single cluster to 7,500 nodes.</td>
+            </tr>
+            <tr>
+              <td>Mercedes-Benz</td>
+              <td>Close to 1,000 clusters that serve its internal software teams.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <h3>Terraform</h3>
+      <div class="blog-table-wrap">
+        <table class="blog-table blog-table--keyed">
+          <thead>
+            <tr><th scope="col">Organization</th><th scope="col">What it manages with Terraform</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Slack</td>
+              <td>Infrastructure across several cloud providers. Slack chose Terraform so that one tool and one syntax would cover all of them.</td>
+            </tr>
+            <tr>
+              <td>cloud.gov</td>
+              <td>The network and infrastructure layer of the United States government's application platform, kept in a public repository.</td>
+            </tr>
+            <tr>
+              <td>Helvetia Insurance</td>
+              <td>A move of about 200 applications to the cloud in one year, with new cloud accounts provisioned in minutes instead of days.</td>
+            </tr>
+            <tr>
+              <td>Skechers</td>
+              <td>Provisioning workflows that went from days or weeks to hours.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p>
+        The pattern is the same in every row. Terraform builds the platform, Kubernetes runs the
+        workloads, and both are changed through reviewed code.
+      </p>
+    </section>
+
+    <section class="hiw-section">
+      <h2>Step 0: Set the Budget</h2>
+      <div class="blog-table-wrap">
+        <table class="blog-table blog-table--keyed">
+          <thead>
+            <tr><th scope="col">Tier</th><th scope="col">What runs</th><th scope="col">Cost</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Local cluster</td>
+              <td>A three-node Kubernetes cluster inside a virtual machine on the Mac</td>
+              <td>Free</td>
+            </tr>
+            <tr>
+              <td>Local Terraform</td>
+              <td>Terraform managing that same cluster</td>
+              <td>Free</td>
+            </tr>
+            <tr>
+              <td>Cloud sessions</td>
+              <td>Short-lived cloud resources, destroyed the same day</td>
+              <td>About one to three dollars per session</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p>Two charges surprise people in the cloud tier, so learn them before Step 5:</p>
+      <ul>
+        <li><strong>The managed Kubernetes control plane.</strong> On Amazon Web Services (AWS), Elastic Kubernetes Service (EKS) bills about ten cents an hour for the control plane alone. Forgotten for a month, that is roughly 73 dollars.</li>
+        <li><strong>The NAT gateway.</strong> A network address translation gateway bills by the hour even when no traffic passes through it.</li>
+      </ul>
+    </section>
+
+    <section class="hiw-section">
+      <h2>Step 1: Install the Tools</h2>
+      <pre class="hiw-code">brew install podman kind kubectl helm trivy
+brew tap hashicorp/tap
+brew install hashicorp/tap/terraform</pre>
+      <ul>
+        <li><strong>podman</strong> runs containers, inside a small Linux virtual machine it manages for you.</li>
+        <li><strong>kind</strong> builds a Kubernetes cluster where each node is a container.</li>
+        <li><strong>kubectl</strong> is the command-line client for any Kubernetes cluster.</li>
+        <li><strong>helm</strong> installs packaged applications into a cluster.</li>
+        <li><strong>trivy</strong> scans configuration and container images for security problems.</li>
+        <li><strong>brew tap hashicorp/tap</strong> adds the publisher's own package source, which carries current Terraform releases.</li>
+      </ul>
+      <p>
+        Terraform's license changed in 2023 from open source to the Business Source License.
+        OpenTofu is the open-source fork, and its syntax is almost identical. Everything in this
+        entry works with either.
+      </p>
+    </section>
+
+    <section class="hiw-section">
+      <h2>Step 2: Build a Multi-Node Cluster</h2>
+      <p>Create and start the virtual machine that will hold the cluster:</p>
+      <pre class="hiw-code">podman machine init --cpus 4 --memory 8192 --disk-size 60 --rootful
+podman machine start</pre>
+      <ul>
+        <li><strong>--cpus 4</strong> gives the virtual machine four processor cores.</li>
+        <li><strong>--memory 8192</strong> gives it 8 GB of memory, written in megabytes.</li>
+        <li><strong>--disk-size 60</strong> gives it a 60 GB disk.</li>
+        <li><strong>--rootful</strong> runs containers as root inside the virtual machine, which the cluster's node containers need in order to manage resource limits reliably.</li>
+      </ul>
+      <p>Describe the cluster in a file named <code>kind-lab.yaml</code>:</p>
+      <pre class="hiw-code">kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+nodes:
+  - role: control-plane
+  - role: worker
+  - role: worker</pre>
+      <p>Then create it and confirm the nodes are healthy:</p>
+      <pre class="hiw-code">KIND_EXPERIMENTAL_PROVIDER=podman kind create cluster --name lab --config kind-lab.yaml
+kubectl get nodes -o wide</pre>
+      <ul>
+        <li><strong>KIND_EXPERIMENTAL_PROVIDER=podman</strong> tells kind to use Podman instead of Docker.</li>
+        <li><strong>--name lab</strong> names the cluster. kubectl will know it as <code>kind-lab</code>.</li>
+        <li><strong>--config</strong> points to the file that lists the nodes.</li>
+        <li><strong>-o wide</strong> adds each node's address, operating system, and container runtime to the output.</li>
+      </ul>
+      <p>
+        All three nodes should report <code>Ready</code>. Three nodes matter because scheduling,
+        draining a node for maintenance, and spreading copies of an application across machines
+        cannot be seen on a single node.
+      </p>
+    </section>
+
+    <section class="hiw-section">
+      <h2>Step 3: Work the Cluster by Hand</h2>
+      <p>
+        Spend the first week driving the cluster with kubectl and nothing else. You cannot debug
+        what automation builds until you can build it yourself. Practice in this order:
+      </p>
+      <ol>
+        <li>Pods, Deployments, and Services</li>
+        <li>ConfigMaps and Secrets</li>
+        <li>Health probes and resource limits</li>
+        <li>Role-based access control</li>
+      </ol>
+      <p>Three commands explain most failures:</p>
+      <pre class="hiw-code">kubectl describe pod POD_NAME
+kubectl logs POD_NAME --previous
+kubectl get events --sort-by=.lastTimestamp</pre>
+      <ul>
+        <li><strong>describe</strong> shows scheduling decisions, image downloads, and failed health checks.</li>
+        <li><strong>--previous</strong> prints the logs of the container that crashed, not the one that replaced it.</li>
+        <li><strong>--sort-by=.lastTimestamp</strong> puts events in time order, so the cause appears before the effect.</li>
+      </ul>
+    </section>
+
+    <section class="hiw-section">
+      <h2>Step 4: Let Terraform Manage the Cluster</h2>
+      <p>
+        Save the following as <code>main.tf</code> in an empty directory. It creates a namespace
+        that enforces the strictest built-in security standard, a hardened web server with two
+        copies, and a network rule that blocks all incoming traffic by default.
+      </p>
+      <pre class="hiw-code">terraform {
+  required_version = "&gt;= 1.6"
+  required_providers {
+    kubernetes = {
+      source  = "hashicorp/kubernetes"
+      version = "&gt;= 2.30"
+    }
+  }
+}
+
+provider "kubernetes" {
+  config_path    = "~/.kube/config"
+  config_context = "kind-lab"
+}
+
+resource "kubernetes_namespace_v1" "web" {
+  metadata {
+    name = "web"
+    labels = {
+      "pod-security.kubernetes.io/enforce" = "restricted"
+    }
+  }
+}
+
+resource "kubernetes_deployment_v1" "web" {
+  metadata {
+    name      = "web"
+    namespace = kubernetes_namespace_v1.web.metadata[0].name
+  }
+  spec {
+    replicas = 2
+    selector {
+      match_labels = { app = "web" }
+    }
+    template {
+      metadata {
+        labels = { app = "web" }
+      }
+      spec {
+        automount_service_account_token = false
+        security_context {
+          run_as_non_root = true
+          seccomp_profile {
+            type = "RuntimeDefault"
+          }
+        }
+        container {
+          name  = "nginx"
+          image = "nginxinc/nginx-unprivileged:1.27-alpine"
+          port {
+            container_port = 8080
+          }
+          security_context {
+            allow_privilege_escalation = false
+            read_only_root_filesystem  = true
+            capabilities {
+              drop = ["ALL"]
+            }
+          }
+          resources {
+            requests = { cpu = "50m", memory = "64Mi" }
+            limits   = { cpu = "200m", memory = "128Mi" }
+          }
+          volume_mount {
+            name       = "tmp"
+            mount_path = "/tmp"
+          }
+        }
+        volume {
+          name = "tmp"
+          empty_dir {}
+        }
+      }
+    }
+  }
+}
+
+resource "kubernetes_network_policy_v1" "default_deny" {
+  metadata {
+    name      = "default-deny-ingress"
+    namespace = kubernetes_namespace_v1.web.metadata[0].name
+  }
+  spec {
+    pod_selector {}
+    policy_types = ["Ingress"]
+  }
+}</pre>
+      <pre class="hiw-code">terraform init
+terraform plan -out=tfplan
+terraform apply tfplan</pre>
+      <ul>
+        <li><strong>init</strong> downloads the Kubernetes provider and writes a lock file that pins its checksums. Keep that file in version control.</li>
+        <li><strong>plan -out=tfplan</strong> saves the exact set of changes Terraform intends to make.</li>
+        <li><strong>apply tfplan</strong> carries out the saved plan and nothing else, so what runs is what you reviewed.</li>
+      </ul>
+
+      <h3>Check the security controls, not just the deployment</h3>
+      <pre class="hiw-code">kubectl -n web get pods
+kubectl -n web run bad --image=nginx --privileged
+trivy config .</pre>
+      <ul>
+        <li><strong>-n web</strong> points the command at the <code>web</code> namespace.</li>
+        <li><strong>--privileged</strong> asks for a container with full access to the host. The namespace should refuse it, and that refusal is the passing result.</li>
+        <li><strong>trivy config .</strong> scans the Terraform in the current directory for insecure settings.</li>
+      </ul>
+
+      <h3>Why it is written this way</h3>
+      <ul>
+        <li><strong>Least privilege.</strong> The container runs as a normal user, cannot gain new privileges, has every Linux capability removed, and can write only to a temporary directory. A compromised container has very little to work with.</li>
+        <li><strong>State is sensitive.</strong> A local state file is fine for a lab. In production it can contain secrets in plain text, so it belongs in encrypted remote storage with locking and narrow access.</li>
+        <li><strong>See drift for yourself.</strong> Change the number of copies by hand with <code>kubectl -n web scale deploy web --replicas=5</code>, then run <code>terraform plan</code>. Terraform proposes putting it back to two.</li>
+        <li><strong>A real disagreement.</strong> Many teams use Terraform to build the cluster and a different tool, such as Helm or Argo CD, for what runs inside it. Managing workloads with Terraform is a good way to learn both, and it is worth knowing why teams draw that line.</li>
+      </ul>
+    </section>
+
+    <section class="hiw-section">
+      <h2>Step 5: Add the Cloud Without the Invoice</h2>
+      <p>
+        A local cluster teaches Kubernetes. It cannot teach cloud identity and permissions, cloud
+        networking, or managed node groups. Those need a real account, used carefully.
+      </p>
+      <ol>
+        <li><strong>Create a budget alarm first.</strong> Before any other resource, define an alert at ten dollars, in Terraform.</li>
+        <li><strong>Set up remote state second.</strong> Use a storage bucket with versioning and encryption turned on and public access blocked.</li>
+        <li><strong>Practice on what is free.</strong> Networks, firewall rules, permission roles, and storage policies cost little or nothing to create.</li>
+        <li><strong>Treat managed Kubernetes as a timed session.</strong> Build the cluster, practice for two hours, and run <code>terraform destroy</code> before you stop.</li>
+      </ol>
+      <div class="blog-callout">
+        <p>
+          <strong>Verify the teardown.</strong> After every session, open the billing console and
+          confirm that no gateway, load balancer, or storage volume survived. Use an account
+          protected by multi-factor authentication, and never create access keys for the root user.
+        </p>
+      </div>
+    </section>
+
+    <section class="hiw-section">
+      <h2>Step 6: The Order of Study</h2>
+      <div class="blog-table-wrap">
+        <table class="blog-table blog-table--keyed">
+          <thead>
+            <tr><th scope="col">Weeks</th><th scope="col">Focus</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>1 and 2</td><td>Steps 1 to 3. Rebuild the cluster from memory until it is boring.</td></tr>
+            <tr><td>3 and 4</td><td>Step 4. Then add Helm, Terraform modules, and variables.</td></tr>
+            <tr><td>5 and 6</td><td>Break things on purpose: stop a node, corrupt a configuration file, remove an entry from the state file, and recover each time.</td></tr>
+            <tr><td>7 and 8</td><td>Step 5, as two or three timed cloud sessions.</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>
+        Two certifications measure this material: the Certified Kubernetes Administrator exam and
+        the Terraform Associate exam. Both are easier after the lab than before it.
+      </p>
+    </section>
+
+    <section class="hiw-section">
+      <h2>What the Market Pays</h2>
+      <p>
+        "Kubernetes engineer" is rarely a posted job title. Kubernetes and Terraform appear as
+        required skills inside the titles below, which are the ones employers actually advertise.
+        Figures are United States base salaries from 2026 sources. Bonuses and stock are extra.
+      </p>
+      <div class="blog-table-wrap">
+        <table class="blog-table blog-table--keyed">
+          <thead>
+            <tr><th scope="col">Job title</th><th scope="col">Reported base pay</th><th scope="col">Source</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>DevOps engineer</td>
+              <td>Average of 125,000 dollars with Kubernetes skills. Most fall between 82,000 and 173,000.</td>
+              <td>Payscale</td>
+            </tr>
+            <tr>
+              <td>DevSecOps engineer</td>
+              <td>Median of 131,000 dollars. The top tenth earn 161,000 or more.</td>
+              <td>Salary.com</td>
+            </tr>
+            <tr>
+              <td>Cloud engineer</td>
+              <td>110,000 to 155,000 dollars.</td>
+              <td>Robert Half</td>
+            </tr>
+            <tr>
+              <td>Cloud security engineer</td>
+              <td>Average of 136,000 dollars. A second source reports 94,000.</td>
+              <td>Payscale, Salary.com</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <h3>The highest-paying titles at mid-career</h3>
+      <div class="blog-table-wrap">
+        <table class="blog-table blog-table--keyed">
+          <thead>
+            <tr><th scope="col">Job title</th><th scope="col">Reported base pay</th><th scope="col">Why it pays more</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Site reliability engineer</td>
+              <td>Median of 140,000 dollars, ranging from 110,000 to 180,000.</td>
+              <td>Owns production uptime, carries on-call duty, and usually writes real code.</td>
+            </tr>
+            <tr>
+              <td>Platform engineer</td>
+              <td>115,000 to 155,000 dollars at mid-level. Average of 166,000 with Kubernetes skills.</td>
+              <td>Builds the internal platform other engineers deploy onto, so one hire speeds up many teams.</td>
+            </tr>
+            <tr>
+              <td>Cloud security architect</td>
+              <td>Mid-career average of 157,000 dollars.</td>
+              <td>Owns security design across accounts and networks, not single controls.</td>
+            </tr>
+            <tr>
+              <td>Cloud architect</td>
+              <td>About 193,000 dollars in one self-reported comparison.</td>
+              <td>Owns the overall design. The title rarely goes to anyone with fewer than five years of experience.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p>
+        Read these numbers as rough bands, not quotes. Salary sites measure different things, some
+        rely on self-reported pay, and two sources can differ by 40,000 dollars for the same title.
+        The steadier lesson is in the last column: the better-paid titles own an outcome, such as
+        uptime, a platform, or a design, where the others operate a tool.
+      </p>
+    </section>
+
+    <section class="hiw-section">
+      <h2>Verdict</h2>
+      <ul>
+        <li><strong>The lab is free where it matters.</strong> A three-node cluster and Terraform both run on one laptop at no cost.</li>
+        <li><strong>Work by hand before you automate.</strong> Terraform is far easier to debug once you can build the same thing with kubectl.</li>
+        <li><strong>Spend money only on what a laptop cannot teach,</strong> and destroy it the same day.</li>
+        <li><strong>The skill is prediction.</strong> You know a tool when you can say what it will do before you press Enter, and explain the difference when it does something else.</li>
+      </ul>
+    </section>
+
+    <section class="hiw-section">
+      <h2>Field Notes</h2>
+      <p>
+        This entry is deliberately general. Results from a specific build, including what failed
+        and how it was diagnosed, will follow in a later entry.
+      </p>
+    </section>
+
+    <section class="hiw-section">
+      <h2>Sources</h2>
+      <ul class="blog-sources">
+        <li><a href="https://kubernetes.io/case-studies/spotify/" target="_blank" rel="noopener noreferrer">Kubernetes case study: Spotify</a></li>
+        <li><a href="https://www.cncf.io/case-studies/cern/" target="_blank" rel="noopener noreferrer">Cloud Native Computing Foundation case study: CERN</a></li>
+        <li><a href="https://medium.com/chick-fil-atech/enterprise-restaurant-compute-f5e2fd63d20f" target="_blank" rel="noopener noreferrer">Chick-fil-A: Enterprise Restaurant Compute</a></li>
+        <li><a href="https://www.af.mil/News/Article-Display/Article/2375297/u-2-federal-lab-achieves-flight-with-kubernetes/" target="_blank" rel="noopener noreferrer">United States Air Force: U-2 Federal Lab achieves flight with Kubernetes</a></li>
+        <li><a href="https://aviationweek.com/defense/sensors-electronic-warfare/kubernetes-achieves-first-flight-military-aircraft" target="_blank" rel="noopener noreferrer">Aviation Week: Kubernetes achieves first flight on military aircraft</a></li>
+        <li><a href="https://openai.com/index/scaling-kubernetes-to-7500-nodes/" target="_blank" rel="noopener noreferrer">OpenAI: Scaling Kubernetes to 7,500 nodes</a></li>
+        <li><a href="https://www.cncf.io/announcements/2023/04/21/cncf-presents-top-end-user-award-to-mercedes-benz-tech-innovation" target="_blank" rel="noopener noreferrer">Cloud Native Computing Foundation: end user award to Mercedes-Benz Tech Innovation</a></li>
+        <li><a href="https://slack.engineering/how-we-use-terraform-at-slack/" target="_blank" rel="noopener noreferrer">Slack Engineering: How We Use Terraform at Slack</a></li>
+        <li><a href="https://github.com/cloud-gov/terraform-provision" target="_blank" rel="noopener noreferrer">cloud.gov: terraform-provision repository</a></li>
+        <li><a href="https://www.hashicorp.com/en/case-studies/helvetia" target="_blank" rel="noopener noreferrer">HashiCorp case study: Helvetia</a></li>
+        <li><a href="https://www.hashicorp.com/assets/1743717970-casestudy_sketchers.pdf" target="_blank" rel="noopener noreferrer">HashiCorp case study: Skechers</a></li>
+        <li><a href="https://www.payscale.com/research/US/Job=Development_Operations_(DevOps)_Engineer/Salary/eee65d57/Kubernetes" target="_blank" rel="noopener noreferrer">Payscale: DevOps engineer with Kubernetes skills</a></li>
+        <li><a href="https://www.payscale.com/research/US/Job=Platform_Developer_%2F_Engineer/Salary/c48a092c/Kubernetes" target="_blank" rel="noopener noreferrer">Payscale: platform engineer with Kubernetes skills</a></li>
+        <li><a href="https://www.payscale.com/research/US/Job=Cloud_Security_Engineer/Hourly_Rate" target="_blank" rel="noopener noreferrer">Payscale: cloud security engineer</a></li>
+        <li><a href="https://www.payscale.com/research/US/Job=Cloud_Security_Architect/Salary/09cb7805/Mid-Career" target="_blank" rel="noopener noreferrer">Payscale: mid-career cloud security architect</a></li>
+        <li><a href="https://www.salary.com/research/salary/offering/devsecops-engineer-salary" target="_blank" rel="noopener noreferrer">Salary.com: DevSecOps engineer</a></li>
+        <li><a href="https://www.salary.com/research/salary/posting/cloud-security-engineer-salary" target="_blank" rel="noopener noreferrer">Salary.com: cloud security engineer</a></li>
+        <li><a href="https://www.roberthalf.com/blog/the-future-of-work/how-to-shift-your-it-job-to-a-cloud-career" target="_blank" rel="noopener noreferrer">Robert Half: shifting an IT job to a cloud career</a></li>
+        <li><a href="https://cs-recruiters.com/salary-guide/site-reliability-engineer/" target="_blank" rel="noopener noreferrer">CS Recruiters: site reliability engineer salary guide</a></li>
+        <li><a href="https://jobrise.io/en/blog/platform-engineer-career-roadmap-2026/" target="_blank" rel="noopener noreferrer">JobRise: platform engineer career roadmap 2026</a></li>
+        <li><a href="https://www.interviewpal.com/salaries/compare/cloud-architect-vs-site-reliability-engineer" target="_blank" rel="noopener noreferrer">InterviewPal: cloud architect and site reliability engineer pay</a></li>
+      </ul>
+      <p style="margin-top:18px">
+        Prices, salaries, and version numbers in this entry were current when it was written and
+        will change. The Terraform example passed <code>terraform validate</code>; check cloud
+        prices on the provider's own pricing page before each session.
+      </p>
+    </section>
+
+    <nav class="blog-footer-nav" aria-label="Blog navigation">
+      <a href="../log-002/index.html">← Entry 002</a>
+      <a href="../index.html">All entries</a>
+      <a href="../../index.html">App Hub</a>
+    </nav>
+
+  </main>
+
+</div>
+
+<!-- cf-web-analytics (managed by tools/inject_analytics.py) -->
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "f728a20b49cc4a0fbe02cde72f03301c"}'></script>
+</body>
+</html>
