@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="dark">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'self' https://static.cloudflareinsights.com; connect-src 'self' https://cloudflareinsights.com; img-src 'self' data:; form-action https://api.web3forms.com; base-uri 'none'; object-src 'none';">
+  <meta name="description" content="An org chart for a one-person team of AI agents: one human who approves, a small staff, and three departments of narrow, guarded agents.">
+  <meta property="og:title" content="Agent Org | Eddie's App Hub">
+  <meta property="og:description" content="One human, sixteen AI agents, one vacant seat. Who does what, how each is called, and what each is not allowed to do.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://worldtraveler247.github.io/code_projects/agent-org/">
+  <link rel="canonical" href="https://worldtraveler247.github.io/code_projects/agent-org/">
+  <title>Agent Org | Eddie's App Hub</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Inter:wght@400;500;600&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="icon" href="../favicon.svg" type="image/svg+xml">
+  <script src="app.js?v=1" defer></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    :root {
+      --bg: #07010f; --panel: #0e0a1c; --panel-2: #151029;
+      --cyan: #4af7ff; --purple: #b28cff; --green: #00e676; --amber: #fbbf24;
+      --text: #dde0f0; --muted: #8b90ab; --border: rgba(74,247,255,0.16);
+    }
+    [hidden] { display: none !important; }
+    body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.55 Inter, system-ui, sans-serif; }
+    .back { position: fixed; top: 12px; left: 12px; z-index: 20; background: rgba(10,10,20,0.85); backdrop-filter: blur(6px); color: var(--cyan); border: 1px solid var(--cyan); border-radius: 20px; padding: 6px 14px; font-size: 13px; text-decoration: none; font-weight: 600; }
+    .wrap { max-width: 1120px; margin: 0 auto; padding: 72px 16px 64px; display: flex; flex-direction: column; gap: 26px; }
+    h1, h2, h3 { margin: 0; text-wrap: balance; }
+    h1 { font: 800 clamp(26px, 5vw, 38px)/1.15 Orbitron, sans-serif; letter-spacing: .02em; }
+    .eyebrow { margin: 0 0 6px; font: 500 11.5px "Fira Code", monospace; letter-spacing: .1em; text-transform: uppercase; color: var(--cyan); }
+    .lede { margin: 10px 0 0; max-width: 66ch; color: var(--muted); }
+    .tally { display: flex; flex-wrap: wrap; gap: 8px 22px; margin: 14px 0 0; padding: 0; list-style: none; font: 12.5px "Fira Code", monospace; color: var(--muted); }
+    .tally b { color: var(--text); font-weight: 500; }
+    .filters { display: flex; flex-wrap: wrap; gap: 8px; }
+    .chip { font: 500 13px Inter, sans-serif; color: var(--muted); background: transparent; border: 1px solid var(--border); border-radius: 999px; padding: 6px 13px; cursor: pointer; }
+    .chip:hover { color: var(--text); }
+    .chip[aria-pressed="true"] { background: var(--cyan); color: var(--bg); border-color: var(--cyan); }
+    .chip:focus-visible, .seat:focus-visible, .btn:focus-visible, input:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
+    .boss { align-self: center; text-align: center; }
+    .boss .mark { width: 60px; height: 60px; margin: 0 auto 8px; border-radius: 16px; background: linear-gradient(135deg, var(--cyan), #7b2fff); color: var(--bg); display: grid; place-items: center; font: 800 24px Orbitron, sans-serif; }
+    .boss h2 { font-size: 19px; }
+    .boss p { margin: 2px 0 0; color: var(--muted); font-size: 13.5px; }
+    .stem { width: 1px; height: 22px; background: var(--border); align-self: center; margin: -14px 0; }
+    .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 14px; padding: 18px; min-width: 0; }
+    .panel-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 4px 16px; margin-bottom: 12px; }
+    .panel-head h3 { font-size: 16.5px; }
+    .panel-head span { font-size: 12.5px; color: var(--muted); }
+    .staff { display: grid; grid-template-columns: repeat(auto-fit, minmax(215px, 1fr)); gap: 10px; }
+    .depts { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; align-items: start; }
+    .seats { display: flex; flex-direction: column; gap: 6px; }
+    .seat { width: 100%; text-align: left; background: transparent; border: 1px solid transparent; border-radius: 10px; padding: 9px 10px; display: flex; gap: 11px; align-items: center; cursor: pointer; color: inherit; font: inherit; min-width: 0; }
+    .seat:hover, .seat.lead { background: var(--panel-2); border-color: var(--border); }
+    .seat[aria-expanded="true"] { border-color: var(--cyan); background: var(--panel-2); }
+    .seat.vacant { border: 1px dashed var(--muted); }
+    .badge { width: 34px; height: 34px; border-radius: 9px; flex: none; display: grid; place-items: center; font: 500 11.5px "Fira Code", monospace; color: var(--bg); background: var(--kc); }
+    .seat.vacant .badge { background: transparent; color: var(--muted); border: 1px dashed var(--muted); }
+    .txt { min-width: 0; display: flex; flex-direction: column; }
+    .nm { font-weight: 600; font-size: 14.5px; overflow-wrap: anywhere; }
+    .role { font-size: 12.5px; color: var(--muted); overflow-wrap: anywhere; }
+    .flag { margin-left: auto; flex: none; font: 500 10.5px "Fira Code", monospace; letter-spacing: .05em; text-transform: uppercase; padding: 3px 7px; border-radius: 6px; border: 1px dashed var(--muted); color: var(--muted); }
+    .detail { border: 1px solid var(--cyan); background: var(--panel); border-radius: 14px; padding: 18px; display: grid; gap: 12px; }
+    .detail-head { display: flex; gap: 12px; justify-content: space-between; align-items: flex-start; }
+    .detail h3 { font-size: 18px; }
+    .kind { margin: 0 0 2px; font: 500 11.5px "Fira Code", monospace; letter-spacing: .07em; text-transform: uppercase; color: var(--kc); }
+    .detail p { margin: 0; max-width: 68ch; }
+    .detail dl { margin: 0; display: grid; grid-template-columns: max-content 1fr; gap: 6px 16px; font-size: 13.5px; }
+    .detail dt { color: var(--muted); }
+    .detail dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+    .say { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 6px; }
+    .say code { font: 13px "Fira Code", monospace; background: var(--panel-2); border: 1px solid var(--border); border-radius: 8px; padding: 7px 10px; overflow-wrap: anywhere; min-width: 0; user-select: all; }
+    .btn { font: 600 13px Inter, sans-serif; border-radius: 8px; padding: 8px 14px; cursor: pointer; border: 1px solid var(--border); background: transparent; color: var(--text); }
+    .btn.primary { background: var(--cyan); border-color: var(--cyan); color: var(--bg); }
+    .rules { margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 14px 28px; }
+    .rules li { border-top: 2px solid var(--cyan); padding-top: 10px; font-size: 13.5px; color: var(--muted); }
+    .rules strong { display: block; color: var(--text); font-size: 15px; margin-bottom: 3px; }
+    .signup { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+    .signup input[type="email"] { flex: 1 1 240px; min-width: 0; font: 14px Inter, sans-serif; color: var(--text); background: var(--panel-2); border: 1px solid var(--border); border-radius: 8px; padding: 9px 12px; }
+    .fine { margin: 10px 0 0; font-size: 12.5px; color: var(--muted); max-width: 70ch; }
+    .hp { position: absolute; left: -9999px; }
+    footer { font-size: 12.5px; color: var(--muted); max-width: 78ch; }
+    footer a, .fine a { color: var(--cyan); }
+  </style>
+</head>
+<body>
+<a href="../index.html" class="back">← App Hub</a>
+
+<main class="wrap">
+  <header>
+    <p class="eyebrow">Manning document</p>
+    <h1>Agent Org</h1>
+    <p class="lede">One person, a team of AI agents, and a rule that the person approves anything that leaves the building. Select a seat to see what it does, what it is not allowed to do, and how it is called.</p>
+    <ul class="tally" id="tally" aria-label="Totals"></ul>
+  </header>
+
+  <div class="filters" id="filters" role="group" aria-label="Filter by kind"></div>
+
+  <div id="detail" aria-live="polite" hidden></div>
+
+  <div class="boss">
+    <div class="mark" aria-hidden="true">E</div>
+    <h2>Eddie</h2>
+    <p>The human · approves anything sent, paid, published or deleted</p>
+  </div>
+  <div class="stem" aria-hidden="true"></div>
+
+  <section class="panel" aria-labelledby="staff-h">
+    <div class="panel-head"><h3 id="staff-h">Staff</h3><span>Reports straight to the human</span></div>
+    <div class="staff" id="staff"></div>
+  </section>
+
+  <section class="depts" id="depts" aria-label="Departments"></section>
+
+  <section class="panel" aria-labelledby="rules-h">
+    <div class="panel-head"><h3 id="rules-h">House rules</h3><span>Why the chart is shaped this way</span></div>
+    <ul class="rules">
+      <li><strong>Narrow roles</strong>Each agent has one job and a short instruction set. A specialist is easier to predict than a generalist.</li>
+      <li><strong>Least privilege</strong>Each agent gets only the tools its job needs. A reviewer that cannot write cannot alter what it reviews.</li>
+      <li><strong>Separation of duties</strong>The seat that checks work is separate from the seats that produce it. That seat is still vacant, and the chart says so.</li>
+      <li><strong>A human approves</strong>Agents draft and report. Sending, paying, publishing and deleting wait for a person.</li>
+    </ul>
+  </section>
+
+  <section class="panel" aria-labelledby="notes-h">
+    <div class="panel-head"><h3 id="notes-h">Get the build notes</h3><span>Occasional, and free</span></div>
+    <form class="signup" action="https://api.web3forms.com/submit" method="POST">
+      <input type="hidden" name="access_key" value="dad3a828-7c9d-41a5-8735-9739b82a410c">
+      <input type="hidden" name="subject" value="Agent Org build notes sign-up">
+      <input type="hidden" name="from_name" value="Agent Org page">
+      <input type="hidden" name="redirect" value="https://worldtraveler247.github.io/code_projects/agent-org/#signed-up">
+      <input type="checkbox" name="botcheck" class="hp" tabindex="-1" autocomplete="off" aria-hidden="true">
+      <label for="signup-email" class="hp">Email address</label>
+      <input type="email" id="signup-email" name="email" placeholder="you@example.com" autocomplete="email" required>
+      <button type="submit" class="btn primary">Send me the notes</button>
+    </form>
+    <p class="fine" id="signup-note">Your address is delivered to one inbox and used only to send notes on how this agent team is built and what breaks. Nothing is sold here. To be removed, reply to any note.</p>
+  </section>
+
+  <footer>
+    This page lists the career, study and publishing agents. Automations that handle personal messages, mail and money exist and are deliberately left off a public page. The chart describes what each seat is for; it is not a live status board. Related reading: the <a href="../blog/index.html">blog</a>.
+  </footer>
+</main>
+
+<!-- cf-web-analytics (managed by tools/inject_analytics.py) -->
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "f728a20b49cc4a0fbe02cde72f03301c"}'></script>
+</body>
+</html>

@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="dark">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'self' https://static.cloudflareinsights.com; connect-src 'self' https://cloudflareinsights.com; img-src 'self' data:; base-uri 'none'; object-src 'none';">
+  <title>How It's Built — Agent Org | Eddie's App Hub</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Inter:wght@400;500;600&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../how-it-works.css">
+</head>
+<body>
+<a href="../index.html" style="position:fixed;top:12px;left:12px;z-index:9999;background:rgba(10,10,20,0.85);backdrop-filter:blur(6px);color:#4af7ff;border:1px solid #4af7ff;border-radius:20px;padding:6px 14px;font-family:sans-serif;font-size:13px;text-decoration:none;font-weight:600;">← App Hub</a>
+
+<div class="hiw-page">
+
+  <header class="hiw-header">
+    <div class="hiw-icon">🗂️</div>
+    <h1>Agent Org — How It's Built</h1>
+    <p class="hiw-tagline">An org chart for a one-person team of AI agents, drawn from a single list of seats.</p>
+  </header>
+
+  <section class="hiw-section">
+    <h2>Overview</h2>
+    <p>
+      Agent Org shows who does what on a team of AI agents run by one person. Each seat states its
+      job, the limit placed on it, and the phrase that calls it. The page is a static roster, not a
+      live monitor, and it lists only the seats that are safe to show in public.
+    </p>
+  </section>
+
+  <section class="hiw-section">
+    <h2>Tech Stack</h2>
+    <div class="hiw-badges">
+      <span class="hiw-badge">HTML</span>
+      <span class="hiw-badge">CSS</span>
+      <span class="hiw-badge">JavaScript</span>
+    </div>
+    <ul class="hiw-caption-list">
+      <li><strong>HTML</strong> — the fixed frame: header, staff row, department grid, house rules and the sign-up form.</li>
+      <li><strong>CSS</strong> — grid layouts that collapse to one column on a phone, with the kind of each seat carried by one custom property.</li>
+      <li><strong>JavaScript</strong> — renders every seat from two arrays, then handles filtering, the detail panel and the copy button.</li>
+    </ul>
+  </section>
+
+  <section class="hiw-section">
+    <h2>How Each Part Works</h2>
+
+    <div class="hiw-file-block">
+      <h3><code>app.js</code> — the roster is data</h3>
+      <p>Every seat is one object. Adding an agent to the chart means adding one object, with no markup to copy.</p>
+      <pre class="hiw-code">{ id: "drill", ab: "RD", name: "Recall Drill", role: "Daily spoken practice",
+  kind: "skill",            // agent | skill | routine | script | vacant
+  say: "/drill-5",          // the phrase the copy button hands over
+  does: "Picks five past tickets and grades spoken answers.",
+  rule: "Edits only its own tracker." }   // the guardrail, shown on every seat</pre>
+    </div>
+
+    <div class="hiw-file-block">
+      <h3><code>app.js</code> — text is escaped before it is rendered</h3>
+      <p>Seats are built as HTML strings, so every field passes through an escape function first. The roster is trusted today, but the habit keeps a future data source from injecting markup.</p>
+      <pre class="hiw-code">const esc = (s) =&gt; String(s).replace(/[&amp;&lt;&gt;"]/g, (c) =&gt;
+  ({ "&amp;": "&amp;amp;", "&lt;": "&amp;lt;", "&gt;": "&amp;gt;", '"': "&amp;quot;" }[c]));</pre>
+    </div>
+
+    <div class="hiw-file-block">
+      <h3><code>index.html</code> — a strict content security policy</h3>
+      <p>Scripts load only from this site and the analytics host, so the page has no inline script at all. The form may post to one address and nowhere else.</p>
+      <pre class="hiw-code">script-src 'self' https://static.cloudflareinsights.com;
+form-action https://api.web3forms.com;
+base-uri 'none'; object-src 'none';</pre>
+    </div>
+  </section>
+
+  <section class="hiw-section">
+    <h2>What Is Left Out, and Why</h2>
+    <p>
+      The private version of this chart also lists automations that touch personal messages, mail
+      and money. A public inventory of those would tell a stranger exactly what to target, so they
+      are not in the public data file. Publishing an architecture is useful. Publishing an attack
+      surface is not.
+    </p>
+  </section>
+
+  <section class="hiw-section">
+    <h2>File Map</h2>
+    <pre class="hiw-file-map">agent-org/
+├── index.html          ← page frame, styles, sign-up form
+├── app.js              ← the roster data and all behavior
+└── how-it-works.html   ← this page</pre>
+  </section>
+
+  <section class="hiw-section">
+    <h2>Replicate It Yourself</h2>
+    <ol class="hiw-steps">
+      <li><span>List every agent, skill and scheduled job you run. For each, write one sentence for what it does and one for what it must never do.</span></li>
+      <li><span>Group them by the outcome they serve, not by the tool they use. Mark the seat that checks the others, even if it is empty.</span></li>
+      <li><span>Put the list in an array and render it with a template string. Escape every field. Reference: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Template_literals" target="_blank" rel="noopener noreferrer">MDN template literals</a>.</span></li>
+      <li><span>Decide what stays private before you publish, and keep it out of the public file entirely. Reference: <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP" target="_blank" rel="noopener noreferrer">MDN Content Security Policy</a>.</span></li>
+    </ol>
+  </section>
+
+</div>
+</body>
+</html>
