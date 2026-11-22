@@ -20,9 +20,9 @@ const STAFF = [
   { id: "review", ab: "WR", name: "Weekly Review", role: "Strategy check", kind: "routine", when: "Weekly", say: "board meeting",
     does: "Writes a dated brief: a scorecard, countdowns, one recommendation and three questions for the week.",
     rule: "Proposes only. It changes no plans by itself." },
-  { id: "verifier", ab: "?", name: "Independent verifier", role: "Checks other agents' work", kind: "vacant", say: "",
-    does: "A read-only agent that checks claims, commands and numbers against sources before anything is published.",
-    rule: "Not built yet. Until it is, the human does the checking." }
+  { id: "verifier", ab: "IV", name: "Independent Verifier", role: "Checks other agents' work", kind: "agent", say: "verify <file or entry> before I publish",
+    does: "Checks every claim, command, number and link in a piece of work against its sources, then reports what is wrong, unsupported or untestable.",
+    rule: "Read-only. It has no tools that write, so it cannot alter what it reviews." }
 ];
 
 const DEPTS = [
@@ -89,7 +89,7 @@ function render() {
   ).join("");
   const count = (k) => all.filter((s) => s.kind === k).length;
   $("tally").innerHTML = `<li><b>1</b> human</li><li><b>${all.length - count("vacant")}</b> seats filled</li><li><b>${count("vacant")}</b> vacant</li><li><b>${DEPTS.length}</b> departments</li>`;
-  const chips = [["all", "Everyone", all.length], ...Object.entries(KINDS).map(([k, v]) => [k, v.label, count(k)])];
+  const chips = [["all", "Everyone", all.length], ...Object.entries(KINDS).map(([k, v]) => [k, v.label, count(k)])].filter(([, , c]) => c > 0);
   $("filters").innerHTML = chips.map(([k, label, c]) =>
     `<button type="button" class="chip" data-f="${k}" aria-pressed="${k === filter}">${esc(label)} · ${c}</button>`
   ).join("");
