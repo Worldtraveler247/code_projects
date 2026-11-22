@@ -151,6 +151,12 @@
   .seniorbox .seniorhead{font-weight:bold;color:#fff;margin:12px 0 4px}
   .seniorbox p{margin:0 0 9px}
   .seniorbox code{background:#1a1a1a;padding:0 5px;color:var(--amber);font-size:12.5px}
+  .prebox{display:none;border:1px solid var(--cyan);background:#061011;padding:14px 16px;margin:0 0 12px;line-height:1.7;font-size:13.5px}
+  .prebox.show{display:block}
+  .prebox .prelabel{display:inline-block;font-weight:bold;color:#000;background:var(--cyan);padding:2px 10px;margin-bottom:10px;font-size:12.5px;letter-spacing:.4px}
+  .prebox .prehead{font-weight:bold;color:#fff;margin:12px 0 4px}
+  .prebox p{margin:0 0 9px}
+  .prebox code{background:#1a1a1a;padding:0 5px;color:var(--cyan);font-size:12.5px}
   .finish{display:none;background:#050505;border:1px solid var(--green);padding:20px;text-align:center;margin:20px auto;max-width:900px}
   .finish.show{display:block}
   .finish .big{font-size:24px;margin-bottom:6px;color:var(--green)}
@@ -1275,7 +1281,17 @@ const QUESTIONS = [
   <p>• <b>Where did <code>tasks:</code> go?</b> Every playbook you wrote before this one (role.yml, users.yml) carried its work in a <code>tasks:</code> list. This play has <code>hosts:</code> and <code>become:</code> as usual — but no <code>tasks:</code> at all, because the play is a <i>dispatcher</i>, not a worker. A play has fixed sections, always executed in this order: <code>pre_tasks</code> → <code>roles</code> → <code>tasks</code> → <code>post_tasks</code>. Fill in the <code>roles:</code> section and Ansible expands each role into its full task list at exactly that point — the roles <i>are</i> the tasks, pre-packaged. Writing the balancer and php configuration again under <code>tasks:</code> would duplicate what Q6 downloaded and Q7 taught you to reuse. A playbook section you leave out is simply skipped; nothing requires a play to have hand-written tasks.<br>
   • <b><code>php_packages</code> — a variable that picks a fight with a role, and wins.</b> The phpinfo role ships with its own default list of PHP packages. The play's <code>vars:</code> redefines <code>php_packages</code>, and play vars outrank role defaults — so the role obediently installs exactly these three. What each one is: <code>php-common</code> is the foundation — the shared files, base configuration layout (<code>/etc/php.d/</code>) and common pieces that every other PHP package depends on; nothing PHP works without it. <code>php-cli</code> is PHP's terminal face — it provides <code>/usr/bin/php</code>, the command-line interpreter for running and testing PHP from a shell. <code>php</code> is the main event — the PHP language package that plugs into the web stack so Apache can actually <i>execute</i> .php pages instead of serving their source code as text. The trio is foundation, terminal face, web face — and the proof they landed is the spec's own test: browse to <code>hello.php</code> and you get "Hello PHP World" plus the phpinfo configuration dump, which only a working PHP engine can produce.<br>
   • <b><code>post_tasks</code> — the finishing-touches section, and why its task wears the only loose <code>when</code>.</b> <code>post_tasks:</code> is one of the play's fixed section names — you know to create it the same way you knew a role has a <code>tasks/</code> folder: the anatomy is fixed by convention, not invented per playbook. Its job is timing: post_tasks run <i>last</i>, after every role (and any regular tasks) has fully finished — the right home for a step that depends on the completed state of the play, or that belongs to no role at all. The firewall opening is exactly that: it's play-level glue. You don't edit inside the downloaded balancer role, and the phpinfo role is about web servers — so the one leftover job, opening http on the balancer, sits in post_tasks. Now the <code>when</code>: look at where the conditions live. The two roles each carry their <code>when</code> on the <i>role entry</i> — one gate at the door guards every task inside that role, so none of the roles' internal tasks needs its own condition. The post_tasks entry is a naked task with no role entry above it — if it wants a guard, it has to carry its own. And it needs one: this play targets <code>hosts: all</code>, so without <code>when: "'balancers' in group_names"</code> the firewall task would also fire on servera, serverb and serverc — opening ports on machines that are not the balancer, and failing outright on any host where firewalld isn't even running. The pattern of the whole play: cast a wide net (<code>hosts: all</code>), then let each piece — role or loose task — guard itself to exactly the hosts it belongs on.</p>
-  <div class="tie"><b>How it ties in:</b> everything converges here — the roles exist under these names because of Q6, the firewalld module because of Q4, the repos and php packages because of Q2 and Q3, and the webservers/balancers groups are the same inventory you've used all exam. Eight questions, one connected system.</div>`
+  <div class="tie"><b>How it ties in:</b> everything converges here — the roles exist under these names because of Q6, the firewalld module because of Q4, the repos and php packages because of Q2 and Q3, and the webservers/balancers groups are the same inventory you've used all exam. Eight questions, one connected system.</div>`,
+  precheck:`<p>Both are ad hoc debug/setup commands — run them from <code>/home/student/ansible</code>:</p>
+<p class='prehead'>1. A host's address (filtered setup)</p>
+<p><code>ansible servera -m setup -a "filter=ansible_default_ipv4"</code></p>
+<p>The filter cuts the giant facts dump down to just the default_ipv4 block — the "address" line inside it is the host's IP. To print only the address and nothing else:</p>
+<p><code>ansible servera -m debug -a "msg={{ ansible_default_ipv4.address }}"</code></p>
+<p class='prehead'>2. Test the when condition 'balancers' in group_names</p>
+<p><code>ansible all -m debug -a "msg={{ 'balancers' in group_names}}"</code></p>
+<p>That evaluates the exact condition from the when: line on every host — it prints <b>true on serverd only</b>, false on servera, serverb, and serverc. And to see the lists it is checking against:</p>
+<p><code>ansible all -m debug -a "var=group_names"</code></p>
+<p>The pattern is the same for both: setup with a filter when you want a fact, debug with msg={{ ... }} when you want to test a condition before you trust it in a playbook.</p>`
 },
 {
   id:"Q8.7", title:"Run roles.yml", sub:"ansible-playbook roles.yml", cmd:true,
@@ -6108,6 +6124,11 @@ function wireHelp(q){
     const open = sbox.classList.toggle("show");
     sbtn.textContent = open ? "🧑‍💼 Hide Senior Admin Explanation" : "🧑‍💼 Senior Admin Explanation";
   });
+  const pbtn = gel("prebtn"), pbox = gel("prebox");
+  if (pbtn && pbox) pbtn.addEventListener("click", () => {
+    const open = pbox.classList.toggle("show");
+    pbtn.textContent = open ? "Hide Pre ✓ ad hoc" : "Pre ✓ ad hoc";
+  });
   if (!hb || !rb) return;
   hb.addEventListener("click", () => {
     const open = hbox.classList.toggle("show");
@@ -6191,8 +6212,9 @@ function renderStage(){
   if (q.cmd) { h += scratchPaneHtml("S2") + "</div>"; }
   else { h += shellTabsHtml() + "<div class='shellpanes'>" + scratchPaneHtml("S1") + scratchPaneHtml("S2") + "</div>"; }
   h += "<div class='keys'><b>[Ctrl+Enter / F2]</b> check &nbsp;<b>[Alt+↑/↓]</b> switch file &nbsp;<b>[Alt+→]</b> next question &nbsp;<b>[Alt+←]</b> previous &nbsp;<b>[Tab]</b> complete path (shell-style) · in files: indent · <b>[Shift+Tab]</b> outdent · <b>[Ctrl+C]</b> clear the shell (^C) &nbsp;::&nbsp; attempts: <span class='n' id='att'>" + (state.attempts[state.cur] || 0) + "</span></div>";
-  h += "<div class='helprow'><button class='hbtn' id='checkbtn'>▶ Check</button><button class='hbtn' id='hintbtn'>💡 Hint</button><button class='hbtn' id='revealbtn'>👁 Reveal answer</button><button class='hbtn' id='listenbtn'>🔊 Listen</button><button class='hbtn' id='deepbtn'>🎙 Deep dive</button><button class='hbtn' id='videobtn'>🎬 Lesson video</button><button class='hbtn' id='nextbtn'>Next ▸</button>" + (q.senior ? "<button class='hbtn' id='seniorbtn'>🧑‍💼 Senior Admin Explanation</button>" : "") + "<button class='hbtn qreset' id='qresetbtn' title='Start this question over: clears its typed text, its attempts counter and its pass mark. Other questions are untouched.'>↺ Reset question</button></div>";
+  h += "<div class='helprow'><button class='hbtn' id='checkbtn'>▶ Check</button><button class='hbtn' id='hintbtn'>💡 Hint</button><button class='hbtn' id='revealbtn'>👁 Reveal answer</button>" + (q.precheck ? "<button class='hbtn' id='prebtn'>Pre ✓ ad hoc</button>" : "") + "<button class='hbtn' id='listenbtn'>🔊 Listen</button><button class='hbtn' id='deepbtn'>🎙 Deep dive</button><button class='hbtn' id='videobtn'>🎬 Lesson video</button><button class='hbtn' id='nextbtn'>Next ▸</button>" + (q.senior ? "<button class='hbtn' id='seniorbtn'>🧑‍💼 Senior Admin Explanation</button>" : "") + "<button class='hbtn qreset' id='qresetbtn' title='Start this question over: clears its typed text, its attempts counter and its pass mark. Other questions are untouched.'>↺ Reset question</button></div>";
   if (q.senior) h += "<div class='seniorbox' id='seniorbox'><span class='seniorlabel'>Senior Admin Explanation</span>" + q.senior + "</div>";
+  if (q.precheck) h += "<div class='prebox' id='prebox'><span class='prelabel'>Pre ✓ ad hoc</span>" + q.precheck + "</div>";
   h += "<div class='audiobox' id='audiobox'></div>";
   h += "<div class='audiobox' id='deepbox'></div>";
   h += "<div class='audiobox' id='videobox'></div>";
