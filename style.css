@@ -145,6 +145,30 @@ h1 {
     flex-shrink: 0;
 }
 
+/* ── Hero jump links (sections that sit below the project grid) ── */
+.hero-nav {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 12px;
+    margin-top: 28px;
+}
+.hero-nav a {
+    padding: 8px 18px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    color: var(--cyan);
+    font-size: 0.82rem;
+    letter-spacing: 1px;
+    text-decoration: none;
+    transition: background 0.2s ease, border-color 0.2s ease;
+}
+.hero-nav a:hover,
+.hero-nav a:focus-visible {
+    background: rgba(74, 247, 255, 0.08);
+    border-color: var(--cyan);
+}
+
 /* ── Section layout ── */
 main { position: relative; z-index: 1; }
 
