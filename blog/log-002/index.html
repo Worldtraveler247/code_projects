@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="dark">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'self' https://static.cloudflareinsights.com; connect-src 'self' https://cloudflareinsights.com; img-src 'self' data:; base-uri 'none'; object-src 'none';">
+  <meta name="description" content="How a VPN tunnel works, how a laptop chooses between two of them, three ways to run a privacy VPN alongside a school or work VPN, and whether a VPN should always be on.">
+  <meta property="og:title" content="Two VPNs, One Laptop: How Tunnels Share the Road">
+  <meta property="og:description" content="Log Entry 002: tunneling, full and split tunnels, routing between two VPNs, what breaks, and whether a VPN should always be on.">
+  <meta property="og:type" content="article">
+  <meta property="og:url" content="https://worldtraveler247.github.io/code_projects/blog/log-002/">
+  <link rel="canonical" href="https://worldtraveler247.github.io/code_projects/blog/log-002/">
+  <title>Log Entry 002: Two VPNs, One Laptop: How Tunnels Share the Road | Eddie's App Hub</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Inter:wght@400;500;600&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="icon" href="../../favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="../../how-it-works.css">
+  <link rel="stylesheet" href="../blog.css?v=2">
+</head>
+<body>
+<a href="../../index.html" class="blog-back">← App Hub</a>
+
+<div class="hiw-page">
+
+  <header class="hiw-header">
+    <p class="blog-meta">Log Entry 002 · November 22, 2026 · 8 min read</p>
+    <h1>Two VPNs, One Laptop: How Tunnels Share the Road</h1>
+    <p class="hiw-tagline">How a tunnel works, how a laptop chooses between two of them, three ways to run a privacy VPN alongside a school or work VPN, and whether a VPN should always be on.</p>
+  </header>
+
+  <div class="blog-audio" role="group" aria-label="Audio version of this entry">
+    <p class="blog-audio-label">Listen to this entry · 8 min</p>
+    <audio controls preload="none" src="audio.mp3">Your browser does not support audio playback. Use the download link below.</audio>
+    <p class="blog-audio-note">Synthesized narration. <a href="audio.mp3" download>Download the MP3</a></p>
+  </div>
+
+  <main class="blog-article">
+
+    <section class="hiw-section">
+      <h2>The Short Version</h2>
+      <p class="blog-lede">
+        A virtual private network (VPN) tunnel wraps your network traffic inside encrypted packets
+        and sends it to a server you trust more than the network you are sitting on. A laptop can
+        hold two tunnels at once, and it decides which one each packet uses with a single rule:
+        <strong>the most specific route wins</strong>.
+      </p>
+      <p>
+        Trouble starts when both VPNs claim all of your traffic. The fix is to let one carry
+        everything and narrow the other to the few private networks it exists to reach. Whether you
+        should do that, and whether a VPN should be on at all times, depends on what each one is for.
+      </p>
+    </section>
+
+    <section class="hiw-section">
+      <h2>What a Tunnel Is</h2>
+      <p>
+        A VPN client does not send your traffic somewhere new by magic. It adds a virtual network
+        interface to the laptop and changes the routing table so that chosen destinations go into
+        that interface. From there the sequence is always the same:
+      </p>
+      <ol>
+        <li>An application sends a packet toward its destination.</li>
+        <li>The routing table directs that packet into the virtual interface.</li>
+        <li>The VPN client encrypts it and wraps it inside a new packet addressed to the VPN server.</li>
+        <li>The outer packet leaves over the real connection, Wi-Fi or cable, like any other traffic.</li>
+        <li>The server unwraps it and forwards the original packet from its own network.</li>
+      </ol>
+      <p>
+        The wrapping is called encapsulation. Anyone watching the local network sees encrypted
+        packets going to one server and nothing about their real destination. The operator of the
+        VPN server, on the other hand, sees where the traffic goes. A tunnel does not remove the
+        need to trust someone. It changes who that someone is.
+      </p>
+    </section>
+
+    <section class="hiw-section">
+      <h2>Full Tunnel and Split Tunnel</h2>
+      <div class="blog-table-wrap">
+        <table class="blog-table blog-table--keyed">
+          <thead>
+            <tr><th scope="col">Type</th><th scope="col">What goes through it</th><th scope="col">Typical use</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Full tunnel</td>
+              <td>All traffic leaving the laptop</td>
+              <td>Commercial privacy VPNs, and organizations that want to inspect or filter everything</td>
+            </tr>
+            <tr>
+              <td>Split tunnel</td>
+              <td>Only the private networks the VPN was built to reach</td>
+              <td>School labs, office file servers, internal tools</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p>
+        A full tunnel usually does not delete your normal default route. A common technique adds two
+        routes that each cover half of the internet's address space. Because both are more specific
+        than the default route, they win, and the original route stays in place for when the VPN
+        disconnects. If a routing table shows those two half-internet routes pointing at a tunnel,
+        that VPN is carrying everything.
+      </p>
+    </section>
+
+    <section class="hiw-section">
+      <h2>How the Laptop Chooses</h2>
+      <p>
+        For every packet, the operating system looks for the route that matches the destination
+        with the longest prefix, meaning the narrowest range that still contains the address. A
+        route for a few hundred addresses beats a route for half the internet, which beats the
+        default route for everything.
+      </p>
+      <pre class="hiw-code">Destination        Interface     Meaning
+10.20.0.0/16       tunnel B      one private network (most specific, wins for 10.20.x.x)
+0.0.0.0/1          tunnel A      first half of the internet
+128.0.0.0/1        tunnel A      second half of the internet
+default            Wi-Fi         everything, least specific (used only if nothing above matches)</pre>
+      <p>
+        With that table, a request to an internal server at 10.20.5.10 goes through tunnel B, and a
+        request to a public website goes through tunnel A. Two VPNs coexist as long as their routes
+        do not claim the same destinations at the same level of detail.
+      </p>
+    </section>
+
+    <section class="hiw-section">
+      <h2>Three Ways to Run Two VPNs</h2>
+      <div class="blog-table-wrap">
+        <table class="blog-table blog-table--keyed">
+          <thead>
+            <tr><th scope="col">Pattern</th><th scope="col">How it works</th><th scope="col">Trade-off</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>One at a time</td>
+              <td>Connect the organization's VPN for that work, disconnect it, then use the privacy VPN.</td>
+              <td>Nothing to configure and nothing to break. You cannot reach both worlds in the same minute.</td>
+            </tr>
+            <tr>
+              <td>Full plus split</td>
+              <td>The privacy VPN carries everything. The organization's VPN is narrowed to its private networks only.</td>
+              <td>The most useful arrangement, and the one that needs configuration and permission.</td>
+            </tr>
+            <tr>
+              <td>Nested</td>
+              <td>The second tunnel's own connection travels inside the first, so traffic is wrapped twice.</td>
+              <td>Hides the organization's VPN server from the local network. Slower, and harder to diagnose.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Narrowing a tunnel</h3>
+      <p>
+        If both VPNs are full tunnels, the second one to connect overwrites the first one's
+        catch-all routes, and results depend on the order you clicked. Narrowing one of them removes
+        the conflict. In OpenVPN, the client can be told to ignore a server's instruction to take
+        over all traffic while still accepting the routes for the private network:
+      </p>
+      <pre class="hiw-code">pull-filter ignore "redirect-gateway"
+route 10.20.0.0 255.255.0.0</pre>
+      <p>
+        In WireGuard, the same decision is made by the list of addresses a peer is allowed to carry.
+        A narrow list makes a split tunnel, and a list covering everything makes a full one:
+      </p>
+      <pre class="hiw-code">AllowedIPs = 10.20.0.0/16      # split: only the private network
+AllowedIPs = 0.0.0.0/0         # full: everything</pre>
+      <p>
+        The address range here is an example. Use the ranges your organization publishes, and expect
+        that some clients hide these settings or forbid changing them.
+      </p>
+    </section>
+
+    <section class="hiw-section">
+      <h2>What Breaks</h2>
+      <ul>
+        <li><strong>Kill switches.</strong> Many privacy VPNs block any traffic that is not inside their own tunnel. That protects you from leaks, and it can also block a second VPN from connecting. It is the first thing to check when the second tunnel will not come up.</li>
+        <li><strong>Name lookups.</strong> Internal names such as a lab server's hostname resolve only on the organization's own name servers. A privacy VPN usually forces its own, so internal names stop resolving even though the route works. Reaching the server by address still works.</li>
+        <li><strong>Packet size.</strong> Each layer of wrapping uses part of every packet. With two layers, large transfers can stall while small requests work normally. Lowering the tunnel's maximum packet size is the usual remedy.</li>
+        <li><strong>Overlapping address ranges.</strong> Home routers and organizations draw from the same pools of private addresses. If your home network and the remote network use the same range, the laptop sends that traffic to the local network and the remote server becomes unreachable.</li>
+        <li><strong>Connection order.</strong> When two clients both rewrite the routing table, the result can differ depending on which connected first. A setup that works one day and fails the next often has this cause.</li>
+      </ul>
+    </section>
+
+    <section class="hiw-section">
+      <h2>Check Your Work</h2>
+      <p>
+        Do not trust the icon in the menu bar. Ask the operating system which path it would use for
+        a specific address, once for an internal address and once for a public one.
+      </p>
+      <h3>macOS</h3>
+      <pre class="hiw-code">route -n get 10.20.5.10
+route -n get 1.1.1.1
+netstat -rn -f inet</pre>
+      <h3>Linux</h3>
+      <pre class="hiw-code">ip route get 10.20.5.10
+ip route get 1.1.1.1
+ip route</pre>
+      <p>
+        The first two commands print the interface chosen for that destination. In a working
+        full-plus-split setup, the internal address shows one tunnel and the public address shows
+        the other. The last command prints the whole routing table, which is where the half-internet
+        routes of a full tunnel are visible.
+      </p>
+    </section>
+
+    <section class="hiw-section">
+      <h2>Should a VPN Always Be On?</h2>
+      <p>
+        Not as a blanket rule. A VPN is a control for the confidentiality of data in transit. It is
+        valuable where the network cannot be trusted and adds less where it can.
+      </p>
+      <div class="blog-table-wrap">
+        <table class="blog-table">
+          <thead>
+            <tr><th scope="col">A privacy VPN does</th><th scope="col">It does not</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Hide your traffic from the local network and the internet provider</td>
+              <td>Stop phishing, malware, or a compromised website</td>
+            </tr>
+            <tr>
+              <td>Hide your home address from the sites you visit</td>
+              <td>Hide you from a site you have logged in to</td>
+            </tr>
+            <tr>
+              <td>Protect you on shared or public Wi-Fi</td>
+              <td>Make the VPN operator unable to see your destinations</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <ul>
+        <li><strong>On untrusted networks,</strong> such as hotels, airports, and cafes, leaving it on is sound practice.</li>
+        <li><strong>At home,</strong> most traffic is already encrypted by the websites themselves. A VPN there is a privacy choice about who sees your browsing patterns, not a security necessity.</li>
+        <li><strong>A school or work VPN is a different tool.</strong> Its purpose is access to a private network. The organization can log what passes through it, and with a full tunnel that includes personal browsing. Disconnect it when the work is done.</li>
+      </ul>
+      <p>
+        Several ordinary habits reduce more risk than an always-on VPN: multi-factor authentication,
+        prompt software updates, a password manager, and full-disk encryption. Many organizations are
+        also moving away from broad VPN access toward zero-trust designs, which authorize each
+        connection separately instead of trusting everything inside a tunnel.
+      </p>
+    </section>
+
+    <section class="hiw-section">
+      <h2>Before You Change Anything</h2>
+      <div class="blog-callout">
+        <p>
+          <strong>Ask first.</strong> An organization that configures a full tunnel may have chosen it
+          deliberately, to filter or monitor traffic on devices that reach its network. Narrowing
+          that tunnel on your own can break its acceptable-use policy, even when it works
+          technically. Running one VPN at a time needs nobody's permission.
+        </p>
+      </div>
+    </section>
+
+    <section class="hiw-section">
+      <h2>Verdict</h2>
+      <ul>
+        <li><strong>Two tunnels can coexist,</strong> because the most specific route wins.</li>
+        <li><strong>Two full tunnels cannot,</strong> so one of them has to be narrowed or switched off.</li>
+        <li><strong>One at a time is the safe default.</strong> Full plus split is the capable option, with permission.</li>
+        <li><strong>Always-on makes sense on networks you do not control.</strong> Elsewhere it is a privacy preference.</li>
+      </ul>
+    </section>
+
+    <section class="hiw-section">
+      <h2>Field Notes</h2>
+      <p>
+        This entry is deliberately general. Results from a specific setup, including what failed and
+        how it was diagnosed, will follow in a later entry.
+      </p>
+    </section>
+
+    <section class="hiw-section">
+      <h2>Sources</h2>
+      <ul class="blog-sources">
+        <li><a href="https://openvpn.net/community-resources/reference-manual-for-openvpn-2-6/" target="_blank" rel="noopener noreferrer">OpenVPN 2.6 reference manual</a> (redirect-gateway, pull-filter, route)</li>
+        <li><a href="https://www.wireguard.com/" target="_blank" rel="noopener noreferrer">WireGuard: conceptual overview</a> (allowed addresses and routing)</li>
+        <li><a href="https://www.rfc-editor.org/rfc/rfc1918" target="_blank" rel="noopener noreferrer">RFC 1918: Address Allocation for Private Internets</a></li>
+        <li><a href="https://csrc.nist.gov/pubs/sp/800/77/r1/final" target="_blank" rel="noopener noreferrer">NIST Special Publication 800-77 Revision 1: Guide to IPsec VPNs</a></li>
+        <li><a href="https://csrc.nist.gov/pubs/sp/800/207/final" target="_blank" rel="noopener noreferrer">NIST Special Publication 800-207: Zero Trust Architecture</a></li>
+      </ul>
+      <p style="margin-top:18px">
+        Addresses and settings in this entry are illustrative. Client software differs, and option
+        names change between versions.
+      </p>
+    </section>
+
+    <nav class="blog-footer-nav" aria-label="Blog navigation">
+      <a href="../log-001/index.html">← Entry 001</a>
+      <a href="../index.html">All entries</a>
+      <a href="../../index.html">App Hub</a>
+    </nav>
+
+  </main>
+
+</div>
+
+<!-- cf-web-analytics (managed by tools/inject_analytics.py) -->
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "f728a20b49cc4a0fbe02cde72f03301c"}'></script>
+</body>
+</html>

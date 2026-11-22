@@ -27,6 +27,25 @@
   margin-bottom: 14px;
 }
 
+/* ── Audio version ── */
+.blog-audio {
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--surface);
+  padding: 18px 20px;
+  margin: -16px 0 48px;
+}
+.blog-audio-label {
+  color: var(--cyan);
+  font-size: .74rem;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  margin-bottom: 12px;
+}
+.blog-audio audio { display: block; width: 100%; }
+.blog-audio-note { color: var(--muted); font-size: .82rem; margin-top: 10px; }
+.blog-audio-note a { color: var(--cyan); }
+
 /* ── Article body ── */
 .blog-article p { margin-bottom: 16px; }
 .blog-article p:last-child { margin-bottom: 0; }
@@ -37,6 +56,7 @@
   margin: 26px 0 10px;
 }
 .blog-article a { color: var(--cyan); }
+.blog-article pre { margin: 14px 0 18px; }
 .blog-article ul,
 .blog-article ol {
   margin: 0 0 16px 22px;
