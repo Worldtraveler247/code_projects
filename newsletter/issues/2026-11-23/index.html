@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="dark">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'self' https://static.cloudflareinsights.com; connect-src 'self' https://cloudflareinsights.com; img-src 'self' data:; form-action https://buttondown.com; base-uri 'none'; object-src 'none'">
+    <meta name="description" content="The Daily Brief for Monday, November 23, 2026: security incidents, senior security advice, engineering explainers, and tech news.">
+    <title>The Daily Brief · Nov 23, 2026</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="icon" href="../../../favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="../../../style.css">
+    <link rel="stylesheet" href="../../newsletter.css">
+</head>
+<body class="brief-page">
+    <a href="#main-content" class="skip-nav">Skip to main content</a>
+    <nav class="brief-nav">
+        <a href="../../../index.html">← App Hub</a>
+        <a href="../../">All issues</a>
+    </nav>
+    
+<header class="brief-masthead">
+    <p class="brief-eyebrow">THE DAILY BRIEF</p>
+    <h1>Monday, November 23, 2026</h1>
+    <ol class="brief-toc">
+        <li><a href="#current-events">Current Events</a></li><li><a href="#security-advice">Senior Security Advice</a></li><li><a href="#talk-track">Senior Talk Tracks</a></li><li><a href="#tech-news">Tech News</a></li>
+    </ol>
+</header>
+<main id="main-content" class="brief">
+    
+    <article class="brief-section" id="current-events">
+        <p class="brief-kicker">Current Events</p>
+        <h2>The Atlassian April 2022 Outage</h2>
+        
+            
+            <p>Here's a sentence that should scare anyone who's ever run a cleanup script against production: one mixed-up list of IDs wiped out hundreds of customers' entire workspaces in under thirty minutes. This is the Atlassian outage of April 2022, and it's one of the clearest documented cases of why change control and backup design matter as much as any firewall.</p>
+<p>Here's what actually happened. On April 5th, 2022, Atlassian engineers ran a script meant to deactivate a legacy app called Insight — an old asset-management add-on — across a batch of customer sites. The team requesting the cleanup handed over a list of IDs, but those were site IDs, entire customer workspaces, not the app IDs the script was supposed to receive. The tooling didn't check which kind of ID it had actually been given.</p>
+<p>Here's the chain, step by step. First, the handoff between teams mixed up two different ID types, and nothing validated that mismatch before the job ran. Second, the deletion API accepted either kind of identifier without complaint. Third, that same tool had a separate mode built in for permanent, compliance-driven deletion — and that's the mode this ordinary deactivation job ended up running in, instead of a reversible switch-off. Fourth, by the time anyone noticed, Atlassian's own post-incident review says 775 customers had lost access within roughly twenty minutes that morning.</p>
+<p>Root cause, in one sentence: a single tool built to handle two very different jobs — temporary deactivation and permanent compliance deletion — ran the irreversible version against the wrong set of IDs, with no check in between the request and the database asking whether that made any sense.</p>
+<p>Here's what held: nobody lost their data forever. Atlassian had backups, and its own review says most customers eventually got everything back with no data loss. But those backups lived in multi-tenant databases shared across many customers, so engineers couldn't restore a table wholesale — they had to manually pull each affected customer's data back out, one at a time. Full restoration for every customer wasn't finished until April 18th, thirteen days later.</p>
+<p>So what would a senior engineer change? Teams that got this right after April 2022 built a soft-delete step into every destructive operation, so a mass-delete request gets a recovery window instead of an instant, permanent erase — and they separated permanent deletion onto its own reviewed code path, with an explicit confirmation step, instead of a flag on the same script used for routine work. A senior engineer running similar jobs would also actually test the bulk-restore path in a disaster-recovery drill before trusting a backup strategy at all, because a backup you've never restored at scale under pressure is a backup you don't really have. That's exactly the kind of gap you can surface in an afternoon: stand up a container representing a multi-tenant data store, run a deliberately destructive script against the wrong ID, and see whether your own restore tooling can actually pull one tenant's data back out without touching anyone else's.</p>
+
+        
+            <h3>Timeline</h3>
+            <table>
+<thead>
+<tr>
+<th>Date</th>
+<th>Event</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>April 5, 2022, approx. 07:38–08:01 UTC</td>
+<td>A maintenance script intended to deactivate the legacy &quot;Insight&quot; asset-management app is run against a list of site IDs instead of app IDs; entire customer sites are permanently deleted rather than the app being switched off (per Atlassian's Post-Incident Review)</td>
+</tr>
+<tr>
+<td>April 5–7, 2022</td>
+<td>Atlassian engineering begins incident response; affected customers lose access to Jira, Confluence, and other Atlassian Cloud products</td>
+</tr>
+<tr>
+<td>April 8, 2022</td>
+<td>Atlassian posts an early public update describing approximately 400 customers with deleted sites; this figure differs from the 775-customer figure later given in Atlassian's full Post-Incident Review — the discrepancy is not resolved in Atlassian's own public materials</td>
+</tr>
+<tr>
+<td>April 14, 2022</td>
+<td>The Register reports the outage still ongoing for some customers more than a week in, with customers criticizing the pace of Atlassian's communication</td>
+</tr>
+<tr>
+<td>April 18, 2022, 23:57 UTC</td>
+<td>Atlassian announces that all customers impacted by the outage have been restored</td>
+</tr>
+<tr>
+<td>Late April 2022 (on or before April 29, 2022)</td>
+<td>Atlassian publishes its full Post-Incident Review (primary), detailing the root cause and remediation commitments; exact publish date not independently confirmed (see Production Notes)</td>
+</tr>
+<tr>
+<td>August 2022 / November 2022</td>
+<td>Atlassian publishes follow-up PIR updates describing new soft-delete / delayed-deletion controls and planned large-scale disaster-recovery exercises</td>
+</tr>
+</tbody>
+</table>
+
+        
+            <h3>Control Failures</h3>
+            <table>
+<thead>
+<tr>
+<th>#</th>
+<th>Failure</th>
+<th>NIST SP 800-53 Rev 5 Control Family</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>The deletion API accepted site IDs where app IDs were expected, with no check that the identifier type matched the intended target</td>
+<td>SI-10 — Information Input Validation</td>
+</tr>
+<tr>
+<td>2</td>
+<td>A permanent, irreversible compliance-deletion mode was reachable through the same tool used for routine, reversible app deactivation</td>
+<td>CM-7 — Least Functionality</td>
+</tr>
+<tr>
+<td>3</td>
+<td>No change-control gate — peer review, dry run, or staged rollout against a small batch first — caught the ID-type mismatch before the script ran against production at scale</td>
+<td>CM-3 — Configuration Change Control</td>
+</tr>
+<tr>
+<td>4</td>
+<td>The mass-deletion request required no secondary approval or dual control before an irreversible action touched hundreds of customer environments at once</td>
+<td>AC-5 — Separation of Duties</td>
+</tr>
+<tr>
+<td>5</td>
+<td>Backups existed, but no automated bulk-restore capability could extract individual tenants' data out of shared multi-tenant storage, turning a backup-protected incident into a 13-day manual recovery</td>
+<td>CP-9 / CP-10 — System Backup / System Recovery and Reconstitution</td>
+</tr>
+</tbody>
+</table>
+
+        
+            <h3>What Held</h3>
+            <p>Atlassian's backups meant this was a recoverable incident, not a true data-loss event — its own Post-Incident Review states the large majority of affected customers got their data back with no permanent loss, which is the fact worth leading with in an interview rather than the outage headline itself. The failure was internal and accidental, not an external compromise, so no attacker was adapting to Atlassian's response in real time, which is part of why the incident stayed bounded to availability and recovery time rather than escalating into a confidentiality or integrity breach. Naming the distinction — &quot;the backup strategy held, the restore tooling didn't scale to this disaster&quot; — signals the kind of precise, defense-in-depth thinking an ISSO role is actually listening for, instead of just reciting &quot;there was an outage.&quot;</p>
+
+        
+            <h3>Sources</h3>
+            <ul>
+<li><a href="https://www.atlassian.com/engineering/post-incident-review-april-2022-outage" target="_blank" rel="noopener noreferrer">Atlassian Engineering — Post-Incident Review: April 2022 Outage (primary)</a></li>
+<li><a href="https://www.atlassian.com/engineering/april-2022-outage-update" target="_blank" rel="noopener noreferrer">Atlassian Engineering — April 2022 Outage Update (primary)</a></li>
+<li><a href="https://www.atlassian.com/blog/announcements/pir-update-august2022" target="_blank" rel="noopener noreferrer">Atlassian — PIR Update, August 2022 (primary)</a></li>
+<li><a href="https://www.atlassian.com/blog/announcements/pir-update-november2022" target="_blank" rel="noopener noreferrer">Atlassian — PIR Update, November 2022 (primary)</a></li>
+<li><a href="https://www.theregister.com/2022/04/14/atlassian_ongoing_outage/" target="_blank" rel="noopener noreferrer">The Register — Atlassian's ongoing outage draws customer frustration</a></li>
+<li><a href="https://www.itnews.com.au/news/atlassian-blames-outage-on-miscommunication-and-faulty-script-578743" target="_blank" rel="noopener noreferrer">itNews — Atlassian blames outage on miscommunication and &quot;faulty script&quot;</a></li>
+<li><a href="https://rootly.com/blog/what-sres-can-learn-from-the-atlassian-nightmare-outage-of-2022" target="_blank" rel="noopener noreferrer">Rootly — What SREs Can Learn From the Atlassian Nightmare Outage of 2022</a></li>
+</ul>
+
+        
+    </article>
+    
+    <article class="brief-section" id="security-advice">
+        <p class="brief-kicker">Senior Security Advice</p>
+        <h2>Require a Password Manager and a Unique Password for Every Account</h2>
+        
+            <h3>The Advice</h3>
+            <p>Require a password manager for every employee and every account, so no password is ever reused across two different systems.</p>
+
+        
+            <h3>Why It Matters</h3>
+            <p>People cannot memorize dozens of long, random passwords, so without a manager they fall back on patterns: the same password with a digit swapped, or the same root password reused across work and personal accounts. That habit is exactly what attackers exploit with credential stuffing - taking a username and password leaked from one breached site and replaying it against banking portals, email providers, and corporate logins, betting that the same pair still works somewhere else. It does, constantly, because reuse is the default human behavior a password manager is built to break. The incident class this stops is account takeover that never touches a vulnerability at all: no exploit, no phishing page, just a password that worked twice. A breach at one unrelated company becomes the open door into a completely different organization, and because the credentials are valid, the login looks legitimate until the damage is already done.</p>
+
+        
+            <h3>How to Implement It</h3>
+            <ol>
+<li>Roll out an enterprise password manager to every employee and make it the default tool for generating new credentials, not an optional extra people have to ask for.</li>
+<li>Set a baseline of a unique, randomly generated password of at least 16 characters for every account, work and personal logins alike, and stop recycling or lightly modifying old passwords.</li>
+<li>Turn on the manager's breach-monitoring and weak-password reports, and route any flagged reused or exposed password to a required reset.</li>
+<li>Pair the manager with multi-factor authentication wherever it is offered, since a manager that is itself protected by only a single password is a single point of failure.</li>
+<li>Verify the control is actually working, not just installed: pull a report of password reuse across the organization's vaulted accounts and confirm the count trends toward zero, and spot-check a sample of accounts to confirm old, reused passwords were actually rotated, not just flagged.</li>
+</ol>
+
+        
+            <h3>The Pushback You&#39;ll Hear</h3>
+            <p>&quot;Password managers are a single point of failure - if that vault gets compromised, the attacker has everything.&quot; The senior rebuttal: that risk is real, which is why the manager itself gets multi-factor authentication and a long, unique master password, turning one hardened point of failure into something far stronger than the alternative - dozens of weak, reused passwords sitting across every website an employee has ever signed up for. A single well-protected vault is a smaller, more defensible attack surface than password reuse spread across an entire organization.</p>
+
+        
+            <h3>Sources</h3>
+            <ul>
+<li>CISA, Use Strong Passwords: https://www.cisa.gov/secure-our-world/use-strong-passwords</li>
+<li>CISA, Require Strong Passwords (for Government/Organizations): https://www.cisa.gov/require-strong-passwords-government</li>
+<li>NIST, How do I create a good password?: https://www.nist.gov/cybersecurity-and-privacy/how-do-i-create-good-password</li>
+</ul>
+
+        
+    </article>
+    
+    <article class="brief-section" id="talk-track">
+        <p class="brief-kicker">Senior Talk Tracks</p>
+        <h2>Why Observability Is Not Just More Logging</h2>
+        
+            
+            <p>Here's a habit that feels productive but usually isn't: something breaks in production, and the first instinct is to go add more log lines so &quot;next time we'll know.&quot; Today I want to explain why that instinct is incomplete, and what observability actually means once you get past the buzzword.</p>
+<p>Observability is the ability to understand what's happening inside a running system just from the signals it produces on the outside, without having to guess or attach a debugger to it. There are three main signals people mean when they say that word. Metrics are numbers tracked over time, like requests per second or memory usage. Logs are individual event records, timestamped notes saying something happened. And traces follow one single request as it travels through multiple services, showing exactly how long it spent in each one.</p>
+<p>Here's why &quot;just add more logging&quot; falls short. Logs tell you that something happened, but on their own they rarely tell you why, especially once a single user request touches five or six different services to get answered. You can have thousands of perfectly accurate log lines and still not be able to answer the one question that matters during an incident: which service in that chain actually caused the delay.</p>
+<p>Here's the senior take. A junior engineer treats observability as a logging problem — if something's unclear, log more of it. A senior engineer treats it as a signal design problem, and asks which of the three tools, metrics, logs, or traces, actually answers the question at hand, because logging everything has a real cost. Every extra label you attach to a metric multiplies how much data gets stored, and a flood of verbose logs during an incident doesn't add clarity, it adds more noise to dig through while customers are waiting.</p>
+<p>Think of it like a doctor trying to diagnose a patient. Logs are like diary entries: &quot;patient coughed at three o'clock.&quot; Metrics are like a vital signs monitor: a heart rate graph over the whole day. But if that patient visited five different departments in one hospital and nobody can see the full path between them, no amount of diary entries tells the doctor where the real delay happened. That's what a trace gives you — the one thing logs and metrics alone can't.</p>
+<p>So here's a good way to open this with a team after an incident: &quot;Before we add more logging here, do we actually have a trace that shows which service added the latency?&quot;</p>
+
+        
+            <h3>Key Takeaways</h3>
+            <ol>
+<li>Observability rests on three distinct signals — metrics, logs, and traces — and each answers a different kind of question, so &quot;more logging&quot; alone doesn't make a system more observable.</li>
+<li>A trace follows a single request across every service it touches, which is often the only way to find out which service in a chain actually caused a slowdown.</li>
+<li>Adding labels to metrics increases cardinality, and high cardinality is one of the most common, least obvious ways an observability bill quietly spirals.</li>
+</ol>
+
+        
+            <h3>Reader Question</h3>
+            <p><strong>Q:</strong> &quot;We already have metrics and logs everywhere — why would we need tracing on top of that?&quot;</p>
+
+        
+    </article>
+    
+    <article class="brief-section" id="tech-news">
+        <p class="brief-kicker">Tech News</p>
+        
+        
+            
+            <p>A suspected China-linked hacking group had quiet administrator access to VMware's management software for two months before anyone caught it. If your data center runs virtual machines, this is the story to watch today, November 23rd. Two stories: a nation-state zero-day with a federal patch deadline landing today, and a new Amazon Web Services tool built to limit the excess access that makes a breach like this one worse.</p>
+<p>Let's start with VMware. vCenter is the software administrators use to manage entire fleets of virtual machines from one console, so a flaw in it is a whole-data-center problem, not a one-server one. According to Broadcom's advisory VMSA-2026-0009, published November 19th, there's a critical bug in vCenter's directory service, tracked as CVE-2026-123890 and rated 9.8 out of 10 on the Common Vulnerability Scoring System, or CVSS — close to as severe as a flaw gets. An attacker with network access to vCenter can skip authentication entirely and land as the built-in administrator account, no password required. Here's the part that should bother you: according to Google's Threat Intelligence team and Mandiant, a suspected China-linked espionage group they're calling Armory Castle was already using this as a zero-day, meaning there was no patch yet, starting in early September. That's over two months of quiet access before Broadcom shipped a fix. The Cybersecurity and Infrastructure Security Agency, or CISA, added it to its Known Exploited Vulnerabilities catalog on November 20th and gave federal agencies until today to patch, and it's requiring forensic triage, because some systems may already be compromised. Here's my read: Broadcom's own advisory doesn't mention active exploitation — that detail came from the threat-intel side, not the vendor. A senior engineer never waits for a vendor to confirm exploitation before treating a federal catalog listing as reason enough to move fast.</p>
+<p>Turning to identity and access management, because that's exactly what stands between an attacker and an administrator account. Amazon Web Services announced a new Security Token Service feature this week called GetScopedCredentials. In plain terms, it lets you take credentials that already exist and shrink them — fewer permissions, shorter lifespan — without issuing a whole new identity. According to AWS's own announcement and security blog, published November 19th and 20th, the result can never exceed what the original caller was already allowed to do, and every call gets logged. My take: this matters most for AI agents and automated pipelines, which tend to inherit the broad permissions of whatever spawned them. Teams that get this right narrow those permissions down at the moment a task runs, not just at the moment someone writes the policy.</p>
+<p>So here's the through-line: one story is what happens when authentication fails completely, the other is a tool for keeping whatever access survives a breach as small as possible.</p>
+
+        
+            <h3>Sources</h3>
+            <ul>
+<li><a href="https://github.com/vmware/vcf-security-and-compliance-guidelines/blob/main/security-advisories/vmsa-2026-0009/README.md" target="_blank" rel="noopener noreferrer">Broadcom Security Advisory VMSA-2026-0009 (primary)</a></li>
+<li><a href="https://www.cisa.gov/known-exploited-vulnerabilities-catalog" target="_blank" rel="noopener noreferrer">CISA Known Exploited Vulnerabilities Catalog (primary)</a></li>
+<li><a href="https://www.rapid7.com/blog/post/etr-cve-2026-123890-critical-authentication-bypass-vmware-vcenter/" target="_blank" rel="noopener noreferrer">Rapid7 — CVE-2026-123890: Critical Authentication Bypass in VMware vCenter</a></li>
+<li><a href="https://securityonline.info/cisa-kev-catalog-vcenter-cisco-expressway/" target="_blank" rel="noopener noreferrer">SecurityOnline — CISA Adds 4 Exploited Flaws to KEV: VMware vCenter, SAP NetWeaver, Cisco Expressway, Apache Roller</a></li>
+<li><a href="https://aws.amazon.com/about-aws/whats-new/2026/11/sts-getscopedcredentials/" target="_blank" rel="noopener noreferrer">AWS — STS announces GetScopedCredentials (primary)</a></li>
+<li><a href="https://aws.amazon.com/blogs/security/scope-down-permissions-of-existing-sessions-using-aws-sts-getscopedcredentials/" target="_blank" rel="noopener noreferrer">AWS Security Blog — Scope down permissions of existing sessions using AWS STS GetScopedCredentials</a></li>
+</ul>
+
+        
+    </article>
+    
+    <section class="brief-subscribe" id="subscribe">
+    <h2>Get The Daily Brief by email</h2>
+    <p>One short email each morning. Unsubscribe anytime.</p>
+    <form action="https://buttondown.com/api/emails/embed-subscribe/cybercider" method="post">
+        <label for="bd-email">Email address</label>
+        <input type="email" name="email" id="bd-email" required autocomplete="email" placeholder="you@example.com">
+        <button type="submit">Subscribe</button>
+    </form>
+</section>
+</main>
+
+    <footer><p class="copyright">The Daily Brief · Eddie Camacho</p></footer>
+<!-- cf-web-analytics (managed by tools/inject_analytics.py) -->
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "f728a20b49cc4a0fbe02cde72f03301c"}'></script>
+</body>
+</html>
