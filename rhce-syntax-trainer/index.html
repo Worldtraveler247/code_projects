@@ -897,16 +897,19 @@ const QUESTIONS = [
 {
   id:"Q6.1", title:"roles/requirements.yml", sub:"Galaxy roles — installed under new names",
   files:[{ path:"/home/student/ansible/roles/requirements.yml", lang:"yaml" }],
-  spec:`<b>6. Install Roles Using Ansible Galaxy</b><br>• Use a requirements file located at /home/student/ansible/roles/requirements.yml to download and install the following roles to /home/student/ansible/roles:<br>• geerlingguy.haproxy — the name of this role should be balancer<br>• geerlingguy.php — the name of this role should be phpinfo`,
+  spec:`<b>6. Install Roles Using Ansible Galaxy</b><br>• Use a requirements file located at /home/student/ansible/roles/requirements.yml to download and install the following roles to /home/student/ansible/roles:<br>• geerlingguy.haproxy, version 1.3.2 — the name of this role should be balancer<br>• geerlingguy.php, version 6.2.0 — the name of this role should be phpinfo`,
   checks:[[
     { fn:t => near(t, /src\s*:\s*["']?geerlingguy\.haproxy/, [/name\s*:\s*["']?balancer["']?/], 220) || near(t, /name\s*:\s*["']?balancer["']?/, [/src\s*:\s*["']?geerlingguy\.haproxy/], 220), msg:"geerlingguy.haproxy with name: balancer in the same entry" },
-    { fn:t => near(t, /src\s*:\s*["']?geerlingguy\.php/, [/name\s*:\s*["']?phpinfo["']?/], 220) || near(t, /name\s*:\s*["']?phpinfo["']?/, [/src\s*:\s*["']?geerlingguy\.php/], 220), msg:"geerlingguy.php with name: phpinfo in the same entry" }
+    { fn:t => near(t, /src\s*:\s*["']?geerlingguy\.php/, [/name\s*:\s*["']?phpinfo["']?/], 220) || near(t, /name\s*:\s*["']?phpinfo["']?/, [/src\s*:\s*["']?geerlingguy\.php/], 220), msg:"geerlingguy.php with name: phpinfo in the same entry" },
+    { fn:t => near(t, /src\s*:\s*["']?geerlingguy\.haproxy/, [/version\s*:\s*["']?1\.3\.2["']?/], 220) || near(t, /version\s*:\s*["']?1\.3\.2["']?/, [/src\s*:\s*["']?geerlingguy\.haproxy/], 220), msg:"geerlingguy.haproxy pinned at version: 1.3.2 in the same entry" },
+    { fn:t => near(t, /src\s*:\s*["']?geerlingguy\.php/, [/version\s*:\s*["']?6\.2\.0["']?/], 220) || near(t, /version\s*:\s*["']?6\.2\.0["']?/, [/src\s*:\s*["']?geerlingguy\.php/], 220), msg:"geerlingguy.php pinned at version: 6.2.0 in the same entry" }
   ]],
   explain:`<h2>✅ Q6 complete — what you just did</h2>
   <p>You declared two Galaxy roles — but the real skill in this question is the <b>rename</b>. <code>src</code> says where the role comes from; <code>name</code> says what it will be called <b>on this controller</b>. After install, the roles live at <code>roles/balancer</code> and <code>roles/phpinfo</code>, and playbooks must call them by those local names.</p>
   <h4>How it affects the Ansible environment</h4>
   <p>• <code>ansible-galaxy role install -r roles/requirements.yml -p roles</code> unpacks each role into the project <code>roles/</code> directory under its <i>renamed</i> folder. The upstream names <code>geerlingguy.haproxy</code> and <code>geerlingguy.php</code> never appear in any playbook.<br>
-  • Role requirements use a plain list of <code>src</code>/<code>name</code> pairs — different from the collection requirements format in Q4, which nests under a <code>collections:</code> key. Mixing the two formats up is a classic exam slip.</p>
+  • Role requirements use a plain list of <code>src</code>/<code>name</code>/<code>version</code> entries — different from the collection requirements format in Q4, which nests under a <code>collections:</code> key. Mixing the two formats up is a classic exam slip.<br>
+  • The <code>version:</code> key pins the exact release Galaxy installs: 1.3.2 for the haproxy role and 6.2.0 for the php role. Leave it off and Galaxy takes whatever the newest release is, which may not be the release the question wants.</p>
   <h4>The tech underneath</h4>
   <p>A role is a self-contained bundle: tasks, templates, handlers, defaults. Galaxy is just the distribution channel. Renaming on install is how a project adapts generic upstream content to its own vocabulary — the exam will only ever refer to these roles as <code>balancer</code> and <code>phpinfo</code>.</p>
   <div class="tie"><b>How it ties in:</b> Q8's playbook calls <code>role: balancer</code> and <code>role: phpinfo</code>. Those names resolve <i>only</i> because of the renames you declared here. If Q6 is wrong, Q8 fails before it starts.</div>`
@@ -2506,12 +2509,15 @@ collections:
   answer:[{ path:"shell", text:"ansible all -m ansible.builtin.command -a 'chronyc sources'" }] },
 "Q6": { hint:`mkdir, then vim — in that order, joined by &&. The mkdir needs -p; the vim target is roles/requirements.yml. You are already in the project directory.`,
   answer:[{ path:"shell", text:"mkdir -p roles && vim roles/requirements.yml" }] },
-"Q6.1": { hint:`Two src/name pairs: geerlingguy.haproxy renamed to balancer, and geerlingguy.php renamed to phpinfo. The rename lives in the "name:" key paired with each src.`,
+"Q6.1": { hint:`Two src/name/version entries: geerlingguy.haproxy renamed to balancer at version 1.3.2, and geerlingguy.php renamed to phpinfo at version 6.2.0. The rename lives in the "name:" key paired with each src, and "version:" pins the exact release to install.`,
   answer:[{ path:"/home/student/ansible/roles/requirements.yml", text:`---
 - src: geerlingguy.haproxy
   name: balancer
+  version: 1.3.2
+
 - src: geerlingguy.php
   name: phpinfo
+  version: 6.2.0
 ` }] },
 "Q6.2": { hint:`ansible-galaxy role install with -r (roles/requirements.yml) and -p (the local roles directory). From the project directory: -r roles/requirements.yml -p roles. From inside the roles directory: -r requirements.yml -p .`,
   answer:[{ path:"shell", text:"ansible-galaxy role install -r roles/requirements.yml -p roles" }] },
