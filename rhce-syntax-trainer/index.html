@@ -163,6 +163,14 @@
   .undbox .undhead{font-weight:bold;color:#fff;margin:12px 0 4px}
   .undbox p{margin:0 0 9px}
   .undbox code{background:#1a1a1a;padding:0 5px;color:var(--green);font-size:12.5px}
+  .mapbox{display:none;border:1px solid #a678e0;background:#0e0a14;padding:14px 16px;margin:0 0 12px;line-height:1.7;font-size:13.5px}
+  .mapbox.show{display:block}
+  .mapbox .maplabel{display:inline-block;font-weight:bold;color:#000;background:#a678e0;padding:2px 10px;margin-bottom:10px;font-size:12.5px;letter-spacing:.4px}
+  .mapbox p{margin:0 0 9px}
+  .mapbox code{background:#1a1a1a;padding:0 5px;color:#cdb2f2;font-size:12.5px}
+  .mapbox .maptab{border-collapse:collapse;width:100%;margin:8px 0 2px;font-size:13px}
+  .mapbox .maptab th,.mapbox .maptab td{border:1px solid #3a3348;padding:5px 8px;text-align:left;vertical-align:top}
+  .mapbox .maptab th{color:#fff;background:#1c1528}
   .finish{display:none;background:#050505;border:1px solid var(--green);padding:20px;text-align:center;margin:20px auto;max-width:900px}
   .finish.show{display:block}
   .finish .big{font-size:24px;margin-bottom:6px;color:var(--green)}
@@ -1031,7 +1039,9 @@ const QUESTIONS = [
   • <code>apache</code> — just the name, because you are already standing in roles/: Q7 cd'ed you here and Q7.1 built the role at your feet, so the name alone is the path. The claim being tested is the same as ever: the role Q7.1 created, in the roles/ shelf. From the project root the same listing would be <code>ls roles/apache</code> — same role, different address, because a relative path is always measured from where you stand. List the wrong path and ls either errors or shows you some other directory's contents — you would be doubting (or trusting) a scaffold you never actually looked at.<br>
   • What the listing must contain: the standard role layout, and in particular <code>tasks/</code> and <code>templates/</code> — the two directories Q7.3 and Q7.4 are about to write into.<br>
   • <b>Why the exam cares:</b> template and task lookups fail at playbook runtime with "file not found" errors that point at the playbook, not at the missing directory. Ten seconds of ls now proves the two folders your next files depend on are really there.</p>
-  <div class="tie"><b>How it ties in:</b> skeleton confirmed. Q7.3 writes the role's tasks into tasks/main.yml.</div>`
+  <div class="tie"><b>How it ties in:</b> skeleton confirmed. Q7.3 writes the role's tasks into tasks/main.yml.</div>`,
+  rolemap:`<p>What each folder in the role is for, and whether this role uses it:</p>
+  <table class='maptab'><tr><th>Directory</th><th>Purpose</th><th>Used for this task?</th></tr><tr><td><code>tasks/main.yml</code></td><td>What the role does (install, start, configure)</td><td>✅ main work</td></tr><tr><td><code>templates/</code></td><td>Jinja2 .j2 files</td><td>✅ index.html.j2</td></tr><tr><td><code>handlers/main.yml</code></td><td>Actions triggered by changes (e.g. restart)</td><td>not needed here</td></tr><tr><td><code>defaults/main.yml</code></td><td>Default variables, lowest priority, easy to override</td><td>no</td></tr><tr><td><code>vars/main.yml</code></td><td>Fixed variables, high priority</td><td>no</td></tr><tr><td><code>meta/main.yml</code></td><td>Role metadata and dependencies</td><td>no</td></tr></table>`
 },
 {
   id:"Q7.3", title:"roles/apache/tasks/main.yml", sub:"The role's tasks",
@@ -2612,11 +2622,11 @@ collections:
     - role: phpinfo
       when: "'webservers' in group_names"
   post_tasks:
-    - name: Open http on balancer
+    - name: permit http on firewalld
       ansible.posix.firewalld:
         service: http
-        permanent: true
         immediate: true
+        permanent: true
         state: enabled
       when: "'balancers' in group_names"
 ` }] },
@@ -6155,6 +6165,11 @@ function wireHelp(q){
     const open = ubox.classList.toggle("show");
     ubtn.textContent = open ? "Hide Understanding modules" : "Understanding modules";
   });
+  const mbtn = gel("mapbtn"), mbox = gel("mapbox");
+  if (mbtn && mbox) mbtn.addEventListener("click", () => {
+    const open = mbox.classList.toggle("show");
+    mbtn.textContent = open ? "Hide Role folder map" : "Role folder map";
+  });
   if (!hb || !rb) return;
   hb.addEventListener("click", () => {
     const open = hbox.classList.toggle("show");
@@ -6238,10 +6253,11 @@ function renderStage(){
   if (q.cmd) { h += scratchPaneHtml("S2") + "</div>"; }
   else { h += shellTabsHtml() + "<div class='shellpanes'>" + scratchPaneHtml("S1") + scratchPaneHtml("S2") + "</div>"; }
   h += "<div class='keys'><b>[Ctrl+Enter / F2]</b> check &nbsp;<b>[Alt+↑/↓]</b> switch file &nbsp;<b>[Alt+→]</b> next question &nbsp;<b>[Alt+←]</b> previous &nbsp;<b>[Tab]</b> complete path (shell-style) · in files: indent · <b>[Shift+Tab]</b> outdent · <b>[Ctrl+C]</b> clear the shell (^C) &nbsp;::&nbsp; attempts: <span class='n' id='att'>" + (state.attempts[state.cur] || 0) + "</span></div>";
-  h += "<div class='helprow'><button class='hbtn' id='checkbtn'>▶ Check</button><button class='hbtn' id='hintbtn'>💡 Hint</button><button class='hbtn' id='revealbtn'>👁 Reveal answer</button>" + (q.precheck ? "<button class='hbtn' id='prebtn'>Pre ✓ ad hoc</button>" : "") + (q.understand ? "<button class='hbtn' id='undbtn'>Understanding modules</button>" : "") + "<button class='hbtn' id='listenbtn'>🔊 Listen</button><button class='hbtn' id='deepbtn'>🎙 Deep dive</button><button class='hbtn' id='videobtn'>🎬 Lesson video</button><button class='hbtn' id='nextbtn'>Next ▸</button>" + (q.senior ? "<button class='hbtn' id='seniorbtn'>🧑‍💼 Senior Admin Explanation</button>" : "") + "<button class='hbtn qreset' id='qresetbtn' title='Start this question over: clears its typed text, its attempts counter and its pass mark. Other questions are untouched.'>↺ Reset question</button></div>";
+  h += "<div class='helprow'><button class='hbtn' id='checkbtn'>▶ Check</button><button class='hbtn' id='hintbtn'>💡 Hint</button><button class='hbtn' id='revealbtn'>👁 Reveal answer</button>" + (q.precheck ? "<button class='hbtn' id='prebtn'>Pre ✓ ad hoc</button>" : "") + (q.understand ? "<button class='hbtn' id='undbtn'>Understanding modules</button>" : "") + (q.rolemap ? "<button class='hbtn' id='mapbtn'>Role folder map</button>" : "") + "<button class='hbtn' id='listenbtn'>🔊 Listen</button><button class='hbtn' id='deepbtn'>🎙 Deep dive</button><button class='hbtn' id='videobtn'>🎬 Lesson video</button><button class='hbtn' id='nextbtn'>Next ▸</button>" + (q.senior ? "<button class='hbtn' id='seniorbtn'>🧑‍💼 Senior Admin Explanation</button>" : "") + "<button class='hbtn qreset' id='qresetbtn' title='Start this question over: clears its typed text, its attempts counter and its pass mark. Other questions are untouched.'>↺ Reset question</button></div>";
   if (q.senior) h += "<div class='seniorbox' id='seniorbox'><span class='seniorlabel'>Senior Admin Explanation</span>" + q.senior + "</div>";
   if (q.precheck) h += "<div class='prebox' id='prebox'><span class='prelabel'>Pre ✓ ad hoc</span>" + q.precheck + "</div>";
   if (q.understand) h += "<div class='undbox' id='undbox'><span class='undlabel'>Understanding modules</span>" + q.understand + "</div>";
+  if (q.rolemap) h += "<div class='mapbox' id='mapbox'><span class='maplabel'>Role folder map</span>" + q.rolemap + "</div>";
   h += "<div class='audiobox' id='audiobox'></div>";
   h += "<div class='audiobox' id='deepbox'></div>";
   h += "<div class='audiobox' id='videobox'></div>";
