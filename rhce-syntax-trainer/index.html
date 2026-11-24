@@ -1306,6 +1306,8 @@ const QUESTIONS = [
 <p><code>ansible servera -m setup -a "filter=ansible_default_ipv4"</code></p>
 <p>The filter cuts the giant facts dump down to just the default_ipv4 block — the "address" line inside it is the host's IP. To print only the address and nothing else:</p>
 <p><code>ansible servera -m debug -a "msg={{ ansible_default_ipv4.address }}"</code></p>
+<p>Aimed at the whole webservers group, the same filter returns the address block for serverb and serverc in one shot — the two addresses that fill haproxy_backend_servers in this question:</p>
+<p><code>ansible webservers -m setup -a 'filter=ansible_default_ipv4'</code></p>
 <p class='prehead'>2. Test the when condition 'balancers' in group_names</p>
 <p><code>ansible all -m debug -a "msg={{ 'balancers' in group_names}}"</code></p>
 <p>That evaluates the exact condition from the when: line on every host — it prints <b>true on serverd only</b>, false on servera, serverb, and serverc. And to see the lists it is checking against:</p>
