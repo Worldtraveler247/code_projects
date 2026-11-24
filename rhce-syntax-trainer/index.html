@@ -4410,18 +4410,28 @@ function soWhenRuns(when, host){
 }
 const SO_PLAY_TASKS = {
   "lvm.yml": [
-    { name: "Fail if volume group yellowtail does not exist", res: "skipping" },
-    { name: "Create 1500 MiB logical volume", res: "rescued", fatal: "Could not create logical volume: volume group yellowtail has insufficient free space for a 1500 MiB volume" },
-    { name: "Display size error message", res: "ok", jsonMsg: "Could not create logical volume at that size" },
-    { name: "Create 800 MiB logical volume instead", res: "changed" },
-    { name: "Format logical volume with ext4 filesystem", res: "changed" }
+    { name: "Fail if volume group yellowtail does not exist", perHost: {
+      servera: { r: "skipping" },
+      serverb: { r: "skipping" },
+      serverc: { r: "fatal", fatalJson: '{"changed": false, "msg": "Volume group does not exist"}' },
+      serverd: { r: "fatal", fatalJson: '{"changed": false, "msg": "Volume group does not exist"}' } } },
+    { name: "Create 1500 MiB logical volume", perHost: {
+      servera: { r: "changed" },
+      serverb: { r: "rescued", fatalJson: '{"changed": false, "err": "  Volume group \\"yellowtail\\" has insufficient free space (299 extents): 375 required.\\n", "msg": "Creating logical volume \'data\' failed", "rc": 5}' } } },
+    { name: "Display size error message", rescueOnly: true, perHost: {
+      serverb: { r: "ok", jsonMsg: "Could not create logical volume at that size" } } },
+    { name: "Create 800 MiB logical volume instead", rescueOnly: true, perHost: {
+      serverb: { r: "changed" } } },
+    { name: "Format logical volume with ext4 filesystem", perHost: {
+      servera: { r: "changed" },
+      serverb: { r: "changed" } } }
   ],
   "roles.yml": [
     { name: "balancer : Install haproxy", res: { only: "balancers", run: "changed" } },
     { name: "balancer : Deploy haproxy.cfg from the template", res: { only: "balancers", run: "changed" } },
     { name: "phpinfo : Install PHP packages", res: { only: "webservers", run: "changed" } },
     { name: "phpinfo : Deploy hello.php from the template", res: { only: "webservers", run: "changed" } },
-    { name: "Open http on balancer", res: { only: "balancers", run: "changed" } }
+    { name: "permit http on firewalld", res: { only: "balancers", run: "changed" } }
   ],
   "role.yml": [
     { name: "apache : Install httpd and firewalld", res: "changed" },
@@ -4506,10 +4516,33 @@ function soRunPlaybook(base, opts){
   }
   const counts = {};
   hosts.forEach(h => { counts[h] = { ok: 1, changed: 0, skipped: 0, rescued: 0, failed: 0 }; });
+  const alive = new Set(hosts);
+  const rescuedNow = new Set();
   lines.push(soStars("PLAY [" + pb.name + "]"));
   lines.push(soStars("TASK [Gathering Facts]"));
   hosts.forEach(h => lines.push("ok: [" + h + "]"));
   pb.tasks.forEach(task => {
+    if (task.perHost) {
+      // Per-host scripted results (Q9's lvm.yml, modelled on a real run):
+      // a fatal result removes the host from the play, a rescued one keeps
+      // it alive and unlocks the rescueOnly tasks that follow, for that
+      // host alone. Recap counting matches real Ansible: a rescued task
+      // counts under rescued, not ok; changed counts under both.
+      if (!task.rescueOnly && !Object.keys(task.perHost).some(k => task.perHost[k].r === "rescued")) rescuedNow.clear();
+      lines.push(soStars("TASK [" + task.name + "]"));
+      hosts.forEach(h => {
+        if (!alive.has(h)) return;
+        if (task.rescueOnly && !rescuedNow.has(h)) return;
+        const o = task.perHost[soShort(h)];
+        if (!o) return;
+        if (o.r === "skipping") { lines.push("skipping: [" + h + "]"); counts[h].skipped += 1; }
+        else if (o.r === "changed") { lines.push("changed: [" + h + "]"); counts[h].ok += 1; counts[h].changed += 1; }
+        else if (o.r === "fatal") { lines.push("fatal: [" + h + "]: FAILED! => " + o.fatalJson); counts[h].failed += 1; alive.delete(h); }
+        else if (o.r === "rescued") { lines.push("fatal: [" + h + "]: FAILED! => " + o.fatalJson); counts[h].rescued = 1; rescuedNow.add(h); }
+        else { lines.push("ok: [" + h + "]"); counts[h].ok += 1; if (o.jsonMsg) lines.push("=> {\n    \"msg\": \"" + o.jsonMsg + "\"\n}"); }
+      });
+      return;
+    }
     if (task.res === "rescued") {
       lines.push(soStars("TASK [" + task.name + "]"));
       hosts.forEach(h => {
@@ -4664,8 +4697,14 @@ function soRemoteCmd(cmdStr, host, ctx){
   }
   if (cmd === "lvs") {
     const vgName = tokens[1] && tokens[1].charAt(0) !== "-" ? tokens[1] : null;
-    if (vgName && !soLvmFor(host).vgs[vgName]) return { out: [], failed: true, stderr: "Volume group \"" + vgName + "\" not found" };
-    return { out: ["  LV   VG         Attr       LSize   Pool Origin Data%  Meta%  Move Log Cpy%Sync Convert", "  data yellowtail -wi-a----- 800.00m"], failed: false };
+    if (vgName && !soLvmFor(host).vgs[vgName]) return { out: [], failed: true, raw: true, rc: 5, errLines: ["  Volume group \"" + vgName + "\" not found", "  Cannot process volume group " + vgName] };
+    // Post-Q9.1 state, as a real run leaves it: the data LV at the size
+    // each host could support (1500 MiB on servera shows as 1.46g; the
+    // rescued 800 MiB on serverb).
+    const sz = { servera: "1.46g", serverb: "800.00m" }[soShort(host)];
+    const out = ["  LV VG        Attr       LSize  Pool Origin Data%  Meta%  Move Log Cpy%Sync Convert"];
+    if (sz) out.push("  data yellowtail -wi-a-----  " + sz);
+    return { out: out, failed: false, raw: true };
   }
   if (cmd === "vgs") {
     // Host-aware, from the same fact model the setup module reports: a
@@ -4701,8 +4740,9 @@ function soRemoteCmd(cmdStr, host, ctx){
   if (cmd === "blkid") {
     const dev = tokens[1];
     if (dev === "/dev/yellowtail/data") {
-      if (!soLvmFor(host).vgs["yellowtail"]) return { out: [], failed: true, stderr: "" };
-      return { out: ["/dev/yellowtail/data: UUID=\"7c4a91be-2f6d-4c1a-9a03-51d2e6b84f10\" BLOCK_SIZE=\"512\" TYPE=\"ext4\""], failed: false };
+      if (!soLvmFor(host).vgs["yellowtail"]) return { out: [], failed: true, raw: true, rc: 2, errLines: [] };
+      const uuid = { servera: "f2ca2360-a765-480d-9d48-fb3b7df6d31f", serverb: "886143d6-c5fc-49ac-a845-2533894c3df4" }[soShort(host)] || "7c4a91be-2f6d-4c1a-9a03-51d2e6b84f10";
+      return { out: ["/dev/yellowtail/data: UUID=\"" + uuid + "\" TYPE=\"ext4\""], failed: false, raw: true };
     }
     return { out: [], failed: true, stderr: "blkid: " + dev + ": not a block device" };
   }
@@ -4916,6 +4956,22 @@ function soAdhoc(st, tokens){
   hosts.forEach(h => {
     if (short === "command" || short === "shell") {
       const res = soRemoteCmd(args || "", h, { become: become, shell: short === "shell" });
+      if (res.raw) {
+        // Commands whose real ad hoc output uses the rc= transcript form
+        // (lvs, blkid): CHANGED on success; on failure, FAILED with the
+        // command's own stderr lines and the non-zero trailer.
+        if (res.failed) {
+          allOk = false;
+          lines.push(h + " | FAILED | rc=" + (res.rc != null ? res.rc : 1) + " >>");
+          (res.errLines || []).forEach(l => lines.push(l));
+          lines.push("non-zero return code");
+        } else {
+          lines.push(h + " | CHANGED | rc=0 >>");
+          res.out.forEach(l => lines.push(l));
+        }
+        lines.push("");
+        return;
+      }
       if (res.failed) {
         allOk = false;
         lines.push(h + " | FAILED! => {");
