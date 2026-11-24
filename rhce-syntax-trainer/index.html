@@ -2385,6 +2385,39 @@ const QUESTIONS = [
   • The absent flag is the test itself: no <code>--vault-password-file</code>, so view prompts you interactively — and you must type <code>secure1234</code> from memory. That is deliberate. A password file would only prove a file's contents; the prompt proves the new credential actually opens the vault, which is the fact the rotation was performed to create. (Typing redhat123 out of Q14 habit, or the old insecure4sure, earns a decryption failure — and that failure, for the old password, is the other half of the pass.)<br>
   • <b>Why the exam cares:</b> a rotation is only finished when both directions are proven — new key opens, old key refused. This one bare command is where both halves are demonstrated, with the file left sealed throughout: the exact end state the task demanded.</p>
   <div class="tie"><b>The vault arc:</b> Q14 created a vault and proved the seal from both sides; Q15 spent its secrets; Q16 changed the key without ever breaking the seal. Create, use, rotate — the full life of a vault.</div>`
+},
+{
+  id:"T3.1", title:"roles.yml", sub:"Test 3 #1 — Capstone variant: include_role tasks + firewalld setup",
+  files:[{ path:"/home/sysadmin/ansible/roles.yml", lang:"yaml", preset:"---\n- name: Including Roles\n  hosts: all\n  become: true\n  # Please add the following information of the hosts in your webservers host group in the vars section: name and address.\n  vars:\n    haproxy_backend_servers:\n      - name: st-ansible2\n        port: 80\n      - name: st-ansible3\n        port: 80\n" }],
+  spec:`<b>Test 3 · 1. Use Galaxy Roles in a Playbook</b><br>• Download the following files from the exam server and place them in the correct locations:<br>• Download http://10.1.10.121/roles.yml and save it as /home/sysadmin/ansible/roles.yml<br>• Download http://10.1.10.121/haproxy.cfg.j2 and place it inside the templates/ directory of the balancer role<br>• Download http://10.1.10.121/hello.php.j2 and place it inside the templates/ directory of the phpinfo role<br>• Download http://10.1.10.121/main.yml and place it inside the tasks/ directory of the phpinfo role<br>• Open roles.yml and add the IP addresses of your webservers to the haproxy_backend_servers variable in the vars section<br>• <b>The editor opens with that downloaded skeleton already in it</b> — the play frame, the vars comment, and the two backend entries with their names and ports are given. Your work is everything the skeleton leaves out: the two addresses, and the whole tasks section — firewalld installed, started, enabled and opened, then the two roles included under their group guards.<br>• Complete the playbook so that it runs on all hosts and does the following:<br>• Hosts in the proxy host group have firewalld installed, started, and enabled with port 80/tcp permanently allowed<br>• The balancer role is applied only to hosts in the proxy host group<br>• When implemented, browsing to hosts in the proxy host group (e.g. http://initials-ansible1.lab.yellowtail.tech) should produce the following output: Welcome to initials-ansible2.lab.yellowtail.tech and the IP Address is 172.25.250.11<br>• Reloading the browser should return output from the alternate web server: Welcome to initials-ansible3.lab.yellowtail.tech and the IP Address is 172.25.250.12<br>• The phpinfo role is applied only to hosts in the webservers host group<br>• When implemented, browsing to http://initials-ansible2.lab.yellowtail.tech/hello.php should produce: Hello PHP World from initials-ansible2.lab.yellowtail.tech along with various details of the PHP configuration including the version of PHP that is installed<br>• Similarly, browsing to http://initials-ansible3.lab.yellowtail.tech/hello.php should produce: Hello PHP World from initials-ansible3.lab.yellowtail.tech along with various details of the PHP configuration including the version of PHP that is installed`,
+  checks:[[
+    { re:/hosts\s*:\s*all/, msg:"The play targets hosts: all" },
+    { re:/become\s*:\s*(true|yes)/i, msg:"become: true on the play" },
+    { re:/haproxy_backend_servers\s*:/, msg:"Variable haproxy_backend_servers is defined" },
+    { fn:t => near(t, /name\s*:\s*st-ansible2\b/, [/address\s*:\s*10\.1\.12\.211\b/, /port\s*:\s*80/], 160), msg:"Backend entry: name st-ansible2, address 10.1.12.211, port 80 as separate keys" },
+    { fn:t => near(t, /name\s*:\s*st-ansible3\b/, [/address\s*:\s*10\.1\.12\.212\b/, /port\s*:\s*80/], 160), msg:"Backend entry: name st-ansible3, address 10.1.12.212, port 80 as separate keys" },
+    { re:/tasks\s*:/, msg:"A tasks section carries the firewall setup and the role includes" },
+    { fn:t => near(t, /ansible\.builtin\.dnf\s*:/, [/name\s*:\s*firewalld\b/, /state\s*:\s*present/], 200), msg:"dnf installs firewalld, state present" },
+    { fn:t => near(t, /ansible\.builtin\.service\s*:/, [/name\s*:\s*firewalld\b/, /state\s*:\s*started/, /enabled\s*:\s*(true|yes)/i], 220), msg:"service starts firewalld and enables it at boot" },
+    { fn:t => { const m = t.match(/ansible\.posix\.firewalld\s*:[\s\S]{0,220}/); if (!m) return false; const w = m[0]; return /port\s*:\s*80\/tcp/.test(w) && /permanent\s*:\s*(true|yes)/i.test(w) && /immediate\s*:\s*(true|yes)/i.test(w) && /state\s*:\s*enabled/.test(w); }, msg:"firewalld opens port 80/tcp, permanent + immediate, state enabled" },
+    { fn:t => /include_role\s*:[\s\S]{0,160}?name\s*:\s*balancer\b[\s\S]{0,160}?when\s*:[^\n]*inventory_hostname\s+in\s+groups\[['"]proxy['"]\]/.test(t), msg:"include_role balancer, guarded by inventory_hostname in groups['proxy']" },
+    { fn:t => /include_role\s*:[\s\S]{0,160}?name\s*:\s*phpinfo\b[\s\S]{0,160}?when\s*:[^\n]*inventory_hostname\s+in\s+groups\[['"]webservers['"]\]/.test(t), msg:"include_role phpinfo, guarded by inventory_hostname in groups['webservers']" }
+  ]],
+  explain:`<h2>✅ Test 3 #1 complete — what you just did</h2>
+  <p>The same capstone as Q8.6 wearing different clothes: one play, all hosts, a balancer in front of two PHP web servers — but built the other way. There is no <code>roles:</code> section and no <code>post_tasks</code> here; everything lives in <code>tasks:</code>, and the roles are pulled in as tasks.</p>
+  <h4>How it affects the Ansible environment</h4>
+  <p>• <code>include_role</code> is the dynamic way in: the role is loaded only when the task is reached, and its <code>when</code> is judged at that moment, host by host. Compare Q8.6's <code>roles:</code> list — static, loaded before the play starts, with the guard sitting on the role entry. Same destination, different mechanism: roles: keyword loads it early and runs it first, include_role loads it late, only when reached.<br>
+  • The guard dialect flipped. Q8.6 asked "is 'balancers' on my card?" — <code>'balancers' in group_names</code>. This one asks "is my name in the roster book under proxy?" — <code>inventory_hostname in groups['proxy']</code>. group_names is my card, groups is the roster book, inventory_hostname is my name. Both tests come out true on exactly the hosts they should, and false everywhere else.<br>
+  • The firewall moved out into the open as three plain tasks — dnf installs firewalld, service starts it and enables it at boot, firewalld opens the port — because in this variant no role sets the groundwork up for you. Q8.6 needed only the single post_tasks opening. And the opening here names <code>port: 80/tcp</code> directly, where Q8.6 named the <code>service: http</code> bundle: the same hole in the firewall, named by number instead of by bundle.<br>
+  • <code>haproxy_backend_servers</code> keeps the same list-of-dictionaries contract: name, address and port as separate keys. The names here are the short lab names (st-ansible2, st-ansible3) and the addresses are the lab addresses (10.1.12.211, 10.1.12.212) — while the browser test greets you with the full initials-ansible2.lab.yellowtail.tech and 172.25.250.11, because the greeting page is rendered from each web server's own facts, not from these vars. The vars only tell HAProxy where to send the traffic.</p>
+  <div class="tie"><b>How it ties in:</b> Q8.6 and Test 3 #1 are the same exam muscle in two dialects — static roles: + group_names on one side, include_role tasks + groups[...] on the other. If you can translate between them, you own the pattern, not just one spelling of it.</div>`,
+  precheck:`<p>Both are ad hoc debug commands — run them from the project directory. They test the two when conditions before you trust them in the playbook:</p>
+<p class='prehead'>1. Is my name in the proxy group?</p>
+<p><code>ansible all -m debug -a "msg={{ inventory_hostname in groups['proxy'] }}"</code></p>
+<p>That evaluates the exact condition guarding the balancer include — it prints <b>true on the proxy host only</b>, false on the web servers and everywhere else.</p>
+<p class='prehead'>2. Is my name in the webservers group?</p>
+<p><code>ansible all -m debug -a "msg={{ inventory_hostname in groups['webservers'] }}"</code></p>
+<p>True on the two web servers only — the condition guarding the phpinfo include. Same pre-check pattern as Q8.6, asked the other way around: there you checked whether the group was on the host's own card (group_names); here you check whether the host's name is in the group (groups).</p>`
 }
 ];
 // ===PURE-END===
@@ -2902,7 +2935,46 @@ pw_manager: Imamgr
 "Q16.2": { hint:`head -1 sal.yml — you are after the $ANSIBLE_VAULT header line, proof the file stayed encrypted.`,
   answer:[{ path:"shell", text:"head -1 sal.yml" }] },
 "Q16.3": { hint:`ansible-vault view sal.yml, and enter secure1234 at the prompt. insecure4sure failing now is the rotation working.`,
-  answer:[{ path:"shell", text:"ansible-vault view sal.yml" }] }
+  answer:[{ path:"shell", text:"ansible-vault view sal.yml" }] },
+"T3.1": { hint:`One play, hosts: all, and everything happens in the tasks: section this time. Fill the two backend addresses (st-ansible2 is 10.1.12.211, st-ansible3 is 10.1.12.212; names and ports are already given), then three firewall tasks in order: dnf installs firewalld, service starts and enables it, firewalld opens port 80/tcp permanent and immediate. The roles arrive as include_role tasks, each carrying its own when: balancer on inventory_hostname in groups['proxy'], phpinfo on inventory_hostname in groups['webservers'].`,
+  answer:[{ path:"/home/sysadmin/ansible/roles.yml", text:`---
+- name: Including Roles
+  hosts: all
+  become: true
+  # Please add the following information of the hosts in your webservers host group in the vars section: name and address.
+  vars:
+    haproxy_backend_servers:
+      - name: st-ansible2
+        address: 10.1.12.211
+        port: 80
+      - name: st-ansible3
+        address: 10.1.12.212
+        port: 80
+  tasks:
+    - name: Install firewalld
+      ansible.builtin.dnf:
+        name: firewalld
+        state: present
+    - name: Start and enable firewalld service
+      ansible.builtin.service:
+        name: firewalld
+        state: started
+        enabled: true
+    - name: Allow port 80/tcp on the firewall
+      ansible.posix.firewalld:
+        port: 80/tcp
+        immediate: true
+        permanent: true
+        state: enabled
+    - name: Include the balancer role
+      ansible.builtin.include_role:
+        name: balancer
+      when: inventory_hostname in groups['proxy']
+    - name: Include the phpinfo role
+      ansible.builtin.include_role:
+        name: phpinfo
+      when: inventory_hostname in groups['webservers']
+` }] }
 };
 
 // === EQUIVALENCE CANON ===
