@@ -171,6 +171,11 @@
   .mapbox .maptab{border-collapse:collapse;width:100%;margin:8px 0 2px;font-size:13px}
   .mapbox .maptab th,.mapbox .maptab td{border:1px solid #3a3348;padding:5px 8px;text-align:left;vertical-align:top}
   .mapbox .maptab th{color:#fff;background:#1c1528}
+  .diffbox{display:none;border:1px solid #e06c9f;background:#140a10;padding:14px 16px;margin:0 0 12px;line-height:1.7;font-size:13.5px}
+  .diffbox.show{display:block}
+  .diffbox .difflabel{display:inline-block;font-weight:bold;color:#000;background:#e06c9f;padding:2px 10px;margin-bottom:10px;font-size:12.5px;letter-spacing:.4px}
+  .diffbox p{margin:0 0 9px}
+  .diffbox code{background:#1a1a1a;padding:0 5px;color:#f2b2d2;font-size:12.5px}
   .finish{display:none;background:#050505;border:1px solid var(--green);padding:20px;text-align:center;margin:20px auto;max-width:900px}
   .finish.show{display:block}
   .finish .big{font-size:24px;margin-bottom:6px;color:var(--green)}
@@ -1579,16 +1584,21 @@ const QUESTIONS = [
   checks:[[
     { re:/127\.0\.0\.1\s+localhost/, msg:"First localhost line kept" },
     { re:/::1\s+localhost/, msg:"Second localhost line (::1) kept" },
-    { re:/\{%\s*for\s+x\s+in\s+groups\[['"]all['"]\]\s*%\}/, msg:"{% for x in groups['all'] %}" },
-    { re:/hostvars\[x\]\[['"]ansible_facts['"]\]\[['"]default_ipv4['"]\]\[['"]address['"]\]/, msg:"The IP: hostvars[x]['ansible_facts']['default_ipv4']['address']" },
-    { re:/hostvars\[x\]\[['"]ansible_facts['"]\]\[['"]fqdn['"]\]/, msg:"The FQDN: hostvars[x]['ansible_facts']['fqdn']" },
-    { re:/hostvars\[x\]\[['"]ansible_facts['"]\]\[['"]hostname['"]\]/, msg:"The short name: hostvars[x]['ansible_facts']['hostname']" },
+    { re:/\{%\s*for\s+(x|host)\s+in\s+groups\[['"]all['"]\]\s*%\}/, msg:"{% for x in groups['all'] %} (the loop variable can be x or host)" },
+    { re:/hostvars\[(x|host)\]\[['"]ansible_facts['"]\]\[['"]default_ipv4['"]\]\[['"]address['"]\]/, msg:"The IP: hostvars[your var]['ansible_facts']['default_ipv4']['address']" },
+    { re:/hostvars\[(x|host)\]\[['"]ansible_facts['"]\]\[['"]fqdn['"]\]/, msg:"The FQDN: hostvars[your var]['ansible_facts']['fqdn']" },
+    { re:/hostvars\[(x|host)\]\[['"]ansible_facts['"]\]\[['"]hostname['"]\]/, msg:"The short name: hostvars[your var]['ansible_facts']['hostname']" },
+    { fn:t => { const m = t.match(/\{%\s*for\s+(x|host)\s+in\s+groups\[['"]all['"]\]\s*%\}/); if (!m) return false; const uses = t.match(/hostvars\[(x|host)\]/g) || []; return uses.length >= 3 && uses.every(u => u === "hostvars[" + m[1] + "]"); }, msg:"The name in {% for %} is the name in every hostvars[...] — they must match" },
     { fn:t => (t.match(/\{\{/g) || []).length >= 3, msg:"The three values print through {{ }} expression tags" },
     { re:/\{%\s*endfor\s*%\}/, msg:"Loop closed with {% endfor %}" }
   ]],
   senior:`<p class='seniorhead'>Q10.1 — the hosts.j2 template</p>
 <p>This step completes a Jinja template that builds a hosts file for the whole fleet. The two localhost lines are given. What I add is one loop: for x in groups['all'], print three values from hostvars[x], the default_ipv4 address, the fqdn, and the hostname.</p>
 <p>The senior point is hostvars. Inside a template, plain ansible_facts always means the host the file is being rendered for, so without hostvars every row would come out as that one host. hostvars[x] reaches across into each visited host's facts, which is the only cross-host mechanism in the question set. The column order is not style, it is the hosts file grammar: address first, the canonical FQDN second, the short name as alias. And default_ipv4 is deliberate: it is the address on the interface carrying the default route, the one the fleet actually reaches the host at. The file renders once, on the controller, from facts already gathered. No host talks to any other host.</p>`,
+  diffvar:`<p><b>Yes, x is a variable</b>, a Jinja loop variable. The <code>{% for %}</code> line creates it and gives it one job: hold the name of the host the loop is visiting right now. First pass it holds servera, next pass serverb, and so on through <code>groups['all']</code>.</p>
+<p>Because you are the one who creates it, you also choose its name. <code>x</code> and <code>host</code> do the identical job: <code>{% for x in groups['all'] %}</code> with <code>hostvars[x]</code>, or <code>{% for host in groups['all'] %}</code> with <code>hostvars[host]</code>.</p>
+<p>Ansible reads no meaning into the name itself. It only matches the name in the <code>{% for %}</code> line to the name inside <code>hostvars[...]</code>, the way the name on a delivery slip matches the name tag on the box. What matters is that the two match, and that the name stays unquoted: <code>hostvars['x']</code> would go looking for a host literally called x, and find nothing.</p>
+<p>So for this question, write it either way. Both are graded correct here, and both are correct on the real exam.</p>`,
   explain:`<h2>✅ Q10.1 complete — what you just did</h2>
   <p>You wrote the only cross-host mechanism in the exam so far. <code>{% %}</code> is logic — it prints nothing; <code>{{ }}</code> prints a value; the spaces between the three expressions are literal text that become the columns of the hosts file. The loop variable is <code>x</code>, and <code>hostvars[x]</code> must use that same name, unquoted: <code>hostvars['x']</code> would look for a host literally named x.</p>
   <h4>How it affects the Ansible environment</h4>
@@ -2726,7 +2736,7 @@ ansible-playbook lvm.yml --syntax-check
   answer:[{ path:"shell", text:"ansible all -b -m ansible.builtin.command -a 'blkid /dev/yellowtail/data'" }] },
 "Q10": { hint:`curl with -o hosts.j2, from the exam server's address — the file server is 10.1.10.121.`,
   answer:[{ path:"shell", text:"curl -o hosts.j2 http://10.1.10.121/hosts.j2" }] },
-"Q10.1": { hint:`The two localhost lines are already in the editor. Add a three-line loop below them: {% for x in groups['all'] %}, one print line reading hostvars[x] three times — default_ipv4 address, fqdn, hostname — and {% endfor %}. The x is never quoted inside hostvars[…].`,
+"Q10.1": { hint:`The two localhost lines are already in the editor. Add a three-line loop below them: {% for x in groups['all'] %}, one print line reading hostvars[x] three times — default_ipv4 address, fqdn, hostname — and {% endfor %}. The loop variable can be x or host, as long as hostvars uses the same one, and it is never quoted inside hostvars[…].`,
   answer:[{ path:"/home/student/ansible/hosts.j2", text:`127.0.0.1 localhost localhost.localdomain localhost4 localhost4.localdomain4
 ::1 localhost localhost.localdomain localhost6 localhost6.localdomain6
 {% for x in groups['all'] %}
@@ -6300,6 +6310,11 @@ function wireHelp(q){
     const open = mbox.classList.toggle("show");
     mbtn.textContent = open ? "Hide Role folder map" : "Role folder map";
   });
+  const dfbtn = gel("diffbtn"), dfbox = gel("diffbox");
+  if (dfbtn && dfbox) dfbtn.addEventListener("click", () => {
+    const open = dfbox.classList.toggle("show");
+    dfbtn.textContent = open ? "Hide diff var" : "diff var";
+  });
   if (!hb || !rb) return;
   hb.addEventListener("click", () => {
     const open = hbox.classList.toggle("show");
@@ -6383,11 +6398,12 @@ function renderStage(){
   if (q.cmd) { h += scratchPaneHtml("S2") + "</div>"; }
   else { h += shellTabsHtml() + "<div class='shellpanes'>" + scratchPaneHtml("S1") + scratchPaneHtml("S2") + "</div>"; }
   h += "<div class='keys'><b>[Ctrl+Enter / F2]</b> check &nbsp;<b>[Alt+↑/↓]</b> switch file &nbsp;<b>[Alt+→]</b> next question &nbsp;<b>[Alt+←]</b> previous &nbsp;<b>[Tab]</b> complete path (shell-style) · in files: indent · <b>[Shift+Tab]</b> outdent · <b>[Ctrl+C]</b> clear the shell (^C) &nbsp;::&nbsp; attempts: <span class='n' id='att'>" + (state.attempts[state.cur] || 0) + "</span></div>";
-  h += "<div class='helprow'><button class='hbtn' id='checkbtn'>▶ Check</button><button class='hbtn' id='hintbtn'>💡 Hint</button><button class='hbtn' id='revealbtn'>👁 Reveal answer</button>" + (q.precheck ? "<button class='hbtn' id='prebtn'>Pre ✓ ad hoc</button>" : "") + (q.understand ? "<button class='hbtn' id='undbtn'>Understanding modules</button>" : "") + (q.rolemap ? "<button class='hbtn' id='mapbtn'>Role folder map</button>" : "") + "<button class='hbtn' id='listenbtn'>🔊 Listen</button><button class='hbtn' id='deepbtn'>🎙 Deep dive</button><button class='hbtn' id='videobtn'>🎬 Lesson video</button><button class='hbtn' id='nextbtn'>Next ▸</button>" + (q.senior ? "<button class='hbtn' id='seniorbtn'>🧑‍💼 Senior Admin Explanation</button>" : "") + "<button class='hbtn qreset' id='qresetbtn' title='Start this question over: clears its typed text, its attempts counter and its pass mark. Other questions are untouched.'>↺ Reset question</button></div>";
+  h += "<div class='helprow'><button class='hbtn' id='checkbtn'>▶ Check</button><button class='hbtn' id='hintbtn'>💡 Hint</button><button class='hbtn' id='revealbtn'>👁 Reveal answer</button>" + (q.precheck ? "<button class='hbtn' id='prebtn'>Pre ✓ ad hoc</button>" : "") + (q.understand ? "<button class='hbtn' id='undbtn'>Understanding modules</button>" : "") + (q.rolemap ? "<button class='hbtn' id='mapbtn'>Role folder map</button>" : "") + (q.diffvar ? "<button class='hbtn' id='diffbtn'>diff var</button>" : "") + "<button class='hbtn' id='listenbtn'>🔊 Listen</button><button class='hbtn' id='deepbtn'>🎙 Deep dive</button><button class='hbtn' id='videobtn'>🎬 Lesson video</button><button class='hbtn' id='nextbtn'>Next ▸</button>" + (q.senior ? "<button class='hbtn' id='seniorbtn'>🧑‍💼 Senior Admin Explanation</button>" : "") + "<button class='hbtn qreset' id='qresetbtn' title='Start this question over: clears its typed text, its attempts counter and its pass mark. Other questions are untouched.'>↺ Reset question</button></div>";
   if (q.senior) h += "<div class='seniorbox' id='seniorbox'><span class='seniorlabel'>Senior Admin Explanation</span>" + q.senior + "</div>";
   if (q.precheck) h += "<div class='prebox' id='prebox'><span class='prelabel'>Pre ✓ ad hoc</span>" + q.precheck + "</div>";
   if (q.understand) h += "<div class='undbox' id='undbox'><span class='undlabel'>Understanding modules</span>" + q.understand + "</div>";
   if (q.rolemap) h += "<div class='mapbox' id='mapbox'><span class='maplabel'>Role folder map</span>" + q.rolemap + "</div>";
+  if (q.diffvar) h += "<div class='diffbox' id='diffbox'><span class='difflabel'>diff var</span>" + q.diffvar + "</div>";
   h += "<div class='audiobox' id='audiobox'></div>";
   h += "<div class='audiobox' id='deepbox'></div>";
   h += "<div class='audiobox' id='videobox'></div>";
