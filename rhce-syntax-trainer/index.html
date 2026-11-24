@@ -1592,6 +1592,9 @@ const QUESTIONS = [
     { fn:t => (t.match(/\{\{/g) || []).length >= 3, msg:"The three values print through {{ }} expression tags" },
     { re:/\{%\s*endfor\s*%\}/, msg:"Loop closed with {% endfor %}" }
   ]],
+  precheck:`<p><b>The groups['all'] lookup.</b> Run this ad hoc before you write the loop. It prints the very list the loop is about to walk, and seeing it first will help you understand and read the j2 file:</p>
+<p><code>ansible all -m debug -a "msg={{ groups['all'] }}"</code></p>
+<p>It comes back with the members of the all group: servera, serverb, serverc, serverd. That is the list <code>{% for x in groups['all'] %}</code> steps through, one host per pass, so the print line gets read once per name on this list. The loop is not magic; it is this list, visited in order.</p>`,
   senior:`<p class='seniorhead'>Q10.1 — the hosts.j2 template</p>
 <p>This step completes a Jinja template that builds a hosts file for the whole fleet. The two localhost lines are given. What I add is one loop: for x in groups['all'], print three values from hostvars[x], the default_ipv4 address, the fqdn, and the hostname.</p>
 <p>The senior point is hostvars. Inside a template, plain ansible_facts always means the host the file is being rendered for, so without hostvars every row would come out as that one host. hostvars[x] reaches across into each visited host's facts, which is the only cross-host mechanism in the question set. The column order is not style, it is the hosts file grammar: address first, the canonical FQDN second, the short name as alias. And default_ipv4 is deliberate: it is the address on the interface carrying the default route, the one the fleet actually reaches the host at. The file renders once, on the controller, from facts already gathered. No host talks to any other host.</p>`,
@@ -4225,6 +4228,8 @@ function soDebugExpr(expr, h){
   m = expr.match(/^'(\w+)'\s+not\s+in\s+group_names$/);
   if (m) return { val: !soInGroup(h, m[1]), isBool: true };
   if (expr === "group_names") return { val: "[" + soGroupNames(h).map(g => "'" + g + "'").join(", ") + "]", isBool: false };
+  m = expr.match(/^groups\[['"](\w+)['"]\]$/);
+  if (m) return { val: "[" + (SO_GROUPS[m[1]] || []).map(x => "'" + soShort(x) + "'").join(", ") + "]", isBool: false };
   if (expr === "inventory_hostname") return { val: h, isBool: false };
   return null;
 }
