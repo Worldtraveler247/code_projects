@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="dark">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'self' https://static.cloudflareinsights.com; connect-src 'self' https://cloudflareinsights.com; img-src 'self' data:; form-action https://buttondown.com; base-uri 'none'; object-src 'none'">
+    <meta name="description" content="The Daily Brief for Tuesday, November 24, 2026: security incidents, senior security advice, engineering explainers, and tech news.">
+    <title>The Daily Brief · Nov 24, 2026</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="icon" href="../../../favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="../../../style.css">
+    <link rel="stylesheet" href="../../newsletter.css">
+</head>
+<body class="brief-page">
+    <a href="#main-content" class="skip-nav">Skip to main content</a>
+    <nav class="brief-nav">
+        <a href="../../../index.html">← App Hub</a>
+        <a href="../../">All issues</a>
+    </nav>
+    
+<header class="brief-masthead">
+    <p class="brief-eyebrow">THE DAILY BRIEF</p>
+    <h1>Tuesday, November 24, 2026</h1>
+    <ol class="brief-toc">
+        <li><a href="#security-advice">Senior Security Advice</a></li><li><a href="#talk-track">Senior Talk Tracks</a></li><li><a href="#tech-news">Tech News</a></li>
+    </ol>
+</header>
+<main id="main-content" class="brief">
+    
+    <article class="brief-section" id="security-advice">
+        <p class="brief-kicker">Senior Security Advice</p>
+        <h2>Deploy Protective DNS to Block Malicious Domains Before They Load</h2>
+        
+            <h3>The Advice</h3>
+            <p>Route every endpoint, server, and guest network through a protective DNS service that blocks known-malicious domains before any connection is made.</p>
+
+        
+            <h3>Why It Matters</h3>
+            <p>Almost every stage of an attack depends on a DNS lookup first: a phishing link has to resolve before the fake login page loads, and malware has to resolve a command-and-control domain before it can phone home or receive instructions. A protective DNS service sits in front of that lookup and checks it against threat intelligence before answering, so a device trying to reach a known-bad domain gets blocked or redirected instead of connected. Without that layer, the first real defense is often the endpoint itself, after the connection has already succeeded. NSA and CISA's joint guidance on this control states plainly that protective DNS can greatly reduce the effectiveness of ransomware, phishing, botnet, and malware campaigns, because so many of those campaigns depend on DNS resolution working normally. Ransomware in particular needs to reach staging and command-and-control infrastructure to retrieve keys and instructions; cutting off that resolution stalls the attack before it reaches the point of data loss.</p>
+
+        
+            <h3>How to Implement It</h3>
+            <ol>
+<li>Deploy a protective DNS service with current threat-intelligence feeds and point every corporate endpoint, server, and guest network's DNS resolution to it — nothing should be allowed to fall back to an unfiltered public resolver.</li>
+<li>Block outbound DNS on port 53, and DNS-over-HTTPS or DNS-over-TLS to resolvers other than the approved one, at the egress firewall so devices can't bypass the protective resolver by setting their own DNS.</li>
+<li>Turn on query and block logging and feed it into the SIEM, so a hit against a malicious domain becomes an alert a team actually sees, not a silent drop.</li>
+<li>Verify the control is actually working, not just configured: resolve a vendor-supplied test malicious-category domain from inside the network and confirm it gets blocked, and pull resolver logs to confirm traffic from every subnet is actually transiting the protective resolver rather than slipping around it.</li>
+<li>Review blocklists and allowlist exceptions on a schedule, so newly reported malicious domains get added quickly and legitimate business domains don't get caught as false positives.</li>
+</ol>
+
+        
+            <h3>The Pushback You&#39;ll Hear</h3>
+            <p>&quot;Attackers can route around DNS filtering with IP literals or their own encrypted resolver, so what's the point?&quot; The senior rebuttal: no single control is complete, and that's exactly why step two exists — blocking rogue DNS-over-HTTPS and DNS-over-TLS at the egress firewall closes the obvious bypass. Protective DNS isn't meant to replace endpoint detection or egress filtering; it's a cheap, high-coverage layer that stops a large share of commodity phishing and malware traffic using a lookup that was going to happen anyway, freeing the more expensive controls to catch what gets through.</p>
+
+        
+            <h3>Sources</h3>
+            <ul>
+<li>CISA, Joint NSA and CISA Guidance: Strengthening Cyber Defense through Protective DNS: https://cisa.gov/news-events/alerts/2021/03/04/joint-nsa-and-cisa-guidance-strengthening-cyber-defense-through</li>
+<li>NSA/CISA, Selecting a Protective DNS Service (Cybersecurity Information Sheet): https://media.defense.gov/2021/Mar/03/2002593055/-1/-1/0/CSI_Selecting-Protective-DNS_UOO11765221.PDF</li>
+<li>CISA, Protective DNS Fact Sheet (August 2024): https://cisa.gov/sites/default/files/2024-08/Protective%20DNS%20Fact%20Sheet%20-%20August%202024.pdf</li>
+</ul>
+
+        
+    </article>
+    
+    <article class="brief-section" id="talk-track">
+        <p class="brief-kicker">Senior Talk Tracks</p>
+        <h2>Why Ansible Handlers Don&#39;t Run When You Think They Do</h2>
+        
+            
+            <p>Here's a gotcha that trips up almost everyone the first time they write an Ansible playbook: you notify a handler to restart a service, the playbook finishes, and the service never actually restarted when you expected it to. Today I want to explain why that happens, because it's one of the fastest ways to lose trust in your own automation.</p>
+<p>A handler in Ansible is just a special kind of task that only runs when another task tells it to, using something called &quot;notify.&quot; The classic example is a task that changes a config file and then notifies a handler to restart the service that reads that file. Here's the part that catches people off guard: a notified handler does not run the instant it's triggered. It runs once, at the very end of the play, after every other task in that play has finished — and only if that task actually reported a change.</p>
+<p>Why does this matter operationally? Picture a playbook with ten tasks. Task three updates a config file and notifies &quot;restart nginx.&quot; Tasks four through ten keep running. If task seven fails and the play stops, that handler never fires at all, even though the config already changed on disk. Now you've got a config file and a running service that are out of sync, and nothing in the output screamed &quot;warning&quot; at you — it just quietly didn't get to the end.</p>
+<p>Here's the senior take. A junior engineer assumes handlers behave like a function call: notify it, it runs immediately. A senior engineer treats handler timing as a sequencing hazard worth designing around — either by forcing an early flush with &quot;meta: flush_handlers&quot; when a restart truly can't wait, or by not depending on handler timing for anything order-sensitive in the first place.</p>
+<p>Think of it like leaving a note on a coworker's desk instead of walking over to tell them directly. The note gets read, but only at the end of their day, and only if they actually come back to their desk. If they leave early, that note sits there untouched — same as a handler that never gets its chance to run because the play stopped first.</p>
+<p>So next time you're reviewing a playbook with a teammate, a good line to open with is: &quot;Where in this play do we actually need that restart to happen immediately, versus where can it wait until the end?&quot;</p>
+
+        
+            <h3>Key Takeaways</h3>
+            <ol>
+<li>A notified Ansible handler doesn't run immediately — it runs once, at the end of the play, and only if the task that notified it reported a change.</li>
+<li>If a play fails or stops before reaching the end, any handlers that were notified earlier never run, which can leave config files and running services out of sync.</li>
+<li>&quot;meta: flush_handlers&quot; forces queued handlers to run early, which is the right tool when a restart genuinely can't wait until the end of the play.</li>
+</ol>
+
+        
+            <h3>Reader Question</h3>
+            <p><strong>Q:</strong> &quot;If a handler only runs at the end of the play, how do you make sure a service actually restarts before the next task that depends on it runs?&quot;</p>
+
+        
+    </article>
+    
+    <article class="brief-section" id="tech-news">
+        <p class="brief-kicker">Tech News</p>
+        
+        
+            
+            <p>If any website or app in your world runs on PHP, here's the story to know about today: researchers found a way to get a server to run attacker-controlled code through the ordinary business of storing a web session, and PHP's own maintainers disagree with the researcher over how easy it actually is to pull off. Two stories today: that session-handling flaw sitting inside PHP's emergency November release, and a browser bug with a federal patch deadline that lands today.</p>
+<p>Let's start with PHP. On November 19th, the PHP project shipped security releases across versions 8.2, 8.3, 8.4, 8.5, and the upcoming 8.6, fixing seventeen separate advisories, seven of them rated critical. The one to know by name is nicknamed phpAfterShell, tracked as CVE-2026-126714, scoring 9.2 out of 10 on the newer Common Vulnerability Scoring System, version 4.0. According to the security firm Depthfirst, which found and reported it, the bug is a time-of-check-to-time-of-use flaw — TOCTOU for short — sitting in PHP's default file-based session handler. In plain terms, there's a gap between the moment PHP checks a session file and the moment it actually uses it, and that gap is wide enough for an attacker to slip in and get code to run. Here's where it gets interesting: PHP's own advisory says exploiting the worst of these issues needs a non-default configuration. Depthfirst's CEO disputes that, saying the exploits work against PHP running with its default settings. Here's my read: when the people who found a bug and the people who patched it disagree about how exposed you actually are, the responsible move is to patch on the emergency's timeline anyway, not wait for that argument to get settled.</p>
+<p>Turning to something that touches nearly every workstation in a federal network. According to the Cybersecurity and Infrastructure Security Agency, or CISA, a use-after-free flaw in Chrome's XML handling component — tracked as CVE-2026-125350 — was already being actively exploited when Google patched it on November 9th in Chrome version 157.0.8103.50. CISA added it to its Known Exploited Vulnerabilities catalog on November 10th and set today, November 24th, as the deadline for federal civilian agencies to have it patched. That's the eighth Chrome zero-day Google has had to fix this year alone. My take: a browser isn't a side application anymore — it's the interface every employee uses for email, internal tools, and cloud consoles, which makes a Chrome zero-day a workstation-fleet problem, not a one-app problem, and exactly why a federal deadline attaches to something as ordinary-sounding as a browser update.</p>
+<p>So here's the through-line: one story is about patching ahead of an unresolved dispute instead of waiting for it to settle, the other is about a deadline landing today on a piece of software everyone assumes updates itself.</p>
+
+        
+            <h3>Sources</h3>
+            <ul>
+<li><a href="https://github.com/php/php-src/security/advisories" target="_blank" rel="noopener noreferrer">PHP Security Advisories (primary)</a></li>
+<li><a href="https://radar.cloudflare.com/zero-wire/php-november-2026-security-release-phpaftershell" target="_blank" rel="noopener noreferrer">Cloudflare Radar — PHP November 2026 Security Release: phpAfterShell</a></li>
+<li><a href="https://www.bleepingcomputer.com/news/security/php-security-updates-fix-18-flaws-including-critical-rce-bugs/" target="_blank" rel="noopener noreferrer">BleepingComputer — PHP security updates fix 18 flaws, including critical RCE bugs</a></li>
+<li><a href="https://www.theregister.com/patches/2026/11/18/another-critical-php-security-release-has-dropped/" target="_blank" rel="noopener noreferrer">The Register — Another critical PHP security release has dropped</a></li>
+<li><a href="https://www.cisa.gov/known-exploited-vulnerabilities-catalog" target="_blank" rel="noopener noreferrer">CISA Known Exploited Vulnerabilities Catalog — CVE-2026-125350 (primary)</a></li>
+<li><a href="https://www.bleepingcomputer.com/news/security/google-patches-eighth-chrome-zero-day-exploited-in-attacks-this-year/" target="_blank" rel="noopener noreferrer">BleepingComputer — Google patches eighth Chrome zero-day exploited in attacks this year</a></li>
+<li><a href="https://www.esecurityplanet.com/news/news-google-chrome-zero-day-patch/" target="_blank" rel="noopener noreferrer">eSecurityPlanet — Google Patches Exploited Chrome Zero-Day — Update Your Browser</a></li>
+</ul>
+
+        
+    </article>
+    
+    <section class="brief-subscribe" id="subscribe">
+    <h2>Get The Daily Brief by email</h2>
+    <p>One short email each morning. Unsubscribe anytime.</p>
+    <form action="https://buttondown.com/api/emails/embed-subscribe/cybercider" method="post">
+        <label for="bd-email">Email address</label>
+        <input type="email" name="email" id="bd-email" required autocomplete="email" placeholder="you@example.com">
+        <button type="submit">Subscribe</button>
+    </form>
+</section>
+</main>
+
+    <footer><p class="copyright">The Daily Brief · Eddie Camacho</p></footer>
+<!-- cf-web-analytics (managed by tools/inject_analytics.py) -->
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "f728a20b49cc4a0fbe02cde72f03301c"}'></script>
+</body>
+</html>
