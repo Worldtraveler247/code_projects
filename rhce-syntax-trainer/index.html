@@ -87,6 +87,10 @@
   .term .tp{color:var(--green)}
   .term .tc{color:#fff}
   .term .terr{color:#e07a5f}
+  .term .cok{color:#5fb760}
+  .term .cchg{color:#e3b341}
+  .term .cskip{color:#39c5cf}
+  .term .cbad{color:#e07a5f}
   .tablist{display:none;background:#050505;border:1px solid var(--line);border-top:none;color:var(--amber);padding:6px 14px;font-size:12.5px;white-space:pre-wrap;line-height:1.8}
   .tablist.show{display:block}
   .helprow{display:flex;flex-wrap:wrap;gap:10px;margin:2px 0 12px}
@@ -4465,6 +4469,15 @@ const SO_PLAY_TASKS = {
     { name: "create users whose job is manager on prod host group", res: { groups: ["prod"], run: "changed" } }
   ]
 };
+// Q11's second run (Q11.3, the idempotency trap), modelled on Ed's real lab
+// run of 2026-11-25: the single-group hosts are already settled, so their
+// tasks report ok; serverb sits in both test and prod, so its two tasks
+// rewrite /etc/issue over each other and report changed on every run.
+const SO_ISSUES_RERUN = [
+  { name: "Modify issue.txt based on dev group", perHost: { servera: { r: "ok" }, serverb: { r: "skipping" }, serverc: { r: "skipping" }, serverd: { r: "skipping" } } },
+  { name: "Modify issue.txt based on test group", perHost: { servera: { r: "skipping" }, serverb: { r: "changed" }, serverc: { r: "skipping" }, serverd: { r: "skipping" } } },
+  { name: "Modify issue.txt based on prod group", perHost: { servera: { r: "skipping" }, serverb: { r: "changed" }, serverc: { r: "ok" }, serverd: { r: "skipping" } } }
+];
 function soPlaybook(base){
   let text = null;
   for (const id of Object.keys(HELP)) {
@@ -4503,7 +4516,6 @@ function soTaskResult(task, host, okAll){
   }
   else if (task.when) r = soWhenRuns(task.when, host) ? ((task.module === "ansible.builtin.fail" || task.module === "ansible.builtin.debug") ? "ok" : "changed") : "skipping";
   else r = "changed";
-  if (okAll && r === "changed") r = "ok";
   return r;
 }
 function soStars(s){ return s + " " + "*".repeat(Math.max(3, 74 - s.length)); }
@@ -4521,6 +4533,9 @@ function soRunPlaybook(base, opts){
     hosts.forEach(h => lines.push(h.padEnd(28) + ": ok=1    changed=0    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0"));
     return lines;
   }
+  // Q11.3 is the second run of issues.yml: swap in the steady-state model
+  // (serverb still changes twice; servera and serverc are settled).
+  if (base === "issues.yml" && opts.okAll) pb.tasks = SO_ISSUES_RERUN;
   const hosts = soHosts(pb.hosts);
   if (!hosts.length) {
     lines.push("[WARNING]: Could not match supplied host pattern, ignoring: " + pb.hosts);
@@ -4994,7 +5009,7 @@ function soAdhoc(st, tokens){
         lines.push("    \"msg\": \"non-zero return code\"," + (res.stderr ? "\n    \"stderr\": \"" + res.stderr.replace(/"/g, "'") + "\"" : ""));
         lines.push("}");
       } else {
-        lines.push(h + " | SUCCESS | rc=0 >>");
+        lines.push(h + " | CHANGED | rc=0 >>");
         res.out.forEach(l => lines.push(l));
       }
       lines.push("");
@@ -5928,6 +5943,30 @@ function simulateShell(q, text, st, stepPass){
 }
 // --- transcript plumbing ------------------------------------------------------
 function soErrLine(t){ return /^(fatal:|ERROR!|\[WARNING\]|.*\| FAILED!|bash: .*command not found|.*No such file or directory|curl: \(|mkdir: |ls: |cat: |grep: )/.test(t); }
+// Ansible's own colors for a result line (Ed's lab screenshots, 2026-11-25):
+// ok green, changed yellow, skipping cyan, failed red. Applied at render
+// time only — the stored transcript text stays plain, so grading and the
+// copy buttons are untouched. Error lines keep the whole-line .terr style.
+function soColorHtml(t){
+  const e = esc(t);
+  let m = t.match(/^(ok|changed|skipping): /);
+  if (m) {
+    const cls = m[1] === "ok" ? "cok" : (m[1] === "changed" ? "cchg" : "cskip");
+    return "<span class='" + cls + "'>" + m[1] + ":</span>" + e.slice(m[1].length + 1);
+  }
+  m = t.match(/^(\S+)(\s+): ok=(\d+)\s+changed=(\d+)\s+unreachable=(\d+)\s+failed=(\d+)\s+skipped=(\d+)\s+rescued=(\d+)\s+ignored=(\d+)$/);
+  if (m) {
+    const seg = (label, n, cls) => +n > 0 ? "<span class='" + cls + "'>" + label + "=" + n + "</span>" : label + "=" + n;
+    const hostCls = +m[6] > 0 ? "cbad" : (+m[4] > 0 ? "cchg" : "cok");
+    return "<span class='" + hostCls + "'>" + esc(m[1]) + "</span>" + m[2] + ": <span class='cok'>ok=" + m[3] + "</span>    " +
+      seg("changed", m[4], "cchg") + "    " + seg("unreachable", m[5], "cbad") + "    " + seg("failed", m[6], "cbad") + "    " +
+      seg("skipped", m[7], "cskip") + "    " + seg("rescued", m[8], "cbad") + "    ignored=" + m[9];
+  }
+  if (t.indexOf(" | SUCCESS") >= 0) return e.replace(" | SUCCESS", " | <span class='cok'>SUCCESS</span>");
+  if (t.indexOf(" | CHANGED") >= 0) return e.replace(" | CHANGED", " | <span class='cchg'>CHANGED</span>");
+  if (t.indexOf(" | FAILED") >= 0) return e.replace(" | FAILED", " | <span class='cbad'>FAILED</span>");
+  return e;
+}
 function pushTranscript(idx, typed, q, pass){
   const st = termStateFor(idx);
   if (/^\s*clear\s*$/.test(typed)) { st.entries = [{ k: "prompt", cwd: soPromptBase(st), user: soUser(st) }]; return; }
@@ -5954,7 +5993,7 @@ function renderTranscript(fi){
   el.innerHTML = st.entries.map(e => {
     if (e.k === "cmd") return "<div class='tline'><span class='tp'>" + esc(soPromptStr(e.user || "student", e.cwd)) + "</span> <span class='tc'>" + esc(e.text) + "</span></div>";
     if (e.k === "prompt") return "<div class='tline'><span class='tp'>" + esc(soPromptStr(e.user || "student", e.cwd)) + "</span></div>";
-    return "<div class='tline" + (soErrLine(e.text) ? " terr" : "") + "'>" + (e.text ? esc(e.text) : "&nbsp;") + "</div>";
+    return "<div class='tline" + (soErrLine(e.text) ? " terr" : "") + "'>" + (e.text ? soColorHtml(e.text) : "&nbsp;") + "</div>";
   }).join("");
   el.scrollTop = el.scrollHeight;
   const hp = gel("prompt" + fi);
@@ -6041,7 +6080,7 @@ function renderScratch(suffix){
   el.innerHTML = st.entries.map(e => {
     if (e.k === "cmd") return "<div class='tline'><span class='tp'>" + esc(soPromptStr(e.user || "student", e.cwd)) + "</span> <span class='tc'>" + esc(e.text) + "</span></div>";
     if (e.k === "prompt") return "<div class='tline'><span class='tp'>" + esc(soPromptStr(e.user || "student", e.cwd)) + "</span></div>";
-    return "<div class='tline" + (soErrLine(e.text) ? " terr" : "") + "'>" + (e.text ? esc(e.text) : "&nbsp;") + "</div>";
+    return "<div class='tline" + (soErrLine(e.text) ? " terr" : "") + "'>" + (e.text ? soColorHtml(e.text) : "&nbsp;") + "</div>";
   }).join("");
   el.scrollTop = el.scrollHeight;
   const hp = gel("prompt" + suffix);
