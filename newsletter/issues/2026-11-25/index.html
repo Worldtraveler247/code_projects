@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="dark">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'self' https://static.cloudflareinsights.com; connect-src 'self' https://cloudflareinsights.com; img-src 'self' data:; form-action https://buttondown.com; base-uri 'none'; object-src 'none'">
+    <meta name="description" content="The Daily Brief for Wednesday, November 25, 2026: security incidents, senior security advice, engineering explainers, and tech news.">
+    <title>The Daily Brief · Nov 25, 2026</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="icon" href="../../../favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="../../../style.css">
+    <link rel="stylesheet" href="../../newsletter.css">
+</head>
+<body class="brief-page">
+    <a href="#main-content" class="skip-nav">Skip to main content</a>
+    <nav class="brief-nav">
+        <a href="../../../index.html">← App Hub</a>
+        <a href="../../">All issues</a>
+    </nav>
+    
+<header class="brief-masthead">
+    <p class="brief-eyebrow">THE DAILY BRIEF</p>
+    <h1>Wednesday, November 25, 2026</h1>
+    <ol class="brief-toc">
+        <li><a href="#current-events">Current Events</a></li><li><a href="#security-advice">Senior Security Advice</a></li><li><a href="#talk-track">Senior Talk Tracks</a></li><li><a href="#tech-news">Tech News</a></li>
+    </ol>
+</header>
+<main id="main-content" class="brief">
+    
+    <article class="brief-section" id="current-events">
+        <p class="brief-kicker">Current Events</p>
+        <h2>SonicWall SonicOS SSL VPN SAML/MFA Bypass (CVE-2026-19868)</h2>
+        
+            
+            <p>You lock your VPN down with SAML single sign-on and multi-factor authentication, and you assume that closes the door. In November 2026, SonicWall customers running exactly that setup found out it didn't. This is CVE-2026-19868, and it matters because it breaks the one assumption everybody makes about MFA: that turning it on means every login path actually runs through it.</p>
+<p>Here's what happened, in two sentences. SonicWall disclosed a flaw in SonicOS, the firmware on its firewalls, where someone who already held valid credentials for a different authentication method configured on the same SSL VPN portal could get past the SAML check — and with it, any MFA the organization thought SAML was enforcing. CISA added the flaw to its Known Exploited Vulnerabilities catalog the same day SonicWall published the fix, which means this wasn't theoretical — it was already being used against real targets.</p>
+<p>Walk through the chain. First, an organization configures SSL VPN login to use SAML specifically to get single sign-on and MFA enforcement in one place. Second, that same firewall still has other authentication backends defined underneath it — LDAP, RADIUS, TACACS-plus — left over from before SAML was adopted, or kept around as a fallback. Third, the authentication logic on the device didn't actually require that the SAML path be the one that succeeds; a login attempt using valid credentials for one of those other backends could still be accepted, and the firewall treated that success as equivalent to a completed SAML flow. Fourth, from the device's point of view the session is now authenticated, and the MFA step the organization believed was mandatory simply never ran.</p>
+<p>The root cause, in one sentence: the firewall treated authentication as a set of methods where any single success was good enough, instead of enforcing that SAML specifically had to be the method that succeeded whenever SAML was the configured policy.</p>
+<p>Here's what held. SonicWall and CISA published the advisory, the fixed firmware, and the KEV entry on the same day, so there was no gap between public disclosure and an available patch. And the flaw was conditional, not universal — it only mattered for organizations that had SAML enabled for SSL VPN and still had another authentication backend configured and reachable underneath it. Organizations that had actually deleted their legacy LDAP or RADIUS configuration once they moved to SAML, rather than just leaving it disabled in a menu, were never exposed through this particular path, even running the same firmware.</p>
+<p>So what would a senior engineer take from this? You don't trust a configuration screen that says &quot;MFA enabled&quot; as proof that MFA is the only way in — you go verify, at the authentication-backend level, that every other login path into that device has actually been removed, not just deprioritized. Teams that got this right treat legacy authentication backends as something to delete once a stronger method is in place, not something to leave disabled &quot;just in case.&quot; The concrete lab move: on a RHEL or Podman-based test host, stand up a small service wired to two authentication backends behind one login endpoint, confirm a credential for the weaker backend still gets you in, then fix it so only the policy-required method is even consulted.</p>
+
+        
+            <h3>Timeline</h3>
+            <table>
+<thead>
+<tr>
+<th>Date</th>
+<th>Event</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Not publicly disclosed</td>
+<td>Ryan Harris of IT services provider Electronic Office discovers and reports the flaw to SonicWall; SonicWall has not published the exact discovery or report date</td>
+</tr>
+<tr>
+<td>November 6, 2026</td>
+<td>SonicWall publishes advisory SNWLID-2026-0014, disclosing seven SonicOS vulnerabilities including CVE-2026-19868, and ships fixed firmware: Gen7 SonicOS 7.3.4-7013 and Gen8 SonicOS 8.2.3-8015 (primary)</td>
+</tr>
+<tr>
+<td>November 6, 2026</td>
+<td>CISA adds CVE-2026-19868 to its Known Exploited Vulnerabilities (KEV) catalog, citing confirmed exploitation in the wild, and sets a remediation deadline for U.S. federal civilian agencies (primary)</td>
+</tr>
+<tr>
+<td>November 20, 2026</td>
+<td>CISA's KEV-mandated remediation deadline for federal civilian agencies passes</td>
+</tr>
+<tr>
+<td>Ongoing (as of November 25, 2026)</td>
+<td>SonicWall has not published operational details of the observed attacks; secondary reporting disagrees on the exact CVSS score (SonicWall's own advisory lists 7.1; a CISA enrichment score of 7.5 using a different privilege-required assumption is also reported) and on whether a documented interim workaround exists beyond disabling legacy LDAP/RADIUS/TACACS+ backends — this is flagged here rather than resolved, per the available public record</td>
+</tr>
+</tbody>
+</table>
+
+        
+            <h3>Control Failures</h3>
+            <table>
+<thead>
+<tr>
+<th>#</th>
+<th>Failure</th>
+<th>NIST SP 800-53 Rev 5 Control Family</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>A user holding valid credentials for an alternate authentication backend configured on the same SSL VPN login path could get past SAML checks, defeating any MFA the organization enforced through SAML</td>
+<td>IA-2(1)/(2) — Identification and Authentication: Multi-Factor Authentication (Privileged and Non-Privileged Accounts)</td>
+</tr>
+<tr>
+<td>2</td>
+<td>The authentication module accepted a successful login via any configured backend as equivalent to a completed SAML login, instead of enforcing that the organization's policy-selected method specifically be the one that succeeded</td>
+<td>AC-3 — Access Enforcement</td>
+</tr>
+<tr>
+<td>3</td>
+<td>Legacy LDAP, RADIUS, and TACACS+ authentication backends remained enabled and reachable on the SSL VPN portal after SAML had become the organization's intended sole login method</td>
+<td>CM-7 — Least Functionality</td>
+</tr>
+<tr>
+<td>4</td>
+<td>Audit logging did not clearly distinguish a SAML-based login from a login completed via a legacy backend, limiting any internal chance of catching exploitation before CISA's KEV listing surfaced it externally</td>
+<td>AU-6 — Audit Record Review, Analysis, and Reporting</td>
+</tr>
+<tr>
+<td>5</td>
+<td>No documented interim compensating control was consistently published at disclosure for organizations that could not immediately apply the firmware update, beyond the unresolved reporting on disabling legacy backends</td>
+<td>SI-2 — Flaw Remediation</td>
+</tr>
+</tbody>
+</table>
+
+        
+            <h3>What Held</h3>
+            <p>SonicWall and CISA released the fixed firmware and the KEV catalog entry on the exact same day the flaw became public, which is the detail worth naming first — there was no window where the vulnerability was known publicly but unpatchable. The flaw was also conditional rather than universal: it only applied to organizations running SAML for SSL VPN login while a legacy authentication backend remained configured underneath it, so an organization that had actually removed its legacy LDAP or RADIUS configuration after adopting SAML — not merely disabled it in a settings screen — was never exposed through this path. CISA's KEV catalog itself is the control that forced urgency past voluntary patching: adding the CVE converted &quot;patch when convenient&quot; into a hard, federally mandated deadline, which is exactly the SI-5 (Security Alerts, Advisories, and Directives) mechanism working as designed. Naming that distinction — &quot;the bypass was real, but it required a leftover legacy auth path, and the KEV deadline is what forced the fix&quot; — is the kind of precise, defense-in-depth answer an ISSO interview is listening for.</p>
+
+        
+            <h3>Sources</h3>
+            <ul>
+<li><a href="https://psirt.global.sonicwall.com/vuln-detail/SNWLID-2026-0014" target="_blank" rel="noopener noreferrer">SonicWall PSIRT — Advisory SNWLID-2026-0014 (primary)</a></li>
+<li><a href="https://www.cisa.gov/known-exploited-vulnerabilities-catalog" target="_blank" rel="noopener noreferrer">CISA — Known Exploited Vulnerabilities Catalog (primary)</a></li>
+<li><a href="https://www.bleepingcomputer.com/news/security/sonicwall-warns-of-new-ssl-vpn-mfa-bypass-flaw-exploited-in-attacks" target="_blank" rel="noopener noreferrer">BleepingComputer — SonicWall warns of new SSL VPN MFA bypass flaw exploited in attacks</a></li>
+<li><a href="https://securityweek.com/sonicwall-patches-exploited-sonicos-bug-that-weakens-vpn-logins" target="_blank" rel="noopener noreferrer">SecurityWeek — SonicWall Patches Exploited SonicOS Bug That Weakens VPN Logins</a></li>
+<li><a href="https://thehackernews.com/2026/11/cisa-flags-sonicwall-sonicos-mfa-bypass.html" target="_blank" rel="noopener noreferrer">The Hacker News — CISA Flags SonicWall SonicOS MFA Bypass</a></li>
+<li><a href="https://www.helpnetsecurity.com/?p=390676" target="_blank" rel="noopener noreferrer">Help Net Security — Exploited SonicWall SSL-VPN flaw lets attackers bypass SAML-enforced MFA (CVE-2026-19868)</a></li>
+<li><a href="https://securityaffairs.com/?p=202581" target="_blank" rel="noopener noreferrer">Security Affairs — U.S. CISA adds SonicWall SonicOS SSLVPN flaw to its Known Exploited Vulnerabilities catalog</a></li>
+<li><a href="https://www.csoonline.com/article/4246479/sonicwall-releases-patches-for-7-flaws-in-its-firewalls-most-involving-unauthenticated-access.html" target="_blank" rel="noopener noreferrer">CSO Online — SonicWall releases patches for 7 flaws in its firewalls, most involving unauthenticated access</a></li>
+<li><a href="https://www.itpro.com/security/sonicwall-issues-fixes-for-seven-vulnerabilities-including-an-ssl-vpn-flaw-that-bypasses-mfa" target="_blank" rel="noopener noreferrer">ITPro — SonicWall issues fixes for seven vulnerabilities – including an SSL-VPN flaw that bypasses MFA</a></li>
+<li><a href="https://cyber.gc.ca/en/alerts-advisories/sonicwall-security-advisory-av26-1133" target="_blank" rel="noopener noreferrer">Canadian Centre for Cyber Security — SonicWall security advisory AV26-1133</a></li>
+</ul>
+<p><strong>Tomorrow's Thread:</strong> Day 69 moves to the identity/credential compromise family — the 2025 Marks &amp; Spencer and Co-op ransomware intrusions attributed to Scattered Spider/DragonForce, which combined help-desk social-engineering credential resets with ransomware deployment, a different family from today's edge-exploitation topic (and the deferred MOVEit Transfer/CVE-2023-34362 suggestion from Day 67 is skipped going forward since that incident was already covered in this folder on 2026-11-13).</p>
+
+        
+    </article>
+    
+    <article class="brief-section" id="security-advice">
+        <p class="brief-kicker">Senior Security Advice</p>
+        <h2>Grant Privileged Access Just-in-Time, Not as a Standing Right</h2>
+        
+            <h3>The Advice</h3>
+            <p>Give administrators time-boxed, approved elevation into privileged roles — never a standing admin account that sits active around the clock.</p>
+
+        
+            <h3>Why It Matters</h3>
+            <p>A standing privileged account is blast radius that never sleeps. If an attacker steals the credentials or session token of a user who holds always-on admin rights, they inherit full access the instant the theft succeeds — no waiting, no extra step to clear. This is the exact pattern behind a well-known incident class: credential theft followed by privilege escalation and lateral movement, where the attacker's real &quot;break-in&quot; is simply riding a domain admin or cloud admin account that was already fully privileged before the attack started. Remove the standing privilege and that single stolen credential becomes far less useful, because the attacker still has to get an elevation request approved to do real damage.</p>
+<p>Just-in-time (JIT) access flips the default: administrative rights exist as an <em>eligible</em> assignment, not an <em>active</em> one. A user requests elevation, the request is time-limited and logged, and the privilege automatically expires. NIST's SP 800-53 control catalog captures this directly under AC-2(6), Dynamic Privilege Management, which calls for systems that can adjust and revoke privileges automatically rather than leaving them fixed on an account indefinitely.</p>
+
+        
+            <h3>How to Implement It</h3>
+            <ol>
+<li><strong>Inventory every standing privileged role</strong> — cloud admin, domain admin, database superuser, root — across identity providers and cloud accounts, and convert them from permanently active to &quot;eligible for activation.&quot;</li>
+<li><strong>Stand up a JIT mechanism.</strong> In Microsoft environments, that's Entra Privileged Identity Management (PIM), which lets eligible users activate a role for a defined window. In AWS, that's IAM Identity Center's temporary elevated access capability, which grants a permission set for a limited, approved duration instead of a permanent assignment.</li>
+<li><strong>Set a short activation window</strong> (hours, not days) with mandatory MFA and a logged justification at the moment of activation, and require re-request once it expires.</li>
+<li><strong>Verify it's actually working</strong> — don't just trust that it's configured. Pull a live report of every currently active privileged session and confirm each one has an expiration timestamp and a matching activation request. Zero currently-active sessions should mean zero currently-active privileges, full stop.</li>
+<li><strong>Test the control, not just the config.</strong> Try to use a privileged action outside an activation window and confirm it's denied. Alert on any privileged action in the logs that has no corresponding activation entry — that's either a bypass or a gap in your JIT coverage.</li>
+</ol>
+
+        
+            <h3>The Pushback You&#39;ll Hear</h3>
+            <p>&quot;This will slow us down when something's actually on fire.&quot; The senior-engineer rebuttal: activation through a configured JIT policy takes seconds, not minutes — you're trading a brief, logged request for the alternative, which is an attacker never having to request anything at all. For true emergencies, pair JIT with a small set of audited break-glass accounts that bypass the request step but trigger mandatory after-the-fact review. You're not choosing between speed and security here; you're choosing between controlled speed and uncontrolled exposure.</p>
+
+        
+            <h3>Sources</h3>
+            <ul>
+<li><a href="https://tenable.com/audits/references/800-53" target="_blank" rel="noopener noreferrer">NIST SP 800-53 Rev 5 — AC-2(6) Dynamic Privilege Management</a></li>
+<li><a href="https://learn.microsoft.com/en-us/entra/id-governance/privileged-identity-management/pim-getting-started" target="_blank" rel="noopener noreferrer">Microsoft Entra Privileged Identity Management — Getting Started</a></li>
+<li><a href="https://docs.aws.amazon.com/singlesignon/latest/userguide/temporary-elevated-access.html" target="_blank" rel="noopener noreferrer">AWS IAM Identity Center — Temporary Elevated Access for AWS Accounts</a></li>
+</ul>
+
+        
+    </article>
+    
+    <article class="brief-section" id="talk-track">
+        <p class="brief-kicker">Senior Talk Tracks</p>
+        <h2>Why MFA Doesn&#39;t Stop Session Hijacking</h2>
+        
+            
+            <p>Here's a belief that gets repeated so often it starts to sound like a guarantee: &quot;we have multi-factor authentication turned on, so we're covered.&quot; Today I want to explain why that's dangerously incomplete, because multi-factor authentication, or MFA, protects a moment in time, not the hours or days that come after it.</p>
+<p>MFA means proving who you are with two different kinds of proof — usually a password, plus a code from your phone or a push notification you approve. It does exactly one job really well: it makes it hard for an attacker to log in as you. But once you log in successfully, the system doesn't ask you to prove your identity again on every single click. Instead, it hands your browser a session token, a small piece of data that basically says &quot;this request already proved who it is, let it through.&quot; That token is what the rest of your session actually runs on.</p>
+<p>Here's why that matters. Attackers figured out they don't need your password or your MFA code at all if they can just steal that token after you've already logged in. A phishing page that sits between you and the real login screen can capture that token the instant you finish authenticating, MFA and all, and hand it straight to the attacker. They never touch your password. They never see your MFA prompt. They just walk in wearing your already-approved session.</p>
+<p>Here's the senior take. A junior engineer treats MFA as the finish line for identity security. A senior engineer treats it as securing only the front door, and asks a completely different question: how long does a stolen session token stay valid, and what detects it being used from a new device or location. Short token lifetimes, binding a token to a device, and watching for a session suddenly reappearing somewhere impossible — that's the part MFA alone was never designed to cover.</p>
+<p>Think of it like a concert wristband. Security checks your ID once at the gate, then straps on a wristband. After that, nobody re-checks your ID — they just look for the wristband. If someone cuts that wristband off your wrist and puts it on, they're in the venue too, no ID required, no matter how carefully the gate checked you.</p>
+<p>So a good way to open this one at work is: &quot;MFA stops someone from logging in as us — what stops someone from just stealing the session after we already did?&quot;</p>
+
+        
+            <h3>Key Takeaways</h3>
+            <ol>
+<li>MFA secures the login event, but the session token issued after login is what an attacker can steal to bypass MFA entirely.</li>
+<li>Adversary-in-the-middle phishing kits capture a valid, already-authenticated session token, so the victim's password and MFA code are never actually needed.</li>
+<li>Shortening token lifetimes, binding tokens to a device, and alerting on impossible-location logins cover the gap that MFA alone was never designed to close.</li>
+</ol>
+
+        
+            <h3>Reader Question</h3>
+            <p><strong>Q:</strong> &quot;If MFA is working correctly and no prompts were bypassed, how could an account still get compromised?&quot;</p>
+
+        
+    </article>
+    
+    <article class="brief-section" id="tech-news">
+        <p class="brief-kicker">Tech News</p>
+        
+        
+            
+            <p>You can lose your Windows login just by opening a file in Outlook, and the government's deadline to fix it landed yesterday, November 24th. What leaks isn't a guessed password — it's a credential an attacker can crack or relay straight into your network. Three stories: that Outlook flaw, a critical bug in a container registry that lets an outsider rewrite private images, and new data on how far ahead of security teams their own artificial intelligence, or AI, agents have gotten.</p>
+<p>Start with Outlook. According to Microsoft's own advisory, the flaw — cataloged under the Common Vulnerabilities and Exposures system, or CVE, as CVE-2026-124194 — triggers when you open a crafted message file: Outlook quietly contacts an attacker's server without the usual warning, leaking your NT LAN Manager version two hash, or NTLM v2. Microsoft scores it 6.5 on the Common Vulnerability Scoring System, or CVSS — moderate — but confirms active exploitation before the fix shipped. The Cybersecurity and Infrastructure Security Agency, or CISA, added it to its Known Exploited Vulnerabilities, or KEV, catalog on November 10th, and federal agencies had until yesterday to patch it. My take: don't price this by the score alone — a leaked NTLM hash sets up a relay attack directly, and that number says nothing about what happens once the credential is out.</p>
+<p>Turning to container security. Red Hat disclosed a critical flaw in Quay, its container registry, tracked as CVE-2026-123710, scoring 9.8 out of 10. An attacker who reaches the registry's key server can plant a signing key Quay trusts, then read, overwrite, and retag private images across every repository it hosts. Red Hat shipped a fix November 11th in Quay 3.14.10. No active exploitation yet, and it isn't on CISA's list. My read: the blast radius is the whole registry, not one repository — teams that get this right treat a registry compromise like a build-pipeline compromise, since every downstream deployment inherits what got pushed in.</p>
+<p>Which brings us to a trend worth knowing for any cloud-security-posture question. Palo Alto Networks surveyed roughly 2,800 security professionals across ten countries for its sixth annual State of Cloud Security Report, out November 16th. Ninety-nine percent now use AI agents in the development pipeline. Only nineteen percent have one unified view across code, cloud, identity, and runtime. And 43 percent found an agent running without security's approval in the last year. My take: an unapproved agent is just an unmanaged identity with permissions — give it its own identity, a named owner, and only the access the task needs.</p>
+<p>So here's the through-line: a modest severity score, an unexploited critical flaw, and an agent nobody signed off on are the same mistake wearing different clothes — measuring risk by one number instead of the full blast radius.</p>
+
+        
+            <h3>Sources</h3>
+            <ul>
+<li><a href="https://www.cisa.gov/known-exploited-vulnerabilities-catalog" target="_blank" rel="noopener noreferrer">CISA Known Exploited Vulnerabilities Catalog (primary)</a></li>
+<li><a href="https://www.securityweek.com/exploited-outlook-zero-day-among-1094-flaws-patched-by-microsoft" target="_blank" rel="noopener noreferrer">SecurityWeek — Exploited Outlook Zero-Day Among 1,094 Flaws Patched by Microsoft</a></li>
+<li><a href="https://securityonline.info/outlook-zero-day-cve-2026-124194/" target="_blank" rel="noopener noreferrer">SecurityOnline — Outlook Zero-Day CVE-2026-124194</a></li>
+<li><a href="https://access.redhat.com/security/cve/CVE-2026-123710" target="_blank" rel="noopener noreferrer">Red Hat — CVE-2026-123710 (primary)</a></li>
+<li><a href="https://access.redhat.com/node/7149923" target="_blank" rel="noopener noreferrer">Red Hat — Identifying and remediating unauthorized signing keys in Red Hat Quay (primary)</a></li>
+<li><a href="https://access.redhat.com/errata/RHSA-2026:99024.html" target="_blank" rel="noopener noreferrer">Red Hat Errata — RHSA-2026:99024 (primary)</a></li>
+<li><a href="https://thehackernews.com/2026/11/critical-red-hat-quay-flaw-lets.html" target="_blank" rel="noopener noreferrer">The Hacker News — Critical Red Hat Quay Flaw Lets Attackers Read and Overwrite All Private Container Images</a></li>
+<li><a href="https://securityweek.com/critical-red-hat-quay-vulnerability-could-expose-private-container-images" target="_blank" rel="noopener noreferrer">SecurityWeek — Critical Red Hat Quay Vulnerability Could Expose Private Container Images</a></li>
+<li><a href="https://www.paloaltonetworks.com/blog/cloud-security/2026-state-of-cloud-security-report-ai-agents-cloud-risk/" target="_blank" rel="noopener noreferrer">Palo Alto Networks — 2026 State of Cloud Security Report: Beyond Human Scale (primary)</a></li>
+<li><a href="https://siliconangle.com/?p=854328" target="_blank" rel="noopener noreferrer">SiliconANGLE — Palo Alto Networks report coverage</a></li>
+</ul>
+
+        
+    </article>
+    
+    <section class="brief-subscribe" id="subscribe">
+    <h2>Get The Daily Brief by email</h2>
+    <p>One short email each morning. Unsubscribe anytime.</p>
+    <form action="https://buttondown.com/api/emails/embed-subscribe/cybercider" method="post">
+        <label for="bd-email">Email address</label>
+        <input type="email" name="email" id="bd-email" required autocomplete="email" placeholder="you@example.com">
+        <button type="submit">Subscribe</button>
+    </form>
+</section>
+</main>
+
+    <footer><p class="copyright">The Daily Brief · Eddie Camacho</p></footer>
+<!-- cf-web-analytics (managed by tools/inject_analytics.py) -->
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "f728a20b49cc4a0fbe02cde72f03301c"}'></script>
+</body>
+</html>
