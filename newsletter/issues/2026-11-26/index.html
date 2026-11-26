@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="dark">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'self' https://static.cloudflareinsights.com; connect-src 'self' https://cloudflareinsights.com; img-src 'self' data:; form-action https://buttondown.com; base-uri 'none'; object-src 'none'">
+    <meta name="description" content="The Daily Brief for Thursday, November 26, 2026: security incidents, senior security advice, engineering explainers, and tech news.">
+    <title>The Daily Brief · Nov 26, 2026</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="icon" href="../../../favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="../../../style.css">
+    <link rel="stylesheet" href="../../newsletter.css">
+</head>
+<body class="brief-page">
+    <a href="#main-content" class="skip-nav">Skip to main content</a>
+    <nav class="brief-nav">
+        <a href="../../../index.html">← App Hub</a>
+        <a href="../../">All issues</a>
+    </nav>
+    
+<header class="brief-masthead">
+    <p class="brief-eyebrow">THE DAILY BRIEF</p>
+    <h1>Thursday, November 26, 2026</h1>
+    <ol class="brief-toc">
+        <li><a href="#current-events">Current Events</a></li><li><a href="#security-advice">Senior Security Advice</a></li><li><a href="#talk-track">Senior Talk Tracks</a></li><li><a href="#tech-news">Tech News</a></li>
+    </ol>
+</header>
+<main id="main-content" class="brief">
+    
+    <article class="brief-section" id="current-events">
+        <p class="brief-kicker">Current Events</p>
+        <h2>The M&amp;S and Co-op Ransomware Attacks</h2>
+        
+            
+            <p>Two of the UK's best-known retailers got taken down within days of each other in the spring of 2025, and the attackers didn't need a zero-day to do it. They needed a phone call. This is the Marks &amp; Spencer and Co-op ransomware intrusions, and it's one of the clearest real-world lessons in why your help desk is part of your attack surface.</p>
+<p>Here's what happened, in two sentences. Marks &amp; Spencer disclosed a &quot;cyber incident&quot; to the London Stock Exchange on April 22, 2025, and within weeks had paused online orders across its UK, Ireland, and some international sites. The Co-op disclosed its own intrusion days later, confirming on May 2nd that attackers had accessed and extracted a significant amount of member data — names and contact details, the company said, not passwords or payment information.</p>
+<p>Walk through the chain. According to testimony M&amp;S chairman Archie Norman gave to a House of Commons committee in July 2025, the intrusion began with a social-engineering attack involving a third party — reporting outside that testimony points to impersonation of an employee to a service desk, the kind of attack that talks its way past identity verification instead of breaking through a firewall. Norman attributed the attack to the ransomware group DragonForce, working with what he called other loosely aligned parties — a reference to the collective widely known as Scattered Spider. Once that initial access was in hand, the intrusion spread into systems deep enough to force M&amp;S to pause online retail entirely for weeks. Co-op's chief digital officer gave contrasting testimony the same day: Co-op's environment was heavily segmented, so the intrusion was detected within hours and most systems were never touched.</p>
+<p>The root cause, in one sentence: an identity-verification gap at the help desk let an attacker become a trusted user without ever touching a vulnerability, and from there the blast radius was decided almost entirely by how well each company's network was segmented.</p>
+<p>Here's what held. Co-op's segmentation is the control worth naming first — it meant the compromise stayed contained to one system holding only names and contact details, not financial data, and it was caught in hours. The National Cyber Security Centre and the National Crime Agency were engaged quickly at both companies, and that law-enforcement involvement led to four arrests, three of them teenagers, by July 2025. Neither company reported passwords, card numbers, or transaction data taken.</p>
+<p>So what would a senior engineer flag here? Help-desk identity verification deserves the same scrutiny as any login page, because a password reset granted to the wrong person is functionally identical to a stolen credential. And network segmentation isn't a nice-to-have diagram — it's the single variable that explains why one company lost weeks of online retail and the other didn't lose much at all. The concrete lab move: build two small network segments on a lab host, put a &quot;payment data&quot; service in one and a &quot;catalog&quot; service in the other with no route between them, then confirm that compromising the catalog service's credentials gets you nowhere near the payment segment — that's the exact property Co-op's architecture had and a lot of flatter networks don't.</p>
+
+        
+            <h3>Timeline</h3>
+            <table>
+<thead>
+<tr>
+<th>Date</th>
+<th>Event</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>February 2025 (disputed/secondary)</td>
+<td>Some reporting places initial network access as early as February 2025; neither company has confirmed this date publicly</td>
+</tr>
+<tr>
+<td>April 22, 2025</td>
+<td>Marks &amp; Spencer discloses a &quot;Cyber Incident&quot; via London Stock Exchange RNS announcement, reports it to the National Cyber Security Centre and data protection regulators (primary)</td>
+</tr>
+<tr>
+<td>April 25, 2025</td>
+<td>M&amp;S publishes a &quot;Cyber Incident – Further Update&quot; RNS announcement (primary)</td>
+</tr>
+<tr>
+<td>April 30, 2025</td>
+<td>Co-op first discloses &quot;unauthorized access attempts&quot; and limited back-office disruption, initially describing impact as minor</td>
+</tr>
+<tr>
+<td>May 2, 2025</td>
+<td>Co-op confirms via official update that attackers accessed and extracted data from one system, affecting a significant number of current and past members; company states the exposed data was limited to names and contact details, with no passwords, bank details, or transaction data involved (primary)</td>
+</tr>
+<tr>
+<td>May 6, 2025</td>
+<td>Co-op's CEO writes to members confirming a limited amount of member data was accessed</td>
+</tr>
+<tr>
+<td>May 6, 2025</td>
+<td>Google's Threat Intelligence Group reports it has not independently confirmed Scattered Spider or DragonForce involvement, while describing the activity as consistent with Scattered Spider's typical targeting — attribution is contested in the public record</td>
+</tr>
+<tr>
+<td>May 13, 2025</td>
+<td>M&amp;S publishes a further RNS update; online orders remain paused for UK &amp; Ireland websites/apps and some M&amp;S International sites (primary)</td>
+</tr>
+<tr>
+<td>May 2025 (exact date unconfirmed)</td>
+<td>The Information Commissioner's Office publishes a public statement on the cyber incidents affecting UK retailers (primary)</td>
+</tr>
+<tr>
+<td>May 2025 (exact date unconfirmed)</td>
+<td>DragonForce claims responsibility for the Co-op intrusion and claims roughly 20 million members' records were exfiltrated — Co-op has not confirmed this figure, and it is treated here as an unverified attacker claim, not fact</td>
+</tr>
+<tr>
+<td>July 8, 2025</td>
+<td>M&amp;S chairman Archie Norman and Co-op chief digital officer Robert Elsey give oral evidence to the House of Commons Business and Trade Sub-Committee (HC 835); Norman attributes the attack to DragonForce &quot;working with other loosely aligned parties,&quot; confirms the intrusion began with social engineering involving a third party, declines to confirm whether a ransom was paid, cites an estimated £300 million hit to profit, and calls for mandatory disclosure laws for major cyberattacks (primary)</td>
+</tr>
+<tr>
+<td>July 2025</td>
+<td>UK National Crime Agency announces four arrests, three of them teenagers, in connection with the M&amp;S, Co-op, and Harrods intrusions</td>
+</tr>
+</tbody>
+</table>
+
+        
+            <h3>Control Failures</h3>
+            <table>
+<thead>
+<tr>
+<th>#</th>
+<th>Failure</th>
+<th>NIST SP 800-53 Rev 5 Control Family</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>A help-desk/service-desk process allowed an attacker to be verified and granted account or credential changes through social engineering, without a verification step strong enough to catch impersonation</td>
+<td>IA-5 — Authenticator Management</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Insufficient network segmentation between the initially compromised identity and core retail/supply-chain systems allowed the intrusion at M&amp;S to escalate into a company-wide, multi-week disruption of online retail</td>
+<td>SC-7 — Boundary Protection</td>
+</tr>
+<tr>
+<td>3</td>
+<td>No dual-control or secondary-approval step gated a privileged credential or access change requested through the help desk before it took effect</td>
+<td>AC-5 — Separation of Duties</td>
+</tr>
+<tr>
+<td>4</td>
+<td>Detection and containment speed differed sharply between the two organizations, extending the incident from hours (Co-op, well-segmented) to weeks of online-retail outage (M&amp;S) — a direct measure of monitoring and segmentation maturity, not attacker sophistication</td>
+<td>SI-4 — System Monitoring</td>
+</tr>
+<tr>
+<td>5</td>
+<td>No existing legal or regulatory requirement compelled rapid, standardized public disclosure of incident scope — a gap M&amp;S's own chairman cited in calling for mandatory reporting of major cyberattacks</td>
+<td>IR-6 — Incident Reporting</td>
+</tr>
+</tbody>
+</table>
+
+        
+            <h3>What Held</h3>
+            <p>Co-op's network segmentation is the control to lead with: per its chief digital officer's own testimony, the intrusion was detected within hours and most systems were never touched, which is why the data taken was limited to names and contact details rather than financial or transaction records. Both companies engaged the National Cyber Security Centre and law enforcement quickly, and that cooperation fed into the UK National Crime Agency's four arrests by July 2025 — a reminder that incident response doesn't end at containment. Naming the difference out loud — &quot;the attacker got in the same way at both companies, but segmentation is why one lost weeks of revenue and the other didn't&quot; — is exactly the kind of defense-in-depth distinction that separates a senior answer from a headline recap.</p>
+
+        
+            <h3>Sources</h3>
+            <ul>
+<li><a href="https://www.lse.co.uk/rns/MKS/cyber-incident-update-vkynbgql3ldcvri.html" target="_blank" rel="noopener noreferrer">London Stock Exchange / M&amp;S RNS — Cyber Incident Update, April 22, 2025 (primary)</a></li>
+<li><a href="https://www.lse.co.uk/rns/MKS/cyber-incident-further-update-rh42ba7505726tw.html" target="_blank" rel="noopener noreferrer">London Stock Exchange / M&amp;S RNS — Cyber Incident: Further Update, May 13, 2025 (primary)</a></li>
+<li><a href="https://www.co-operative.coop/media/news-releases/cyber-incident-update" target="_blank" rel="noopener noreferrer">Co-operative Group — Cyber Incident Update, May 2, 2025 (primary)</a></li>
+<li><a href="https://committees.parliament.uk/oralevidence/16268/html" target="_blank" rel="noopener noreferrer">UK Parliament, House of Commons Business and Trade Sub-Committee — Oral evidence, HC 835, July 8, 2025 (primary)</a></li>
+<li><a href="https://ico.org.uk/about-the-ico/media-centre/news-and-blogs/2025/05/statement-on-cyber-incidents-impacting-retailers/" target="_blank" rel="noopener noreferrer">Information Commissioner's Office — Statement on cyber incidents impacting retailers (primary)</a></li>
+<li><a href="https://www.bleepingcomputer.com/news/security/mands-confirms-social-engineering-led-to-massive-ransomware-attack/" target="_blank" rel="noopener noreferrer">BleepingComputer — M&amp;S confirms social engineering led to massive ransomware attack</a></li>
+<li><a href="https://www.infosecurity-magazine.com/news/dragonforce-goup-ms-coop-harrods/" target="_blank" rel="noopener noreferrer">Infosecurity Magazine — Inside DragonForce, the Group Tied to M&amp;S, Co-op and Harrods Hacks</a></li>
+<li><a href="https://www.infosecurity-magazine.com/news/ms-chairman-declines-ransom-payment/" target="_blank" rel="noopener noreferrer">Infosecurity Magazine — M&amp;S Chairman Details Ransomware Attack, Declines to Confirm if Payment Was Made</a></li>
+<li><a href="https://www.theregister.com/2025/04/22/marks_spencer_cyber_incident/" target="_blank" rel="noopener noreferrer">The Register — This is not just any 'cyber incident' … this is an M&amp;S 'cyber incident'</a></li>
+<li><a href="https://www.helpnetsecurity.com/2025/05/05/uk-retailers-under-cyber-attack-co-op-member-data-compromised/" target="_blank" rel="noopener noreferrer">Help Net Security — UK retailers under cyber attack: Co-op member data compromised</a></li>
+</ul>
+<p><strong>Tomorrow's Thread:</strong> Day 70 moves to the AI and agent security family — a published case of prompt injection or tool abuse against an AI agent, a different family from today's identity/credential-compromise topic.</p>
+
+        
+    </article>
+    
+    <article class="brief-section" id="security-advice">
+        <p class="brief-kicker">Senior Security Advice</p>
+        <h2>Store Secrets in a Managed Secrets Manager With Automatic Rotation</h2>
+        
+            <h3>The Advice</h3>
+            <p>Put every application secret — database passwords, API keys, tokens — into a managed secrets manager with automatic rotation turned on, and never let one sit hardcoded in source code, config files, or environment variables.</p>
+
+        
+            <h3>Why It Matters</h3>
+            <p>A hardcoded secret is a credential that never changes on its own. Once it's baked into a repository, a container image, or a config file, it keeps working forever — for the developer who wrote it and for anyone else who later finds it. That's the incident class security teams see over and over: a long-lived API key or database password turns up in a public code repository or an exposed container image, and an attacker walks straight into a cloud account or a production database with it, no exploit required, because the credential was never designed to expire. AWS's Well-Architected Framework names storing long-term credentials in source code or config files as an anti-pattern for exactly this reason, and treats rotation as the fix, not an afterthought.</p>
+
+        
+            <h3>How to Implement It</h3>
+            <ol>
+<li><strong>Inventory first.</strong> Scan the codebase, container images, and CI/CD configs for hardcoded secrets with a dedicated scanner, not a manual search.</li>
+<li><strong>Migrate to a secrets manager.</strong> Move each secret's real value into something like AWS Secrets Manager or HashiCorp Vault, and update the application to fetch it at runtime through the SDK instead of a file or environment variable.</li>
+<li><strong>Turn on automatic rotation.</strong> Use managed rotation where it's supported — AWS Secrets Manager rotates RDS, DocumentDB, and Redshift credentials on a schedule with no custom function needed — and wire up a rotation function for anything else.</li>
+<li><strong>Lock access down with least privilege.</strong> Scope each secret's IAM policy to only the specific roles and services that need it, not the whole account.</li>
+<li><strong>Verify it's actually working.</strong> Force a test rotation and confirm the old credential stops authenticating while the application keeps running on the new one. Re-run the scanner from step 1 and confirm it comes back clean — &quot;enabled&quot; isn't proof; a rejected old credential and a clean scan are.</li>
+</ol>
+
+        
+            <h3>The Pushback You&#39;ll Hear</h3>
+            <p>&quot;Rotating secrets will break something — it's safer to leave working credentials alone.&quot; The rebuttal: a static credential that never breaks anything also works just as well for an attacker a year from now as it does for you today. The one-time cost of wiring an app to fetch its secret dynamically is small and bounded; the cost of a leaked, never-expiring database password is not. Managed rotation removes most of the &quot;it'll break something&quot; risk, since the platform handles the credential swap for common database engines without a hand-written function.</p>
+
+        
+            <h3>Sources</h3>
+            <ul>
+<li><a href="https://docs.aws.amazon.com/wellarchitected/latest/security-pillar/sec_identities_secrets.html" target="_blank" rel="noopener noreferrer">SEC02-BP03 Store and use secrets securely — AWS Well-Architected Framework, Security Pillar</a></li>
+<li><a href="https://docs.aws.amazon.com/secretsmanager/latest/userguide/hardcoded-db-creds.html" target="_blank" rel="noopener noreferrer">Move hardcoded database credentials to AWS Secrets Manager — AWS Secrets Manager User Guide</a></li>
+<li><a href="https://docs.aws.amazon.com/secretsmanager/latest/userguide/best-practices" target="_blank" rel="noopener noreferrer">AWS Secrets Manager best practices — AWS Secrets Manager User Guide</a></li>
+</ul>
+
+        
+    </article>
+    
+    <article class="brief-section" id="talk-track">
+        <p class="brief-kicker">Senior Talk Tracks</p>
+        <h2>Why Multi-AZ Is Not Disaster Recovery</h2>
+        
+            
+            <p>Here's a sentence that gets said in a lot of architecture reviews like it settles the question: &quot;the database is Multi-AZ, so we're covered.&quot; Today I want to pull that sentence apart, because being covered for one kind of failure is not the same as being covered for all of them.</p>
+<p>Multi-AZ means your database or application runs copies of itself across at least two Availability Zones — AWS's term for separate data center clusters inside the same region, each with its own power, cooling, and network. If one zone goes dark, AWS can fail traffic over to the other zone, usually within a minute or two, and your application barely notices.</p>
+<p>So what does that actually protect you from? Infrastructure failure. A power outage, a network partition, a hardware fault in one data center. That's genuinely valuable, and it's why AWS can promise such a high availability number for it.</p>
+<p>Here's the senior take, and it's the part that catches people in an interview. Multi-AZ replication copies every write to the second zone almost instantly. That's great when the write is good. It's a disaster when the write is bad. If someone runs a destructive migration, a ransomware payload encrypts your files, or an engineer fat-fingers a delete, that mistake replicates to the other zone just as fast as any legitimate transaction would. A junior engineer hears &quot;Multi-AZ&quot; and checks the disaster-recovery box. A senior engineer asks a sharper question: recovery from what, exactly? Multi-AZ buys you high availability. Disaster recovery means being able to roll back to a point in time before the mistake happened, and that requires backups and a tested restore process — a completely separate control.</p>
+<p>Think of it like owning two identical houses side by side, each wired with its own sprinkler system. If one house catches fire, you walk next door and you're fine. But if you spray graffiti across every wall in house one, your perfectly mirrored house two gets the same graffiti in real time. Two houses protect you from losing a house. They do nothing for undoing a mistake you made inside one.</p>
+<p>So a natural way to raise this at work is simple: &quot;We're Multi-AZ on that database — but when's the last time we actually tested restoring from a snapshot?&quot;</p>
+
+        
+            <h3>Key Takeaways</h3>
+            <ol>
+<li>Multi-AZ protects against losing a data center, not against a bad deployment, corrupted data, or human error.</li>
+<li>Because replication is nearly instantaneous, a mistake written in one Availability Zone shows up in the other just as fast — a live mirror is not a substitute for a backup.</li>
+<li>Real disaster recovery needs tested, point-in-time restorable backups and a documented recovery process, which is a separate control from Multi-AZ replication.</li>
+</ol>
+
+        
+            <h3>Reader Question</h3>
+            <p><strong>Q:</strong> &quot;If Multi-AZ gives us 99.99% availability, why do we still need a separate backup strategy?&quot;</p>
+
+        
+    </article>
+    
+    <article class="brief-section" id="tech-news">
+        <p class="brief-kicker">Tech News</p>
+        
+        
+            
+            <p>One of the internet's most widely used website platforms just patched a flaw that could hand an attacker full control of a site through its own installer — and the bug wasn't caught by a security firm, it was flagged by an AI model built to hunt for exactly this kind of thing. Two stories today, and they share the same thread: software nobody is actively maintaining anymore, sitting quietly in production. First, that Drupal installer flaw. Second, a code library inside legacy ASP.NET applications that's been abandoned for years and is now being actively exploited.</p>
+<p>Start with Drupal. It's the content management system behind hundreds of thousands of government, university, and corporate websites. According to Drupal's own security advisory, SA-CORE-2026-017, published November 18th, researchers found a critical remote code execution flaw in the site installer, tracked as CVE-2026-132165, which Drupal rates 18 out of 25 on its own risk scale — its highest tier. Here's the detail worth knowing: the flaw wasn't found by a human researcher. SecurityWeek reports it was flagged by an AI-powered open-source vulnerability scanner that Anthropic runs against widely used open-source projects. Drupal shipped a fix the same day. Reporting is split on what happens next: Drupal's advisory says no active exploitation is confirmed and no public exploit code exists, but Drupal itself warned working exploits could surface within hours to days. My read: when a vendor ships a fix and warns exploits are coming fast, you patch on that timeline, not on whichever report turns out to be right. One more detail on timing — Drupal 10 reaches end of life on December 9th, so sites still on it need a migration plan, not just this one patch.</p>
+<p>Which brings us to a flaw that shows what happens when that plan never gets made. According to SecurityWeek and Help Net Security, reporting November 25th, attackers are now actively exploiting a years-old, abandoned code library called Idunno.AntiCsrf, still referenced inside some legacy ASP.NET applications. It's tracked as CVE-2026-131914, a deserialization flaw that lets an unauthenticated attacker run code on the server with no login required. The project's home page lives on a code-hosting service that shut down years ago, and there is no vendor left to ship a patch. My take: this is the sharper version of the Drupal story — at least Drupal has a maintainer standing behind it. If your organization runs any kind of inventory on its third-party and open-source code, this is exactly the case it exists to catch.</p>
+<p>So here's the through-line: a maintained project got patched in hours, and an abandoned one gets patched never — and knowing which category each piece of your own stack falls into is the actual security control.</p>
+
+        
+            <h3>Sources</h3>
+            <ul>
+<li><a href="https://www.drupal.org/sa-core-2026-017" target="_blank" rel="noopener noreferrer">Drupal Security Advisory SA-CORE-2026-017 (primary)</a></li>
+<li><a href="https://www.cyber.gc.ca/en/alerts-advisories/drupal-security-advisory-av26-492" target="_blank" rel="noopener noreferrer">Canadian Centre for Cyber Security — Drupal Security Advisory AV26-492 (primary)</a></li>
+<li><a href="https://www.csa.gov.sg/alerts-and-advisories/alerts/al-2026-060/" target="_blank" rel="noopener noreferrer">Singapore CSA — Critical Vulnerability in Drupal Core (primary)</a></li>
+<li><a href="https://thehackernews.com/2026/11/drupal-patches-critical-installer-flaw.html" target="_blank" rel="noopener noreferrer">The Hacker News — Drupal Patches Critical Installer Flaw</a></li>
+<li><a href="https://www.bleepingcomputer.com/news/security/drupal-patches-critical-rce-flaw-warns-exploits-may-surface-quickly/" target="_blank" rel="noopener noreferrer">BleepingComputer — Drupal Patches Critical RCE Flaw, Warns Exploits May Surface Quickly</a></li>
+<li><a href="https://www.securityweek.com/drupal-flaw-found-by-anthropic-scanner-exploited-in-attacks/" target="_blank" rel="noopener noreferrer">SecurityWeek — Drupal Flaw Found by Anthropic Scanner Exploited in Attacks</a></li>
+<li><a href="https://www.securityweek.com/hackers-exploit-unpatched-flaw-in-defunct-idunno-anticsrf-library/" target="_blank" rel="noopener noreferrer">SecurityWeek — Hackers Exploit Unpatched Flaw in Defunct Idunno AntiCsrf Library</a></li>
+<li><a href="https://www.helpnetsecurity.com/2026/11/25/idunno-anticsrf-rce-cve-2026-131914-exploited/" target="_blank" rel="noopener noreferrer">Help Net Security — Exploited: Abandoned Idunno.AntiCsrf Library Opens Legacy ASP.NET Apps to RCE (CVE-2026-131914)</a></li>
+</ul>
+
+        
+    </article>
+    
+    <section class="brief-subscribe" id="subscribe">
+    <h2>Get The Daily Brief by email</h2>
+    <p>One short email each morning. Unsubscribe anytime.</p>
+    <form action="https://buttondown.com/api/emails/embed-subscribe/cybercider" method="post">
+        <label for="bd-email">Email address</label>
+        <input type="email" name="email" id="bd-email" required autocomplete="email" placeholder="you@example.com">
+        <button type="submit">Subscribe</button>
+    </form>
+</section>
+</main>
+
+    <footer><p class="copyright">The Daily Brief · Eddie Camacho</p></footer>
+<!-- cf-web-analytics (managed by tools/inject_analytics.py) -->
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "f728a20b49cc4a0fbe02cde72f03301c"}'></script>
+</body>
+</html>
