@@ -2258,48 +2258,30 @@ const QUESTIONS = [
   <div class="tie"><b>How it ties in:</b> the run is the claim. Q15.3 through Q15.6 verify placement, hashes, and groups.</div>`
 },
 {
-  id:"Q15.3", title:"Verify: id alice", sub:"Developer on dev+test only", cmd:true,
+  id:"Q15.3", title:"Verify: id — all four users", sub:"One command shows every user", cmd:true,
   files:[{ path:"shell", lang:"cmd" }],
-  spec:`<b>15.3. Verify a developer.</b><br>• On all hosts, run <code>id alice</code> ad hoc. Pass means <code>uid=1201(alice)</code> with devops among the groups on servera and serverb — and <code>no such user</code> on serverc and serverd, which is <i>correct</i>, not a failure of the playbook.<br>• Type the command and press <b>Enter</b>.`,
+  spec:`<b>15.3. Verify all four users.</b><br>• Run the following command: <code>ansible all -m command -a 'id alice vincent sandy patrick'</code> — one run shows all four users on every host.<br>• Pass means: servera shows alice and vincent (devops), serverc shows sandy and patrick (opsmgr), serverb shows all four, and serverd shows none. A host missing a user reports <code>FAILED</code> with <code>no such user</code> for that name — that is <i>correct</i>, not a failure of the playbook.<br>• Type the command and press <b>Enter</b>.`,
   checks:[[
-    { re:/ansible\s+all\s+-m\s+ansible\.builtin\.command\s+-a\s*['"]id\s+alice['"]/, msg:"ansible all -m ansible.builtin.command -a 'id alice'" }
+    { re:/ansible\s+all\s+-m\s+(ansible\.builtin\.)?command\s+-a\s*['"]id\s+alice\s+vincent\s+sandy\s+patrick['"]/, msg:"ansible all -m command -a 'id alice vincent sandy patrick'" }
   ]],
   explain:`<h2>✅ Q15.3 complete — what you just did</h2>
-  <p><code>id</code> answers three things at once: the account exists, the fixed UID from the data file was honored (1201, not whatever was free), and the supplementary group membership landed — devops sits in the groups list, while the primary group is alice's own. The FAILED lines on serverc and serverd are the when conditions made visible: developers were never supposed to exist there.</p>
+  <p>One command audited all four users on all four hosts. <code>id</code> accepts several names at once and prints one line per user who exists on that host — so each host's block is that host's placement map: servera shows the two developers, serverc the two managers, serverb all four, and serverd none. Each line still answers the three graded facts at once: the account exists, the fixed UID from the data file was honored (1201 and 1202 for the developers, 2201 and 2202 for the managers), and the supplementary group landed — devops for the developers, opsmgr for the managers, while the primary group is each user's own.</p>
   <h4>How it affects the Ansible environment</h4>
-  <p>• Nothing changes. Learning to read a verify where half the output is red — and correct — is half of reading Ansible output at all.</p>
+  <p>• Nothing changes. Three of the four hosts report FAILED, and that is the pass: a host fails this command exactly when at least one of the four users is missing there, which is what the playbook's <code>when</code> conditions were told to arrange. Only serverb — in both test and prod — holds all four users, so only serverb comes back <code>CHANGED | rc=0</code>. Learning to read a verify where most of the output is red — and correct — is half of reading Ansible output at all.</p>
   <h4>Command anatomy — what every part does, and what breaks without it</h4>
-  <p>• <code>ansible all</code> — the wide pattern is the method: this verify needs the negative results in frame. Developers must exist on servera and serverb and must <i>not</i> exist on serverc and serverd, so all four hosts are asked and the two failures are part of the pass.<br>
-  • <code>-m ansible.builtin.command</code> — direct execution of one binary; id needs no shell around it.<br>
-  • <code>-a 'id alice'</code> — <code>id</code> answers three graded facts in one line: the account exists, its <code>uid=</code> is 1201 (the fixed value from the data file, not the next free number), and its group list contains devops. Any one of the three being wrong is a different bug — placement, data, or group task — and this one call separates them.<br>
+  <p>• <code>ansible all</code> — the wide pattern is the method: this verify needs the negative results in frame. The users must exist where their job's groups put them and must <i>not</i> exist anywhere else, so all four hosts are asked and the failures are part of the proof.<br>
+  • <code>-m command</code> — direct execution of one binary; id needs no shell around it. The full name <code>ansible.builtin.command</code> is the same module and is accepted too.<br>
+  • <code>-a 'id alice vincent sandy patrick'</code> — <code>id</code> takes several usernames in one call, one output line each, in the order given. A name with no account on that host prints <code>id: 'name': no such user</code> and makes the host's exit code non-zero — which is why Ansible marks the host FAILED even when the users who <i>do</i> belong there printed fine above the error.<br>
   • No <code>-b</code> — id reads public account information; there is nothing root-owned behind it.<br>
-  • <b>Why the exam cares:</b> narrow the pattern to dev,test "to keep the output clean" and you have deleted the evidence that the when conditions also kept alice <i>off</i> the prod hosts. On this question, the red FAILED lines on the excluded hosts are not noise around the proof — they are half of it.</p>
-  <div class="tie"><b>How it ties in:</b> developers placed. Q15.4 checks the mirror image.</div>`
-},
-{
-  id:"Q15.4", title:"Verify: id sandy", sub:"Manager on prod only", cmd:true,
-  files:[{ path:"shell", lang:"cmd" }],
-  spec:`<b>15.4. Verify a manager.</b><br>• On all hosts, run <code>id sandy</code> ad hoc. Pass means <code>uid=2201(sandy)</code> with opsmgr on serverb and serverc only.<br>• Type the command and press <b>Enter</b>.`,
-  checks:[[
-    { re:/ansible\s+all\s+-m\s+ansible\.builtin\.command\s+-a\s*['"]id\s+sandy['"]/, msg:"ansible all -m ansible.builtin.command -a 'id sandy'" }
-  ]],
-  explain:`<h2>✅ Q15.4 complete — what you just did</h2>
-  <p>The mirror of Q15.3: sandy exists exactly where task 3's when let her — prod hosts, serverb and serverc — with the manager UID block (2201) and opsmgr membership. Her presence on serverb is the overlap working for her: task 2 skipped her there (not a developer), task 3 created her (manager on prod). One host, two verdicts, both correct.</p>
-  <h4>How it affects the Ansible environment</h4>
-  <p>• Nothing changes. Placement proven for both roles; Q15.5 proves the passwords were stored as hashes, and Q15.6 proves the groups exist even where no user does.</p>
-  <h4>Command anatomy — what every part does, and what breaks without it</h4>
-  <p>• The frame is Q15.3's, word for word — <code>ansible all -m ansible.builtin.command -a 'id ...'</code> — and the symmetry is the design: the same instrument, aimed at the mirror-image user, so the two outputs can be laid side by side.<br>
-  • <code>-a 'id sandy'</code> — the argument swaps in the manager: what you read for is <code>uid=2201</code> (the manager block from the data file, distinct from the developers' 1200s) and <code>opsmgr</code> in the group list.<br>
-  • The geography flips: sandy exists on serverb and serverc (prod) and is refused on servera and serverd — and serverb appears in <i>both</i> steps' success columns, because it sits in both test and prod. One host, two opposite-looking verdicts across the pair of checks, both correct.<br>
-  • <b>Why the exam cares:</b> either verify alone could pass with a broken playbook — swap the two tasks' conditions and alice's check fails but sandy's might still look plausible at a glance. Only the pair, read together, proves the when logic routes by job <i>and</i> host group, which is the entire question.</p>
-  <div class="tie"><b>How it ties in:</b> people placed. Q15.5 checks what is sitting in /etc/shadow.</div>`
+  • <b>Why the exam cares:</b> narrow the pattern to dev,test "to keep the output clean" and you have deleted the evidence that the when conditions also kept the developers <i>off</i> the prod hosts and the managers off dev. On this question, the red FAILED blocks are not noise around the proof — they are half of it.</p>
+  <div class="tie"><b>How it ties in:</b> placement proven for all four users in one run. Q15.5 checks what is sitting in /etc/shadow.</div>`
 },
 {
   id:"Q15.5", title:"Verify: shadow hashes", sub:"shell + cut, expect $6$", cmd:true,
   files:[{ path:"shell", lang:"cmd" }],
-  spec:`<b>15.5. Verify the password hashes.</b><br>• On all hosts, with privilege escalation (<code>-b</code>), use the <b>shell</b> module to read alice's and sandy's shadow entries, keeping the name and hash fields and truncating the output. Pass means each hash starts with <code>$6$</code>.<br>• Type the command and press <b>Enter</b>.`,
+  spec:`<b>15.5. Verify the password hashes.</b><br>• On all hosts, with privilege escalation (<code>-b</code>), use the <b>shell</b> module to read all four users' shadow entries, keeping the name and hash fields and truncating the output. Pass means each hash starts with <code>$6$</code>.<br>• Type the command and press <b>Enter</b>.`,
   checks:[[
-    { re:/ansible\s+all\s+-b\s+-m\s+ansible\.builtin\.shell\s+-a\s*['"]getent\s+shadow\s+alice\s+sandy\s*\|\s*cut\s+-d:\s+-f1,2\s*\|\s*cut\s+-c1-12['"]/, msg:"ansible all -b -m ansible.builtin.shell -a 'getent shadow alice sandy | cut -d: -f1,2 | cut -c1-12'" }
+    { re:/ansible\s+all\s+-b\s+-m\s+ansible\.builtin\.shell\s+-a\s*['"]getent\s+shadow\s+alice\s+vincent\s+sandy\s+patrick\s*\|\s*cut\s+-d:\s+-f1,2\s*\|\s*cut\s+-c1-12['"]/, msg:"ansible all -b -m ansible.builtin.shell -a 'getent shadow alice vincent sandy patrick | cut -d: -f1,2 | cut -c1-12'" }
   ]],
   explain:`<h2>✅ Q15.5 complete — what you just did</h2>
   <p>Every printed hash opens with <code>$6$</code> — the SHA-512 crypt identifier — proving the vault plaintext was hashed before it reached /etc/shadow, never stored raw. Three details carry the command: <code>-b</code> because shadow is root-only; the <b>shell</b> module because pipes do not exist under command (command would pass the <code>|</code> to getent as a literal argument); and the double cut, which shows the hash's identity without parading the full hash in your scrollback.</p>
@@ -2308,7 +2290,7 @@ const QUESTIONS = [
   <h4>Command anatomy — what every part does, and what breaks without it</h4>
   <p>• <code>-b</code> — first difference from its sibling verifies, and it is forced: /etc/shadow is root-only, so without become the getent call returns nothing at all.<br>
   • <code>-m ansible.builtin.shell</code> — the shell module (not command): the argument contains pipes, and pipes are the shell's grammar. Under the command module the <code>|</code> would be handed to getent as a literal argument and the pipeline would silently not exist.<br>
-  • <code>getent shadow alice sandy</code> — one call, two keys: the <code>shadow</code> database (the passwd database holds no hashes at all), and both users named so a single run audits both roles.<br>
+  • <code>getent shadow alice vincent sandy patrick</code> — one call, four keys: the <code>shadow</code> database (the passwd database holds no hashes at all), and all four users named so a single run audits every account the play created.<br>
   • <code>cut -d: -f1,2</code> — the first cut works on fields: <code>-d:</code> sets the delimiter to the shadow file's colon, <code>-f1,2</code> keeps fields 1 and 2 — username and password hash — and drops the password-aging fields you do not need.<br>
   • <code>cut -c1-12</code> — the second cut works on characters, not fields: the first twelve characters of each surviving line, which is exactly enough to show the name and the <code>$6$</code> that identifies a SHA-512 crypt hash, without parading the full hash. Order matters: fields first, then characters — swap the two cuts and the character slice would mangle the lines before the fields could be selected.<br>
   • <b>Why the exam cares:</b> this is the step that proves the vault's plaintext was hashed before storage, never written raw — and it proves it while modelling the professional habit of showing the minimum evidence: hash family visible, full hash kept out of scrollback and logs.</p>
@@ -2329,7 +2311,7 @@ const QUESTIONS = [
   <p>• <code>ansible all</code> — all four hosts, because the claim under test is universal: task 1 of the play had no <code>when</code>, so both groups must exist everywhere, including on serverd where no user ever lands.<br>
   • <code>-a 'getent group devops opsmgr'</code> — one getent call with two keys: the <code>group</code> database, both group names, one answer line per group per host. Asking for them in a single call keeps each host's two lines adjacent, which is what makes the pattern readable at a glance.<br>
   • The payload is at the <i>end</i> of each line: the member list. devops carries alice and vincent where developers were placed, opsmgr carries sandy and patrick where managers were, and serverd's lines end empty — that emptiness is a designed outcome, not missing data, and misreading it as failure is the step's trap.<br>
-  • <b>Why the exam cares:</b> users can be verified host by host, but the group structure is the playbook's scaffolding — if a group were missing where a user task expected it, Q15.3 and Q15.4 would have failed noisily; this step proves the scaffolding stands even on the host that received nothing else, closing the question's last unverified claim.</p>
+  • <b>Why the exam cares:</b> users can be verified host by host, but the group structure is the playbook's scaffolding — if a group were missing where a user task expected it, Q15.3 would have failed noisily; this step proves the scaffolding stands even on the host that received nothing else, closing the question's last unverified claim.</p>
   <div class="tie"><b>The whole arc:</b> Q0 tuned your editor, Q1 configured the runner, Q2 fixed the repos everything installs from, Q3–Q5 built plays and proved them, Q4 and Q6 stocked the controller with collections and roles, Q7 taught you to author a role, Q8 composed all of it into one system, Q9 taught storage to branch on facts, Q10 built one host's file out of every host's facts, Q11 aimed different content at different groups and showed what an overlap costs, Q12 built a shared directory the way teams actually share, Q13 turned each host's own facts into its own report, Q14 locked the project's secrets away from the project itself, and Q15 spent those secrets — looping a data file, filtering per item, and landing every user exactly where the conditions said. That layering — set up, do, verify — is the exam.</div>`
 },
 {
@@ -2939,12 +2921,10 @@ pw_manager: Imamgr
 ` }] },
 "Q15.2": { hint:`ansible-playbook users.yml with --vault-password-file secret.txt — without the flag, the vault cannot be decrypted and the run stops before task 1. Navigator works too: ansible-navigator run users.yml --vault-password-file secret.txt (the vault flag passes through).`,
   answer:[{ path:"shell", text:"ansible-playbook users.yml --vault-password-file secret.txt" }] },
-"Q15.3": { hint:`ansible all, the command module, and an -a argument running id alice. No -b — id is a normal read.`,
-  answer:[{ path:"shell", text:"ansible all -m ansible.builtin.command -a 'id alice'" }] },
-"Q15.4": { hint:`ansible all, the command module, and an -a argument running id sandy.`,
-  answer:[{ path:"shell", text:"ansible all -m ansible.builtin.command -a 'id sandy'" }] },
-"Q15.5": { hint:`ansible all with -b, the SHELL module (pipes need shell, not command), and the getent shadow pipeline for alice and sandy with the two cuts.`,
-  answer:[{ path:"shell", text:"ansible all -b -m ansible.builtin.shell -a 'getent shadow alice sandy | cut -d: -f1,2 | cut -c1-12'" }] },
+"Q15.3": { hint:`ansible all, the command module, and an -a argument running id with all four names: alice vincent sandy patrick. No -b — id is a normal read.`,
+  answer:[{ path:"shell", text:"ansible all -m command -a 'id alice vincent sandy patrick'" }] },
+"Q15.5": { hint:`ansible all with -b, the SHELL module (pipes need shell, not command), and the getent shadow pipeline for all four users with the two cuts.`,
+  answer:[{ path:"shell", text:"ansible all -b -m ansible.builtin.shell -a 'getent shadow alice vincent sandy patrick | cut -d: -f1,2 | cut -c1-12'" }] },
 "Q15.6": { hint:`ansible all, the command module, and an -a argument running getent group devops opsmgr — both groups, in that order.`,
   answer:[{ path:"shell", text:"ansible all -m ansible.builtin.command -a 'getent group devops opsmgr'" }] },
 "Q16": { hint:`curl -o sal.yml http://10.1.10.121/sal.yml — the file arrives already encrypted; you are rotating its key, not writing it.`,
@@ -3378,6 +3358,20 @@ try {
       localStorage.setItem("rhce-done", JSON.stringify(Array.from(new Set(remappedQ)).sort((a, b) => a - b)));
     }
     localStorage.setItem("rhce-q5root1", "1");
+  }
+  // Q15.4 removal (2026-11-27): the old Q15.4 (Verify: id sandy) was
+  // merged into Q15.3, which now checks all four users in one run.
+  // Remap saved passes once: a pass on the old Q15.4 is dropped, every
+  // later pass shifts by -1. (In the current list, Q15.5 sits at the
+  // old Q15.4 index.)
+  if (!localStorage.getItem("rhce-q154merge1")) {
+    const i155 = QUESTIONS.findIndex(q => q.id === "Q15.5");
+    const oldDoneM = JSON.parse(localStorage.getItem("rhce-done") || "[]");
+    if (i155 >= 0 && Array.isArray(oldDoneM) && oldDoneM.length) {
+      const remappedM = oldDoneM.filter(i => i < i155).concat(oldDoneM.filter(i => i > i155).map(i => i - 1));
+      localStorage.setItem("rhce-done", JSON.stringify(remappedM));
+    }
+    localStorage.setItem("rhce-q154merge1", "1");
   }
   const savedDone = JSON.parse(localStorage.getItem("rhce-done") || "[]");
   if (Array.isArray(savedDone)) savedDone.forEach(i => { if (Number.isInteger(i) && i >= 0 && i < QUESTIONS.length) state.done.add(i); });
@@ -4777,10 +4771,28 @@ function soRemoteCmd(cmdStr, host, ctx){
     return { out: [], failed: true, stderr: "blkid: " + dev + ": not a block device" };
   }
   if (cmd === "id") {
-    const user = tokens[1];
+    const names = tokens.slice(1);
+    const idLine = n => {
+      if (n === "student") return "uid=1000(student) gid=1000(student) groups=1000(student)";
+      const u = SO_USERS[n];
+      return "uid=" + u.uid + "(" + n + ") gid=" + u.uid + "(" + n + ") groups=" + u.uid + "(" + n + ")," + u.gid + "(" + u.grp + ")";
+    };
+    if (names.length > 1) {
+      // id with several names (Q15.3): one line per user who exists on
+      // this host, one "no such user" error per missing name, and the
+      // host fails rc=1 when any name is missing — the real command
+      // module's rc= transcript form, stdout first, then the errors.
+      const out = [], errs = [];
+      names.forEach(n => {
+        if (n === "student" || (SO_USERS[n] && SO_USERS[n].hosts.indexOf(host) >= 0)) out.push(idLine(n));
+        else errs.push("id: ‘" + n + "’: no such user");
+      });
+      return { out: out, failed: errs.length > 0, raw: true, rc: 1, errLines: errs };
+    }
+    const user = names[0];
     const u = SO_USERS[user];
-    if (u && u.hosts.indexOf(host) >= 0) return { out: ["uid=" + u.uid + "(" + user + ") gid=" + u.uid + "(" + user + ") groups=" + u.uid + "(" + user + ")," + u.gid + "(" + u.grp + ")"], failed: false };
-    if (user === "student") return { out: ["uid=1000(student) gid=1000(student) groups=1000(student)"], failed: false };
+    if (u && u.hosts.indexOf(host) >= 0) return { out: [idLine(user)], failed: false };
+    if (user === "student") return { out: [idLine("student")], failed: false };
     return { out: [], failed: true, stderr: "id: ‘" + user + "’: no such user" };
   }
   if (cmd === "getent") {
@@ -4988,11 +5000,13 @@ function soAdhoc(st, tokens){
       const res = soRemoteCmd(args || "", h, { become: become, shell: short === "shell" });
       if (res.raw) {
         // Commands whose real ad hoc output uses the rc= transcript form
-        // (lvs, blkid): CHANGED on success; on failure, FAILED with the
-        // command's own stderr lines and the non-zero trailer.
+        // (lvs, blkid, multi-user id): CHANGED on success; on failure,
+        // FAILED with any stdout lines, the command's own stderr lines,
+        // and the non-zero trailer.
         if (res.failed) {
           allOk = false;
           lines.push(h + " | FAILED | rc=" + (res.rc != null ? res.rc : 1) + " >>");
+          (res.out || []).forEach(l => lines.push(l));
           (res.errLines || []).forEach(l => lines.push(l));
           lines.push("non-zero return code");
         } else {
