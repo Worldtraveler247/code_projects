@@ -71,6 +71,7 @@
   .statusline .mode{color:var(--amber);font-weight:700}
   .statusline .pos{color:var(--amber)}
   .cmdinput{position:static;width:100%;height:52px;background:#000;color:#e8e8e8;border:1px solid var(--line);border-top:none;padding:12px 14px;font-family:inherit;font-size:14px;line-height:21px;resize:none;outline:none;white-space:pre;overflow-x:auto;overflow-y:hidden}
+  textarea.pwmask{-webkit-text-security:disc}
   .shelltabs{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin:14px 0 0}
   .stab{background:#161b22;border:1px solid var(--line);color:var(--dim);padding:5px 12px;font:inherit;font-size:12.5px;cursor:pointer;border-radius:4px}
   .stab:hover{border-color:var(--amber);color:var(--amber)}
@@ -2334,9 +2335,9 @@ const QUESTIONS = [
   <div class="tie"><b>How it ties in:</b> Q14 taught the vault as a lock you create. This is that lock's key changing — Q16.1 turns it.</div>`
 },
 {
-  id:"Q16.1", title:"Rekey the vault", sub:"ansible-vault rekey sal.yml", cmd:true,
+  id:"Q16.1", title:"Rekey the vault", sub:"ansible-vault rekey sal.yml", cmd:true, multi:true, simFlag:"salRekeyed", multiDone:"rekey complete", multiProg:"Rekey in progress", flagHint:"Answer the vault prompts in the terminal: current password insecure4sure, then the new password secure1234 twice. The step completes when the terminal shows Rekey successful.",
   files:[{ path:"shell", lang:"cmd" }],
-  spec:`<b>16.1. Rekey the vault.</b><br>• Run the rekey on <code>sal.yml</code>. At the prompts: the current password is <code>insecure4sure</code>; the new password is <code>secure1234</code>, entered twice. One command re-encrypts the file under the new key.<br>• Never do this as decrypt-then-encrypt in two steps — between those steps, the secrets sit on disk in plaintext.<br>• Type the command and press <b>Enter</b>.`,
+  spec:`<b>16.1. Rekey the vault.</b><br>• Run the rekey on <code>sal.yml</code>. At the prompts: the current password is <code>insecure4sure</code>; the new password is <code>secure1234</code>, entered twice. One command re-encrypts the file under the new key.<br>• The prompts come one at a time, and the passwords never echo — the screen shows nothing while you type them, exactly like the real tool.<br>• Never do this as decrypt-then-encrypt in two steps — between those steps, the secrets sit on disk in plaintext.<br>• Type the command and press <b>Enter</b>.`,
   checks:[[
     { re:/ansible-vault\s+rekey\s+sal\.yml/, msg:"ansible-vault rekey sal.yml" },
     { fn:t => !/ansible-vault\s+(decrypt|encrypt)\b/.test(t), msg:"No decrypt/encrypt two-step — rekey never leaves a plaintext window" }
@@ -2929,7 +2930,7 @@ pw_manager: Imamgr
   answer:[{ path:"shell", text:"ansible all -m ansible.builtin.command -a 'getent group devops opsmgr'" }] },
 "Q16": { hint:`curl -o sal.yml http://10.1.10.121/sal.yml — the file arrives already encrypted; you are rotating its key, not writing it.`,
   answer:[{ path:"shell", text:"curl -o sal.yml http://10.1.10.121/sal.yml" }] },
-"Q16.1": { hint:`ansible-vault rekey sal.yml, one command. Prompts: old insecure4sure, then secure1234 twice. Never decrypt-then-encrypt — that leaves plaintext on disk.`,
+"Q16.1": { hint:`ansible-vault rekey sal.yml, one command. At the prompts (nothing echoes as you type): current password insecure4sure, then secure1234 twice. Never decrypt-then-encrypt — that leaves plaintext on disk.`,
   answer:[{ path:"shell", text:"ansible-vault rekey sal.yml" }] },
 "Q16.2": { hint:`head -1 sal.yml — you are after the $ANSIBLE_VAULT header line, proof the file stayed encrypted.`,
   answer:[{ path:"shell", text:"head -1 sal.yml" }] },
@@ -3468,7 +3469,10 @@ function renderNav(){
 function saveTexts(){
   if (!gel("ta0")) return;
   const q = QUESTIONS[state.cur];
-  state.texts[state.cur] = q.files.map((f, fi) => { const ta = gel("ta" + fi); return ta ? ta.value : ""; });
+  // While an interactive vault prompt is waiting, the shell line holds
+  // a password: never keep it as the step's saved text.
+  const stP = q.cmd ? termStateFor(state.cur) : null;
+  state.texts[state.cur] = q.files.map((f, fi) => { const ta = gel("ta" + fi); return ta ? (stP && stP.prompt && fi === 0 ? "" : ta.value) : ""; });
 }
 
 function placeholders(f){
@@ -5320,7 +5324,16 @@ function soVault(st, tokens, segText){
     return { lines: lines, ok: true };
   }
   if (action === "rekey") {
-    if (!hasPwFile) { lines.push("Current Vault password: "); lines.push("New Vault password: "); lines.push("Confirm New Vault password: "); }
+    if (!hasPwFile) {
+      // Interactive, like the real tool: the command asks for the
+      // current password first, and each following prompt appears only
+      // after the previous one is answered — soPromptAnswer drives the
+      // sequence from here, and the passwords never echo or get stored.
+      const bn = fileTok ? fileTok.split("/").pop() : "";
+      st.prompt = { kind: "vault-rekey", stage: "current", file: bn, cur: bn === "locker.yml" ? "redhat123" : "insecure4sure", newPw: null };
+      lines.push("Vault password: ");
+      return { lines: lines, ok: true };
+    }
     lines.push("Rekey successful");
     return { lines: lines, ok: true };
   }
@@ -5329,6 +5342,46 @@ function soVault(st, tokens, segText){
     return { lines: lines, ok: true };
   }
   return { lines: lines, ok: true };
+}
+// The prompt labels of an interactive ansible-vault rekey, in order —
+// the same words the real tool prints.
+function soVaultPromptLabel(p){
+  if (!p) return "";
+  if (p.stage === "new") return "New Vault password: ";
+  if (p.stage === "confirm") return "Confirm New Vault password: ";
+  return "Vault password: ";
+}
+// One answer to an interactive vault prompt. The typed line is a
+// password: it is consumed here and never echoed, recorded in the
+// transcript, or kept in history — only the tool's own output lines
+// come back. A wrong current password fails the way the real tool
+// fails (HMAC verification) and ends the command; a mismatched new
+// password pair is refused and the new-password prompt repeats.
+function soPromptAnswer(st, typed){
+  const p = st.prompt;
+  const lines = [];
+  if (!p || p.kind !== "vault-rekey") { st.prompt = null; return lines; }
+  if (p.stage === "current") {
+    if (typed === p.cur) { p.stage = "new"; lines.push("New Vault password: "); }
+    else { lines.push("ERROR! HMAC verification failed"); st.prompt = null; }
+    return lines;
+  }
+  if (p.stage === "new") {
+    p.newPw = typed; p.stage = "confirm";
+    lines.push("Confirm New Vault password: ");
+    return lines;
+  }
+  // stage === "confirm"
+  if (typed === p.newPw) {
+    lines.push("Rekey successful");
+    if (p.file === "sal.yml" && p.newPw === "secure1234") st.lab.salRekeyed = true;
+    st.prompt = null;
+  } else {
+    lines.push("Passwords do not match");
+    p.newPw = null; p.stage = "new";
+    lines.push("New Vault password: ");
+  }
+  return lines;
 }
 // --- Module documentation (ansible-doc) ---------------------------------------
 // The modules this exam actually uses, with their real documentation
@@ -5983,6 +6036,15 @@ function soColorHtml(t){
 }
 function pushTranscript(idx, typed, q, pass){
   const st = termStateFor(idx);
+  if (st.prompt) {
+    // An interactive vault prompt is waiting: this line is a password
+    // answer. It is consumed by the prompt flow and never recorded —
+    // no transcript entry, no history — only the tool's output shows.
+    if (st.entries.length && st.entries[st.entries.length - 1].k === "prompt") st.entries.pop();
+    soPromptAnswer(st, typed).forEach(l => st.entries.push({ k: "out", text: l }));
+    if (!st.prompt) st.entries.push({ k: "prompt", cwd: soPromptBase(st), user: soUser(st) });
+    return;
+  }
   if (/^\s*clear\s*$/.test(typed)) { st.entries = [{ k: "prompt", cwd: soPromptBase(st), user: soUser(st) }]; return; }
   // bash-style history, shared across the question's steps: every run
   // line is recorded (consecutive duplicates collapsed), and running a
@@ -5999,7 +6061,7 @@ function pushTranscript(idx, typed, q, pass){
   const lines = simulateShell(q, typed, st, pass);
   if (typed.trim()) st.entries.push({ k: "cmd", cwd: cwdBefore, user: userBefore, text: typed });
   lines.forEach(l => st.entries.push({ k: "out", text: l }));
-  st.entries.push({ k: "prompt", cwd: soPromptBase(st), user: soUser(st) });
+  if (!st.prompt) st.entries.push({ k: "prompt", cwd: soPromptBase(st), user: soUser(st) });
 }
 function renderTranscript(fi){
   const el = gel("term" + fi); if (!el) return;
@@ -6011,7 +6073,9 @@ function renderTranscript(fi){
   }).join("");
   el.scrollTop = el.scrollHeight;
   const hp = gel("prompt" + fi);
-  if (hp) hp.textContent = soPromptStr(soUser(st), soPromptBase(st));
+  if (hp) hp.textContent = st.prompt ? soVaultPromptLabel(st.prompt) : soPromptStr(soUser(st), soPromptBase(st));
+  const taP = gel("ta" + fi);
+  if (taP) taP.classList.toggle("pwmask", !!st.prompt);
 }
 // ===SHELLOUT-END===
 
@@ -6025,6 +6089,17 @@ function ctrlCancel(ta, fi){
   if (el) { el.textContent = "^C"; el.className = "tablist show"; }
   // the living terminal records the interrupt too: the line, ^C, fresh prompt
   const st = termStateFor(state.cur);
+  if (st.prompt) {
+    // ^C at a vault password prompt kills the command, the way getpass
+    // gives up on Ctrl+C: the half-typed password is discarded with
+    // the line, never recorded, and the shell prompt comes back.
+    st.prompt = null;
+    const lastE = st.entries[st.entries.length - 1];
+    if (lastE && lastE.k === "out") lastE.text += "^C";
+    st.entries.push({ k: "prompt", cwd: soPromptBase(st), user: soUser(st) });
+    renderTranscript(fi);
+    return;
+  }
   if (st.entries.length && st.entries[st.entries.length - 1].k === "prompt") st.entries.pop();
   st.entries.push({ k: "cmd", cwd: soPromptBase(st), user: soUser(st), text: typed + "^C" });
   st.entries.push({ k: "prompt", cwd: soPromptBase(st), user: soUser(st) });
@@ -6074,6 +6149,15 @@ function wireCmd(fi){
 function pushScratch(suffix, typed){
   const idx = state.cur, q = QUESTIONS[idx];
   const st = scratchStateFor(idx, suffix);
+  if (st.prompt) {
+    // A password answer for an interactive vault prompt: consumed by
+    // the prompt flow, never recorded (same rule as the graded shell).
+    st.draft = "";
+    if (st.entries.length && st.entries[st.entries.length - 1].k === "prompt") st.entries.pop();
+    soPromptAnswer(st, typed).forEach(l => st.entries.push({ k: "out", text: l }));
+    if (!st.prompt) st.entries.push({ k: "prompt", cwd: soPromptBase(st), user: soUser(st) });
+    return;
+  }
   if (/^\s*clear\s*$/.test(typed)) { st.entries = [{ k: "prompt", cwd: soPromptBase(st), user: soUser(st) }]; return; }
   if (typed.trim()) {
     const lab = labStateFor(sectionOf(q.id));
@@ -6086,7 +6170,7 @@ function pushScratch(suffix, typed){
   const lines = simulateShell(q, typed, st, false);
   if (typed.trim()) st.entries.push({ k: "cmd", cwd: cwdBefore, user: userBefore, text: typed });
   lines.forEach(l => st.entries.push({ k: "out", text: l }));
-  st.entries.push({ k: "prompt", cwd: soPromptBase(st), user: soUser(st) });
+  if (!st.prompt) st.entries.push({ k: "prompt", cwd: soPromptBase(st), user: soUser(st) });
 }
 function renderScratch(suffix){
   const el = gel("term" + suffix); if (!el) return;
@@ -6098,7 +6182,9 @@ function renderScratch(suffix){
   }).join("");
   el.scrollTop = el.scrollHeight;
   const hp = gel("prompt" + suffix);
-  if (hp) hp.textContent = soPromptStr(soUser(st), soPromptBase(st));
+  if (hp) hp.textContent = st.prompt ? soVaultPromptLabel(st.prompt) : soPromptStr(soUser(st), soPromptBase(st));
+  const taP = gel("ta" + suffix);
+  if (taP) taP.classList.toggle("pwmask", !!st.prompt);
 }
 function ctrlCancelScratch(ta, suffix){
   const typed = ta.value;
@@ -6108,6 +6194,15 @@ function ctrlCancelScratch(ta, suffix){
   st.draft = "";
   const el = gel("tablist" + suffix);
   if (el) { el.textContent = "^C"; el.className = "tablist show"; }
+  if (st.prompt) {
+    // ^C at a vault password prompt: same rule as the graded shell.
+    st.prompt = null;
+    const lastE = st.entries[st.entries.length - 1];
+    if (lastE && lastE.k === "out") lastE.text += "^C";
+    st.entries.push({ k: "prompt", cwd: soPromptBase(st), user: soUser(st) });
+    renderScratch(suffix);
+    return;
+  }
   if (st.entries.length && st.entries[st.entries.length - 1].k === "prompt") st.entries.pop();
   st.entries.push({ k: "cmd", cwd: soPromptBase(st), user: soUser(st), text: typed + "^C" });
   st.entries.push({ k: "prompt", cwd: soPromptBase(st), user: soUser(st) });
@@ -6513,17 +6608,24 @@ function doCheck(){
     const resM = runChecks(q, [all]);
     const badM = resM.filter(r => !r.ok), goodM = resM.filter(r => r.ok);
     const fbM = gel("fb");
-    if (badM.length === 0) {
+    // Some multi steps also gate on the simulated machine's state
+    // (q.simFlag): the typed commands can all be right while the
+    // interaction they drive is still unfinished — Q16.1's rekey only
+    // counts once its prompts have been answered end to end.
+    const flagOk = !q.simFlag || !!labStateFor(sectionOf(q.id))[q.simFlag];
+    if (badM.length === 0 && flagOk) {
       state.done.add(state.cur);
       persistProgress();
       fbM.className = "feedback show good";
-      fbM.innerHTML = "<b>[OK] precheck complete</b> — all " + resM.length + " requirements met. Read the breakdown below — that's the part that makes it stick.";
+      fbM.innerHTML = "<b>[OK] " + (q.multiDone || "precheck complete") + "</b> — all " + resM.length + " requirements met. Read the breakdown below — that's the part that makes it stick.";
       gel("ex").className = "explain show";
       updateNextline(); renderNav();
       gel("ex").scrollIntoView({ behavior: "smooth", block: "start" });
     } else {
       fbM.className = "feedback show";
-      fbM.innerHTML = "<b>Precheck in progress</b> — " + goodM.length + " of " + resM.length + " checks gathered so far. Still to run:<ul>" + badM.map(r => "<li>" + r.msg.replace(/&/g, "&amp;").replace(/</g, "&lt;") + "</li>").join("") + "</ul><span style='color:var(--dim)'>Run each remaining command in the terminal and read its output.</span>";
+      const stillM = badM.map(r => "<li>" + r.msg.replace(/&/g, "&amp;").replace(/</g, "&lt;") + "</li>");
+      if (!flagOk && q.flagHint) stillM.push("<li>" + q.flagHint.replace(/&/g, "&amp;").replace(/</g, "&lt;") + "</li>");
+      fbM.innerHTML = "<b>" + (q.multiProg || "Precheck in progress") + "</b> — " + goodM.length + " of " + resM.length + " checks gathered so far. Still to run:<ul>" + stillM.join("") + "</ul><span style='color:var(--dim)'>Run each remaining command in the terminal and read its output.</span>";
       fbM.scrollIntoView({ behavior: "smooth", block: "nearest" });
     }
     return;
