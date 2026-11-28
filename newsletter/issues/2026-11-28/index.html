@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="dark">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'self' https://static.cloudflareinsights.com; connect-src 'self' https://cloudflareinsights.com; img-src 'self' data:; form-action https://buttondown.com; base-uri 'none'; object-src 'none'">
+    <meta name="description" content="The Daily Brief for Saturday, November 28, 2026: security incidents, senior security advice, engineering explainers, and tech news.">
+    <title>The Daily Brief · Nov 28, 2026</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="icon" href="../../../favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="../../../style.css">
+    <link rel="stylesheet" href="../../newsletter.css">
+</head>
+<body class="brief-page">
+    <a href="#main-content" class="skip-nav">Skip to main content</a>
+    <nav class="brief-nav">
+        <a href="../../../index.html">← App Hub</a>
+        <a href="../../">All issues</a>
+    </nav>
+    
+<header class="brief-masthead">
+    <p class="brief-eyebrow">THE DAILY BRIEF</p>
+    <h1>Saturday, November 28, 2026</h1>
+    <ol class="brief-toc">
+        <li><a href="#current-events">Current Events</a></li><li><a href="#security-advice">Senior Security Advice</a></li><li><a href="#talk-track">Senior Talk Tracks</a></li><li><a href="#tech-news">Tech News</a></li>
+    </ol>
+</header>
+<main id="main-content" class="brief">
+    
+    <article class="brief-section" id="current-events">
+        <p class="brief-kicker">Current Events</p>
+        <h2>British Airways Magecart Breach</h2>
+        
+            
+            <p>Twenty-two lines of JavaScript, quietly sitting inside a code library that had nothing to do with payments, sat on British Airways' website for fifteen days and copied out the card details of roughly four hundred thousand customers in real time. No database was hacked. No firewall was breached. The thieves just changed one file.</p>
+<p>Here's what happened, in two sentences. Over August and September of 2018, attackers modified a copy of a common JavaScript library running on British Airways' own website and mobile app, and for fifteen days that modified script quietly copied customer payment details to a server the attackers controlled, before anyone at BA noticed.</p>
+<p>Walk through the chain. First, attackers got write access to BA's web server — the exact entry point was never publicly confirmed, which is itself worth saying out loud, because &quot;we don't fully know&quot; is sometimes the honest answer. Second, they modified a legitimate, already-loaded JavaScript library called Modernizr, version 2.6.2, inserting just twenty-two lines of code. Third, because that same script ran on both the baggage-claim information page and, through shared code, parts of the booking and payment flow — including the mobile app, which loaded resources from the same site — the skimmer was positioned to watch real customers typing in real card numbers. Fourth, every time a customer submitted payment details, the injected code quietly copied that data to a domain the attackers controlled, styled to look like a legitimate analytics request, before the real transaction went through as normal.</p>
+<p>The root cause, in one sentence: British Airways ran a third-party script in its payment flow with no way to verify that script hadn't been silently changed, and nothing was watching for the change for over two weeks.</p>
+<p>Here's what held, and it's worth naming precisely. Once BA discovered the compromise on September 5th, 2018, they pulled the affected pages within hours and notified the UK's Information Commissioner's Office inside the seventy-two-hour window GDPR requires — a deadline a lot of organizations miss, and the ICO's own penalty notice credits BA for meeting it. And this stayed a client-side skimming compromise: investigators found no evidence attackers ever breached BA's backend databases or broader network — the theft happened at the browser, not in a data center.</p>
+<p>So what would a senior engineer flag here? First, any third-party or static script running anywhere near a payment page needs integrity verification — a hash check that fails loudly the moment the file changes — not an assumption that what shipped last month is still what's running today. Second, payment-processing code needs to be isolated from the general website, so a compromise of one shared library doesn't automatically reach checkout. A senior engineer auditing a web stack with a payment flow in it would pull up exactly which third-party scripts load on that page, confirm there's a subresource-integrity check or an equivalent file-integrity control on every one of them, and verify a change to any of those files triggers an alert the same day — not a lesson learned fifteen days and four hundred thousand customers later.</p>
+
+        
+            <h3>Timeline</h3>
+            <table>
+<thead>
+<tr>
+<th>Date</th>
+<th>Event</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>August 21, 2018, 22:58 BST</td>
+<td>ICO's final notice sets this as the start of the compromise window (primary: ICO penalty notice)</td>
+</tr>
+<tr>
+<td>September 5, 2018, 21:45 BST</td>
+<td>Compromise window ends, per ICO's final notice (primary)</td>
+</tr>
+<tr>
+<td>September 6, 2018</td>
+<td>British Airways publicly discloses the breach, saying approximately 380,000 payment card transactions were affected</td>
+</tr>
+<tr>
+<td>September 6–11, 2018</td>
+<td>Threat-intelligence firm RiskIQ publishes technical analysis identifying the modified Modernizr 2.6.2 library and attributing the skimmer to the Magecart threat cluster</td>
+</tr>
+<tr>
+<td>July 8, 2019</td>
+<td>ICO issues a Notice of Intent to fine BA £183.39 million (primary: ICO)</td>
+</tr>
+<tr>
+<td>October 16, 2020</td>
+<td>ICO issues its final Monetary Penalty Notice: £20 million, citing COVID-19 economic-impact policy and narrowing the finding to Articles 5(1)(f) and 32 of the GDPR (primary: ICO)</td>
+</tr>
+</tbody>
+</table>
+
+        
+            <h3>Control Failures</h3>
+            <table>
+<thead>
+<tr>
+<th>#</th>
+<th>Failure</th>
+<th>NIST SP 800-53 Rev 5 Control Family</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>No integrity verification existed for the third-party JavaScript library running in the payment flow, so a silent fifteen-day modification went undetected</td>
+<td>SI-7 — Software, Firmware, and Information Integrity</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Payment-processing code was not isolated from general website resources; a shared library used elsewhere on the site was reachable from the payment and baggage-claim pages</td>
+<td>SC-7 — Boundary Protection</td>
+</tr>
+<tr>
+<td>3</td>
+<td>No monitoring or alerting flagged the unauthorized change to a production file for over two weeks</td>
+<td>SI-4 — System Monitoring</td>
+</tr>
+<tr>
+<td>4</td>
+<td>The modification to a production script was not caught by any change-control process, meaning an unauthorized code change was indistinguishable from a routine one</td>
+<td>CM-3 — Configuration Change Control</td>
+</tr>
+</tbody>
+</table>
+
+        
+            <h3>What Held</h3>
+            <p>British Airways met the GDPR's seventy-two-hour breach-notification deadline once it discovered the compromise on September 5th, 2018 — the ICO's own final notice credits this as a mitigating factor, and it's a deadline many organizations miss even today. BA also pulled the affected pages quickly once the skimmer was found, cutting off further collection. And critically, this stayed a client-side compromise: no public reporting or regulatory finding shows the attackers ever reached BA's backend databases or broader network — the theft happened in the browser, through a script, not through a breach of BA's core systems. Naming that distinction in an interview — &quot;the blast radius stayed at the browser layer because the backend was never touched&quot; — signals you understand containment, not just the headline.</p>
+
+        
+            <h3>Sources</h3>
+            <ul>
+<li><a href="https://ico.org.uk/media/action-weve-taken/mpns/2618421/ba-penalty-20201016.pdf" target="_blank" rel="noopener noreferrer">ICO — Monetary Penalty Notice, British Airways plc, 16 October 2020 (primary)</a></li>
+<li><a href="https://www.scworld.com/news/no-fly-by-night-operation-researchers-suspect-magecart-group-behind-british-airways-breach" target="_blank" rel="noopener noreferrer">SC Media — No fly-by-night operation: researchers suspect Magecart group behind British Airways breach</a></li>
+<li><a href="https://techcrunch.com/2018/09/11/british-airways-breach-caused-by-credit-card-skimming-malware-researchers-say" target="_blank" rel="noopener noreferrer">TechCrunch — British Airways breach caused by credit card skimming malware, researchers say</a></li>
+<li><a href="https://www.csoonline.com/article/3305416/british-airways-hack-was-by-same-group-that-compromised-ticketmaster.html" target="_blank" rel="noopener noreferrer">CSO Online — British Airways hack was by same group that compromised Ticketmaster</a></li>
+<li><a href="https://www.orrick.com/Insights/2020/10/Exemplary-and-RecordBreaking-After-a-TwoYear-Investigation-the-UKs-ICO-Issues-British-Airways-with" target="_blank" rel="noopener noreferrer">Orrick — Exemplary and Record-Breaking: After a Two-Year Investigation, the UK's ICO Issues British Airways With a Fine</a></li>
+<li><a href="https://portswigger.net/daily-swig/british-airways-mega-breach-underlines-third-party-script-perils" target="_blank" rel="noopener noreferrer">PortSwigger Daily Swig — British Airways mega-breach underlines third-party script perils</a></li>
+<li><a href="https://news.softpedia.com/news/380-000-british-airways-customers-victims-of-only-22-lines-of-javascript-522618.shtml" target="_blank" rel="noopener noreferrer">Softpedia — 380,000 British Airways Customers Victims of Only 22 Lines of JavaScript</a></li>
+</ul>
+<p><strong>Tomorrow's Thread:</strong> Day 72 moves to the operational and change-management failure family — a candidate is the Southwest Airlines December 2022 scheduling-system meltdown, a different change-management incident from the outages already covered in this series (CrowdStrike, Fastly, Rogers, Cloudflare, AWS, Google Cloud).</p>
+
+        
+    </article>
+    
+    <article class="brief-section" id="security-advice">
+        <p class="brief-kicker">Senior Security Advice</p>
+        <h2>Alert on Atypical Account Usage, Not Just Failed Logins</h2>
+        
+            <h3>The Advice</h3>
+            <p>Turn on risk-based sign-in detection for every account and route atypical usage — like impossible travel — straight to a human who must act on it, not just a dashboard.</p>
+
+        
+            <h3>Why It Matters</h3>
+            <p>Most teams tune their alerting around failed logins, because a brute-force attempt is easy to picture and easy to count. But a stolen credential doesn't fail to log in — it succeeds, using the correct password or token, and the resulting session looks completely normal in the logs. That's the incident class this control is built for: account takeover through a phished, reused, or purchased credential, where the attacker's sign-in is technically legitimate right up until they start moving laterally, forwarding mail, or pulling data. By the time failed-login counts or a manual review would have caught it, the damage is already done.</p>
+<p>NIST's SP 800-53 control catalog addresses this directly under AC-2(12), Account Monitoring for Atypical Usage, which requires organizations to monitor accounts for an atypical usage pattern and report it to designated personnel — not just log it. It's rated a High-baseline control, meaning federal systems treat it as essential at the top security tier, which tells you how seriously the control is taken once the stakes are high enough. Microsoft's own Entra ID Protection documentation describes exactly this kind of detection in practice: &quot;impossible travel&quot; flags activity from geographically distant locations in less time than real travel would allow, and &quot;atypical travel&quot; learns each user's normal sign-in pattern over roughly fourteen days or ten logins before it starts flagging departures from it.</p>
+
+        
+            <h3>How to Implement It</h3>
+            <ol>
+<li><strong>Turn on the platform's built-in risk detection.</strong> Entra ID Protection for Microsoft 365/Azure, GuardDuty and CloudTrail-based anomaly detection for AWS, or your SIEM's user-behavior analytics module — use what's already built, don't hand-roll geo-velocity math from scratch.</li>
+<li><strong>Define &quot;atypical&quot; in concrete terms for your org.</strong> Impossible travel, a brand-new device paired with a brand-new country, a sign-in far outside someone's normal working hours, or first-time access to a sensitive system are all reasonable starting triggers.</li>
+<li><strong>Route flagged events to a person with a deadline</strong>, not a console nobody opens. A high-risk sign-in should land in an on-call queue with a required acknowledgment window — minutes, not days.</li>
+<li><strong>Tune out predictable noise before it buries real signal.</strong> Corporate VPN exit nodes, known mobile carrier ranges, and legitimately traveling staff all need a baseline or exclusion — but log every exclusion so it stays reviewable.</li>
+<li><strong>Verify the alert actually reaches a human.</strong> Use the platform's own risk-simulation feature where one exists, or sign in to a test account from a new location and new device yourself, and confirm a real person gets paged inside the SLA — not that a risk score simply changed in a database somewhere.</li>
+</ol>
+
+        
+            <h3>The Pushback You&#39;ll Hear</h3>
+            <p>&quot;We already watch for failed logins — this is noisy and the premium licensing isn't cheap.&quot; The senior-engineer rebuttal: failed-login monitoring catches guessing attacks, but the far more common real-world breach starts with a credential that works on the first try because it was phished or reused. Full-featured risk detection may sit behind a premium tier, but even basic platform logging can flag a geographically impossible pair of sequential logins today. Start with what's already available, tune the thresholds as false positives show up, and don't let an imperfect noise ratio be the reason the control never gets turned on at all.</p>
+
+        
+            <h3>Sources</h3>
+            <ul>
+<li><a href="https://csrc.nist.gov/CSRC/media/Projects/risk-management/800-53%20Downloads/800-53r5/SP_800-53B_derived-OSCAL.pdf" target="_blank" rel="noopener noreferrer">NIST SP 800-53B — Control Baselines for Information Systems and Organizations (derived OSCAL catalog, High baseline includes AC-2(12))</a></li>
+<li><a href="https://learn.microsoft.com/en-us/entra/id-protection/concept-identity-protection-risks" target="_blank" rel="noopener noreferrer">Microsoft Learn — What are risk detections? (Microsoft Entra ID Protection: Atypical travel and Impossible travel)</a></li>
+<li><a href="https://csf.tools/reference/nist-sp-800-53/r5/ac/ac-2/ac-2-12/" target="_blank" rel="noopener noreferrer">csf.tools — AC-2(12): Account Monitoring for Atypical Usage (NIST SP 800-53 Rev. 5 reference)</a></li>
+</ul>
+
+        
+    </article>
+    
+    <article class="brief-section" id="talk-track">
+        <p class="brief-kicker">Senior Talk Tracks</p>
+        <h2>Why Zombie Processes Aren&#39;t Actually a Problem (Usually)</h2>
+        
+            
+            <p>If you've ever run <code>ps</code> on a Linux box and seen a process sitting there marked with a &quot;Z,&quot; your first instinct was probably to panic a little and try to kill it. Today I want to talk you out of that instinct, because a zombie process is almost never the problem people think it is.</p>
+<p>Here's the plain-English version of what's actually happening. When a process finishes running, it doesn't just vanish. The operating system keeps a small leftover record of it — its exit code, basically a note saying &quot;here's how it ended&quot; — until the process that started it, its parent, comes along and reads that note. Linux calls that reading step &quot;reaping.&quot; Until the parent reaps it, the finished process sticks around in the process table in what's called the zombie state: already dead, just not yet buried.</p>
+<p>So why can't you just kill a zombie? Because there's nothing left to kill. The program code, the memory, the open files — all of that was already cleaned up the moment the process exited. A zombie is just a row in a table, a few bytes of bookkeeping. Running <code>kill -9</code> on it does nothing, because <code>kill</code> sends a signal to a running process, and a zombie isn't running anything anymore.</p>
+<p>Here's the senior take. A junior engineer sees fifty zombies and assumes the system is sick. A senior engineer asks a sharper question: who's their parent, and why isn't it reaping them? One or two zombies that clear up in a few seconds are completely normal — that's just the brief window between a child exiting and its parent noticing. But a growing pile of zombies that never clears means the parent process has a bug: it's spawning children and never checking back on them. That's the actual problem, and it's not really about the zombies at all — it's about a process table that's slowly filling up with dead weight, which can eventually exhaust the system's limit on process IDs.</p>
+<p>Think of it like a restaurant where a customer has already paid and left, but the receipt is still sitting on the table because the waiter never came back to clear it. The food's gone, the customer's gone — there's nothing left to serve. The actual problem isn't the receipt. It's that this particular waiter never clears tables, and eventually every table in the restaurant has an old receipt sitting on it and no room for new customers.</p>
+<p>So a good way to bring this up at work is: &quot;I'm seeing zombie processes pile up under this service — any idea why the parent isn't reaping its children?&quot;</p>
+
+        
+            <h3>Key Takeaways</h3>
+            <ol>
+<li>A zombie process has already finished and released its memory and files — it's just an unreaped exit-status record, not a running program consuming resources.</li>
+<li>You can't kill a zombie with <code>kill -9</code> because there's nothing left running to receive the signal; fixing it means finding or restarting the parent process that isn't reaping its children.</li>
+<li>A small, fluctuating number of zombies is normal; a growing count that never clears signals a bug in the parent process and can eventually exhaust the system's process-ID table.</li>
+</ol>
+
+        
+            <h3>Reader Question</h3>
+            <p><strong>Q:</strong> &quot;If zombie processes don't use CPU or memory, why would a senior engineer ever care about them at all?&quot;</p>
+
+        
+    </article>
+    
+    <article class="brief-section" id="tech-news">
+        <p class="brief-kicker">Tech News</p>
+        
+        
+            
+            <p>A piece of networking software that millions of Kubernetes clusters still rely on just got a new security hole — and the people who built it have already said they're not going to fix it. Two stories today: a container-world flaw nobody's patching, and a deadline that landed today on a flaw I told you about on Wednesday. Here's what you need to know, and why both of them are really the same lesson about who's actually standing behind your software.</p>
+<p>Start with Kubernetes. Ingress-NGINX is the traffic controller that sits in front of a huge share of the world's Kubernetes clusters, routing requests into the right application. A newly tracked flaw, CVE-2026-116472, lets an attacker who can create an Ingress resource smuggle instructions into the &quot;mirror-target&quot; setting and manipulate the underlying NGINX configuration. Here's the part that should get your attention: according to the official Kubernetes security advisory, the project is not issuing a fix, because Ingress-NGINX itself reached end of life back in March. Sources differ on how severe this one actually is — one tracker scores it a low 2.7, another puts it at 4.16 — but the number almost doesn't matter. My take: a maintained project patches the bug; an end-of-life project just publishes the bug and walks away. If you're still running Ingress-NGINX, the fix isn't a patch, it's a migration plan, and that conversation needs to start now, not after the next flaw in it.</p>
+<p>Which brings us to an update. On Wednesday I told you about CISA adding ten actively exploited flaws to its Known Exploited Vulnerabilities, or KEV, catalog — Xen Orchestra and Mitel MiCollab among them. Here's what's new: today, November 28th, is CISA's own deadline for federal agencies to patch eight of those ten flaws. That same catalog addition also covered industrial controllers from Danfoss and networking gear from HPE, which I didn't get to on Wednesday. My read: when CISA gives a three-day turnaround instead of the usual thirty, that's the clearest signal they can send that exploitation is already active — treat that deadline as the floor, not the target.</p>
+<p>So here's the through-line: whether it's a vendor that's already gone or a government deadline landing today, the question that actually matters is the same — who's still responsible for this piece of code, and how fast can they move.</p>
+
+        
+            <h3>Sources</h3>
+            <ul>
+<li><a href="https://discuss.kubernetes.io/t/security-advisory-multiple-issues-in-ingress-nginx/34115" target="_blank" rel="noopener noreferrer">Kubernetes Security Advisory — CVE-2026-116472 (ingress-nginx mirror-target)</a> (primary)</li>
+<li><a href="https://nvd.nist.gov/vuln/detail/CVE-2026-116472" target="_blank" rel="noopener noreferrer">NVD — CVE-2026-116472</a> (primary)</li>
+<li><a href="https://www.herodevs.com/vulnerability-directory/cve-2026-116472" target="_blank" rel="noopener noreferrer">HeroDevs Vulnerability Directory — CVE-2026-116472</a></li>
+<li><a href="https://www.cisa.gov/known-exploited-vulnerabilities-catalog" target="_blank" rel="noopener noreferrer">CISA Known Exploited Vulnerabilities Catalog</a> (primary)</li>
+<li><a href="https://cybersecuritynews.com/cisa-adds-10-flaws-to-kev/" target="_blank" rel="noopener noreferrer">CyberSecurityNews — CISA Adds 10 Flaws from Danfoss, HPE, Mitel MiCollab, and Vates Xen to Exploited Catalog</a></li>
+<li><a href="https://www.it-connect.tech/cisa-flags-10-exploited-flaws-in-danfoss-mitel-juniper-and-xen-orchestra/" target="_blank" rel="noopener noreferrer">IT-Connect — CISA Flags 10 Exploited Flaws in Danfoss, Mitel, Juniper and Xen Orchestra</a></li>
+</ul>
+
+        
+    </article>
+    
+    <section class="brief-subscribe" id="subscribe">
+    <h2>Get The Daily Brief by email</h2>
+    <p>One short email each morning. Unsubscribe anytime.</p>
+    <form action="https://buttondown.com/api/emails/embed-subscribe/cybercider" method="post">
+        <label for="bd-email">Email address</label>
+        <input type="email" name="email" id="bd-email" required autocomplete="email" placeholder="you@example.com">
+        <button type="submit">Subscribe</button>
+    </form>
+</section>
+</main>
+
+    <footer><p class="copyright">The Daily Brief · Eddie Camacho</p></footer>
+<!-- cf-web-analytics (managed by tools/inject_analytics.py) -->
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "f728a20b49cc4a0fbe02cde72f03301c"}'></script>
+</body>
+</html>
